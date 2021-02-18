@@ -1,28 +1,15 @@
 import numpy as np
-from scipy.ndimage import map_coordinates, gaussian_filter, sobel
-from scipy.interpolate import griddata
-from matplotlib.image import imread, imsave
 import matplotlib.pyplot as plt
 import matplotlib
 import sys
 import torch
 
-DEFAULT_DATA_PATH = '/home/turtlefox/Documents/Doctorat/gliomorph/im2Dbank/'
+DEFAULT_DATA_PATH = 'put_file_path_here'
 
 
 def rgb2gray(rgb):
     return np.dot(rgb[..., :3], [0.2989, 0.5870, 0.1140])
 
-
-def my_imread(file, path=DEFAULT_DATA_PATH):
-    file_path = path + file
-    return rgb2gray(imread(file_path))
-
-
-# comparaison of two images
-def imCmp(I1, I2):
-    M, N = I1.shape
-    return np.concatenate((I2[:, :, None], I1[:, :, None], np.zeros((M, N, 1))), axis=2)
 
 
 def full_ellipse(x, y, a, b, center, theta=.0):
@@ -42,191 +29,6 @@ def full_ellipse(x, y, a, b, center, theta=.0):
         tmp = ((x - center[0]) * np.cos(theta) + (y - center[1]) * np.sin(theta)) ** 2 / a ** 2
         tmp += ((x - center[0]) * np.sin(theta) + (y - center[1]) * np.cos(theta)) ** 2 / b ** 2
         return tmp < 1
-
-
-def imdef(I, Xdef, Ydef):
-    # n, m = I.shape
-    P = np.stack((Ydef.flatten(), Xdef.flatten()))
-
-    Idef = map_coordinates(I, P, order=1)
-    Idef = Idef.reshape(I.shape)
-    return Idef
-
-
-""" old version
-def vect2Dinterp_mc(Vx,Vy,Xdef,Ydef):
-    print(str(Ydef.shape) +' =?= '+ str(Vy.shape))
-    print(str(Xdef.shape) +' =?= '+ str(Vx.shape))
-    P = np.array([(Ydef).flatten(),(Xdef).flatten()])
-    # P = np.array([(Xdef+Vx).flatten(),(Ydef+Vy).flatten()])
-    Vxdef = map_coordinates(Vx,P,order=1)
-    Vxdef = Vxdef.reshape(Vx.shape)
-    Vydef = map_coordinates(Vy,P,order=1)
-    Vydef = Vydef.reshape(Vy.shape)
-    return Vxdef, Vydef
-"""
-
-
-def vect2Dinterp(vect_x, vect_y, origin_grid, new_grid=None):
-    N, M = vect_x.shape
-    origin_grid_x, origin_grid_y = origin_grid
-
-    if new_grid is None:
-        new_grid = (origin_grid_x + vect_x,
-                    origin_grid_y + vect_y)
-
-    points = np.stack((origin_grid_x.flatten(), origin_grid_y.flatten())).T
-
-    interp_vect_x = griddata(points, vect_x.flatten(), new_grid, fill_value=0)
-    interp_vect_y = griddata(points, vect_y.flatten(), new_grid, fill_value=0)
-
-    return interp_vect_x, interp_vect_y
-
-
-def vect2Dinterp_mc(vect_x, vect_y, origin_grid, new_grid=None):
-    N, M = vect_x.shape
-    origin_grid_x, origin_grid_y = origin_grid
-
-    if new_grid is None:
-        new_grid = (origin_grid_x + vect_x,
-                    origin_grid_y + vect_y)
-
-    new_grid = np.stack((new_grid[1].flatten(), new_grid[0].flatten()))
-
-    interp_vect_x = map_coordinates(vect_x, new_grid, order=1)
-    interp_vect_y = map_coordinates(vect_y, new_grid, order=1)
-
-    return interp_vect_x.reshape((N, M)), interp_vect_y.reshape((N, M))
-
-
-def summarizeFlow(vectField, init_grid=None):
-    print("WARNING : summarizeFlow deprecated, Use computeFlow instead")
-    return computeFlow(vectField, init_grid)
-
-
-def computeFlow(vectField, init_grid=None, mask=None):
-    """
-
-    # :param vectField: TxMxNxD numpy ar
-    # where T is the number time max; M and N the dimensions of the vector field
-    # and D is the dimensiondef_xx)
-    # :return: A MxN vector field that is the composition of all fields in vectField.
-    """
-    T, D, N, M = vectField.shape  # at this stage of the dev, D = 2
-
-    if init_grid is None:
-        # regular grid
-        init_grid = np.meshgrid(np.arange(M).astype('float'),
-                                np.arange(N).astype('float'))
-
-        def_xx, def_yy = init_grid[0], init_grid[1]
-
-        if mask is None:
-            def_xx += vectField[0, 0, :, :]
-            def_yy += vectField[0, 1, :, :]
-        else:
-            def_xx += mask * vectField[0, 0, :, :]
-            def_yy += mask * vectField[0, 1, :, :]
-
-        cst = 1
-    else:  # interp_vect_x = griddata(points, vect_x.flatten(), new_grid)
-        # interp_vect_y = griddata(points, vect_y.flatten(), new_grid)
-        def_xx, def_yy = init_grid[0].astype('float'), init_grid[1].astype('float')
-        cst = 0
-
-    for t in range(cst, T):
-        interp_Field_x, interp_Field_y = vect2Dinterp_mc(
-            vectField[t, 0, :, :],
-            vectField[t, 1, :, :],
-            init_grid,  # origin_grid
-            (def_xx, def_yy)  # deformed grid
-        )
-
-        if mask is None:
-            def_xx += interp_Field_x
-            def_yy += interp_Field_y
-        else:
-            def_xx += mask * interp_Field_x
-            def_yy += mask * interp_Field_y
-
-    return np.stack((def_xx, def_yy))
-
-
-def addGrid2im(img, n_line):
-    N, M = img.shape
-    I = np.zeros((N, M))
-    xx, yy = np.meshgrid(range(M), range(N))
-
-    # cerveau
-    a, b = np.array([0.3, 0.35])
-    center = 0.5 * np.ones((2))  # +(2*np.random.random((2))-1)*rdm_sigma
-
-    bool1 = full_ellipse(xx / (M - 1), yy / (N - 1), a, b, center)
-    # séparation centrale
-    bool1[:, int(center[0] * M - M / 200):int(center[0] * M + M / 200)] = False
-    cst = 0.1
-    for n in range(n_line[0] + 1):
-        w = int(np.maximum(N / 200, 1))
-        range_m = int(np.maximum(n * N / n_line[0] - w, 0))
-        range_p = int(np.minimum(n * N / n_line[0] + w, N - 1))
-        img[range_m:range_p, :] = img[range_m:range_p, :] + cst
-
-    for m in range(n_line[1] + 1):
-        w = int(np.maximum(M / 200, 1))
-        range_m = int(np.maximum(m * M / n_line[1] - w, 0))
-        range_p = int(np.minimum(m * M / n_line[1] + w, M - 1))
-        img[:, range_m:range_p] = img[:, range_m:range_p] + cst
-
-    return img
-
-
-def showDeformation(vectField):
-    D, N, M = vectField.shape
-
-    # xx,yy = np.meshgrid(np.arange(M).astype('float'),np.arange(N).astype('float'))
-
-    grid = addGrid2im(np.zeros((N, M)), [int(N / 10), int(M / 10)])
-    grid_def = imdef(grid, vectField[0, ::], vectField[1, ::])
-
-    fig = plt.figure()
-    # ax1 = fig.add_subplot(131)
-    # ax1.imshow(grid,cmap='gray')
-
-    ax2 = fig.add_subplot(121)
-    ax2.imshow(imCmp(grid / np.max(grid), grid_def / np.max(grid)))
-
-    ax3 = fig.add_subplot(122)
-    ax3.imshow(grid_def, cmap='gray')
-
-    fig.show()
-
-
-def smoothErod(bool_mat, sigma=2):
-    """
-
-    :param bool_mat: boolean matrix
-    :param sigma: sigma parameterer for the gaussian convolution
-    :return:
-    """
-    dRx = gaussian_filter(sobel(bool_mat.astype('float'), axis=0, mode='constant'), sigma)
-    dRy = gaussian_filter(sobel(bool_mat.astype('float'), axis=1, mode='constant'), sigma)
-
-    norm_I = np.maximum(np.abs(dRx), np.abs(dRy))
-    norm_I = norm_I / np.max(norm_I)
-    norm_I[np.logical_not(bool_mat)] = 0
-    smooth_bool = bool_mat - norm_I.astype('float')
-
-    # FOR DEBUG
-    # plt.imshow(imCmp(norm_I,dRy))
-    #
-    # plt.plot(50*bool_mat[100,:])
-    # plt.plot(50*norm_I[100,:])
-    # plt.plot(50*smooth_bool[100,:])
-    # plt.show()
-
-    return smooth_bool
-
-
 
 # update_progress() : Displays or updates a console progress bar
 ## Accepts a float between 0 and 1. Any int will be converted to a float.

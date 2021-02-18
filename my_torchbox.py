@@ -13,13 +13,8 @@ from my_bspline import my_bspline as mbs
 #        IMAGE BASICS
 # ================================================
 
-def reg_open(number, size = None,requires_grad= False,location = 'local'):
-
-    if location == 'local':
-        path = '/home/turtlefox/Documents/Doctorat/'
-    elif location == 'bartlett':
-        path = '/home/fanton/'
-    path += 'gliomorph/im2Dbank/reg_test_'+number+'.png'
+def reg_open(number, size = None,requires_grad= False):
+    path = 'im2Dbank/reg_test_'+number+'.png'
 
     I = rgb2gray(plt.imread(path))
     I = torch.tensor(I[newaxis,newaxis,:],
