@@ -2,6 +2,9 @@
 
 (DiffEoMorphic METamorphic Regristration)
 
+**Warning** : This depot is still in progress, Jupyter notebooks will be provided
+soon.
+
 You are seeing the birth of a new python librairy, intended to solve 
 diffeomoprhic registration problems using metamorphosis and LDDMM.
 For more details on the methods please read the joined PDF :
