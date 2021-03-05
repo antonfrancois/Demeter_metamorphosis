@@ -2,3 +2,7 @@
 *.xml
 
 .idea/Demeter.iml
+
+.ipynb_checkpoints/
+
+__pycache__/

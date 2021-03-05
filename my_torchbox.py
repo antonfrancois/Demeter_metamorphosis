@@ -7,7 +7,6 @@ import kornia.utils.grid as kg
 from numpy import newaxis
 
 from my_toolbox import rgb2gray
-from my_bspline import my_bspline as mbs
 
 # ================================================
 #        IMAGE BASICS
@@ -254,9 +253,6 @@ def imgDeform(I,field,dx_convention ='2square'):
 def compose_fields(field,field_on):
     return im2grid(grid_sample(grid2im(field),field_on))
 
-def vect_spline_diffeo(control_matrix,field_size, N = None,forward = True):
-    field = mbs.field2D_bspline(control_matrix, field_size, dim_stack=2)
-    return field2diffeo(field,N=N,forward=forward)
 
 def field_2d_jacobian(field):
     r"""
