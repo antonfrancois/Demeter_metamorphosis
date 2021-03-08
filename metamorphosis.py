@@ -1,14 +1,11 @@
 import torch
-from torch.utils.checkpoint import checkpoint # redondant mais necéssaire ...
 import kornia.filters as flt
-from math import log
 import matplotlib.pyplot as plt
 import time
 
 import my_torchbox as tb
 import vector_field_to_flow as vff
 from my_toolbox import update_progress,format_time
-from cost_functions import sumSquaredDifference
 from my_optim import GradientDescent
 
 class metamorphosis_path:
