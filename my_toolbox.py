@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 import sys
+import os
 import torch
 
 DEFAULT_DATA_PATH = 'put_file_path_here'
@@ -223,3 +224,9 @@ def TestCuda(verbose = True):
 
     #print(KeOpsdtype)
     return use_cuda,torchdeviceId,torchdtype,KeOpsdeviceId,KeOpsdtype,KernelMethod
+
+def get_freer_gpu():
+    os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
+    memory_available = torch.tensor([int(x.split()[2]) for x in open('tmp', 'r').readlines()])
+
+    return 'cuda:'+str(int(torch.argmax(memory_available)))

@@ -398,7 +398,7 @@ class grad_descent_metamorphosis:
             total_cost += norm_l2_on_z
             ax1.plot(norm_l2_on_z,"--",color = 'orange',label='norm_l2_on_z')
 
-        ax1.plot(total_cost, color='black',label='\Sigma')
+        ax1.plot(total_cost, color='black',label=r/'\Sigma')
         ax1.legend()
 
     def plot_imgCmp(self):
