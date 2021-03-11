@@ -2,8 +2,7 @@
 
 (DiffEoMorphic METamorphic Regristration)
 
-**Warning** : This depot is still in progress, Jupyter notebooks will be provided
-soon.
+**Warning** : This depot is still in progress.
 
 You are seeing the birth of a new python librairy, intended to solve 
 diffeomoprhic registration problems using metamorphosis and LDDMM.
@@ -21,9 +20,18 @@ In this project we use some libraries, some quite basics like :
 - matplotlib 
 - time
 
-Make sure that you have `torch 1.7.1` or higher and `kornia` that you can 
-download like indicated [Here] and [here].
+Make sure that you have `torch 1.8` or higher for fft and `kornia` that you can 
+download like indicated in the following links [(PyTorch)](https://pytorch.org/)
+and [(kornia)](https://pypi.org/project/kornia/).
 
+## Jupyter Notebooks
+
+You can see results and usage exemples in the following jupyter notebooks
+
+- **figs_geodesic_stability_lddmm.ipynb** : Figure from the article aiming to show the stability 
+  of semi-Lagrangian schemes over Eulerian ones for LDDMM.
+- **fig_lddmm_vs_metamorphoses.ipynb** : Figure from the article aiming to 
+compare our implementation of LDDMM and Metamorphosis.
 
 ## Files
 
@@ -42,3 +50,12 @@ regristration
 such as: 
   - wrapper for `kornia` and `PyTorch` utilitary functions.
   - function for plotting.
+    
+- **fft_conv.py** : function from [Github : fkodom](https://github.com/fkodom/fft-conv-pytorch)
+
+- **reproducing_kernels.py** : Kornia inerited functions to use filter convolution
+with fft_conv. 
+  
+## Contact
+
+You can find my contact on my website : http://helios.mi.parisdescartes.fr/~afrancoi/
