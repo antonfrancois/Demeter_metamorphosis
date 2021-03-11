@@ -1,5 +1,4 @@
 import torch
-import kornia.filters as flt
 import matplotlib.pyplot as plt
 import time
 
@@ -7,6 +6,7 @@ import my_torchbox as tb
 import vector_field_to_flow as vff
 from my_toolbox import update_progress,format_time
 from my_optim import GradientDescent
+import reproducing_kernels as rk
 
 class metamorphosis_path:
     """ Class integrating over a geodesic shooting. The user can choose the method among
@@ -28,10 +28,12 @@ class metamorphosis_path:
         self.n_step = n_step
 
         # inner methods
-        kernel_size = max(6,int(sigma_v*6))
-        kernel_size += (1 - kernel_size %2)
-        self.kernelOperator = flt.GaussianBlur2d((kernel_size,kernel_size),
-                                                 (sigma_v, sigma_v),
+        # kernel_size = max(6,int(sigma_v*6))
+        # kernel_size += (1 - kernel_size %2)
+        # self.kernelOperator = flt.GaussianBlur2d((kernel_size,kernel_size),
+        #                                          (sigma_v, sigma_v),
+        #                                          border_type='constant')
+        self.kernelOperator = rk.GaussianRKHS2d((sigma_v, sigma_v),
                                                  border_type='constant')
 
         if method == 'Eulerian':
@@ -398,7 +400,7 @@ class grad_descent_metamorphosis:
             total_cost += norm_l2_on_z
             ax1.plot(norm_l2_on_z,"--",color = 'orange',label='norm_l2_on_z')
 
-        ax1.plot(total_cost, color='black',label=r/'\Sigma')
+        ax1.plot(total_cost, color='black',label=r'\Sigma')
         ax1.legend()
 
     def plot_imgCmp(self):
