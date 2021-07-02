@@ -7,13 +7,18 @@ import kornia.utils.grid as kg
 from numpy import newaxis
 
 from my_toolbox import rgb2gray
+import my_bspline as mbs
+import vector_field_to_flow as vff
 
 # ================================================
 #        IMAGE BASICS
 # ================================================
 
-def reg_open(number, size = None,requires_grad= False):
-    path = 'im2Dbank/reg_test_'+number+'.png'
+def reg_open(number, size = None,requires_grad= False,location = 'local'):
+
+
+    path = '/home/turtlefox/Documents/Doctorat/'
+    path += 'gliomorph/im2Dbank/reg_test_'+number+'.png'
 
     I = rgb2gray(plt.imread(path))
     I = torch.tensor(I[newaxis,newaxis,:],
@@ -121,6 +126,7 @@ def quiver_plot(field,
                 title="",
                 check_diffeo=False,
                 color=None,
+                dx_convention='pixel',
                 real_scale=True):
     """
 
@@ -144,7 +150,7 @@ def quiver_plot(field,
     if color is None:
         color = 'black'
 
-    reg_grid = make_regular_grid(field.size())
+    reg_grid = make_regular_grid(field.size(),dx_convention=dx_convention)
     if check_diffeo :
          cD = checkDiffeo(reg_grid+field)
          title += 'diffeo = '+str(cD[:,:,0].sum()<=0)
@@ -195,7 +201,8 @@ def deformation_show(deformation,step=2,
                 color=None)
     plt.show()
 
-def vectField_show(field,step=2,check_diffeo= False,title=""):
+def vectField_show(field,step=2,check_diffeo= False,title="",
+                   dx_convention = 'pixel'):
     r"""
 
     :param field: (1,H,W,2) tensor object
@@ -218,9 +225,11 @@ def vectField_show(field,step=2,check_diffeo= False,title=""):
     fig.suptitle(title)
     regular_grid = make_regular_grid(field.size())
     gridDef_plot(field + regular_grid,step=step,ax = axes[0],
-                 check_diffeo=check_diffeo)
+                 check_diffeo=check_diffeo,
+                 dx_convention=dx_convention)
     quiver_plot(field ,step=step,
-                ax = axes[1],check_diffeo=check_diffeo)
+                ax = axes[1],check_diffeo=check_diffeo,
+                dx_convention=dx_convention)
     plt.show()
 
 def showDef(field,axes=None, grid=None, step=2, title="",check_diffeo=False,color=None):
@@ -241,7 +250,7 @@ def field2diffeo(in_vectField, N=None,save= False,forward=True):
    print("\033[93m WARNING"+
          "function deprecated /!\ do not use /!\ see vector_field_to_flow"+
          "\033[0m")
-   import vector_field_to_flow as vff
+
    return vff.FieldIntegrator(method='fast_exp')(in_vectField.clone(),forward= forward)
 
 
@@ -253,6 +262,9 @@ def imgDeform(I,field,dx_convention ='2square'):
 def compose_fields(field,field_on):
     return im2grid(grid_sample(grid2im(field),field_on))
 
+def vect_spline_diffeo(control_matrix,field_size, N = None,forward = True):
+    field = mbs.field2D_bspline(control_matrix, field_size, dim_stack=2)[None]
+    return vff.FieldIntegrator(method='fast_exp')(field.clone(),forward= forward)
 
 def field_2d_jacobian(field):
     r"""

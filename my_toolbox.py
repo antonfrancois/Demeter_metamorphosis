@@ -230,3 +230,8 @@ def get_freer_gpu():
     memory_available = torch.tensor([int(x.split()[2]) for x in open('tmp', 'r').readlines()])
 
     return 'cuda:'+str(int(torch.argmax(memory_available)))
+
+# comparaison of two images
+def imCmp(I1, I2):
+    M, N = I1.shape
+    return np.concatenate((I2[:, :, None], I1[:, :, None], np.zeros((M, N, 1))), axis=2)

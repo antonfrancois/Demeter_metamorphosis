@@ -1,12 +1,14 @@
 import torch
 import matplotlib.pyplot as plt
 import time
+import warnings
 
 import my_torchbox as tb
 import vector_field_to_flow as vff
 from my_toolbox import update_progress,format_time
 from my_optim import GradientDescent
 import reproducing_kernels as rk
+
 
 class metamorphosis_path:
     """ Class integrating over a geodesic shooting. The user can choose the method among
@@ -83,7 +85,7 @@ class metamorphosis_path:
         self.residuals = self.residuals + residuals_dt /self.n_step
 
         self.image =  self._image_Eulerian_integrator_(self.image,self.field,1/self.n_step,1)
-        self.image = self.image + (self.residuals *self.mu**2)/ self.n_step
+        self.image = self.image + (self.residuals *self.mu)/ self.n_step
 
         return (self.image,self.field,self.residuals)
 
@@ -100,7 +102,7 @@ class metamorphosis_path:
         # Lagrangian scheme on images
         deformation = self.id_grid - self.field/self.n_step
         self.image = tb.imgDeform(self.image,deformation,dx_convention='pixel') \
-                     + (self.residuals *self.mu**2)/self.n_step
+                     + (self.residuals *self.mu)/self.n_step
 
         return (self.image,self.field,self.residuals)
 
@@ -118,11 +120,11 @@ class metamorphosis_path:
                          - div_v_times_z/self.n_step
 
         self.image = tb.imgDeform(self.image,deformation,dx_convention='pixel') +\
-                     (self.mu**2*self.residuals )/self.n_step
+                     (self.mu*self.residuals )/self.n_step
 
         return (self.image,self.field,self.residuals)
 
-    def forward(self,image,field_ini,residual_ini,save=True,plot =0):
+    def forward(self,image,residual_ini,field_ini=None,save=True,plot =0,t_max = 1):
         r""" This method is doing the temporal loop using the good method `_step_`
 
         :param image: (tensor array) of shape [1,1,H,W]. Source image ($I_0$)
@@ -135,30 +137,34 @@ class metamorphosis_path:
         """
         self.source = image.detach()
         self.image = image.clone()
-        self.field = field_ini #/self.n_step
         self.residuals = residual_ini
         self.save = save
 
         # TODO: probablement à supprimer
-        self.id_grid = tb.make_regular_grid(field_ini.shape)
+        H,W = residual_ini.shape
+        self.id_grid = tb.make_regular_grid((1,H,W,2))
+        if field_ini is None:
+            self.field =self.id_grid.clone()
+        else:
+            self.field = field_ini #/self.n_step
 
         if plot > 0:
             self.save = True
 
         if self.save:
-            self.image_stock = torch.zeros((self.n_step,)+image.shape[1:])
-            self.field_stock = torch.zeros((self.n_step,)+field_ini.shape[1:])
-            self.residuals_stock = torch.zeros((self.n_step,)+residual_ini.shape)
+            self.image_stock = torch.zeros((t_max*self.n_step,)+image.shape[1:])
+            self.field_stock = torch.zeros((t_max*self.n_step,)+self.field.shape[1:])
+            self.residuals_stock = torch.zeros((t_max*self.n_step,)+residual_ini.shape)
 
         self.t = 0
-        for i,t in enumerate(torch.linspace(0,1,self.n_step)):
+        for i,t in enumerate(torch.linspace(0,t_max,t_max*self.n_step)):
             self.t = t
 
             _,field_to_stock,residuals_dt = self.step()
 
             if self.image.isnan().any() or self.residuals.isnan().any():
                 raise OverflowError("Some nan where produced ! the integration diverged",
-                                    "changing the parameters is needed (increasing n_step can help) ")
+                                    "changing the parameters is needed (decreasing n_step can help) ")
 
             if self.save:
                 self.image_stock[i] = self.image[0].detach()
@@ -170,14 +176,14 @@ class metamorphosis_path:
 
         #return self.residuals
 
-    def get_deformation(self):
+    def get_deformation(self,n_step=-1):
         r"""Returns the deformation use it for showing results
         $\Phi = \int_0^1 v_t dt$
 
         :return: deformation [1,H,W,2] or [2,H,W,D,3]
         """
         temporal_integrator = vff.FieldIntegrator(method='temporal',save=False)
-        return temporal_integrator(self.field_stock/self.n_step,forward=True)
+        return temporal_integrator(self.field_stock[:n_step]/self.n_step,forward=True)
 
     def get_deformator(self):
         r"""Returns the inverde deformation use it for deforming images
@@ -194,23 +200,32 @@ class metamorphosis_path:
 
     def plot(self,n_figs=5):
 
-        plot_id = torch.quantile(torch.arange(self.n_step,dtype=torch.float),
+        plot_id = torch.quantile(torch.arange(self.image_stock.shape[0],dtype=torch.float),
                                  torch.linspace(0,1,n_figs)).round().int()
 
-        cmap = 'cividis'
+
+        kw_image_args = dict(cmap='gray',
+                      extent=[-1,1,-1,1],
+                      origin='lower',
+                      vmin=0,vmax=1)
+        kw_residuals_args = dict(cmap='RdYlBu_r',
+                      extent=[-1,1,-1,1],
+                      origin='lower',
+                      vmin=self.residuals_stock.min(),
+                      vmax=self.residuals_stock.max())
         size_fig = 5
         plt.rcParams['figure.figsize'] = [size_fig*3,n_figs*size_fig]
         fig,ax = plt.subplots(n_figs,3)
 
         for i,t in enumerate(plot_id):
             i_s =ax[i,0].imshow(self.image_stock[t,0,:,:].detach().numpy(),
-                                cmap=cmap,origin='lower',vmin=0,vmax=1)
+                                **kw_image_args)
             ax[i,0].set_title("t = "+str((t/(self.n_step-1)).item())[:3])
             ax[i,0].axis('off')
             fig.colorbar(i_s,ax=ax[i,0],fraction=0.046, pad=0.04)
 
             r_s =ax[i,1].imshow(self.residuals_stock[t].detach().numpy(),
-                                cmap=cmap,origin='lower')
+                                **kw_residuals_args)
             ax[i,1].axis('off')
 
             fig.colorbar(r_s,ax=ax[i,1],fraction=0.046, pad=0.04)
@@ -233,7 +248,7 @@ class metamorphosis_path:
         temporal_integrator = vff.FieldIntegrator(method='temporal',
                                                   save=temporal,
                                                   dx_convention='pixel')
-        print('field_stock ',self.field_stock.shape)
+
 
         # field_stock_toplot = tb.pixel2square_convention(self.field_stock)
         # tb.gridDef_plot(field_stock_toplot[-1][None],dx_convention='2square')
@@ -290,33 +305,70 @@ class metamorphosis_path:
 # =======================================================================
 # =======================================================================
 
+class optimize_geodesicShooting:
 
-class grad_descent_metamorphosis:
-
-    def __init__(self,source,target,geodesic,cost_l=1,grad_dt=1e-3):
+    def __init__(self,source : torch.Tensor,
+                     target : torch.Tensor,
+                     geodesic : metamorphosis_path,
+                     cost_cst : dict,
+                     optimizer_method : str = 'grad_descent',
+                     cost = None
+                 ):
         self.mp = geodesic
         self.source = source
         self.target = target
-        self.lr = grad_dt
-        self.cost_l = cost_l
+        self.cost_cst = cost_cst
+        self.optimizer_method_name = optimizer_method #for __repr__
+        # optimize on the cost as defined in the 2021 paper.
+        if cost is None:
+            self.cost = self.metamorphosis_cost
+
+        # forward function choice among developed optimizers
+        if optimizer_method == 'grad_descent':
+            self._initialize_optimizer_ = self._initialize_grad_descent_
+            self._step_optimizer_ = self._step_grad_descent_
+        elif optimizer_method == 'LBFGS_torch':
+            self._initialize_optimizer_ = self._initialize_LBFGS_
+            self._step_optimizer_ = self._step_LBFGS_
+        else:
+            raise ValueError(
+                "\noptimizer_method is " + optimizer_method +
+                "You have to specify the optimizer_method used among"
+                "{'grad_descent', 'LBFGS_torch'}"
+                             )
 
         self.temporal_integrator = vff.FieldIntegrator(method='temporal',save=False)
 
+    def __repr__(self) -> str:
+        return self.__class__.__name__ +\
+            '(cost_parameters : {mu ='+ str(self.mp.mu)     +\
+            ', lambda,rho =' +   str(self.cost_cst)    +'},'+\
+            '\nintegration method '+      self.mp.step.__name__ +\
+            '\noptimisation method '+ self.optimizer_method_name+\
+            '\n# geodesic steps =' +      str(self.mp.n_step) + ')'
 
-    def cost(self,residuals_ini):
+
+    def metamorphosis_cost(self, residuals_ini : torch.Tensor) -> torch.Tensor:
         r""" cost computation
 
         $H(z_0) =   \frac 12\| \im{1} - \ti \|_{L_2}^2 + \lambda \Big[ \|v_0\|^2_V + \mu ^2 \|z_0\|^2_{L_2} \Big]$
 
         :param residuals_ini: z_0
-        :return: $H(z_0)$
+        :return: $H(z_0)$ a single valued tensor
         """
-        _,H,W,_ = self.source.shape
+        _,_,H,W = self.source.shape
+        lamb, rho = self.cost_cst.values()
+        if(self.mp.mu == 0 and rho != 0):
+            warnings.warn("mu as been set to zero in methamorphosis_path, "
+                          "automatic reset of rho to zero."
+                         )
+            rho = 0
 
-        self.mp.forward(self.source.clone(),self.id_grid,residuals_ini,save=False,plot=0)
+        self.mp.forward(self.source.clone(),residuals_ini,save=False,plot=0)
         # checkpoint(self.mp.forward,self.source.clone(),self.id_grid,residuals_ini)
 
         self.ssd = .5*((self.target - self.mp.image)**2).sum()
+
 
         # Norm V
         grad_source = tb.spacialGradient(self.source)
@@ -328,82 +380,129 @@ class grad_descent_metamorphosis:
         # norm_2 on z
         if self.mp.mu != 0:
             # # Norm on the residuals only
-            self.norm_l2_on_z = (residuals_ini**2).sum()
+            self.norm_l2_on_z = (residuals_ini**2).sum()/(H*W)
             self.total_cost = self.ssd + \
-                              self.cost_l*(self.norm_v_2 + (self.mp.mu**2) *self.norm_l2_on_z)
+                              lamb*(self.norm_v_2 + (rho) *self.norm_l2_on_z)
         else:
-             self.total_cost = self.ssd + self.cost_l*self.norm_v_2
+             self.total_cost = self.ssd + lamb*self.norm_v_2
+        # print('ssd :',self.ssd,' norm_v :',self.norm_v_2)
         return self.total_cost
 
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    #   Implemented OPTIMIZERS
+    # GRADIENT DESCENT
+    def _initialize_grad_descent_(self,dt_step,max_iter=20):
+        self.optimizer = GradientDescent(self.cost,self.parameter,lr=dt_step)
 
+    def _step_grad_descent_(self):
+        self.optimizer.step()
 
-    def forward(self,z_0,n_iter = 10,verbose= True) :
-        """ Boucle de pas de descente avec à chaque tour de boucle un appel à la fonction cost()
+    # LBFGS
+    def _initialize_LBFGS_(self,dt_step,max_iter = 20):
+        self.optimizer = torch.optim.LBFGS([self.parameter],
+                                           max_eval=15,
+                                           max_iter=max_iter,
+                                           lr=dt_step)
+
+        def closure():
+            self.optimizer.zero_grad()
+            L = self.cost(self.parameter)
+            #save best cms
+            # if(self._it_count >1 and L < self._loss_stock[:self._it_count].min()):
+            #     cms_tosave.data = self.cms_ini.detach().data
+            L.backward()
+            return L
+        self.closure = closure
+
+    def _step_LBFGS_(self):
+        self.optimizer.step(self.closure)
+
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def forward(self,z_0,n_iter = 10,grad_coef = 1e-3,verbose= True) :
+        r""" The function is an perform the optimisation with the desired method.
+        The result is stored in the tuple self.analyze with two elements. First element is the optimized
+        initial residual ($z_O$ in the article) used for the shooting.
+        The second is a tensor with the values of the loss norms over time. The function
+        plot_cost() is designed to show them automaticly.
 
         :param z_0: initial residual. It is the variable on which we optimise.
         `require_grad` must be set to True.
-        :param n_iter: (int) number of gradient iterations
+        :param n_iter: (int) number of optimizer iterations
         :param verbose: (bool) display advancement
 
         """
-        gd = GradientDescent(self.cost,z_0,lr=self.lr)
-        self.id_grid = tb.make_regular_grid(z_0.shape,z_0.device)
-
-        self.cost(z_0)
-        if self.mp.mu != 0: # metamophosis
-            loss_stock = torch.zeros((n_iter,3))
-            loss_stock[0,0] = self.ssd.detach()
-            loss_stock[0,1] = self.norm_v_2.detach()
-            loss_stock[0,2] = self.norm_l2_on_z.detach()
-        else: #LDDMM
-            loss_stock = torch.zeros((n_iter,2))
-            loss_stock[0,0] = self.ssd.detach()
-            loss_stock[0,1] = self.norm_v_2.detach()
-
-
-        for i in range(1,n_iter):
-            gd.step()
-
-            if self.mp.mu != 0: # metamorphoses
+        def _default_cost_saving_(i):
+            if self.mp.mu != 0: # metamophosis
                 loss_stock[i,0] = self.ssd.detach()
                 loss_stock[i,1] = self.norm_v_2.detach()
                 loss_stock[i,2] = self.norm_l2_on_z.detach()
-            else: # LDDMM
+            else: #LDDMM
                 loss_stock[i,0] = self.ssd.detach()
                 loss_stock[i,1] = self.norm_v_2.detach()
+
+        self.parameter = z_0 # optimized variable
+        self._initialize_optimizer_(grad_coef,max_iter=n_iter)
+
+        self.id_grid = tb.make_regular_grid(z_0.shape,z_0.device)
+
+        self.cost(self.parameter)
+        d = 3 if self.mp.mu != 0 else 2
+        loss_stock = torch.zeros((n_iter,d))
+        _default_cost_saving_(0)
+
+        for i in range(1,n_iter):
+            self._step_optimizer_()
+            _default_cost_saving_(i)
 
             if verbose:
                 update_progress((i+1)/n_iter)
 
         # for future plots compute shooting with save = True
-        self.mp.forward(self.source.clone(),self.id_grid,gd.x.detach().clone(),save=True,plot=0)
+        self.mp.forward(self.source.clone(),
+                        self.parameter.detach().clone(),
+                        save=True,plot=0)
 
-        self.to_analyse = (gd.x.detach(),loss_stock)
-
+        self.to_analyse = (self.parameter.detach(),loss_stock)
 
     # ==================================================================
     #                 PLOTS
     # ==================================================================
 
     def plot_cost(self):
+        """ To display cost evolution during the optimisation.
+
+
+        """
         plt.rcParams['figure.figsize'] = [10,10]
-        fig1,ax1 = plt.subplots()
+        fig1,ax1 = plt.subplots(1,2)
+
+        lamb, rho = self.cost_cst.values()
 
         ssd_plot = self.to_analyse[1][:,0].numpy()
-        ax1.plot(ssd_plot,"--",color = 'blue',label='ssd')
+        ax1[0].plot(ssd_plot,"--",color = 'blue',label='ssd')
+        ax1[1].plot(ssd_plot,"--",color = 'blue',label='ssd')
 
-        normv_plot = self.cost_l*self.to_analyse[1][:,1].detach().numpy()
-        ax1.plot(normv_plot,"--",color = 'green',label='normv')
+        normv_plot = lamb*self.to_analyse[1][:,1].detach().numpy()
+        ax1[0].plot(normv_plot,"--",color = 'green',label='normv')
+        ax1[1].plot(self.to_analyse[1][:,1].detach().numpy(),"--",color = 'green',label='normv')
         total_cost = ssd_plot +normv_plot
         if self.mp.mu != 0:
-            norm_l2_on_z = self.cost_l*(self.mp.mu**2)* self.to_analyse[1][:,2].numpy()
+            norm_l2_on_z = lamb*(rho)* self.to_analyse[1][:,2].numpy()
             total_cost += norm_l2_on_z
-            ax1.plot(norm_l2_on_z,"--",color = 'orange',label='norm_l2_on_z')
+            ax1[0].plot(norm_l2_on_z,"--",color = 'orange',label='norm_l2_on_z')
+            ax1[1].plot(self.to_analyse[1][:,2].numpy(),"--",color = 'orange',label='norm_l2_on_z')
 
-        ax1.plot(total_cost, color='black',label=r'\Sigma')
-        ax1.legend()
+        ax1[0].plot(total_cost, color='black',label='\Sigma')
+        ax1[0].legend()
+        ax1[1].legend()
+        ax1[0].set_title("Lambda = "+str(lamb)+
+                    " mu = "+str(self.mp.mu) +
+                    " rho = "+str(rho))
 
     def plot_imgCmp(self):
+        r""" Display and compare the deformed image $I_1$ with the target$
+        """
         plt.rcParams['figure.figsize'] = [20,10]
         fig,ax = plt.subplots(2,2)
 
@@ -421,23 +520,12 @@ class grad_descent_metamorphosis:
 
     def plot_deform(self,temporal_nfigs = 0):
         residuals = self.to_analyse[0]
-        self.mp.forward(self.source.clone(),self.id_grid,residuals,save=True,plot=0)
+        self.mp.forward(self.source.clone(),residuals,save=True,plot=0)
         self.mp.plot_deform(self.target,temporal_nfigs)
 
     def plot(self):
         _,_,H,W = self.source.shape
 
-        start = time.time()
         self.plot_cost()
-        check_1 = time.time()
-        print('\n time for plot ============ ')
-        print("plot 1 ", format_time(check_1 - start))
         self.plot_imgCmp()
-        check_2 = time.time()
-        print("plot 2 ", format_time(check_2 - start))
         # self.plot_deform()
-        end = time.time()
-        print("plot 3 ", format_time(end - start))
-
-
-
