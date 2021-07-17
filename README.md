@@ -1,5 +1,5 @@
 # Demeter 0.1
-
+![](demeter_logo.png)
 (DiffEoMorphic METamorphic Regristration)
 
 **Warning** : This depot is still in progress.
