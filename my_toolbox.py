@@ -35,7 +35,7 @@ def full_ellipse(x, y, a, b, center, theta=.0):
 ## Accepts a float between 0 and 1. Any int will be converted to a float.
 ## A value under 0 represents a 'halt'.
 ## A value at 1 or bigger represents 100%
-def update_progress(progress):
+def update_progress(progress,message = None):
     barLength = 10 # Modify this to change the length of the progress bar
     status = ""
     if isinstance(progress, int):
@@ -50,7 +50,9 @@ def update_progress(progress):
         progress = 1
         status = "Done...\r\n"
     block = int(round(barLength*progress))
-    text = "\rPercent: [{0}] {1}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
+    text = "\rProgress: [{0}] {1:6.2f}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
+    if not message is None:
+        text += f' ({message[0]} ,{message[1]:8.2f}).'
     sys.stdout.write(text)
     sys.stdout.flush()
 
