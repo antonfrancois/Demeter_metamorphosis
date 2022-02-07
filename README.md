@@ -1,11 +1,12 @@
-# Demeter 0.1
+# Demeter 0.2
 ![](demeter_logo.png)
 (DiffEoMorphic METamorphic Regristration)
 
 **Warning** : This depot is still in progress.
 
-You are seeing the birth of a new python librairy, intended to solve 
-diffeomoprhic registration problems using metamorphosis and LDDMM.
+You are seeing the evolution of a new python librairy, intended to solve 
+diffeomoprhic registration problems using metamorphosis, LDDMM and 
+derived methods.
 For more details on the methods please read the joined PDF :
 `Metamorphic_image_registration_afrancois_pgori_jglaunes`.
 
@@ -20,6 +21,7 @@ In this project we use some libraries, some quite basics like :
 - matplotlib 
 - time
 
+
 Make sure that you have `torch 1.8` or higher for fft and `kornia` that you can 
 download like indicated in the following links [(PyTorch)](https://pytorch.org/)
 and [(kornia)](https://pypi.org/project/kornia/).
@@ -32,15 +34,22 @@ You can see results and usage exemples in the following jupyter notebooks
   of semi-Lagrangian schemes over Eulerian ones for LDDMM.
 - **fig_lddmm_vs_metamorphoses.ipynb** : Figure from the article aiming to 
 compare our implementation of LDDMM and Metamorphosis.
+- **toyExample_weightedMetamorphosis.ipynb** : Examples and results of Weighted Metamorphosis method on a synthetic toy example image.
+
 
 ## Files
 
 - **metamorphosis.py** : is containing the two classes for LDDMM/metamorphic
 regristration 
-    - **class** `metamorphic_path`: is the class performing geodesic shootin
-    - **class** `grad_descent_metamorphosis` : is the class instantiating 
-      `metamorphic_path` and applying gradient descent with the cost stated in 
-      the article.
+    - **class** `Geodesic_integrator` : (abstract) is the class 'tool kit' for integrating over a geodesic
+    - **class** `Optimise_geodesicShooting` : (abstract) is the class 'tool kit' for optimizing using geodesic shooting methods. It works in combinaison with a child class of `Geodesic_integrator`.
+    - **class** `Metamophosis_path`: (derived from `Geodesic_integrator`) is made for integration over LDDMM or Metamorphosis geodesics.
+    - **class** `Optimise_Metamorphosis`: (derived from `Optimise_geodesicShooting`) Optimize a `Metamorphosis_path` object.
+    - **class** `Residual_norm_function`: (abstract) Generic 'tool kit' class for defining a custom norm on $z_0$
+    - **class** `Residual_norm_identity`: (derived from `Residual_norm_function`) definition of $\|\sqrt{M_t}z_t\|_{L_2}^2 = \lbrace z_t M_t ,z_t \rbrace$
+    - **class** `Residual_norm_borderBoost`: (derived from `Residual_norm_function`) Experimental
+    - **class** `Weighted_meta_path`: (derived from `Geodesic_integrator`) is made for integration with Weighted Metamorphosis method. It is defined with a function derived from an child object of `Residual_norm_function`.
+    - **class** `Weighted_optim`: (derived from `Optimise_geodesicShooting`) Optimize a `Weighted_meta_path` object.
       
 - **my_optim.py** : is containing the gradient descent class.
 
@@ -55,7 +64,10 @@ such as:
 
 - **reproducing_kernels.py** : Kornia inerited functions to use filter convolution
 with fft_conv. 
-  
+
+- **constants.py** : Files with different constants reused at different locations
+
+
 ## Contact
 
 You can find my contact on my website : http://helios.mi.parisdescartes.fr/~afrancoi/

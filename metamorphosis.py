@@ -14,7 +14,7 @@ from my_toolbox import update_progress,format_time, get_size
 from my_optim import GradientDescent
 import reproducing_kernels as rk
 import cost_functions as cf
-from constants import FIELD_TO_SAVE,ROOT_DIRECTORY
+from constants import FIELD_TO_SAVE,ROOT_DIRECTORY,OPTIM_SAVE_DIR
 from decorators import deprecated
 
 # =========================================================================
@@ -262,16 +262,22 @@ class Geodesic_integrator(torch.nn.Module,ABC):
 
         tb.gridDef_plot_2d(full_deformation,step=int(max(self.image.shape)/40),ax = axes[0,0],
                          check_diffeo=True,dx_convention='2square')
+        axes[0,0].set_title('Deformation grid')
         tb.quiver_plot(full_deformation -self.id_grid.cpu() ,step=int(max(self.image.shape)/40),
                         ax = axes[0,1],check_diffeo=False)
+        axes[0,1].set_title('Generated field')
 
         # show S deformed by full_deformation
         S_deformed = tb.imgDeform(self.source.cpu(),full_deformator,
                                   dx_convention='pixel')
         axes[1,0].imshow(self.source[0,0,:,:].cpu(),cmap='gray',origin='lower',vmin=0,vmax=1)
+        axes[1,0].set_title('Source Image')
         axes[1,1].imshow(target[0,0].cpu(),cmap='gray',origin='lower',vmin=0,vmax=1)
+        axes[1,1].set_title('Target Image')
         axes[2,0].imshow(S_deformed[0,0,:,:],cmap='gray',origin='lower',vmin=0,vmax=1)
+        axes[2,0].set_title('Source deformed w no intensity additions')
         axes[2,1].imshow(tb.imCmp(target,S_deformed),origin='lower',vmin=0,vmax=1)
+        axes[2,1].set_title('Comparison')
 
         if temporal:
             t_max = full_deformator_t.shape[0]
@@ -540,7 +546,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
             print("Can't save optimisation that didn't converged")
             return 0
 
-        path =ROOT_DIRECTORY+'/my_metamorphosis/saved_optim/'
+        path =ROOT_DIRECTORY+OPTIM_SAVE_DIR
         date_time = datetime.now()
         n_dim = '2D' if len(self.mp.sigma_v) ==2 else '3D'
         id_num = 0
@@ -1074,7 +1080,7 @@ class Weighted_optim(Optimize_geodesicShooting):
 def load_optimize_geodesicShooting(file_name,path=None,verbose=True):
     """ load previously saved optimisation in order to plot it later."""
     if path is None:
-        path =ROOT_DIRECTORY+'/my_metamorphosis/saved_optim/'
+        path =ROOT_DIRECTORY+OPTIM_SAVE_DIR
     if not file_name in os.listdir(path):
         raise ValueError("File "+file_name+" does not exist in "+path)
     with open(path+file_name,'rb') as f:
@@ -1110,7 +1116,7 @@ def load_optimize_geodesicShooting(file_name,path=None,verbose=True):
 def lddmm(source,target,residuals,
           sigma,cost_cst,
           integration_steps,n_iter,grad_coef,
-          safe_mode = False
+          optimizer_method = 'adadelta',safe_mode = False
           ):
 
     # residuals = torch.zeros(source.size()[2:],device=device)
@@ -1123,7 +1129,7 @@ def lddmm(source,target,residuals,
     mr = Optimize_metamorphosis(source,target,mp,
                                            cost_cst=cost_cst,
                                            # optimizer_method='LBFGS_torch')
-                                           optimizer_method='adadelta')
+                                           optimizer_method=optimizer_method)
     if not safe_mode:
         mr.forward(residuals,n_iter=n_iter,grad_coef=grad_coef)
     else:
