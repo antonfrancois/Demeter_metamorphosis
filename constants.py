@@ -1,6 +1,7 @@
 import os
 
 ROOT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+OPTIM_SAVE_DIR = '/saved_optim/'
 
 # used in saving metamorphosis saving
 FIELD_TO_SAVE = [
