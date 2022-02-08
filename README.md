@@ -35,7 +35,7 @@ You can see results and usage exemples in the following jupyter notebooks
 - **fig_lddmm_vs_metamorphoses.ipynb** : Figure from the article aiming to 
 compare our implementation of LDDMM and Metamorphosis.
 - **toyExample_weightedMetamorphosis.ipynb** : Examples and results of Weighted Metamorphosis method on a synthetic toy example image.
-
+- **brain_weightedMetamorphosis.ipynb** : Examples and results of Weighted Metamorphosis method on real data.
 
 ## Files
 
