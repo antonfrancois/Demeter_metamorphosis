@@ -244,7 +244,7 @@ def addGrid2im(img, n_line,cst=0.1,method='dots'):
     #put the negative grid on the high values image
     add_mat[img > .5] *= -1
 
-    return img + add_mat
+    return img + add_mat.to(img.device)
 
 def thresholding(image,bounds = (0,1)):
     return torch.maximum(torch.tensor(bounds[0]),
