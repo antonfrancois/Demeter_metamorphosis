@@ -15,18 +15,18 @@ Isn't it the perfect protection for or vectors fields ?
 
 ## Requirement 
 
-In this project we use some libraries, some quite basics like :
+In this project depend on plural libraries, some quite basics like :
 - Numpy 
 - math 
 - matplotlib 
 - time
 
+and some more complex. make sure that you have :
+- [`torch 1.8`](https://pytorch.org/) or higher as we use the fft function 
+- [`kornia`](https://pypi.org/project/kornia/).
+- [`vedo 2021.0.5`](https://vedo.embl.es/) for 3D visualisation
 
-Make sure that you have `torch 1.8` or higher for fft and `kornia` that you can 
-download like indicated in the following links [(PyTorch)](https://pytorch.org/)
-and [(kornia)](https://pypi.org/project/kornia/).
-
-## Jupyter Notebooks
+## Jupyter Notebooks and examples.
 
 You can see results and usage exemples in the following jupyter notebooks
 
@@ -36,6 +36,12 @@ You can see results and usage exemples in the following jupyter notebooks
 compare our implementation of LDDMM and Metamorphosis.
 - **toyExample_weightedMetamorphosis.ipynb** : Examples and results of Weighted Metamorphosis method on a synthetic toy example image.
 - **brain_weightedMetamorphosis.ipynb** : Examples and results of Weighted Metamorphosis method on real data.
+
+__Note__ : vedo visualisation currently does not work in anaconda environment such as jupyter or ipython.
+If you want to display a vedo visualisation that we implemented, run them in a python terminal. 
+See :
+- examples/metamorphosis_3D.py
+- examples/visualizeMetamorphosis_3D.py
 
 ## Files
 
@@ -67,6 +73,9 @@ with fft_conv.
 
 - **constants.py** : Files with different constants reused at different locations
 
+- **image_3d_visualisation** : Visualisation function for 3D volumetric images using matplotlib or vedo.
+
+- **fill_saves_overview.py** : Gestion of saved geodesics_shooting in the csv file.
 
 ## Contact
 
