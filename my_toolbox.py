@@ -238,3 +238,57 @@ def get_freer_gpu():
 def imCmp(I1, I2):
     M, N = I1.shape
     return np.concatenate((I2[:, :, None], I1[:, :, None], np.zeros((M, N, 1))), axis=2)
+
+
+# La méthode de PIL ne fonctionne pas pour les images rgb.
+# Cette fonction nécessite d'installer la commande Image magic.
+def save_gif_with_plt(image_list,file_name,folder=None, delay = 20,duplicate=True,verbose = False,
+                      image_args=None):
+    """  Convert a list og images to a gif
+
+    :param image_list:
+    :param file_name: (str) file name withour '.gif' specified
+    :param folder: (str) the folder to save the gif, (default: will be saved in
+    'gliomorph/figs/gif_box/`file_name`'
+    :param delay: (int) millisecond of image duration
+    :param duplicate: (bool) duplicate the first and last frame for longer duration.
+    :return:
+    """
+    path = ROOT_DIRECTORY + '/figs/gif_box/'
+    if folder is None: folder = file_name
+    if image_args is None: image_args = dict()
+    #make folder if not existing
+    if not os.path.exists(path+folder): os.mkdir(path+folder)
+    folder = path + folder
+
+    for i in range(len(image_list)):
+        plt.imsave(folder+'/'+file_name+'_{:03d}.png'.format(i),
+            image_list[i],
+                   **image_args
+                   )
+
+    os.system(f'convert -delay {delay} -loop 0 {folder}/{file_name}_\d{3}.png {folder}/{file_name}.gif')
+    if duplicate: os.system(f'convert -duplicate 1,-1 {folder}/{file_name}.gif {folder}/{file_name}.gif')
+    # clean
+    for file in os.listdir(folder):
+        if file_name in file and '.png' in file:
+            os.remove(folder+'/'+file)
+    if verbose: print(f"Your gif was successfully saved at : {folder}/{file_name}.gif ")
+
+def fig_to_image(fig,ax):
+    # I know it is not PEP to put an import statement inside function. But
+    # this function usage being rare, and not time critical, it do keep the
+    # import here.
+    from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+    ax.axis('off')
+    fig.tight_layout(pad=0)
+
+    ax.margins(0) # To remove the huge white borders
+
+    ## Figure is done, we are now taking the render
+    canvas = FigureCanvas(fig)
+    canvas.draw()       # draw the canvas, cache the renderer
+
+    image_from_plot = np.frombuffer(canvas.tostring_rgb(), dtype='uint8')
+    image_from_plot = image_from_plot.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    return image_from_plot

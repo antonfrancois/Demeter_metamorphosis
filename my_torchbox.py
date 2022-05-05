@@ -182,6 +182,86 @@ def pad_to_same_size(img_1,img_2):
     img_2_padded = torch.nn.functional.pad(img_2[0,0],padding2)[None,None]
     return (img_1_padded,img_2_padded)
 
+
+def make_ball_at_shape_center(img,
+                              shape_value=None,
+                              overlap_threshold=0.1,
+                              r_min=None,
+                              force_r=None,
+                              verbose=False):
+    """
+
+    :param img:
+    :param shape_value:
+    :param overlap_threshold:
+    :param r_min:
+    :param verbose:
+    :return:
+    """
+    # TODO : documentation
+    if len(img.shape) in [3, 5]: is_2D = False
+    elif len(img.shape) in [3, 4]: is_2D = True
+    if len(img.shape) in [4,5]: img = img[0,0]
+
+    img = img.cpu()
+    shape_value = img.max() if shape_value is None else shape_value
+    # On touve tous indexes ayant la valeure recherchée
+    indexes = (img == shape_value).nonzero(as_tuple=False)
+    # print('indexes :',indexes.shape)
+    # Puis pour trouver le centre on cherche le min et max dans chaque dimension.
+    # La ligne d'avant ordonne naturellement les indexes.
+    min_index_1,max_index_1 = (indexes[0,0],indexes[-1,0])
+    # print(min_index_1,max_index_1)
+    #Ici il y a plus de travail.
+    min_index_2,max_index_2 = (torch.argmin(indexes[:,1]),torch.argmax(indexes[:,1]))
+    min_index_2,max_index_2 =(indexes[min_index_2,1],indexes[max_index_2,1])
+    if is_2D:
+        centre = (
+            (max_index_2 + min_index_2)//2,
+            (max_index_1 + min_index_1)//2
+        )
+        Y,X = torch.meshgrid(torch.arange(img.shape[0]),
+                         torch.arange(img.shape[1]))
+    else:
+        min_index_3,max_index_3 = (torch.argmin(indexes[:,2]),torch.argmax(indexes[:,2]))
+        min_index_3,max_index_3 =(indexes[min_index_3,2],indexes[max_index_3,2])
+        centre = (
+            (max_index_3 + min_index_3)//2,
+            (max_index_2 + min_index_2)//2,
+            (max_index_1 + min_index_1)//2,
+        )
+        Z,Y,X = torch.meshgrid(torch.arange(img.shape[0]),
+                         torch.arange(img.shape[1]),
+                         torch.arange(img.shape[2])
+                               )
+
+    def overlap_percentage():
+        img_supp = img >0
+        overlap = torch.logical_and((img_supp).cpu(), bool_ball).sum()
+        seg_sum = (img_supp).sum()
+        return overlap/seg_sum
+
+    if force_r is None:
+        r = 5 if r_min is None else r_min
+        # sum_threshold = 20
+        bool_ball = torch.zeros(img.size(),dtype=torch.bool)
+
+        while  overlap_percentage() < overlap_threshold:
+            r += max(img.shape)//30
+
+            if is_2D : bool_ball = ((X - centre[0])**2 + (Y - centre[1])**2) < r**2
+            else : bool_ball = ((X - centre[0])**2 + (Y - centre[1])**2 + (Z - centre[2])**2) < r**2
+            ball = bool_ball[None,None].to(img.dtype)
+    else:
+        r = force_r
+        if is_2D : bool_ball = ((X - centre[0])**2 + (Y - centre[1])**2) < r**2
+        else : bool_ball = ((X - centre[0])**2 + (Y - centre[1])**2 + (Z - centre[2])**2) < r**2
+        ball = bool_ball[None,None].to(img.dtype)
+
+    if verbose:
+        print(f"centre = {centre}, r = {r} and the seg and ball have { torch.logical_and((img > 0).cpu(), bool_ball).sum()} pixels overlapping")
+    return ball,centre+(r,)
+
 def addGrid2im(img, n_line,cst=0.1,method='dots'):
     """
 
@@ -1092,62 +1172,3 @@ def make_regular_grid(deformation_shape,
 #             GEOMETRIC HANDELER
 # =================================================================
 
-def make_ball_at_shape_center(img,
-                              shape_value=None,
-                              overlap_threshold=0.1,
-                              r_min=None,
-                              force_r=None,
-                              verbose=False):
-    """
-
-    :param img:
-    :param shape_value:
-    :param overlap_threshold:
-    :param r_min:
-    :param verbose:
-    :return:
-    """
-    # TODO : documentation
-    if len(img.shape) not in [2,4]:
-        raise NotImplementedError("Bad shape dude")
-    elif len(img.shape) == 4:
-        img = img[0,0]
-    img = img.cpu()
-    shape_value = img.max() if shape_value is None else shape_value
-    indexes = (img == shape_value).nonzero(as_tuple=False)
-
-    # La ligne d'avant ordonne naturellement les index.
-    min_index_1,max_index_1 = (indexes[0,0],indexes[-1,0])
-    # print(min_index_1,max_index_1)
-    #Ici il y a plus de travail.
-    min_index_2,max_index_2 = (torch.argmin(indexes[:,1]),torch.argmax(indexes[:,1]))
-    min_index_2,max_index_2 =(indexes[min_index_2,1],indexes[max_index_2,1])
-    centre = (
-        (max_index_2 + min_index_2)//2,
-        (max_index_1 + min_index_1)//2
-    )
-    Y,X = torch.meshgrid(torch.arange(img.shape[0]),
-                     torch.arange(img.shape[1]))
-
-    def overlap_percentage():
-        img_supp = img >0
-        overlap = torch.logical_and((img_supp).cpu(), bool_ball).sum()
-        seg_sum = (img_supp).sum()
-        return overlap/seg_sum
-
-    if force_r is None:
-        r = 5 if r_min is None else r_min
-        # sum_threshold = 20
-        bool_ball = torch.zeros(img.size(),dtype=torch.bool)
-        while  overlap_percentage() < overlap_threshold:
-            r += max(img.shape)//20
-            bool_ball = ((X - centre[0])**2 + (Y - centre[1])**2) < r
-            ball = bool_ball[None,None].to(img.dtype)
-    else:
-        r = force_r
-        bool_ball = ((X - centre[0])**2 + (Y - centre[1])**2) < r
-        ball = bool_ball[None,None].to(img.dtype)
-
-    if verbose:
-        print(f"centre = {centre}, r = {r} and the seg and ball have { torch.logical_and((img > 0).cpu(), bool_ball).sum()} pixels overlapping")
-    return ball,centre+(r,)

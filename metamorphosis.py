@@ -10,12 +10,13 @@ from abc import ABC, abstractmethod
 
 import my_torchbox as tb
 import vector_field_to_flow as vff
-from my_toolbox import update_progress,format_time, get_size
+from my_toolbox import update_progress,format_time, get_size, fig_to_image,save_gif_with_plt
 from my_optim import GradientDescent
 import reproducing_kernels as rk
 import cost_functions as cf
-from constants import FIELD_TO_SAVE,ROOT_DIRECTORY,OPTIM_SAVE_DIR
+from constants import FIELD_TO_SAVE, ROOT_DIRECTORY, OPTIM_SAVE_DIR, DLT_KW_IMAGE, DLT_KW_RESIDUALS
 from decorators import deprecated
+import fill_saves_overview
 
 # =========================================================================
 #
@@ -31,6 +32,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
     @abstractmethod
     def __init__(self):
         super().__init__()
+        self._force_save = False
 
     @abstractmethod
     def step(self):
@@ -62,7 +64,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         self.source = image.detach()
         self.image = image.clone().to(device)
         self.residuals = residual_ini
-        self.save = save
+        self.save = True if self._force_save else save
 
         self.id_grid = tb.make_regular_grid(residual_ini.shape,device=device)
         if field_ini is None:
@@ -260,24 +262,18 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         fig , axes = plt.subplots(3,2)
         # show resulting deformation
 
-        tb.gridDef_plot_2d(full_deformation,step=int(max(self.image.shape)/40),ax = axes[0,0],
+        tb.gridDef_plot_2d(full_deformation,step=int(max(self.image.shape)/30),ax = axes[0,0],
                          check_diffeo=True,dx_convention='2square')
-        axes[0,0].set_title('Deformation grid')
-        tb.quiver_plot(full_deformation -self.id_grid.cpu() ,step=int(max(self.image.shape)/40),
+        tb.quiver_plot(full_deformation -self.id_grid.cpu() ,step=int(max(self.image.shape)/30),
                         ax = axes[0,1],check_diffeo=False)
-        axes[0,1].set_title('Generated field')
 
         # show S deformed by full_deformation
         S_deformed = tb.imgDeform(self.source.cpu(),full_deformator,
                                   dx_convention='pixel')
         axes[1,0].imshow(self.source[0,0,:,:].cpu(),cmap='gray',origin='lower',vmin=0,vmax=1)
-        axes[1,0].set_title('Source Image')
         axes[1,1].imshow(target[0,0].cpu(),cmap='gray',origin='lower',vmin=0,vmax=1)
-        axes[1,1].set_title('Target Image')
         axes[2,0].imshow(S_deformed[0,0,:,:],cmap='gray',origin='lower',vmin=0,vmax=1)
-        axes[2,0].set_title('Source deformed w no intensity additions')
         axes[2,1].imshow(tb.imCmp(target,S_deformed),origin='lower',vmin=0,vmax=1)
-        axes[2,1].set_title('Comparison')
 
         if temporal:
             t_max = full_deformator_t.shape[0]
@@ -295,6 +291,38 @@ class Geodesic_integrator(torch.nn.Module,ABC):
 
                 tb.quiver_plot(self.field_stock[i].unsqueeze(0),
                                step=10,ax=ax[i],color='red')
+
+    def save_to_gif(self,object,file_name,folder=None):
+
+        # prepare list of object
+        if 'image' in object and 'deformation' in object:
+            image_list_for_gif = []
+            image_kw = None
+            for n in range(self.n_step):
+                deformation = self.get_deformation(n).cpu()
+                img = self.image_stock[n,0].cpu().numpy()
+                fig,ax = plt.subplots()
+                ax.imshow(img,**DLT_KW_IMAGE)
+                tb.gridDef_plot_2d(deformation,ax=ax,
+                           step=10,
+                           # color='#FFC759',
+                           color='#E5BB5F',
+                           # color='white'
+                           )
+                image_list_for_gif.append(fig_to_image(fig,ax))
+        elif 'image' in object or 'I' in object:
+            image_list_for_gif = [I[0].numpy() for I in self.image_stock]
+            image_kw = DLT_KW_IMAGE
+        elif 'residual' in object or "z" in object:
+            image_list_for_gif = [z.numpy() for z in self.residuals_stock]
+            image_kw = DLT_KW_RESIDUALS
+        elif 'deformation' in object:
+            raise NotImplementedError("Indeed")
+        else:
+            raise ValueError("object must be a string containing at least"
+                             "one of the following : `image`,`residual`,`deformation`.")
+
+        save_gif_with_plt(image_list_for_gif,file_name,folder,duplicate=False,image_args=image_kw)
 
 
 class Optimize_geodesicShooting(torch.nn.Module,ABC):
@@ -342,7 +370,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
                 "{'grad_descent', 'LBFGS_torch','adadelta'}"
                              )
 
-        self.temporal_integrator = vff.FieldIntegrator(method='temporal',save=False)
+        # self.temporal_integrator = vff.FieldIntegrator(method='temporal',save=False)
         self.is_DICE_cmp = False
 
     @abstractmethod
@@ -461,7 +489,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
             loss_stock = self._default_cost_saving_(i,loss_stock)
 
             if verbose:
-                update_progress((i+1)/n_iter,message=('cost_val',loss_stock[i,0]))
+                update_progress((i+1)/n_iter,message=('ssd : ',loss_stock[i,0]))
 
         # for future plots compute shooting with save = True
         self.mp.forward(self.source.clone(),
@@ -545,8 +573,8 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         if self.to_analyse == 'Integration diverged':
             print("Can't save optimisation that didn't converged")
             return 0
-
-        path =ROOT_DIRECTORY+OPTIM_SAVE_DIR
+        self.cpu()
+        path =ROOT_DIRECTORY+'/my_metamorphosis/saved_optim/'
         date_time = datetime.now()
         n_dim = '2D' if len(self.mp.sigma_v) ==2 else '3D'
         id_num = 0
@@ -570,30 +598,22 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
 
         # =================
         # write to csv
-        csv_file = 'saves_overview.csv'
-        state_dict = dict(
-            time=date_time.strftime("%d/%m/%Y %H:%M:%S"),
-            saved_file_name=file_name,
-            source=source_name,
-            target=target_name,
-            n_dim= n_dim,
-            shape=self.source.shape.__str__()[10:],
-            modifier=modifier_str,
-            method=self.optimizer_method_name,
-            final_loss=float(self.total_cost.detach()),
-            DICE = self.get_DICE(),
-            mu=self._get_mu_(),
-            rho=self._get_rho_(),
-            lamb=self.cost_cst,
-            sigma_v=self.mp.sigma_v.__str__(),
-            n_step=self.mp.n_step,
-            n_iter=len(self.to_analyse[1]),
-            message= '' if message is None else message
+
+        state_dict = fill_saves_overview._optim_to_state_dict_(self,file_name,
+                dict(
+                    time = date_time.strftime("%d/%m/%Y %H:%M:%S"),
+                    saved_file_name='', # Petit hack pour me simplifier la vie.
+                    source = source_name,
+                    target = target_name,
+                    n_dim = n_dim
+                ),
+                message=message
         )
-        with open(path+csv_file,mode='a') as csv_f:
-            writer = csv.DictWriter(csv_f,state_dict.keys(),delimiter=';')
-            # writer.writeheader()
-            writer.writerow(state_dict)
+        fill_saves_overview._write_dict_to_csv(state_dict)
+        # with open(path+csv_file,mode='a') as csv_f:
+        #     writer = csv.DictWriter(csv_f,state_dict.keys(),delimiter=';')
+        # #    writer.writeheader()
+        #     writer.writerow(state_dict)
 
         #=================
         # save the data
@@ -619,8 +639,15 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
     #                 PLOTS
     # ==================================================================
 
+    def get_total_cost(self):
+        total_cost = self.to_analyse[1][:,0] + \
+                    self.cost_cst * self.to_analyse[1][:,1]
+        if self._get_mu_() != 0 :
+            total_cost += self.cost_cst*(self._get_rho_())* self.to_analyse[1][:,2]
+        return total_cost.numpy()
+
     def plot_cost(self):
-        """ To display cost evolution during the optimisation.
+        """ To display the evolution of cost during the optimisation.
 
 
         """
@@ -754,6 +781,7 @@ class Metamorphosis_path(Geodesic_integrator):
         # self.rho = rho if callable(rho) else lambda :rho
         self.mu = mu
         self.rho = rho
+        if mu < 0: self.mu = 0
         if(mu == 0 and rho != 0):
             warnings.warn("mu as been set to zero in methamorphosis_path, "
                           "automatic reset of rho to zero."
@@ -768,14 +796,20 @@ class Metamorphosis_path(Geodesic_integrator):
         self.kernelOperator = rk.GaussianRKHS(sigma_v,
                                                  border_type='constant')
 
+        # self._force_save = False
         if method == 'Eulerian':
             self.step = self._step_fullEulerian
         elif method == 'advection_semiLagrangian':
             self.step = self._step_advection_semiLagrangian
         elif method == 'semiLagrangian':
             self.step = self._step_full_semiLagrangian
-        elif callable(method):
-            self.step = method
+        elif method == 'sharp':
+            self.save = True
+            self._force_save = True
+            # self.t_integrator = vff.FieldIntegrator('temporal',dx_convention='pixel',save=True)
+            self.step = self._step_sharp_semiLagrangian
+            self._phis = [[None]*i for i in range(1,n_step+1)]
+            # self._resi_stock = [None]*self.n_step
         elif method== 'tkt':
             pass
         else:
@@ -792,10 +826,10 @@ class Metamorphosis_path(Geodesic_integrator):
 
     def _step_advection_semiLagrangian(self):
         self._update_field_()
-        self._update_residuals_Eulerian_()
         # Lagrangian scheme on images
         deformation = self.id_grid - self.field/self.n_step
         self._update_image_semiLagrangian_(deformation)
+        self._update_residuals_Eulerian_()
 
         return (self.image,self.field,self.residuals)
 
@@ -803,10 +837,137 @@ class Metamorphosis_path(Geodesic_integrator):
         self._update_field_()
         # Lagrangian scheme on images and residuals
         deformation = self.id_grid - self.field/self.n_step
-        self._update_residuals_semiLagrangian_(deformation)
         self._update_image_semiLagrangian_(deformation)
+        self._update_residuals_semiLagrangian_(deformation)
 
         return (self.image,self.field,self.residuals)
+
+    def _step_sharp_semiLagrangian(self):
+        device = self.image.device
+        self._update_field_()
+
+        # if self._i == 0:
+        #     phis = self.id_grid - self.field/self.n_step
+        # else:
+        #     # print('i:',self._i,'field_stock :',self.field_stock[:self._i].shape)
+        #     fields = self.field_stock.clone()
+        #     fields[self._i] = self.field
+        #     phis = self.t_integrator(fields[:self._i]/(self.n_step),forward=False)
+        # phis = phis.to(device)
+        print(self._i, len(self._phis[self._i]))
+        self._phis[self._i][self._i] = self.id_grid - self.field/self.n_step
+        if self._i > 0:
+            for k,phi in enumerate(self._phis[self._i - 1]):
+                print(f"making phi {self._i,k}")
+                self._phis[self._i][k] = phi + tb.compose_fields(-self.field/self.n_step,phi
+                                                            ,'pixel'
+                                                                 )
+            self._phis[self._i - 1] = None
+
+        if self.mu != 0:
+            resi_cumul = self.residuals.clone()
+            for k,phi in enumerate(self._phis[0].flip(0)): # !!!!!!!!!!!!!!!!!!!!!!
+                resi_cumul += tb.imgDeform(self.residuals_stock[k][None,None].to(device),
+                                           phi[None],dx_convention='pixel')[0,0]
+
+        # DEBUG ============================
+        fig,ax = plt.subplots(2,self._i+1)
+        print(ax.shape)
+        print('phi :',len(self._phis[self._i]))
+
+        for k_y, phi in enumerate(self._phis[self._i]):
+            ax_p = ax[0,k_y] if self._i != 0 else ax[0]
+            tb.gridDef_plot_2d(phi.detach(),ax=ax_p,step=5)
+            ax_p.set_title(f'phi [{self._i}][{k_y}]')
+
+            ax_im = ax[1,k_y] if self._i != 0 else ax[1]
+            ax_im.imshow(tb.imgDeform(self.source.detach(),phi.detach(),
+                                      dx_convention='pixel')[0,0]
+                         ,**DLT_KW_IMAGE)
+        # if self._i !=0:
+        #     fig,ax = plt.subplots(1,2)
+        #     ax[0].imshow(self.residuals.detach())
+        #     # self._update_residuals_semiLagrangian_(phi_n_n)
+        #     ax[1].imshow(resi_cumul.detach())
+        #     ax[1].set_title("new residual")
+            #
+        plt.show()
+        gaaa = input('Appuyez sur entree')
+        # End DEBUG ===================================
+
+
+        self.image = tb.imgDeform(self.source.to(device),
+                                  self._phis[self._i][0],
+                                  dx_convention='pixel')
+        if self.mu != 0: self.image += self.mu * resi_cumul
+        # self._update_residuals_Eulerian_()
+        self._update_residuals_semiLagrangian_(self.id_grid - self.field/self.n_step)
+
+        return (self.image, self.field, self.residuals)
+
+    def _step_sharp_semiLagrangian_old(self):
+        self._update_field_()
+        # print('\n>>>>>: i',self._i)
+
+        # Build all intermediate deformations fields
+        phi_n_n = self.id_grid - self.field/self.n_step
+        # fig,ax = plt.subplots(1,2)
+        # tb.gridDef_plot_2d(phi_n_n,ax=ax[0],step=10)
+        # tb.quiver_plot(self.field,ax=ax[1],step=10)
+        # ax[0].set_title(f"phi_{self._i}_{self._i} = id - v/n")
+        # ax[1].set_title(f"v_{self._i}")
+
+
+        self._phis[self._i][self._i] = phi_n_n
+        # [phi_i^0, phi_i^1, ..., phi_i^i]
+        for k in range(self._i):
+            # print('_phis[][] :',self._i,k)
+            self._phis[self._i][k] = self._phis[self._i-1][k] - tb.compose_fields(self.field/self.n_step,
+                                                       self._phis[self._i-1][k],
+                                                       dx_convention='pixel')
+            # self._phis[self._i][k] = tb.im2grid(tb.imgDeform(tb.grid2im(- self.field/self.n_step),
+            #                                                  self._phis[self._i-1][k].detach(),
+            # self._phis[self._i][k] = tb.im2grid(tb.imgDeform(tb.grid2im(phi_n_n),self._phis[self._i-1][k],
+
+        # # DEBUG ============================
+        # fig,ax = plt.subplots(self._i+1,self._i+1)
+        # for k_x in range(self._i+1):
+        #     print('k:',k_x)
+        #     for k_y, phi in enumerate(self._phis[k_x]):
+        #         print(f'k_x:{k_x};k_y:{k_y} :: ',type(phi))
+        #         ax_p = ax[k_x][k_y] if self._i != 0 else ax
+        #         tb.gridDef_plot_2d(phi.detach(),ax=ax_p,step=5)
+        #         ax_p.set_title(f'phi [{k_x}][{k_y}]')
+        #
+        #
+        # fig,ax = plt.subplots(1,2)
+        # ax[0].imshow(self.residuals.detach())
+        # self._update_residuals_semiLagrangian_(phi_n_n)
+        # ax[1].imshow(self.residuals.detach())
+        # ax[1].set_title("new residual")
+        #
+        # plt.show()
+        # gaaa = input('Appuyez sur entree')
+        # # End DEBUG ===================================
+
+        if self.mu != 0:
+            resi_cumul = self.residuals.clone()
+            for k in range(self._i - 2):
+                resi_cumul += tb.imgDeform(self._resi_stock[k][None,None],
+                                           self._phis[self._i][k + 1],dx_convention='pixel')[0,0]
+
+
+        self.image = tb.imgDeform(self.source,self._phis[self._i][0],dx_convention='pixel')
+        if self.mu != 0: self.image += self.mu * resi_cumul
+        # self._update_residuals_Eulerian_()
+        self._update_residuals_semiLagrangian_(phi_n_n)
+        self._resi_stock[self._i] = self.residuals
+        # plt.figure()
+        # plt.imshow(self.image[0,0].detach())
+        # plt.show()
+
+        return (self.image, self.field, self.residuals)
+
 
     def step(self):
         raise ValueError("You have to specify the method used : 'Eulerian','advection_semiLagrangian'"
@@ -814,6 +975,8 @@ class Metamorphosis_path(Geodesic_integrator):
 
     def _get_mu_(self):
         return self.mu
+
+
 
 class Optimize_metamorphosis(Optimize_geodesicShooting):
 
@@ -1006,6 +1169,27 @@ class Weighted_meta_path(Geodesic_integrator):
             border = 0
 
         self.residuals = border - self.rf.inv_F(self._i) *( div_fzv + z_time_dtF)
+        # DEBUG
+        # print(">> ",self._i)
+        # if v_scalar_n.sum()> 0:# and self._i in [0,3,8,15]:
+        #     fig,ax = plt.subplots(2,2)
+        #     # tb.quiver_plot(self.rf.border_normal_vector(self._i).cpu(),ax=ax[0],step= 5)
+        #     _1_= ax[0,0].imshow(self.residuals.detach().cpu())
+        #     fig.colorbar(_1_,ax=ax[0,0],fraction=0.046, pad=0.04)
+        #     ax[0,0].set_title('z')
+        #     _2_ = ax[0,1].imshow((self.rf.inv_F(self._i)*(div_fzv)).cpu().detach())
+        #     fig.colorbar(_2_,ax=ax[0,1],fraction=0.046, pad=0.04)
+        #     ax[0,1].set_title('div_fzv')
+        #     _3_ = ax[1,0].imshow((( z_time_dtF)).cpu().detach())
+        #     fig.colorbar(_3_,ax=ax[1,0],fraction=0.046, pad=0.04)
+        #     ax[1,0].set_title('z x dtF')
+        #     _4_ = ax[1,1].imshow((border).cpu().detach())
+        #     fig.colorbar(_4_,ax=ax[1,1],fraction=0.046, pad=0.04)
+        #     ax[1,1].set_title('border')
+        #     plt.show()
+        # else:
+        #     print("-------------ZERO------------------")
+        # print(self._i,' : ',border.mean()/div_fzv.mean(), z_time_dtF.mean()/div_fzv.mean())
 
 
         self.image = tb.imgDeform(self.image,deformation,dx_convention='pixel') +\
@@ -1014,6 +1198,9 @@ class Weighted_meta_path(Geodesic_integrator):
         return (self.image,self.field,self.residuals)
 
 
+
+# DEBUG_grad_source = []
+# DEBUG_source_resi = []
 class Weighted_optim(Optimize_geodesicShooting):
 
     def __init__(self,source : torch.Tensor,
@@ -1023,7 +1210,7 @@ class Weighted_optim(Optimize_geodesicShooting):
                      optimizer_method : str = 'grad_descent'
                  ):
         super().__init__(source,target,geodesic,cost_cst,optimizer_method)
-
+    #     self.cost = self.weighted_cost
 
     def _get_mu_(self):
         return self.mp.rf.mu
@@ -1043,7 +1230,8 @@ class Weighted_optim(Optimize_geodesicShooting):
         lamb = self.cost_cst
 
         self.mp.forward(self.source,residuals_ini,save=False,plot=0)
-
+        # checkpoint(self.mp.forward,self.source.clone(),self.id_grid,residuals_ini)
+        # self.ssd = .5*((self.target - self.mp.image)**2).sum()
         self.ssd = cf.sumSquaredDifference(self.target)(self.mp.image)
 
         # Norm V
@@ -1051,7 +1239,8 @@ class Weighted_optim(Optimize_geodesicShooting):
         grad_source_resi = grad_source[0]*residuals_ini
         K_grad_source_resi = self.mp.kernelOperator(grad_source_resi)
 
-
+        # print('\n grad_source',(grad_source*grad_source).sum())
+        # print('resi',(grad_source_resi*grad_source_resi).sum())
         self.norm_v_2 = (grad_source_resi * K_grad_source_resi).sum()
 
         # norm_2 on z
@@ -1068,6 +1257,7 @@ class Weighted_optim(Optimize_geodesicShooting):
 
     def forward(self,z_0,n_iter = 10,grad_coef = 1e-3,verbose= True):
         self.mp.rf.to_device(z_0.device)
+        # self.mp.rf.mask = self.mp.rf.mask.to(z_0.device)
         if self.mp.border_effect:
             self.mp.rf.unit_normal_vector_grad = self.mp.rf.unit_normal_vector_grad.to(z_0.device)
         super(Weighted_optim,self).forward(z_0,n_iter,grad_coef,verbose)
@@ -1079,12 +1269,30 @@ class Weighted_optim(Optimize_geodesicShooting):
 
 def load_optimize_geodesicShooting(file_name,path=None,verbose=True):
     """ load previously saved optimisation in order to plot it later."""
+
+    # import pickle
+    import io
+
+    class CPU_Unpickler(pickle.Unpickler):
+        """usage :
+            #contents = pickle.load(f) becomes...
+            contents = CPU_Unpickler(f).load()
+        """
+        def find_class(self, module, name):
+            if module == 'torch.storage' and name == '_load_from_bytes':
+                return lambda b: torch.load(io.BytesIO(b), map_location='cpu')
+            else:
+                return super().find_class(module, name)
+
+
+
     if path is None:
         path =ROOT_DIRECTORY+OPTIM_SAVE_DIR
     if not file_name in os.listdir(path):
         raise ValueError("File "+file_name+" does not exist in "+path)
     with open(path+file_name,'rb') as f:
-        opti_dict = pickle.load(f)
+        # opti_dict = pickle.load(f)
+        opti_dict = CPU_Unpickler(f).load()
 
     # TODO : Modifier ça optimize_geo est une classe abstraite maintenant.
     # prevoir de decider de quelle class on parle en fonction de "F".
@@ -1116,7 +1324,7 @@ def load_optimize_geodesicShooting(file_name,path=None,verbose=True):
 def lddmm(source,target,residuals,
           sigma,cost_cst,
           integration_steps,n_iter,grad_coef,
-          optimizer_method = 'adadelta',safe_mode = False
+          safe_mode = False
           ):
 
     # residuals = torch.zeros(source.size()[2:],device=device)
@@ -1129,7 +1337,7 @@ def lddmm(source,target,residuals,
     mr = Optimize_metamorphosis(source,target,mp,
                                            cost_cst=cost_cst,
                                            # optimizer_method='LBFGS_torch')
-                                           optimizer_method=optimizer_method)
+                                           optimizer_method='adadelta')
     if not safe_mode:
         mr.forward(residuals,n_iter=n_iter,grad_coef=grad_coef)
     else:
@@ -1170,7 +1378,7 @@ def weighted_metamorphosis(source,target,residual,mask,
         rf = Residual_norm_borderBoost(mask,mu,rho)
 
     mp_weighted = Weighted_meta_path(
-        rf,sigma_v=(sigma,sigma),n_step=mask.shape[0],
+        rf,sigma_v=(sigma,)*len(residual.shape),n_step=mask.shape[0],
         border_effect=False
     )
     mr_weighted = Weighted_optim(
