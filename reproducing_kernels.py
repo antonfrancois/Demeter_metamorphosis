@@ -1,3 +1,4 @@
+import warnings
 from typing import Tuple, List
 import torch
 from torch.nn.functional import pad
@@ -7,7 +8,7 @@ import kornia.filters.filter as flt
 from decorators import deprecated
 
 from fft_conv import fft_conv
-
+from math import prod
 
 def fft_filter(input: torch.Tensor, kernel: torch.Tensor,
              border_type: str = 'reflect',
@@ -112,7 +113,7 @@ class GaussianRKHS(torch.nn.Module):
     # %matplotlib qt
     # irm_type = 'flair'
     # folder_name = 'Brats18_CBICA_APY_1'
-    # img = nib.load('/home/turtlefox/Documents/Doctorat/data/brats/'+folder_name+'/'+folder_name+'_'+irm_type+'.nii.gz')
+    # img = nib.load(ROOT_DIRECTORY+'/../data/brats/'+folder_name+'/'+folder_name+'_'+irm_type+'.nii.gz')
     # # img.affine
     # img_data = torch.Tensor(img.get_fdata())[None,None]
     # sigma = (3,5,5)
@@ -142,11 +143,14 @@ class GaussianRKHS(torch.nn.Module):
         super().__init__()
         self._dim = len(sigma)
         if self._dim == 2:
-            self.kernel = kornia.filters.get_gaussian_kernel2d(kernel_size,sigma)[None].to(device)
+            self.kernel = kornia.filters.get_gaussian_kernel2d(kernel_size,sigma)[None]
+            self.kernel *= prod(sigma)
             self.filter = flt.filter2d
         elif self._dim == 3:
-            self.kernel = self.get_gaussian_kernel3d(kernel_size,sigma).to(device)
-            self.filter = flt.filter3d
+            self.kernel = get_gaussian_kernel3d(kernel_size,sigma)[None]
+            self.kernel *= prod(sigma)
+            # self.filter = flt.filter3d
+            self.filter = fft_filter
         else:
             raise ValueError("Sigma is expected to be a tuple of size 2 or 3 same as the input dimension,"
                              +"len(sigma) == {}".format(len(sigma)))
@@ -156,6 +160,7 @@ class GaussianRKHS(torch.nn.Module):
         # this filter works in 2d and 3d
         if max(kernel_size) > 7:
             self.filter = fft_filter
+        # print(f"filter used : {self.filter}")
 
     def __repr__(self) -> str:
         # the if is there for compatibilities with older versions
@@ -163,8 +168,6 @@ class GaussianRKHS(torch.nn.Module):
         return self.__class__.__name__+\
         ','+str(self._dim)+'D '+\
         f'filter :{self.filter.__name__}, '+sig_str
-
-
 
     def forward(self, input: torch.Tensor):
         """
@@ -180,19 +183,19 @@ class GaussianRKHS(torch.nn.Module):
                              f"with a {self._dim}D mask and input shape is : "
                              f"{input.shape}")
 
-    def get_gaussian_kernel3d(self,kernel_size,sigma):
-        if not isinstance(kernel_size, tuple) or len(kernel_size) != 3:
-            raise TypeError(f"kernel_size must be a tuple of length three. Got {kernel_size}")
-        if not isinstance(sigma, tuple) or len(sigma) != 3:
-            raise TypeError(f"sigma must be a tuple of length three. Got {sigma}")
-        ksize_d, ksize_h, ksize_w= kernel_size
-        sigma_d, sigma_h, sigma_w = sigma
-        kernel_d: torch.Tensor = kornia.filters.kernels.get_gaussian_kernel1d(ksize_d, sigma_d)
-        kernel_h: torch.Tensor = kornia.filters.kernels.get_gaussian_kernel1d(ksize_h, sigma_h)
-        kernel_w: torch.Tensor = kornia.filters.kernels.get_gaussian_kernel1d(ksize_w, sigma_w)
-        kernel_2d: torch.Tensor = kernel_d[:,None] * kernel_h[None]
-        kernel_3d: torch.Tensor = kernel_2d[:,:,None] * kernel_w[None,None]
-        return kernel_3d[None]
+def get_gaussian_kernel3d(kernel_size,sigma):
+    if not isinstance(kernel_size, tuple) or len(kernel_size) != 3:
+        raise TypeError(f"kernel_size must be a tuple of length three. Got {kernel_size}")
+    if not isinstance(sigma, tuple) or len(sigma) != 3:
+        raise TypeError(f"sigma must be a tuple of length three. Got {sigma}")
+    ksize_d, ksize_h, ksize_w= kernel_size
+    sigma_d, sigma_h, sigma_w = sigma
+    kernel_d: torch.Tensor = kornia.filters.kernels.get_gaussian_kernel1d(ksize_d, sigma_d)
+    kernel_h: torch.Tensor = kornia.filters.kernels.get_gaussian_kernel1d(ksize_h, sigma_h)
+    kernel_w: torch.Tensor = kornia.filters.kernels.get_gaussian_kernel1d(ksize_w, sigma_w)
+    kernel_2d: torch.Tensor = kernel_d[:,None] * kernel_h[None]
+    kernel_3d: torch.Tensor = kernel_2d[:,:,None] * kernel_w[None,None]
+    return kernel_3d
 
 @deprecated("Please use GaussianRKHS instead.")
 class GaussianRKHS2d(GaussianRKHS):
@@ -203,5 +206,87 @@ class GaussianRKHS2d(GaussianRKHS):
 
         super(GaussianRKHS2d, self).__init__(sigma,border_type)
 
+class Multi_scale_GaussianRKHS(torch.nn.Module):
+
+    def __init__(self, list_sigmas):
+        if isinstance(list_sigmas,tuple):
+            raise ValueError("List sigma must be a list of tuple, if you want to use "
+                             "a single scale Gaussian RKHS please use the class "
+                             "GaussianRKHS instead.")
+        super(Multi_scale_GaussianRKHS, self).__init__()
+        _ks = []
+        for sigma in list_sigmas:
+            big_odd = lambda val : max(6,int(val*6)) + (1 - max(6,int(val*6)) %2)
+            kernel_size = tuple([big_odd(s) for s in sigma])
+            _ks.append(kernel_size)
+        # Get the max of each dimension.
+        self._dim = len(kernel_size)
+        kernel_size = tuple([
+            max([s[i] for s in _ks ]) for i in range(self._dim)
+        ])
+        self.list_sigma = list_sigmas
+
+        if self._dim == 2:
+            kernel_f = kornia.filters.get_gaussian_kernel2d
+            self.filter = fft_filter if max(kernel_size) > 7 else flt.filter2d
+        elif self._dim == 3:
+            kernel_f = get_gaussian_kernel3d
+            self.filter = fft_filter
+        else:
+            raise ValueError("Sigma is expected to be a tuple of size 2 or 3 same as the input dimension,"
+                             +"len(sigma[0]) == {}".format(len(list_sigmas[0])))
+
+        self.kernel = torch.cat(
+            [ prod(sigma)*kernel_f(kernel_size,sigma)[None] for sigma in list_sigmas ]
+        ).sum(dim=0)[None]
+        self.kernel /= len(list_sigmas)
+        self.border_type = 'constant'
+
+    def __repr__(self) -> str:
+        # the if is there for compatibilities with older versions
+        return self.__class__.__name__+\
+                f'(sigma :{self.list_sigma})'
+        # f'filter :{self.filter.__name__}, '+sig_str
+        # ','+str(self._dim)+'D '+\
+
+    def __call__(self, input : torch.Tensor):
+        if (self._dim == 2 and len(input.shape) == 4) or (self._dim == 3 and len(input.shape) == 5):
+            return self.filter(input,self.kernel,self.border_type)
+        else:
+            raise ValueError(f"{self.__class__.__name__} was initialized "
+                             f"with a {self._dim}D mask and input shape is : "
+                             f"{input.shape}")
 
 
+class Multi_scale_GaussianRKHS_notAverage(torch.nn.Module):
+    """
+    This class is not to be used. It was been written for demonstration. Have a look at
+    Section 2.5 in my Thesis.
+    """
+    def __init__(self, list_sigmas):
+        warnings.warn("This class is slower that Multi_scale_GaussianRKHS,"
+                      " it was been implemented  for demonstration.")
+        if isinstance(list_sigmas,tuple):
+            raise ValueError("List sigma must be a list of tuple, if you want to use "
+                             "a single scale Gaussian RKHS please use the class "
+                             "GaussianRKHS instead.")
+        super(Multi_scale_GaussianRKHS_notAverage, self).__init__()
+
+        self.gauss_list = []
+        for sigma in list_sigmas:
+            self.gauss_list.append(GaussianRKHS(sigma))
+
+
+
+    def __repr__(self) -> str:
+        # the if is there for compatibilities with older versions
+        return self.__class__.__name__+\
+                f'(sigma :{self.list_sigma})'
+        # f'filter :{self.filter.__name__}, '+sig_str
+        # ','+str(self._dim)+'D '+\
+
+    def __call__(self, input : torch.Tensor):
+        output = torch.zeros(input.shape,device=input.device)
+        for gauss_rkhs in self.gauss_list:
+            output += gauss_rkhs(input)/len(self.gauss_list)
+        return output
