@@ -1,6 +1,19 @@
 import functools
 import inspect
 import warnings
+from time import time
+from my_toolbox import  format_time
+
+def time_it(func):
+    # This function shows the execution time of
+    # the function object passed
+    def wrap_func(*args, **kwargs):
+        t1 = time()
+        result = func(*args, **kwargs)
+        t2 = time()
+        print(f"\nComputation of {func.__name__} done in ",format_time(t2 -t1)," s")
+        return result
+    return wrap_func
 
 string_types = (type(b''), type(u''))
 

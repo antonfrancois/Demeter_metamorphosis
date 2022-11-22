@@ -22,7 +22,7 @@ class FieldIntegrator:
         :param save:
         :param N:   division number of the vector field
             it must be of the form $\forall n \in \mathbb Z, 2^n$
-            default : choose automaticlly the good N
+            default : choose automaticaly the good N
         """
         self.save = save
         self.N = N

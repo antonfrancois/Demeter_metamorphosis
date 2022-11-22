@@ -1,6 +1,8 @@
+
 import warnings
 
 import matplotlib.pyplot as plt
+import nrrd
 import torch
 import torch.nn.functional as F
 from kornia.filters import SpatialGradient,SpatialGradient3d,filter2d,filter3d
@@ -10,13 +12,16 @@ from numpy import newaxis
 from matplotlib.widgets import Slider
 from nibabel import load as nib_load
 from skimage.exposure import match_histograms
+import os
+import csv
 
 # import decorators
 from my_toolbox import rgb2gray
-# import my_bspline as mbs
+import my_bspline as mbs
 import vector_field_to_flow as vff
 import decorators as deco
-from constants import ROOT_DIRECTORY
+from constants import *
+from image_3d_visualisation import image_slice
 
 # ================================================
 #        IMAGE BASICS
@@ -24,10 +29,6 @@ from constants import ROOT_DIRECTORY
 
 def reg_open(number, size = None,requires_grad= False,location = 'local',device='cpu'):
 
-    # if location == 'local':
-    #     path = '/home/turtlefox/Documents/Doctorat/'
-    # elif location == 'bartlett':
-    #     path = '/home/fanton/'
     path = ROOT_DIRECTORY
     path += '/im2Dbank/reg_test_'+number+'.png'
 
@@ -47,6 +48,8 @@ def open_nib(folder_name,irm_type,data_base,format= '.nii.gz',normalize=True, to
         path = ROOT_DIRECTORY+ '/../data/brats/'
     elif data_base == 'brats_2021':
         path = ROOT_DIRECTORY+ '/../data/brats_2021/'
+    elif data_base == 'bratsreg_2022':
+        path = ROOT_DIRECTORY+'/../data/bratsreg_2022/BraTSReg_Training_Data_v3/'
     else:
         path = data_base
     img_nib = nib_load(path+folder_name+'/'+folder_name+'_'+irm_type+format)
@@ -55,7 +58,9 @@ def open_nib(folder_name,irm_type,data_base,format= '.nii.gz',normalize=True, to
     if isinstance(normalize,str):
         method = normalize
         normalize = True
-    if normalize: img = nib_normalize(img,method=method)
+    if normalize:
+        print(f">I am normalizinf {normalize}")
+        img = nib_normalize(img,method=method)
     if to_torch: return torch.Tensor(img)[None,None]
     else: return img_nib
 
@@ -77,9 +82,10 @@ def open_template_icbm152(ponderation = 't1',normalize= True):
 
 class parse_brats:
 
-    def __init__(self,brats_list,
+    def __init__(self,brats_list=None,
                  template_folder=None,
                  brats_folder=None,
+                 get_template=True,
                  modality='T1',
                  device = 'cpu'):
         """
@@ -89,75 +95,283 @@ class parse_brats:
         :param brats_folder: path to brats db
         :param modality: modality of the IRM ex: `'T1'`,`'T2'`
         """
+        self.flag_brats_2021 = False
+        self.flag_bratsReg_2022 = False
         if template_folder is None:
             template_folder = ROOT_DIRECTORY+'/../data/template/sri_spm8/templates/'
-        if brats_folder is None:
-            brats_folder = ROOT_DIRECTORY+'/../data/brats_2021/'
+        if brats_folder is None or '2021' in brats_folder:
+            self.brats_folder = ROOT_DIRECTORY+'/../data/brats_2021/'
+            self.flag_brats_2021 = True
+        elif "2022_valid" in brats_folder:
+            self.brats_folder = ROOT_DIRECTORY+'/../data/bratsreg_2022/BraTSReg_Validation_Data/'
+            self.flag_bratsReg_2022 = True
+        elif "2022" in brats_folder:
+            self.brats_folder = ROOT_DIRECTORY+'/../data/bratsreg_2022/BraTSReg_Training_Data_v3/'
+            # print(f"\n!!!!!! {self.flag_bratsReg_2022} <<<<<<<<\n")
+            self.flag_bratsReg_2022 = True
+
+
         # TODO : check that the list is correct by parsing with os.get_dir ...
-        self.brats_list = brats_list
+        if brats_list is None:
+            if self.flag_brats_2021:
+                warnings.warn("It is not recommended to set brats_list to None with BraTS2021"
+                              "database. It can lead to errors because ventricule segmentations "
+                              "where not made for all data.")
+            self._make_brats_list(self.brats_folder)
+        else:
+            self.brats_list = brats_list
         self.modality = modality
         self.device = device
+        self.flag_get_template = get_template
+        if not self.flag_bratsReg_2022 and get_template:
+            template_nib = nib_load(template_folder+modality+"_brain.nii")
+            self.template_affine = template_nib.affine
+            self.template_img = template_nib.get_fdata()[:,::-1,:,0]
 
-        template_nib = nib_load(template_folder+modality+"_brain.nii")
-        self.template_affine = template_nib.affine
-        self.template_img = template_nib.get_fdata()[:,::-1,:,0]
+            self.template_seg = nib_load(template_folder+'seg_sri24.mgz').get_fdata()
 
-        template_seg = nib_load(template_folder+'seg_sri24.mgz').get_fdata()
-        self.vesi_seg = torch.zeros(template_seg.shape)
-        self.vesi_seg[template_seg==4] = 1
-        self.vesi_seg[template_seg==43] = 1
+
+    def _make_brats_list(self,folder):
+        self.brats_list = []
+        for obj in os.listdir(folder):
+            if self.flag_bratsReg_2022 and 'BraTSReg_' in obj:
+                self.brats_list.append(obj)
+            if self.flag_brats_2021 and 'BraTS2021' in obj:
+                self.brats_list.append(obj)
 
     def get_template(self,normalised=True):
         if normalised:
             img_norm = (self.template_img - self.template_img.min()) / (self.template_img.max() - self.template_img.min())
             return torch.Tensor(img_norm,device=self.device)[None,None]
         else:
-            return torch.Tensor(self.template_img,device=self.device)
+            return torch.Tensor(self.template_img.copy(),device=self.device)
 
     def get_template_vesi(self):
-        return self.vesi_seg.flip(1)
+        vesi_seg = torch.zeros(self.template_seg.shape)
+        vesi_seg[self.template_seg==4] = 1
+        vesi_seg[self.template_seg==43] = 1
+        return vesi_seg.flip(1)
 
-    def get_vesicule_seg(self,index):
+    def get_template_whiteMatter(self):
+        whmtr_seg = torch.zeros(self.template_seg.shape)
+        whmtr_seg[self.template_seg==2] = 1
+        whmtr_seg[self.template_seg==41] = 1
+        return whmtr_seg.flip(1)
+
+    def get_vesicule_seg(self,index,mask_correction=None):
+        path = ROOT_DIRECTORY+ '/../data/brats_2021/'
         brats_name = self.brats_list[index]
+        brats_img_size = (240,240,155)
+        vesi,header = nrrd.read(path+brats_name+'/'+brats_name+'_segV.seg.nrrd')
+        space_origin = header['space origin']
+        vesi_s = vesi.shape
+        if vesi_s == brats_img_size: return torch.tensor( vesi)[None,None]
 
-        vesi = open_nib(brats_name,'segV','brats_2021',
-                          format='.nii',normalize=False,to_torch=True)
+        vesi_pad = np.zeros(brats_img_size)
+        vesi_pad[
+        int(space_origin[0]):int(space_origin[0]+vesi_s[0]),
+        int(space_origin[1]):int(space_origin[1]+vesi_s[1]),
+        int(space_origin[2]):int(space_origin[2]+vesi_s[2])
+        ] = vesi
+        # vesi = open_nib(brats_name,'segV','brats_2021',
+        #                   format='.nii.gz',normalize=False,to_torch=True)
         # img_1 = torch.zeros(vesi.shape)
         # img_1[vesi==4] = 1
         # img_1[vesi==43] = 1
-        return vesi[0,0]
+        if not mask_correction is None:
+            vesi[mask_correction>0] =0
+        return torch.tensor( vesi_pad)[None,None]
 
-    def __call__(self, index):
+    def _read_landmarks_csv_(self,file):
+        with open(file) as csv_f:
+            csv_reader = csv.DictReader(csv_f,delimiter=',')
+            landmarks = []
+            for row in csv_reader:
+                try:
+                    listv = [
+                        float(row["Z"]),
+                        239 + float(row["Y"]),
+                        float(row["X"])
+                    ]
+                except KeyError:
+                    listv = [
+                        float(row[" Z"]),
+                        239 + float(row[" Y"]),
+                        float(row[" X"])
+                    ]
+                landmarks.append(listv)
+        return torch.Tensor(landmarks)
+
+    def _get_landmarks(self,path,file_list):
+        file_ldk_1 = [f for f in file_list if '_01_' in f and '_landmarks.csv' in f][0]
+        # print(file_ldk_1)
+        ldk_1 = self._read_landmarks_csv_(path+file_ldk_1)
+        if 'Training_Data' in path:
+            file_ldk_0 = [f for f in file_list if '_00_' in f and '_landmarks.csv' in f][0]
+            # print(file_ldk_0)
+            ldk_0 = self._read_landmarks_csv_(path+file_ldk_0)
+            return (ldk_0,ldk_1)
+        return (None,ldk_1)
+
+    def _call_brats_2021_(self,index,to_torch,normalize=False):
+        brats_name = self.brats_list[index]
+        print("mean")
+        gliom = open_nib(brats_name,self.modality.lower(),'brats_2021',normalize='min_max',to_torch=False)
+        segmentation_tumor = open_nib(brats_name,'seg','brats_2021',normalize=False,to_torch=to_torch)
+        if to_torch:
+            segmentation_tumor[segmentation_tumor== 2] = .5
+            segmentation_tumor[segmentation_tumor == 4] = 1
+        else: segmentation_tumor = segmentation_tumor.get_fdata()
+        # gliom = nib.load("/Users/maillard/Downloads/RSNA_ASNR_MICCAI_BraTS2021_TrainingData_16July2021/BraTS2021_00008/BraTS2021_000_T1.nii.gz")
+        # histogram normalisation
+        gliom_img = gliom.get_fdata()
+        if self.flag_get_template and normalize:
+            gliom_img[gliom_img > 0] = match_histograms(gliom_img[gliom_img > 0], self.template_img[self.template_img > 0])
+            gliom_img = (gliom_img - gliom_img.min()) / (gliom_img.max() - gliom_img.min())
+
+        if to_torch:
+            gliom_img = torch.Tensor(gliom_img,device=self.device)[None,None]
+        return (gliom_img,
+                segmentation_tumor)
+
+    def _call_bratsReg_2022(self,index,to_torch,scale=0,rigidly_reg = False):
+        """
+
+        :param index: (int)
+        :return: The two brains data to get.
+        !!! Do not use rigidly_reg it does not work
+        """
+        path = self.brats_folder
+
+
+        folder_name = self.brats_list[index]
+        path += folder_name+'/'
+        file_list = os.listdir(path)
+        file_0 = [f for f in file_list if '_00_' in f  and self.modality.lower()+'.' in f][0]
+        if rigidly_reg:
+            file_1 = [
+                f for f in file_list
+                if '_01_' in f and self.modality.lower() in f and 'resampled' in f ][0]
+        else:
+            file_1 = [f for f in file_list if '_01_' in f  and self.modality.lower()+'.' in f][0]
+        #print(file_0,file_1)
+        img_nib_0 = nib_load(path + file_0)
+        self.affine = img_nib_0.affine
+        img_0 = img_nib_0.get_fdata()
+
+        img_nib_1 = nib_load(path + file_1)
+        img_1 = img_nib_1.get_fdata()
+
+        # img_1[img_1 > 0] = match_histograms(img_1[img_1 > 0], img_0[img_0 > 0])
+        img_0 = (img_0 - img_0.min()) / (img_0.max() - img_0.min())
+        img_1 = (img_1 - img_1.min()) / (img_1.max() - img_1.min())
+        # v_min, v_max = min(img_0.min(), img_1.min()), max(img_0.max(),img_1.max() )
+        # v_min, v_max = img_0.min(),img_0.max()
+        #
+        # img_0 = (img_0 - v_min) / (v_max - v_min)
+        # img_1 = (img_1 - v_min) / (v_max - v_min)
+
+
+
+        landmarks = self._get_landmarks(path,file_list)
+
+        # Segmentation !
+        if 'Training_Data' in path:
+            seg_path = ROOT_DIRECTORY+"/../data/bratsreg_2022/Train_seg/"
+        elif 'Validation' in path:
+            seg_path = ROOT_DIRECTORY+"/../data/bratsreg_2022/Valid_seg/"
+        else:
+            raise ValueError("Something went wrong.")
+        seg_img_0 = nib_load(seg_path+folder_name+'_seg_00_.nii.gz').get_fdata()
+        seg_img_0[seg_img_0 == 1] = 3
+        seg_img_0[seg_img_0 == 2] = 1.5
+        seg_img_0 = seg_img_0/3
+
+        seg_img_1 = nib_load(seg_path+folder_name+'_seg_01_.nii.gz').get_fdata()
+        seg_img_1[seg_img_1 == 1] = 3
+        seg_img_1[seg_img_1 == 2] = 1.5
+        seg_img_1 = seg_img_1/3
+
+        # TODO : Check if we should normalize
+        if to_torch:
+            img_0 = torch.Tensor(img_0,device=self.device)[None,None]
+            img_1 = torch.Tensor(img_1,device=self.device)[None,None]
+
+            seg_img_0 =torch.Tensor(seg_img_0,device=self.device)[None,None]
+            seg_img_1 =torch.Tensor(seg_img_1,device=self.device)[None,None]
+            if scale != 1:
+                img_0,img_1,seg_img_0,seg_img_1 = resize_image((img_0,img_1,seg_img_0,seg_img_1),scale)
+                landmarks = (
+                    landmarks[0]*scale if not landmarks[0] is None else None,
+                    landmarks[1]*scale
+                )
+
+        return img_0,img_1,seg_img_0,seg_img_1,landmarks
+
+    def __call__(self, index,
+                 to_torch = True,
+                 modality = None,
+                 scale=0,
+                 rigidly_reg=False,
+                 normalize=False):
         """ Open the brats folder in self.brats_list at the desired index
 
         :param index: must be int < len(brats_list)
-        :return: im
+        :param to_torch: (bool) return image as torch.Tensor if True, else a numpy array.
+        :return: image at the index of the brats_list
         """
-        brats_name = self.brats_list[index]
-        source = open_nib(brats_name,self.modality.lower(),'brats_2021',normalize=False,to_torch=False)
-        segmentation_tumor = open_nib(brats_name,'seg','brats_2021',normalize=False,to_torch=True)
-
-        # source = nib.load("/Users/maillard/Downloads/RSNA_ASNR_MICCAI_BraTS2021_TrainingData_16July2021/BraTS2021_00008/BraTS2021_000_T1.nii.gz")
-        # histogram normalisation
-        source_img = source.get_fdata()
-        source_img[source_img > 0] = match_histograms(source_img[source_img > 0], self.template_img[self.template_img > 0])
-        source_img = (source_img - source_img.min()) / (source_img.max() - source_img.min())
-
-        return (torch.Tensor(source_img,device=self.device)[None,None],
-                segmentation_tumor.to(self.device))
+        if index >= len(self.brats_list):
+            raise ValueError(f"You asked for a too high value, index is : {index} and len(brat_list) is : {len(self.brats_list)}")
+        if not modality is None:
+            self.modality = modality
+        if self.flag_brats_2021:
+            return self._call_brats_2021_(index,to_torch,normalize=normalize)
+        if self.flag_bratsReg_2022:
+            return self._call_bratsReg_2022(index,to_torch,scale,rigidly_reg=rigidly_reg)
         # source = nib.Nifti1Image(source_img, self.template_affine)
         # return source.get_fdata()
 
+
+
+
 def nib_normalize(img,method='mean'):
     if method == 'mean' or method is None:
-        img = (img -img.mean())/img.std()
-        img = img/img.max()
+        print("using mean")
+        img = (img -img.mean())/(img.std() + 1e-30)
+        img = np.clip(img,a_min=0,a_max=1)
     elif method == 'min_max':
         img += img.min()
         img /= img.max()
     else:
-        raise ValueError(f"method must be 'mean' or 'min_max' gor {method}")
+        raise ValueError(f"method must be 'mean' or 'min_max' got {method}")
     return img
+
+def resize_image(image,scale_factor):
+    Ishape = image[0].shape[2:]
+    Ishape_D = tuple([int(s * scale_factor) for s in Ishape])
+    id_grid = make_regular_grid(Ishape_D,dx_convention='2square').to(image[0].device)
+    i_s = []
+    for i in image:
+        i_s.append(torch.nn.functional.grid_sample(i.to(image[0].device),id_grid,**DLT_KW_GRIDSAMPLE))
+    return i_s
+
+def make_3d_flat(img_3D,slice):
+    D,H,W = img_3D.shape
+
+    im0 = image_slice(img_3D,slice[0],2).T
+    im1 = image_slice(img_3D,slice[1],1).T
+    im2 = image_slice(img_3D,slice[2],0).T
+
+    crop = 20
+    # print(D-int(1.7*crop),D+H-int(2.7*crop))
+    # print(D+H-int(3.2*crop))
+    long_img = np.zeros((D,D+H+H-int(3.5*crop)))
+    long_img[:D,:D-crop] = im0[:,crop//2:-crop//2]
+    long_img[(D-W)//2:(D-W)//2 + W,D-int(1.7*crop):D+H-int(2.7*crop)] = im1.numpy()[::-1,crop//2:-crop//2]
+    long_img[(D-W)//2:(D-W)//2 + W,D+H-int(3*crop):] = im2.numpy()[::-1,crop//2:]
+
+    # long_img[long_img== 0] =1
+    return long_img
 
 def pad_to_same_size(img_1,img_2):
     """ Pad the two images in order to make images of the same size
@@ -181,86 +395,6 @@ def pad_to_same_size(img_1,img_2):
     img_1_padded = torch.nn.functional.pad(img_1[0,0],padding1)[None,None]
     img_2_padded = torch.nn.functional.pad(img_2[0,0],padding2)[None,None]
     return (img_1_padded,img_2_padded)
-
-
-def make_ball_at_shape_center(img,
-                              shape_value=None,
-                              overlap_threshold=0.1,
-                              r_min=None,
-                              force_r=None,
-                              verbose=False):
-    """
-
-    :param img:
-    :param shape_value:
-    :param overlap_threshold:
-    :param r_min:
-    :param verbose:
-    :return:
-    """
-    # TODO : documentation
-    if len(img.shape) in [3, 5]: is_2D = False
-    elif len(img.shape) in [3, 4]: is_2D = True
-    if len(img.shape) in [4,5]: img = img[0,0]
-
-    img = img.cpu()
-    shape_value = img.max() if shape_value is None else shape_value
-    # On touve tous indexes ayant la valeure recherchée
-    indexes = (img == shape_value).nonzero(as_tuple=False)
-    # print('indexes :',indexes.shape)
-    # Puis pour trouver le centre on cherche le min et max dans chaque dimension.
-    # La ligne d'avant ordonne naturellement les indexes.
-    min_index_1,max_index_1 = (indexes[0,0],indexes[-1,0])
-    # print(min_index_1,max_index_1)
-    #Ici il y a plus de travail.
-    min_index_2,max_index_2 = (torch.argmin(indexes[:,1]),torch.argmax(indexes[:,1]))
-    min_index_2,max_index_2 =(indexes[min_index_2,1],indexes[max_index_2,1])
-    if is_2D:
-        centre = (
-            (max_index_2 + min_index_2)//2,
-            (max_index_1 + min_index_1)//2
-        )
-        Y,X = torch.meshgrid(torch.arange(img.shape[0]),
-                         torch.arange(img.shape[1]))
-    else:
-        min_index_3,max_index_3 = (torch.argmin(indexes[:,2]),torch.argmax(indexes[:,2]))
-        min_index_3,max_index_3 =(indexes[min_index_3,2],indexes[max_index_3,2])
-        centre = (
-            (max_index_3 + min_index_3)//2,
-            (max_index_2 + min_index_2)//2,
-            (max_index_1 + min_index_1)//2,
-        )
-        Z,Y,X = torch.meshgrid(torch.arange(img.shape[0]),
-                         torch.arange(img.shape[1]),
-                         torch.arange(img.shape[2])
-                               )
-
-    def overlap_percentage():
-        img_supp = img >0
-        overlap = torch.logical_and((img_supp).cpu(), bool_ball).sum()
-        seg_sum = (img_supp).sum()
-        return overlap/seg_sum
-
-    if force_r is None:
-        r = 5 if r_min is None else r_min
-        # sum_threshold = 20
-        bool_ball = torch.zeros(img.size(),dtype=torch.bool)
-
-        while  overlap_percentage() < overlap_threshold:
-            r += max(img.shape)//30
-
-            if is_2D : bool_ball = ((X - centre[0])**2 + (Y - centre[1])**2) < r**2
-            else : bool_ball = ((X - centre[0])**2 + (Y - centre[1])**2 + (Z - centre[2])**2) < r**2
-            ball = bool_ball[None,None].to(img.dtype)
-    else:
-        r = force_r
-        if is_2D : bool_ball = ((X - centre[0])**2 + (Y - centre[1])**2) < r**2
-        else : bool_ball = ((X - centre[0])**2 + (Y - centre[1])**2 + (Z - centre[2])**2) < r**2
-        ball = bool_ball[None,None].to(img.dtype)
-
-    if verbose:
-        print(f"centre = {centre}, r = {r} and the seg and ball have { torch.logical_and((img > 0).cpu(), bool_ball).sum()} pixels overlapping")
-    return ball,centre+(r,)
 
 def addGrid2im(img, n_line,cst=0.1,method='dots'):
     """
@@ -324,7 +458,7 @@ def addGrid2im(img, n_line,cst=0.1,method='dots'):
     #put the negative grid on the high values image
     add_mat[img > .5] *= -1
 
-    return img + add_mat.to(img.device)
+    return img + add_mat
 
 def thresholding(image,bounds = (0,1)):
     return torch.maximum(torch.tensor(bounds[0]),
@@ -461,13 +595,19 @@ def imCmp(I1, I2):
     return concatenate((I2[:, :, None], I1[:, :, None], zeros((M, N, 1))), axis=2)
 
 def checkDiffeo(field):
-    _,H,W,_ = field.shape
-    det_jaco = detOfJacobian(field_2d_jacobian(field))[0]
-    I = .4 * torch.ones((H,W,3))
-    I[:,:,0] = (det_jaco <=0) *0.83
-    I[:,:,1] = (det_jaco >=0)
-
-    return I
+    if len(field.shape)== 4:
+        _,H,W,_ = field.shape
+        det_jaco = detOfJacobian(field_2d_jacobian(field))[0]
+        I = .4 * torch.ones((H,W,3))
+        I[:,:,0] = (det_jaco <=0) *0.83
+        I[:,:,1] = (det_jaco >=0)
+        return I
+    elif len(field.shape)== 5:
+        field_im = grid2im(field)
+        jaco = SpatialGradient3d()(field_im)
+        # jaco = spacialGradient_3d(field,dx_convention='pixel')
+        det_jaco = detOfJacobian(jaco)
+        return det_jaco
 
 @deco.deprecated("Please specify the dimension by using gridDef_plot_2d ot gridDef_plot_3d")
 def gridDef_plot(defomation,
@@ -506,7 +646,7 @@ def gridDef_plot_2d(deformation,
     if deformation.size().__len__() != 4 or deformation.size()[0] > 1:
         raise TypeError("deformation has to be a (1,H,W,2) "
                         "tensor object got "+str(deformation.size()))
-    deform = deformation.clone()
+    deform = deformation.clone().detach()
     if ax is None:
         fig, ax = plt.subplots()
 
@@ -615,7 +755,7 @@ def deformation_show(deformation,step=2,
     fig, axes = plt.subplots(1,2)
     fig.suptitle(title)
     regular_grid = make_regular_grid(deformation.size())
-    gridDef_plot(deformation,step=step,ax = axes[0],
+    gridDef_plot_2d(deformation,step=step,ax = axes[0],
                  check_diffeo=check_diffeo,
                  color=None)
     quiver_plot(deformation - regular_grid,step=step,
@@ -643,9 +783,9 @@ def vectField_show(field,step=2,check_diffeo= False,title="",
     vectField_show(v,step=4,check_diffeo=True)
     """
 
-    fig, axes = plt.subplots(1,2)
+    fig, axes = plt.subplots(1,2,figsize= (10,5),constrained_layout=True)
     fig.suptitle(title)
-    regular_grid = make_regular_grid(field.size())
+    regular_grid = make_regular_grid(field.size(),dx_convention=dx_convention)
     gridDef_plot(field + regular_grid,step=step,ax = axes[0],
                  check_diffeo=check_diffeo,
                  dx_convention=dx_convention)
@@ -719,7 +859,7 @@ def geodesic_3d_slider(mr):
     # have them updating
     return t_slider
 
-@deco.deprecated("function deprecated /!\ do not use /!\ see defomation_show")
+@deco.deprecated("function deprecated. DO NOT USE, see defomation_show")
 def showDef(field,axes=None, grid=None, step=2, title="",check_diffeo=False,color=None):
      return deformation_show(field)
 
@@ -730,16 +870,18 @@ def showDef(field,axes=None, grid=None, step=2, title="",check_diffeo=False,colo
 def fieldNorm2(field):
     return (field**2).sum(dim=-1)
 
-@deco.deprecated("function deprecated /!\ do not use /!\ see vector_field_to_flow")
+@deco.deprecated("function deprecated. DO NOT USE, see vector_field_to_flow")
 def field2diffeo(in_vectField, N=None,save= False,forward=True):
-   """function deprecated /!\ do not use /!\ see vector_field_to_flow"""
+   """function deprecated; see vector_field_to_flow"""
    return vff.FieldIntegrator(method='fast_exp')(in_vectField.clone(),forward= forward)
 
 
 def imgDeform(I,field,dx_convention ='2square',clamp=True):
+    if I.shape[0] > 1 and field.shape[0] == 1:
+        field = torch.cat(I.shape[0]*[field],dim=0)
     if dx_convention == 'pixel':
         field = pixel2square_convention(field)
-    deformed = F.grid_sample(I,field, padding_mode="border", align_corners=True)
+    deformed = F.grid_sample(I,field,**DLT_KW_GRIDSAMPLE)
     # if len(I.shape) == 5:
     #     deformed = deformed.permute(0,1,4,3,2)
     if clamp:
@@ -748,8 +890,27 @@ def imgDeform(I,field,dx_convention ='2square',clamp=True):
         deformed = torch.clamp(deformed,min=0,max=max_val)
     return deformed
 
-def compose_fields(field,field_on):
-    return im2grid(F.grid_sample(grid2im(field),field_on))
+def compose_fields(field,grid_on,dx_convention='2square'):
+    """ compose a field on a deformed grid
+
+    """
+    if field.device != grid_on.device:
+        raise RuntimeError("Expexted all tensors to be on same device but got"
+                           f"field on {field.device} and grid on {grid_on.device}")
+    if dx_convention == 'pixel':
+        field = pixel2square_convention(field,grid=False)
+        grid_on = pixel2square_convention(grid_on,grid=True)
+
+    composition = im2grid(
+        F.grid_sample(
+            grid2im(field),grid_on,
+            **DLT_KW_GRIDSAMPLE
+        )
+    )
+    if dx_convention == 'pixel':
+        return square2pixel_convention(composition,grid=False)
+    else:
+        return composition
 
 def vect_spline_diffeo(control_matrix,field_size, N = None,forward = True):
     field = mbs.field2D_bspline(control_matrix, field_size, dim_stack=2)[None]
@@ -762,25 +923,25 @@ def field_2d_jacobian(field):
     :return: output.size = (B,2,2,H,W)
 
     :example:
-field = torch.zeros((100,100,2))
-field[::2,:,0] = 1
-field[:,::2,1] = 1
+    field = torch.zeros((100,100,2))
+    field[::2,:,0] = 1
+    field[:,::2,1] = 1
 
-jaco =  field_2d_jacobian(field)
+    jaco =  field_2d_jacobian(field)
 
 
-plt.rc('text',usetex=True)
-fig, axes = plt.subplots(2,2)
-axes[0,0].imshow(jaco[0,0,0,:,:].detach().numpy(),cmap='gray')
-axes[0,0].set_title(r"$\frac{\partial f_1}{\partial x}$")
-axes[0,1].imshow(jaco[0,0,1,:,:].detach().numpy(),cmap='gray')
-axes[0,1].set_title(r"$\frac{\partial f_1}{\partial y}$")
-axes[1,0].imshow(jaco[0,1,0,:,:].detach().numpy(),cmap='gray')
-axes[1,0].set_title(r"$\frac{\partial f_2}{\partial x}$")
-axes[1,1].imshow(jaco[0,1,1,:,:].detach().numpy(),cmap='gray')
-axes[1,1].set_title(r"$\frac{\partial f_2}{\partial y}$")
+    plt.rc('text',usetex=True)
+    fig, axes = plt.subplots(2,2)
+    axes[0,0].imshow(jaco[0,0,0,:,:].detach().numpy(),cmap='gray')
+    axes[0,0].set_title(r"$\frac{\partial f_1}{\partial x}$")
+    axes[0,1].imshow(jaco[0,0,1,:,:].detach().numpy(),cmap='gray')
+    axes[0,1].set_title(r"$\frac{\partial f_1}{\partial y}$")
+    axes[1,0].imshow(jaco[0,1,0,:,:].detach().numpy(),cmap='gray')
+    axes[1,0].set_title(r"$\frac{\partial f_2}{\partial x}$")
+    axes[1,1].imshow(jaco[0,1,1,:,:].detach().numpy(),cmap='gray')
+    axes[1,1].set_title(r"$\frac{\partial f_2}{\partial y}$")
 
-plt.show()
+    plt.show()
     """
 
     f_d = grid2im(field)
@@ -813,13 +974,34 @@ def field_2d_hessian(field_grad):
 
     return hess
 
+#%%
 def detOfJacobian(jaco):
     """ compute the determinant of the jacobian from field_2d_jacobian
 
     :param jaco: B,2,2,H,W tensor
-    :return: H,W tensor
+                B,3,3,D,H,W tensor
+    :return: B,H,W tensor
     """
-    return jaco[:,0,0,:,:] * jaco[:,1,1,:,:] - jaco[:,1,0,:,:] * jaco[:,0,1,:,:]
+    if jaco.shape[1] == 2:
+        return jaco[:,0,0,:,:] * jaco[:,1,1,:,:] - jaco[:,1,0,:,:] * jaco[:,0,1,:,:]
+    elif jaco.shape[1] == 3:
+        dxdu = jaco[:,0,0]
+        dxdv = jaco[:,0,1]
+        dxdw = jaco[:,0,2]
+        dydu = - jaco[:,1,0]    # The '-' are here to answer
+        dydv = - jaco[:,1,1]    # to the image convention
+        dydw = - jaco[:,1,2]    # Be careful using it.
+        dzdu = jaco[:,2,0]
+        dzdv = jaco[:,2,1]
+        dzdw = jaco[:,2,2]
+        a = dxdu * (dydv * dzdw - dydw * dzdv)
+        b = - dxdv * (dydu * dzdw - dydw * dzdu)
+        c = dxdw * (dydu * dzdv - dydv * dzdu)
+        return  a + b + c
+
+
+
+#%%
 
 class Field_divergence(torch.nn.Module):
 
@@ -938,6 +1120,9 @@ def pixel2square_convention(field,grid = True):
     """ Convert a field in spacial pixelic convention in one on as
     [-1,1]^2 square as requested by pytorch's gridSample
 
+    :field: (torch tensor) of size [T,H,W,2] or [T,D,H,W,3]
+    :grid: (bool, default = True) if true field is considered as a deformation (i.e.: field = (id + v))
+    else field is a vector field (i.e.: field = v)
     :return:
     """
     field = field.clone()
@@ -950,7 +1135,7 @@ def pixel2square_convention(field,grid = True):
         return field * mult[None,None,None] - sub
     elif field.shape[-1] == 3 and len(field.shape) == 5:
         _,D,H,W,_ = field.shape
-        mult = torch.tensor((2/(D-1),2/(H-1),2/(W-1))).to(field.device)
+        mult = torch.tensor((2/(W-1),2/(H-1),2/(D-1))).to(field.device)
         if not torch.is_tensor(field):
             mult = mult.numpy()
         sub =1 if grid else 0
@@ -967,14 +1152,14 @@ def square2pixel_convention(field,grid=True):
     field = field.clone()
     if field.shape[-1] == 2 :
         _,H,W,_ = field.shape
-        mult = torch.tensor(((W-1)/2,(H-1)/2))
+        mult = torch.tensor(((W-1)/2,(H-1)/2)).to(field.device)
         if not torch.is_tensor(field):
             mult = mult.numpy()
         add = 1 if grid else 0
         return (field + add) * mult[None,None,None]
     elif field.shape[-1] == 3 and len(field.shape) == 5:
         _,D,H,W,_ = field.shape
-        mult = torch.tensor(((D-1)/2,(H-1)/2,(W-1)/2))
+        mult = torch.tensor(((W-1)/2,(H-1)/2,(D-1)/2)).to(field.device)
         if not torch.is_tensor(field):
             mult = mult.numpy()
         add = 1 if grid else 0
@@ -986,7 +1171,7 @@ def square2pixel_convention(field,grid=True):
 def grid2im(grid):
     """Reshape a grid tensor into an image tensor
         2D  [T,H,W,2] -> [T,2,H,W]
-        3D  [T,D,H,W,2] -> [T,D,H,W,3]
+        3D  [T,D,H,W,3] -> [T,3,D,H,W]
 
     # grid to image
     T,D,H,W = (4,5,6,7)
@@ -1085,6 +1270,14 @@ def im2grid(image):
                          "got "+str(image.shape)+" instead.")
 
 
+def format_sigmas(sigmas,dim):
+    if type(sigmas)== int:
+        return (sigmas,)*dim
+    elif type(sigmas) == tuple:
+        return sigmas
+    elif type(sigmas) == list:
+        return [(s,)*dim for s in sigmas]
+
 def create_meshgrid3d(
     depth: int,
     height: int,
@@ -1113,14 +1306,14 @@ def create_meshgrid3d(
         grid tensor with shape :math:`(1, D, H, W, 3)`.
     """
 
-    lx: torch.Tensor = torch.linspace(0, width - 1, depth, device=device, dtype=dtype)
+    lx: torch.Tensor = torch.linspace(0, depth - 1, depth, device=device, dtype=dtype)
     ly: torch.Tensor = torch.linspace(0, height - 1, height, device=device, dtype=dtype)
-    lz: torch.Tensor = torch.linspace(0, depth - 1, width, device=device, dtype=dtype)
+    lz: torch.Tensor = torch.linspace(0, width - 1, width, device=device, dtype=dtype)
     # Fix TracerWarning
     if normalized_coordinates:
-        lx = (lx / (width - 1) - 0.5) * 2
+        lx = (lx / (depth - 1) - 0.5) * 2
         ly = (ly / (height - 1) - 0.5) * 2
-        lz = (lz / (depth - 1) - 0.5) * 2
+        lz = (lz / (width - 1) - 0.5) * 2
     # generate grid by stacking coordinates
     mx,my,mz = torch.meshgrid([lx,ly,lz])
     return torch.stack((mz,my,mx),dim=-1)[None]
@@ -1166,9 +1359,133 @@ def make_regular_grid(deformation_shape,
             return create_meshgrid3d(D,H,W,
                                         normalized_coordinates=normalized_coordinates,device=device)
 
+# =================================================================
+#             LIE ALGEBRA
+# =================================================================
+
+def leviCivita_2Dderivative(v,w):
+    """ Perform the operation $\nabla_w v$"""
+
+    d_v = field_2d_jacobian(v)
+    d_v_x = w[:,:,0]*d_v[0,0,0,:,:] + w[:,:,1]*d_v[0,0,1,:,:]
+    d_v_y = w[:,:,0]*d_v[0,1,0,:,:] + w[:,:,1]*d_v[0,1,1,:,:]
+
+    return torch.stack((d_v_x,d_v_y),dim=2)
+
+def lieBracket(v,w):
+    return leviCivita_2Dderivative(v,w) - leviCivita_2Dderivative(w,v)
+
+def BCH(v,w,order = 0):
+    """ Evaluate the Backer-Campbell-Hausdorff formula"""
+    var = v + w
+    if order >= 1:
+        # print(lieBracket(v,w))
+        var += 0.5*lieBracket(v,w)
+    if order == 2:
+        var += (lieBracket(v,lieBracket(v,w)) - lieBracket(w,lieBracket(v,w)))/12
+    if order > 2:
+        print('non')
+    return var
 
 
 # =================================================================
 #             GEOMETRIC HANDELER
 # =================================================================
 
+def find_binary_center(bool_img):
+
+    if torch.is_tensor(bool_img): indexes = bool_img.nonzero(as_tuple=False)
+    else: indexes = bool_img.nonzero()
+    # Puis pour trouver le centre on cherche le min et max dans chaque dimension.
+    # La ligne d'avant ordonne naturellement les indexes.
+    min_index_1,max_index_1 = (indexes[0,0],indexes[-1,0])
+    # print(min_index_1,max_index_1)
+    #Ici il y a plus de travail.
+    min_index_2,max_index_2 = (torch.argmin(indexes[:,1]),torch.argmax(indexes[:,1]))
+    min_index_2,max_index_2 =(indexes[min_index_2,1],indexes[max_index_2,1])
+    if len(bool_img.shape) in [2,4]:
+        centre = (
+            torch.div(max_index_2 + min_index_2,2,rounding_mode='floor'),
+            torch.div(max_index_1 + min_index_1,2,rounding_mode='floor')
+        )
+
+    else:
+        min_index_3,max_index_3 = (torch.argmin(indexes[:,2]),torch.argmax(indexes[:,2]))
+        min_index_3,max_index_3 =(indexes[min_index_3,2],indexes[max_index_3,2])
+        centre = (
+            torch.div(max_index_3 + min_index_3,2,rounding_mode='floor'),
+            torch.div(max_index_2 + min_index_2,2,rounding_mode='floor'),
+            torch.div(max_index_1 + min_index_1,2,rounding_mode='floor'),
+        )
+    return centre
+def make_ball_at_shape_center(img,
+                              shape_value=None,
+                              overlap_threshold=0.1,
+                              r_min=None,
+                              force_r=None,
+                              force_center = None,
+                              verbose=False):
+    """
+
+    :param img:
+    :param shape_value:
+    :param overlap_threshold:
+    :param r_min:
+    :param verbose:
+    :return:
+    """
+    # TODO : documentation
+    if len(img.shape) in [3, 5]: is_2D = False
+    elif len(img.shape) in [2, 4]: is_2D = True
+    if len(img.shape) in [4,5]: img = img[0,0]
+
+    img = img.cpu()
+    if force_center is None:
+        shape_value = img.max() if shape_value is None else shape_value
+        # On trouve tous indexes ayant la valeur recherchée
+        # print('indexes :',indexes.shape)
+        bool_img = (img == shape_value)
+        centre = find_binary_center(bool_img)
+    else:
+        centre = force_center
+
+    if is_2D: Y,X = torch.meshgrid(torch.arange(img.shape[0]),
+                             torch.arange(img.shape[1]))
+    else:
+        Z,Y,X = torch.meshgrid(torch.arange(img.shape[0]),
+                             torch.arange(img.shape[1]),
+                             torch.arange(img.shape[2])
+                                   )
+
+    def overlap_percentage():
+        img_supp = img >0
+        # overlap = torch.logical_and((img_supp).cpu(), bool_ball).sum()
+        # seg_sum = (img_supp).sum()
+        # return overlap/seg_sum
+        prod_seg = img_supp * bool_ball
+        sum_seg = img_supp + bool_ball
+
+        return float(2 *prod_seg.sum() / sum_seg.sum())
+    import image_3d_visualisation as i3v
+    if force_r is None:
+        r = 3 if r_min is None else r_min
+        # sum_threshold = 20
+        bool_ball = torch.zeros(img.size(),dtype=torch.bool)
+        count = 0
+        while  overlap_percentage() < overlap_threshold and count < 10:
+            r += max(img.shape)//50
+
+            if is_2D : bool_ball = ((X - centre[0])**2 + (Y - centre[1])**2) < r**2
+            else : bool_ball = ((X - centre[0])**2 + (Y - centre[1])**2 + (Z - centre[2])**2) < r**2
+            ball = bool_ball[None,None].to(img.dtype)
+            # i3v.compare_3D_images_vedo(ball,img[None,None])
+            count +=1
+    else:
+        r = force_r
+        if is_2D : bool_ball = ((X - centre[0])**2 + (Y - centre[1])**2) < r**2
+        else : bool_ball = ((X - centre[0])**2 + (Y - centre[1])**2 + (Z - centre[2])**2) < r**2
+        ball = bool_ball[None,None].to(img.dtype)
+
+    if verbose:
+        print(f"centre = {centre}, r = {r} and the seg and ball have { torch.logical_and((img > 0).cpu(), bool_ball).sum()} pixels overlapping")
+    return ball,centre+(r,)
