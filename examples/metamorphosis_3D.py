@@ -46,25 +46,23 @@ residuals = 0
 # mu = 0
 # mu,rho,lamb = 0, 0, .0001   # LDDMM
 
-print("Apply LDDMM")
-mr_lddmm = mt.lddmm(S,T,residuals,
-    sigma=(4,4,4),          #  Kernel size
-    cost_cst=0.001,         # Regularization parameter
-    integration_steps=10,   # Number of integration steps
-    n_iter=600,             # Number of optimization steps
-    grad_coef=1,            # max Gradient coefficient
-    data_term=None,         # Data term (default Ssd)
-    sharp=False,            # Sharp integration toggle
-    safe_mode = False,      # Safe mode toggle (does not crash when nan values are encountered)
-    integration_method='semiLagrangian',  # You should not use Eulerian for real usage
-)
-mr_lddmm.plot_cost()
+# print("Apply LDDMM")
+# mr_lddmm = mt.lddmm(S,T,residuals,
+#     sigma=(4,4,4),          #  Kernel size
+#     cost_cst=0.001,         # Regularization parameter
+#     integration_steps=10,   # Number of integration steps
+#     n_iter=600,             # Number of optimization steps
+#     grad_coef=1,            # max Gradient coefficient
+#     data_term=None,         # Data term (default Ssd)
+#     sharp=False,            # Sharp integration toggle
+#     safe_mode = False,      # Safe mode toggle (does not crash when nan values are encountered)
+#     integration_method='semiLagrangian',  # You should not use Eulerian for real usage
+# )
+# mr_lddmm.plot_cost()
 
 # you can save the optimization:
 # mr_lddmm.save(source_name,target_name)
 
-# you can get the deformation grid:
-deformation  = mr_lddmm.mp.get_deformation()
 
 #%%
 mu,rho,lamb = 0.02, 1, .0001  # Metamorphosis
@@ -75,7 +73,7 @@ mr_meta = mt.metamorphosis(S,T,residuals,
     sigma=(4,4,4),          #  Kernel size
     cost_cst=lamb,         # Regularization parameter
     integration_steps=10,   # Number of integration steps
-    n_iter=600,             # Number of optimization steps
+    n_iter=60,             # Number of optimization steps
     grad_coef=1,            # max Gradient coefficient
     data_term=None,         # Data term (default Ssd)
     sharp=False,            # Sharp integration toggle
@@ -83,6 +81,9 @@ mr_meta = mt.metamorphosis(S,T,residuals,
     integration_method='semiLagrangian',  # You should not use Eulerian for real usage
 )
 mr_meta.plot_cost()
+
+# you can get the deformation grid:
+deformation  = mr_meta.mp.get_deformation()
 
 # We provide some visualisation tools :
 

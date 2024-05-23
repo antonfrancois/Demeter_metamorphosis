@@ -7,13 +7,16 @@ import warnings
 import vedo
 import numpy as np
 from numpy import newaxis
+import os
 from math import prod
 
 import utils.torchbox as tb
-from utils.constants import DLT_KW_RESIDUALS
+from utils.constants import DLT_KW_RESIDUALS, ROOT_DIRECTORY
 # TODO : Ajouter Residual_norm_function à la liste des imports dans __init__.py
 from metamorphosis import Metamorphosis_Shooting,Residual_norm_function
+from utils.toolbox import save_gif_with_plt
 
+from icecream import ic
 
 # Utility function
 def image_slice(I,coord,dim):
@@ -548,7 +551,7 @@ class deformation_grid3D_vedo:
                        vedo.Points(surf_mesh.points(), c='black', r=1,alpha=.5),
                        **self.show_kwargs)
          # axes=8, bg2='lightblue', viewup='x', interactive=False)
-        
+
         if self.addCutterTool:
             self.plot.addCutterTool(self.all_time_surf,'box') # comment this line for using the class in jupyter notebooks
         vedo.interactive()  # stay interactive
@@ -605,10 +608,10 @@ def _slice_rotate_image_(image,dim,index,alpha=1,time=None):
     """
     if time is None:
         T = image.shape[0] - 1
-    elif time > image.shape[0] - 1:
-        T = min(time,image.shape[0]-1)
+    # elif time > image.shape[0] - 1:
     else:
-        T = time
+        T = min(time,image.shape[0]-1)
+        # T = time
     if dim == 2:
         img = image[T,index,::-1]*255
         pic = vedo.Picture(img,flip=(len(img.shape)== 2))
@@ -626,24 +629,40 @@ def _slice_rotate_image_(image,dim,index,alpha=1,time=None):
 
 def make_cmp_image(img_1,img_2):
     # if T is different, then the lowest is equal to 1
-    print(f"make_cmp_image >> img1:{img_1.shape} , img2:{img_2.shape}")
+    # print(f"make_cmp_image >> img1:{img_1.shape} , img2:{img_2.shape}")
     if img_1.shape[0] > img_2.shape[0]:
         img_2 = np.repeat(img_2,img_1.shape[0],axis=0)
     elif img_1.shape[0] < img_2.shape[0]:
         img_1 = np.repeat(img_1,img_2.shape[0],axis=0)
-    print(f"make_cmp_image.2 >> img1:{img_1.shape} , img2:{img_2.shape}")
-    return np.concatenate(
-        (img_1[:,:,:,:,None],
-         img_2[:,:,:,:,None],
-         np.zeros(img_1.shape+(1,))),
-        axis=-1
-        )
+    # print(f"make_cmp_image.2 >> img1:{img_1.shape} , img2:{img_2.shape}")
+    u = img_2 * img_1
+
+    d = img_1 - img_2
+
+    r = np.maximum(d,0)/np.abs(d).max()
+    g = u + .1*np.exp(-d**2)*u + np.maximum(-d,0)*.2
+    b = np.maximum(-d,0)/np.abs(d).max()
+
+    g = np.clip(g,a_min=0,a_max=1)
+    # print(f'r {r.min()};{r.max()}')
+    # print(f'g {g.min()};{g.max()}')
+    # print(f'b {b.min()};{b.max()}')
+    # # if g.max() < .7:
+    # g = g/ g.max()
+    # print(f'g {g.min()};{g.max()}')
+
+    rgb = np.concatenate(
+        (r[...,None],g[...,None],b[...,None],np.ones(r.shape+(1,))), axis=-1
+    )
+    # print(f"make_cmp_image.2 >>{rgb.shape}")
+    return rgb
+
+
 
 class compare_3D_images_vedo:
 
     def __init__(self,image1,image2,alpha=0.8,close = True):
 
-        # TODO : reduire la taille de l'image
         self.image1 = self._prepare_image_(image1)
         self.image2 = self._prepare_image_(image2)
         self._check_dimensions_()
@@ -651,6 +670,8 @@ class compare_3D_images_vedo:
         T = max(self.image1.shape[0],self.image2.shape[0])
         if T == 1: T = 0
 
+        self.flag_landmark_right = False
+        self.flag_landmark_left = False
         self.flag_cmp = False # is comparison with target image activated or not
         # stack images on different color channels
         self.cmp_image = make_cmp_image(self.image1,self.image2)
@@ -721,15 +742,15 @@ class compare_3D_images_vedo:
         )
         self._set_slider_size(slid_d,vscale)
         slid_h = self.plotter.addSlider2D(self._sliderfunc_h,
-                    xmin=0,xmax= H,value=self._h,
+                    xmin =0,xmax= H,value=self._h,
                     title='Y', titleSize=3,
                     pos=[(x_m, y + y_s), (x_p, y + y_s)],
                     showValue=True,
                     c=cy,
         )
-        self._set_slider_size(slid_h,vscale)
+        self._set_slider_size(slid_h, vscale)
         slid_w = self.plotter.addSlider2D(self._sliderfunc_w,
-                    xmin=0,xmax= D,value=self._w,
+                    xmin = 0,xmax= D,value=self._w,
                     title='Z', titleSize=3,
                     pos=[(x_m,y), (x_p,y)],
                     showValue=True,
@@ -768,8 +789,10 @@ class compare_3D_images_vedo:
         self.plotter.show(hist1,at=0)
         self.plotter.show(hist2,at=1)
         if close:
-            self.plotter.show(interactive=True).close()
+           self.close()
 
+    def close(self):
+        self.plotter.show(interactive=True).close()
 
     def show_deformation_flow(self,deformation,at,step = None):
         """
@@ -782,6 +805,8 @@ class compare_3D_images_vedo:
         # reg_grid = tb.make_regular_grid(deformation[0][None].shape,
         #                                 dx_convention='pixel')
         self.flag_def = True
+        self.flag_landmark_right = False
+        self.flag_landmark_left = False
         if step is None:
             step = max(deformation.shape[1:-1])
         print("Adding flow :")
@@ -795,12 +820,14 @@ class compare_3D_images_vedo:
 
         lines = self.deformation_stepped.reshape(fT,H*W*D,d)
         length = ((lines[1:] - lines[:-1])**2).sum(dim=-1).sqrt().sum(dim=0)
-        colors = (length/length.max()).numpy()
-        med_length = np.median(colors)
+        length = length.numpy()
+        med_length = np.median(length)
+        colors = np.maximum(length - med_length,0)
+        colors = colors/colors.max()
 
         lines_col = []
         for i in range(D*H*W):
-            if med_length < colors[i]:
+            if med_length < length[i]:
                 t = min(max(self.actual_t,0),fT-1)
                 lines_col.append(vedo.Line(lines[:t,i,:].numpy(),
                                             c=(colors[i],0,1-colors[i]),
@@ -871,6 +898,11 @@ class compare_3D_images_vedo:
 
     def _button_func_(self):
         self._bu_cmp.switch()
+        if self.flag_landmark_left:
+            if self.flag_cmp:
+                self.plotter.renderers[1].RemoveActor(self.left_pts)
+            else:
+                self.plotter.renderers[1].AddActor(self.left_pts)
         self.flag_cmp= not self.flag_cmp
         self._sliderfunc_t(None,None)
 
@@ -899,7 +931,7 @@ class compare_3D_images_vedo:
                 image = image[None]
         else:
             raise AttributeError('image must be numpy array or torch tensor')
-        return image
+        return np.clip(image,a_min=0,a_max=1)
 
     def _check_dimensions_(self):
         if self.image1.shape[1:] != self.image2.shape[1:]:
@@ -917,62 +949,123 @@ class compare_3D_images_vedo:
                                  'got image1.shape ='+ self.image1.shape+' and '
                                  'image2.shape ='+ self.image2.shape+'.')
 
+    def add_landmarks_left(self,landmarks):
+        self.flag_landmark_left = True
+        self.left_pts = landmark_to_points(landmarks,c=(.9,.2,.2))
+        self.plotter.show(self.left_pts,at=0)
+
+    def add_landmarks_right(self,landmarks):
+        self.flag_landmark_right = True
+        self.right_pts = landmark_to_points(landmarks,c=(.2,.9,.2))
+        self.plotter.show(self.right_pts,at=1)
+
+def landmark_to_points(landmarks,c,labels= True):
+    landmarks = [[l[0],l[1],l[2]] for l in landmarks]
+    pts = vedo.Points(landmarks,c=c,r=10)
+    if labels: pts = vedo.Assembly(pts,pts.labels('id', rotX=0, scale=2).c('yellow'))
+    return pts
+
 class Visualize_geodesicOptim:
 
 
-    def __init__(self,geoShoot : Metamorphosis_Shooting,
+    def __init__(self,geoShoot,#: mt.Optimize_metamorphosis,
                  alpha = 0.8,
-                 convergence_plot=True,
-                 close = True):
-        # TODO : check if geoShoot is really a subclass of Optimize_metamorphosis
-        self.gs = geoShoot.cpu()
-
+                 close = True,
+                 ):
+             # geoShoot.to_device('cpu')
+        self.gs = geoShoot
+        ic(self.gs.__class__.__name__)
         # Get values to show later
         self.image = self.gs.mp.image_stock[:,0].numpy()
-        print(f"Visu_geodesic min : {self.image.min()}, max: {self.image.max()}")
+        ic(self.image.shape,self.gs.target.shape,self.gs.source.shape)
+        print(f"\nVisu_geodesic min : {self.image.min()}, max: {self.image.max()}")
         # self.image = (self.image - self.image.min()) /(self.image - self.image.min()).max()
         self.image = np.clip(self.image,a_min=0,a_max=1)
         T,D,H,W = self.image.shape
         res_np = self.gs.mp.residuals_stock.numpy()
         self.res_max_abs = res_np.__abs__().max()
-        self.residual = [vedo.Volume(res_t).addScalarBar3D() for res_t in res_np]
-
-        # flag for discriminating against different kinds of Optimizers
+        detOfJaco = tb.checkDiffeo(geoShoot.mp.get_deformation()).numpy()[0]
+        self.detOfJaco = [vedo.Volume( detOfJaco ).addScalarBar3D()]
+        self.dOj_max_abs = detOfJaco.__abs__().max()
+        n_neg_dOj = (detOfJaco < 0).sum()
         try:
-            isinstance(self.gs.mp.rf,Residual_norm_function)
-            self.is_pure_meta = False
-        except AttributeError:
-            self.is_pure_meta = True
+            self.residual = [vedo.Volume(res_t[0]).addScalarBar3D() for res_t in res_np]
+        except TypeError: # to open old optimisations with residuals of shape [D,H,W] (and not [B,C,D,H,W])
+            self.residual = [vedo.Volume(res_t).addScalarBar3D() for res_t in res_np]
+        # flag for discriminating against different kinds of Optimizers
+
+        if 'joinedMask' in self.gs.__class__.__name__:
+            self.is_weighted = True
+            self.is_joined = True
+        else:
+            self.is_joined = False
+            try:
+                self.is_weighted = True if self.gs.mp.flag_W else False
+            except AttributeError:
+                self.is_weighted = False
+
+        if self.is_weighted and self.is_joined:
+            self.mask = self.gs.mp.image_stock[:,1].numpy()
+        elif self.is_weighted and not self.is_joined:
+
+            self.mask = self.gs.mp.rf.mask[:,0].numpy()
+
 
         # Booleans for buttons switches
         self.flag_cmp_target = False # is comparison with target image activated or not
         self.flag_cmp_source = False
         self.flag_cmp_mask = False   #is comparison with source image activated. (only for Weighted metamoprhoshis)
         self.show_res = False # If True show image else show residual
+        self.show_dOj = False # If True show deformation's determinant of Jacobian
+        self.flag_show_target = False
+        self.flag_deform = False     # Is True when the arrows are showed
+        self.deform_computed = False # To compute arrows only if asked (only once)
+        try:
+            self.show_landmarks = True
+            self.show_target_landmark = False
+            self.source_landmark = landmark_to_points(self.gs.source_landmark,c='green')
+            if self.gs.target_landmark is not None:
+                self.show_target_landmark = True
+                self.target_landmark = landmark_to_points(self.gs.target_landmark,c='red')
+            else:
+                self.target_landmark = False
+            self.deform_landmark = landmark_to_points(self.gs.deform_landmark,c='blue')
+            # landmarks_visibles = [self.source_landmark,self.target_landmark,self.deform_landmark]
+            self.landmarks_visibles = [None,None,self.deform_landmark]
+            print("\n I WILL SHOW LANDMARkS")
+        except AttributeError:
+            print("\n I WILL !! NOT !! SHOW LANDMARkS")
+            self.show_landmarks = False
 
         # stack images on different color channels
         self.cmp_image_target = make_cmp_image(self.image,self.gs.target[:,0].numpy())
         self.cmp_image_source = make_cmp_image(self.image,self.gs.source[:,0].numpy())
-        if not self.is_pure_meta:
-            self.cmp_image_mask = make_cmp_image(self.image,self.gs.mp.rf.mask[:,0].numpy())
+        if self.is_weighted:
+            self.cmp_image_mask = make_cmp_image(self.image, self.mask)
+            self.cmp_image_mask = np.clip(self.cmp_image_mask,a_min=0,a_max=1)
 
         self.alpha = alpha if alpha >= 0 and alpha <= 1 else 1
+
         vedo.settings.immediateRendering = True
 
         bg_s= [(57,62,58), (82,87,83)]
         self.plotter = vedo.Plotter(N=1,bg=bg_s[0],bg2=bg_s[1],
-                                    screensize=(1200,1000),
-                                    interactive=False
+                                    screensize="auto",#(1200,1000),
+                                    interactive=False,
+                                    # qt_widget
                                     )
         vol = vedo.Volume(self.image[-1]).addScalarBar3D()
         box = vol.box().wireframe().alpha(0)
-        self.plotter.show(box,self.gs.__repr__(),at=0,viewup='x',axes=7)
+        self.plotter.show(
+            box,
+            self.gs.__repr__()+f"\n{n_neg_dOj} voxel have negative det of Jacobian.",
+            at=0,viewup='x',axes=7)
         # self.plotter.interactive = True
         self.plotter.addInset(vol,at=0,pos=2,
                               c='w',draggable=True)
 
         # ===== Image 1 initialisation =============
-        self.actual_t,self._d,self._h,self._w = T,W//2,H//2,D//2
+        self.actual_t,self._d,self._h,self._w = T,W//2,0,0#H//2,D//2
         pic_1_D = _slice_rotate_image_(self.image,0,self._d,self.alpha)
         self.plotter.renderer.AddActor(pic_1_D)
 
@@ -990,9 +1083,9 @@ class Visualize_geodesicOptim:
         self.plotter.show(plot)
 
         # ==== Slider handeling =========
-        cx, cy, cz, ct, ch = 'dr', 'dg', 'db', 'fdf1', (0.3,0.3,0.3)
+        cx, cy, cz, ct, ch = 'dr', 'dg', 'db', 'k7', (0.3,0.3,0.3)
         if np.sum(self.plotter.renderer.GetBackground()) < 1.5:
-            cx, cy, cz, ct = 'lr', 'lg', 'lb', 'sdfs'
+            cx, cy, cz, ct = 'lr', 'lg', 'lb', 'k2'
             ch = (0.8,0.8,0.8)
         # X,Y,Z dimentional sliders
         x_m,x_p,y,y_s = 0.8,0.9,0.02,0.02
@@ -1035,7 +1128,16 @@ class Visualize_geodesicOptim:
         # ======== BUTTONS ============
         self._bu_residuals = self.plotter.addButton(self._button_residuals_,
             pos=(0.27, 0.0),
-            states=['image','residual'],
+            states=['image','det of Jaco','residual'],
+            # c=["db"]*len(cmaps),
+            # bc=["lb"]*len(cmaps),  # colors of states
+            size=14,
+            bold=True,
+        )
+
+        self._bu_target = self.plotter.addButton(self._button_target_,
+            pos=(0.27, 0.02),
+            states=['target','image'],
             # c=["db"]*len(cmaps),
             # bc=["lb"]*len(cmaps),  # colors of states
             size=14,
@@ -1060,10 +1162,37 @@ class Visualize_geodesicOptim:
             bold=True,
         )
 
-        if not self.is_pure_meta:
+        self._bu_deform = self.plotter.addButton(self._button_deform_,
+            pos=(0.90, 0.5),
+            states=['Show deformation','Hide deformation'],
+            # c=["db"]*len(cmaps),
+            # bc=["lb"]*len(cmaps),  # colors of states
+            size=14,
+            bold=True,
+        )
+
+        if self.is_weighted:
             self._bu_cmp_mask = self.plotter.addButton(self._button_cmp_mask_,
                 pos=(0.57, 0.0),
                 states=['Compare mask OFF','Compare mask ON'],
+                # c=["db"]*len(cmaps),
+                # bc=["lb"]*len(cmaps),  # colors of states
+                size=14,
+                bold=True,
+            )
+
+        self._bu_to_gif = self.plotter.addButton(self._button_to_gif_,
+                pos=(0.97, 0.0),
+                states=['make gif'],
+                # c=["db"]*len(cmaps),
+                # bc=["lb"]*len(cmaps),  # colors of states
+                size=14,
+                bold=True,
+            )
+
+        self._bu_to_plot = self.plotter.addButton(self._button_to_plot_,
+                pos=(0.97, 0.0),
+                states=['generate plot'],
                 # c=["db"]*len(cmaps),
                 # bc=["lb"]*len(cmaps),  # colors of states
                 size=14,
@@ -1080,35 +1209,118 @@ class Visualize_geodesicOptim:
             image = self.cmp_image_source
         elif self.flag_cmp_mask:
             image = self.cmp_image_mask
+        elif self.flag_show_target:
+            image = self.gs.target[:,0].numpy()
         else:
             image = self.image
 
         # image = self.cmp_image if self.flag_cmp_target else self.image
         # self.plotter.renderer.RemoveActor(self.visibles[0][dim])
         # self.visibles[1][dim] = None # remove residual from visuals (may be useless sometime)
-        pic = _slice_rotate_image_(image,dim,index, time=time)
+        pic = _slice_rotate_image_(image,dim,index, time=time,alpha=self.alpha)
         self.plotter.renderer.AddActor(pic)
         self.visibles[0][dim] = pic
 
-    def _update_residuals_along(self,dim,time,index):
+    def _update_map_along(self, dim, time, index):
         # self.plotter.renderer.RemoveActor(self.visibles[1][dim])
         # self.visibles[0][dim] = None # remove image from visuals (may be useless sometime)
-        if dim == 0: res = self.residual[time-1].xSlice(index)
-        elif dim == 1: res = self.residual[time-1].ySlice(index)
-        elif dim == 2: res = self.residual[time-1].zSlice(index)
+        if self.show_res and self.show_dOj: raise ValueError('show_res and show_dOj are both True.')
+        elif self.show_res:
+            mapp,vmax,time,cmap  = self.residual,self.res_max_abs,time,DLT_KW_RESIDUALS['cmap']
+        elif self.show_dOj:
+            mapp,vmax,time,cmap = self.detOfJaco,self.dOj_max_abs,1,"RdYlGn"
+        if dim == 0: res = mapp[time-1].xSlice(index)
+        elif dim == 1: res = mapp[time-1].ySlice(index)
+        elif dim == 2: res = mapp[time-1].zSlice(index)
         else: raise ValueError("dim must be int in {0,1,2}")
         la, ld = 0.7, 0.3 #ambient, diffuse
         res.alpha(self.alpha).lighting('', la, ld, 0)
-        res.cmap(DLT_KW_RESIDUALS['cmap'], vmin=-self.res_max_abs, vmax=self.res_max_abs)
+        res.cmap(cmap, vmin=-vmax, vmax=vmax)
         if index: # and index < self.residual.shape[dim+1]:
             self.plotter.renderer.AddActor(res)
             self.visibles[1][dim] = res
 
     def _update_along_(self,dim,time,index):
-        if self.show_res:
-            self._update_residuals_along(dim,time,index)
+        if self.show_res or self.show_dOj:
+            self._update_map_along(dim, time, index)
         else:
             self._update_image_along(dim,time,index)
+
+    def _make_arrows_(self,step=10,filtr_over=.8):
+        print("Building deformation.")
+        deform = self.gs.mp.get_deformator(save=True).cpu()
+        vf = torch.cat(
+            [deform[0][None] - self.gs.mp.id_grid, deform[:-1] - deform[1:]],
+            dim=0)
+
+        # vf = self.gs.mp.field_stock.cpu()/self.gs.mp.n_step
+        T,D,H,W,_ = deform.shape
+
+        d,h,w = (20,20,20)
+        print("T:",T,", D:",D,", H:",H,", W:",W,":: ",H*D*W)
+        print(" d:",d,", h:",h,", w:",w,":: ",h*d*w)
+
+        #
+        # mx,my,mz = np.meshgrid(lx,ly,lz)
+        # print("mx :", mx.shape, prod(mx.shape))
+        # pts = np.c_[mx.flatten(),my.flatten(),mz.flatten()]
+        # print("pts :",pts.shape)
+        # reg_grid = self.gs.mp.id_grid[:,::step,::step,::step]
+        lx: torch.Tensor = torch.linspace(0, D - 1, d)
+        ly: torch.Tensor = torch.linspace(0, H - 1, h)
+        lz: torch.Tensor = torch.linspace(0, W - 1, w)
+
+        print('lx :',lx)
+        print('ly :',ly)
+        print('lz :',lz)
+
+        # generate grid by stacking coordinates
+        mx,my,mz = torch.meshgrid([lx,ly,lz])
+        pts = torch.stack([mz.flatten(),my.flatten(),mx.flatten()],dim=1).numpy()
+        reg_grid = torch.stack((mx,my,mz),dim=-1)[None] # shape = [1,d,h,w]
+        print("\nMAKE ARROW reg_grid",reg_grid.shape)
+        print(vf.shape)
+        # deform = deform[:,lx.to(int),ly.to(int),lz.to(int)]
+        deform = deform[:,:,:,lz.to(int)][:,:,ly.to(int)][:,lx.to(int)]
+        vf = vf[:,:,:,lz.to(int)][:,:,ly.to(int)][:,lx.to(int)]
+
+        print('deform : ',deform.shape,' vf : ',vf.shape)
+
+
+        def_magnitude = ((deform[-1]- reg_grid[0])**2).sum(dim=-1).sqrt().flatten().numpy()
+        med_length = np.quantile(def_magnitude,filtr_over)
+        def _prepare_field_(field):
+            field_x = field[...,0].flatten().numpy()#[def_magnitude > med_length]
+            field_y = field[...,1].flatten().numpy()#[def_magnitude > med_length]
+            field_z = field[...,2].flatten().numpy()#[def_magnitude > med_length]
+
+            return np.c_[
+                field_x,
+                field_y,
+                field_z,
+            ]
+
+        self.arrow_list =[]
+
+        # Warning ! there is a small imprecision in the code below.
+        # it would have been better to interpolate
+        for t in range(deform.shape[0]):
+            vecs = _prepare_field_(vf[t])
+            # print("vecs :",vecs.shape)
+            arrows = vedo.Arrows(pts, pts+vecs,
+                                 c='Spectral_r',s=1,
+                                 thickness=6
+                                 )
+            pts = pts + vecs
+            self.arrow_list.append(arrows)
+            self.plotter.renderer.AddActor(arrows)
+        # print("arrow list shae :",len(self.arrow_list))
+        # Show arrows
+        self.visibles[2] = self.arrow_list.copy()
+
+        # DEBUG
+        # pts_v = vedo.Points(pts,c=(.9,.1,.1),r=5)
+        # self.plotter.show(pts_v, pts_v.labels(pts, rotX=-45, scale=.5).c('yellow'))
 
     def _remove_actor(self,obj,dim):
             self.plotter.renderer.RemoveActor(self.visibles[obj][dim])
@@ -1154,10 +1366,28 @@ class Visualize_geodesicOptim:
             self._remove_actor(1,2)
             self._update_along_(2,self.actual_t,self._w)
 
-        # if self.flag_def:
-        #     self.plotter.renderers[1].RemoveActor(self.visibles[2])
-        #     self.visibles[2] = self._make_deformation_flow_()
-        #     self.plotter.renderers[1].AddActor(self.visibles[2])
+        if self.flag_deform:
+            for t in range(len(self.visibles[2])):
+                self.plotter.renderer.RemoveActor(self.visibles[2][t])
+            if self.actual_t > 0:
+                _t_ = min(self.actual_t-1,len(self.arrow_list) -1)
+                self.visibles[2] = self.arrow_list[:_t_]
+                for t in range(_t_):
+                    self.plotter.renderer.AddActor(self.visibles[2][t])
+
+        if self.show_landmarks:
+            # landmarks_visibles = [self.source_landmark,self.target_landmark,self.deform_landmark]
+            for l in self.landmarks_visibles:
+                if not l is None:
+                    self.plotter.renderer.RemoveActor(l)
+            # TODO : Gerer le cas où target landmark est None
+            self.landmarks_visibles[0] = self.source_landmark if self.actual_t == 0 else None
+            self.landmarks_visibles[2] = self.deform_landmark if self.actual_t == self.image.shape[0] else None
+            if self.show_target_landmark:
+                self.landmarks_visibles[1] = self.target_landmark if self.flag_cmp_target or self.flag_show_target else None
+            for l in self.landmarks_visibles:
+                if not l is None:
+                    self.plotter.renderer.AddActor(l)
 
     def _set_slider_size(self,slider,scale):
         sliderRep = slider.GetRepresentation()
@@ -1169,8 +1399,24 @@ class Visualize_geodesicOptim:
 
     def _button_residuals_(self):
         self._bu_residuals.switch()
-        self.show_res = not self.show_res
+        print()
+        status = self._bu_residuals.status()
+        if status == 'image':
+            self.show_dOj,self.show_res = False,False
+        elif status == 'det of Jaco':
+            self.show_dOj,self.show_res = True,False
+        elif status == 'residual':
+            self.show_dOj,self.show_res = False,True
+
         # to_residuals = all(x is None for x in self.visibles[1])
+        self._sliderfunc_t(None,None)
+
+    def _button_target_(self):
+        self._bu_target.switch()
+        self.flag_show_target = not self.flag_show_target
+        self.show_res = False
+        self.flag_cmp_mask = self.flag_cmp_target = self.flag_cmp_source = False
+
         self._sliderfunc_t(None,None)
 
     def _button_cmp_target_(self):
@@ -1203,6 +1449,57 @@ class Visualize_geodesicOptim:
             self.flag_cmp_source = False
             self._sliderfunc_t(None,None)
 
+    def _button_deform_(self):
+        if not self.deform_computed:
+            self._make_arrows_()
+            self.deform_computed = True
+        self._bu_deform.switch()
+        self.flag_deform = not self.flag_deform
+        if self.flag_deform:
+            self._sliderfunc_t(None,None)
+        else:
+            self.plotter.renderer.RemoveActor(self.visibles[2])
+
+    def _button_to_gif_(self):
+        self._bu_to_gif.switch()
+        old_t = self.actual_t
+        T = self.image.shape[0]
+        scale = 1 # must be 1, if not it bugs strangely
+        img_list = []
+        for t in range(T):
+            self.actual_t = t
+            self._sliderfunc_t(None,None)
+            img =self.plotter.screenshot(scale=scale,returnNumpy=True)
+            img_list.append(img)
+
+        # Make gif name
+        gs_name = self.gs.loaded_from_file[:-4]
+        def file_name_maker_(id_num):
+            return gs_name+'_{:02d}.gif'.format(id_num)
+        id_num= 0
+        file_name = file_name_maker_(id_num)
+        try:
+            path = ROOT_DIRECTORY + '/figs/gif_box/'+gs_name+'/'
+            while file_name in os.listdir(path):
+                print(file_name)
+                id_num+=1
+                file_name = file_name_maker_(id_num)
+        except FileNotFoundError:
+            pass
+
+        save_gif_with_plt(img_list,file_name,folder=gs_name,delay=40,duplicate=False,verbose=True)
+
+        # Save target image
+        self._button_target_()
+        self.plotter.screenshot(path +'target_'+gs_name+'_{:02d}.png'.format(id_num),scale=1)
+        self.actual_t = old_t  # reset to previous time
+        self._button_target_()
+        self._bu_to_gif.switch()
+
+        # self.plotter.screenshot()
+
+    def _button_to_plot_(self):
+        pass
 
     def _prepare_image_(self,image):
          return image[:,0].cpu().numpy()

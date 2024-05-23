@@ -4,13 +4,13 @@ import warnings
 from math import prod
 import pickle
 import os, sys, csv#, time
-
-from utils.optim import GradientDescent
+from icecream import ic
 
 sys.path.append(os.path.abspath('../'))
 from datetime import datetime
 from abc import ABC, abstractmethod
 
+from utils.optim import GradientDescent
 from utils.constants import *
 import utils.reproducing_kernels as rk
 import utils.torchbox as tb
