@@ -1,12 +1,16 @@
 import __init__
 
 import torch
-import my_torchbox as tb
-from my_toolbox import update_progress,format_time
-import metamorphosis as mt
-import image_3d_visualisation as i3v
 import time
-from constants import *
+import sys
+
+print(sys.path)
+
+import utils.torchbox as tb
+from utils.toolbox import update_progress,format_time
+import metamorphosis as mt
+import utils.image_3d_visualisation as i3v
+from utils.constants import *
 
 # cuda = torch.cuda.is_available()
 cuda = True
@@ -17,7 +21,7 @@ torch.autograd.set_detect_anomaly(False)
 print('device used :',device)
 
 
-path = ROOT_DIRECTORY+"/im3Dbank/"
+path = ROOT_DIRECTORY+"/examples/im3Dbank/"
 source_name = "ball_for_hanse"
 target_name = "hanse_w_ball"
 S = torch.load(path+source_name+".pt").to(device)
@@ -30,38 +34,59 @@ if step > 0:
     T = T[:,:,::step,::step,::step]
 _,_,D,H,W = S.shape
 
+## Setting residuals to 0 is equivalent to writing the
+## following line of code :
+# residuals= torch.zeros((D,H,W),device = device)
+# residuals.requires_grad = True
+residuals = 0
 
-residuals= torch.zeros((D,H,W),device = device)
-residuals.requires_grad = True
+# reg_grid = tb.make_regular_grid(S.size(),device=device)
 
-reg_grid = tb.make_regular_grid(S.size(),device=device)
 
-meta_path_method = 'semiLagrangian'
 # mu = 0
 # mu,rho,lamb = 0, 0, .0001   # LDDMM
+
+print("Apply LDDMM")
+mr_lddmm = mt.lddmm(S,T,residuals,
+    sigma=(4,4,4),          #  Kernel size
+    cost_cst=0.001,         # Regularization parameter
+    integration_steps=10,   # Number of integration steps
+    n_iter=600,             # Number of optimization steps
+    grad_coef=1,            # max Gradient coefficient
+    data_term=None,         # Data term (default Ssd)
+    sharp=False,            # Sharp integration toggle
+    safe_mode = False,      # Safe mode toggle (does not crash when nan values are encountered)
+    integration_method='semiLagrangian',  # You should not use Eulerian for real usage
+)
+mr_lddmm.plot_cost()
+
+# you can save the optimization:
+# mr_lddmm.save(source_name,target_name)
+
+# you can get the deformation grid:
+deformation  = mr_lddmm.mp.get_deformation()
+
+#%%
 mu,rho,lamb = 0.02, 1, .0001  # Metamorphosis
+print("\nApply Metamorphosis")
+mr_meta = mt.metamorphosis(S,T,residuals,
+    mu=mu,                  # intensity addition coef
+    rho=rho,                # ratio deformation / intensity addition
+    sigma=(4,4,4),          #  Kernel size
+    cost_cst=lamb,         # Regularization parameter
+    integration_steps=10,   # Number of integration steps
+    n_iter=600,             # Number of optimization steps
+    grad_coef=1,            # max Gradient coefficient
+    data_term=None,         # Data term (default Ssd)
+    sharp=False,            # Sharp integration toggle
+    safe_mode = False,      # Safe mode toggle (does not crash when nan values are encountered)
+    integration_method='semiLagrangian',  # You should not use Eulerian for real usage
+)
+mr_meta.plot_cost()
 
-mp_sl = mt.Metamorphosis_path(method=meta_path_method,
-                              mu=mu,rho=rho,
-                              sigma_v=(4,4,4),
-                              n_step=20)
+# We provide some visualisation tools :
 
-mr_sl = mt.Optimize_metamorphosis(S,T,mp_sl,
-                                     cost_cst=0.001,
-                                     optimizer_method='adadelta')
-start = time.time()
-mr_sl.forward(residuals,n_iter=600,grad_coef=1)
-end = time.time()
-
-print(f"Computation done in {format_time(end - start)}")
-
-
-deformation  = mr_sl.mp.get_deformation()
-# mr_sl.plot_cost()
-# plt.show()
-# mr_sl.save(source_name,target_name)
-
-i3v.Visualize_geodesicOptim(mr_sl,alpha=1)
-plt_v = i3v.compare_3D_images_vedo(T,mp_sl.image_stock.cpu())
+i3v.Visualize_geodesicOptim(mr_meta,alpha=1)
+plt_v = i3v.compare_3D_images_vedo(T,mr_meta.mp.image_stock.cpu())
 plt_v.show_deformation_flow(deformation,1,step=3)
 plt_v.plotter.show(interactive=True).close()
