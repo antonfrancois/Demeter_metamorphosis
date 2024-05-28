@@ -528,7 +528,7 @@ class Reduce_field_Optim(Optimize_geodesicShooting):
         self.gamma = gamma
         self.mask_reduce = mask_reduce
         if self.mp.flag_O:
-            raise ValueError("Geodesic integrator was set incoreclly. Reduce field"
+            raise ValueError("Geodesic integrator was set incorrectly. Reduce field"
                              "should not be used with an oriented framework. mr.glag_O is True.")
 
     def _get_mu_(self):

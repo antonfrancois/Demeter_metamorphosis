@@ -802,7 +802,8 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         self._initialize_optimizer_(grad_coef,max_iter=n_iter)
 
         self.id_grid = tb.make_regular_grid(z_0.shape[2:],z_0.device)
-        assert self.id_grid != None
+        if self.id_grid is None:
+            raise ValueError(f"The initial momentum provided might have the wrong shape, got :{z_0.shape}")
 
         self.cost(self.parameter)
 
