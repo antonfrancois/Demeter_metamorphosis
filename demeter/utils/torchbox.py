@@ -586,13 +586,67 @@ def get_sobel_kernel_3d():
 # =================================================
 #            PLOT
 # =================================================
-def imCmp(I1, I2):
-    from numpy import concatenate,zeros
+def imCmp(I1, I2, method= None):
+    from numpy import concatenate,zeros,ones, maximum,exp
     _,_,M, N = I1.shape
-    I1 = I1[0,0,:,:].detach().cpu().numpy()
-    I2 = I2[0,0,:,:].detach().cpu().numpy()
+    if not isinstance(I1,np.ndarray):
+        I1 = I1.detach().cpu().numpy()
+    if not isinstance(I2,np.ndarray):
+        I2 = I2.detach().cpu().numpy()
+    I1 = I1[0,0,:,:]
+    I2 = I2[0,0,:,:]
 
-    return concatenate((I2[:, :, None], I1[:, :, None], zeros((M, N, 1))), axis=2)
+    if method is None:
+        return concatenate((I2[:, :, None], I1[:, :, None], zeros((M, N, 1))), axis=2)
+    elif 'seg' in method:
+        u = I2[:,:,None] * I1[:, :, None]
+        if 'w' in method:
+            d = I1[:,:,None] - I2[:, :, None]
+            # z = np.zeros(d.shape)
+            # z[I1[:,:,None] + I2[:, :, None]] = 1
+            # print(f'd min = {d.min()},{d.max()}')
+            r = maximum(d,0)/np.abs(d).max()
+            g = u + .1*exp(-d**2)*u + maximum(-d,0)*.2
+            b = maximum(-d,0)/np.abs(d).max()
+            # rr,gg,bb = r.copy(),g.copy(),b.copy()
+            # rr[r + g + b == 0] =1
+            # gg[r + g + b == 0] =1
+            # bb[r + g + b == 0] =1
+            rgb =concatenate(
+                (r,g,b,ones((M,N,1))), axis=2
+            )
+            # print(f"r {r.min()};{r.max()}")
+            return rgb
+        if 'h' in method:
+            d = I1[:,:,None] - I2[:, :, None]
+            # z = np.ones(d.shape)
+            # z[u == 0] =0
+            r = maximum(d,0)/np.abs(d).max()
+            g = u*( 1+ exp(-d**2))
+            b = maximum(-d,0)/np.abs(d).max()
+
+            rgb =concatenate(
+                (r,g,b,ones((M,N,1))), axis=2
+            )
+            return rgb
+        else:
+            return concatenate(
+                    (
+                        I1[:, :, None] - u,
+                        u,
+                        I2[:,:,None] - u,
+                        ones((M,N,1))
+                    ), axis=2
+                )
+    elif 'compose' in method:
+        return concatenate(
+            (
+                I1[:, :, None],
+                (I1[:, :, None]+ I2[:, :, None])/2,
+                I2[:, :, None],
+                ones((M, N, 1))
+            ), axis=2
+        )
 
 def checkDiffeo(field):
     if len(field.shape)== 4:
@@ -631,7 +685,8 @@ def gridDef_plot_2d(deformation,
                  dx_convention='pixel',
                  title="",
                  color=None,
-                linewidth=None
+                linewidth=None,
+                origin='lower',
                 ):
     """
 
@@ -641,8 +696,8 @@ def gridDef_plot_2d(deformation,
     :param title:
     :return:
     """
-    if not torch.is_tensor(deformation):
-        raise TypeError("showDef has to be tensor object")
+    # if not torch.is_tensor(deformation):
+    #     raise TypeError("showDef has to be tensor object")
     if deformation.size().__len__() != 4 or deformation.size()[0] > 1:
         raise TypeError("deformation has to be a (1,H,W,2) "
                         "tensor object got "+str(deformation.size()))
@@ -665,17 +720,20 @@ def gridDef_plot_2d(deformation,
         title += 'diffeo = '+str(cD[:,:,0].sum()<=0)
 
         ax.imshow(cD,interpolation='none',origin='lower')
+        origin = 'lower'
 
+    sign = 1 if origin == 'lower' else -1
+    kw = dict(color=color,linewidth=linewidth)
     ax.plot(deform[0,:,::step, 0].numpy(),
-                 deform[0,:,::step, 1].numpy(), color=color,linewidth=linewidth)
+                 sign * deform[0,:,::step, 1].numpy(), **kw)
     ax.plot(deform[0,::step,:, 0].numpy().T,
-                 deform[0,::step,:, 1].numpy().T, color=color,linewidth=linewidth)
+                 sign * deform[0,::step,:, 1].numpy().T, **kw)
 
     # add the last lines on the right and bottom edges
     ax.plot(deform[0,:,-1, 0].numpy(),
-                 deform[0,:,-1, 1].numpy(), color=color,linewidth=linewidth)
+                 sign * deform[0,:,-1, 1].numpy(), **kw)
     ax.plot(deform[0,-1,:, 0].numpy().T,
-                 deform[0,-1,:, 1].numpy().T, color=color,linewidth=linewidth)
+                 sign * deform[0,-1,:, 1].numpy().T, **kw)
     ax.set_aspect('equal')
     ax.set_title(title)
 
@@ -699,7 +757,7 @@ def quiver_plot(field,
     :return:axes
 
     """
-    if not torch.is_tensor(field):
+    if not is_tensor(field):
         raise TypeError("field has to be tensor object")
     if field.size().__len__() != 4 or field.size()[0] > 1:
         raise TypeError("field has to be a (1",
@@ -729,6 +787,11 @@ def quiver_plot(field,
             scale_units=scale_units, scale=scale)
 
     return ax
+
+def is_tensor(input):
+    # print("is_tensor",input.__class__ == type(torch.Tensor),input.__class__,type(torch.Tensor))
+    # print("is_tensor", "Tensor" in str(input.__class__), "Tensor" in str(type(torch.Tensor)))
+    return "Tensor" in str(input.__class__)
 
 def deformation_show(deformation,step=2,
                      check_diffeo=False,title="",color=None):
@@ -803,7 +866,7 @@ def geodesic_3d_slider(mr):
     """
     image = mr.mp.image_stock.numpy()
     print(image.shape)
-    residuals = mr.mp.residuals_stock.numpy()
+    residuals = mr.mp.momentum_stock.numpy()
 
 
     fig,ax = plt.subplots(1,2)
@@ -1136,7 +1199,8 @@ def pixel2square_convention(field,grid = True):
     elif field.shape[-1] == 3 and len(field.shape) == 5:
         _,D,H,W,_ = field.shape
         mult = torch.tensor((2/(W-1),2/(H-1),2/(D-1))).to(field.device)
-        if not torch.is_tensor(field):
+        # if not torch.is_tensor(field): # does not works anymore for a reason
+        if not is_tensor(field):
             mult = mult.numpy()
         sub =1 if grid else 0
         return field * mult[None,None,None,None] - sub
@@ -1153,14 +1217,14 @@ def square2pixel_convention(field,grid=True):
     if field.shape[-1] == 2 :
         _,H,W,_ = field.shape
         mult = torch.tensor(((W-1)/2,(H-1)/2)).to(field.device)
-        if not torch.is_tensor(field):
+        if not is_tensor(field):
             mult = mult.numpy()
         add = 1 if grid else 0
         return (field + add) * mult[None,None,None]
     elif field.shape[-1] == 3 and len(field.shape) == 5:
         _,D,H,W,_ = field.shape
         mult = torch.tensor(((W-1)/2,(H-1)/2,(D-1)/2)).to(field.device)
-        if not torch.is_tensor(field):
+        if not is_tensor(field):
             mult = mult.numpy()
         add = 1 if grid else 0
         return (field + add) * mult[None,None,None,None]
@@ -1466,7 +1530,7 @@ def make_ball_at_shape_center(img,
         sum_seg = img_supp + bool_ball
 
         return float(2 *prod_seg.sum() / sum_seg.sum())
-    import image_3d_visualisation as i3v
+
     if force_r is None:
         r = 3 if r_min is None else r_min
         # sum_threshold = 20
