@@ -79,39 +79,40 @@ class Geodesic_integrator(torch.nn.Module,ABC):
     def _get_mu_(self):
         pass
 
-    def forward(self,image,residual_ini,
-        field_ini=None,
-        save=True,
-        plot =0,
-        t_max = 1,
-        verbose=False,
-        sharp=None,
-        debug= False):
+    def forward(self, image, momentum_ini,
+                field_ini=None,
+                save=True,
+                plot =0,
+                t_max = 1,
+                verbose=False,
+                sharp=None,
+                debug= False):
         r""" This method is doing the temporal loop using the good method `_step_`
 
         :param image: (tensor array) of shape [1,1,H,W]. Source image ($I_0$)
         :param field_ini: to be deprecated, field_ini is id_grid
-        :param residual_ini: (tensor array) of shape [H,W]. initial residual ($z_0$)
+        :param momentum_ini: (tensor array) of shape [H,W]. note that for images
+        the momentum is equal to the residual ($p = z$)
         :param save: (bool) option to save the integration intermediary steps.
         :param plot: (int) positive int lower than `self.n_step` to plot the indicated
                          number of intemediary steps. (if plot>0, save is set to True)
 
         """
-        if len(residual_ini.shape) not in [4,5]:
-            raise ValueError(f"residual_ini must be of shape [B,C,H,W] or [B,C,D,H,W] got {residual_ini.shape}")
-        device = residual_ini.device
+        if len(momentum_ini.shape) not in [4, 5]:
+            raise ValueError(f"residual_ini must be of shape [B,C,H,W] or [B,C,D,H,W] got {momentum_ini.shape}")
+        device = momentum_ini.device
         # print(f'sharp = {sharp} flag_sharp : {self.flag_sharp},{self._phis}')
         self._init_sharp_(sharp)
         self.source = image.detach()
         self.image = image.clone().to(device)
-        self.residuals = residual_ini
+        self.momentum = momentum_ini
         self.debug = debug
         try:
             self.save = True if self._force_save else save
         except AttributeError:
             self.save = save
 
-        self.id_grid = tb.make_regular_grid(residual_ini.shape[2:],device=device)
+        self.id_grid = tb.make_regular_grid(momentum_ini.shape[2:], device=device)
         assert self.id_grid != None
 
         if field_ini is None:
@@ -125,21 +126,21 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         if self.save:
             self.image_stock = torch.zeros((t_max*self.n_step,)+image.shape[1:])
             self.field_stock = torch.zeros((t_max*self.n_step,)+self.field.shape[1:])
-            self.residuals_stock = torch.zeros((t_max*self.n_step,)+residual_ini.shape[1:])
+            self.momentum_stock = torch.zeros((t_max * self.n_step,) + momentum_ini.shape[1:])
 
         for i,t in enumerate(torch.linspace(0,t_max,t_max*self.n_step)):
             self._i = i
 
             _,field_to_stock,residuals_dt = self.step()
 
-            if self.image.isnan().any() or self.residuals.isnan().any():
+            if self.image.isnan().any() or self.momentum.isnan().any():
                 raise OverflowError("Some nan where produced ! the integration diverged",
                                     "changing the parameters is needed (increasing n_step can help) ")
 
             if self.save:
                 self.image_stock[i] = self.image[0].detach().to('cpu')
                 self.field_stock[i] = field_to_stock[0].detach().to('cpu')
-                self.residuals_stock[i] = residuals_dt.detach().to('cpu')
+                self.momentum_stock[i] = residuals_dt.detach().to('cpu')
 
             if verbose:
                 update_progress(i/(t_max*self.n_step))
@@ -169,35 +170,35 @@ class Geodesic_integrator(torch.nn.Module,ABC):
             image = image - grad_I_scalar_v * dt
         return image
 
-    def _compute_vectorField_(self,residuals,grad_image):
+    def _compute_vectorField_(self, momentum, grad_image):
         r""" operate the equation $K \star (z_t \cdot \nabla I_t)$
 
-        :param residuals: (tensor array) of shape [H,W] or [D,H,W]
+        :param momentum: (tensor array) of shape [H,W] or [D,H,W]
         :param grad_image: (tensor array) of shape [B,C,2,H,W] or [B,C,3,D,H,W]
         :return: (tensor array) of shape [B,H,W,2]
         """
         # C = residuals.shape[1]
-        return tb.im2grid(self.kernelOperator((-(residuals.unsqueeze(2) * grad_image).sum(dim=1))))
+        return tb.im2grid(self.kernelOperator((-(momentum.unsqueeze(2) * grad_image).sum(dim=1))))
 
-    def _compute_vectorField_multimodal_(self,residuals,grad_image):
+    def _compute_vectorField_multimodal_(self, momentum, grad_image):
         r""" operate the equation $K \star (z_t \cdot \nabla I_t)$
 
-        :param residuals: (tensor array) of shape [B,C,H,W] or [B,C,D,H,W]
+        :param momentum: (tensor array) of shape [B,C,H,W] or [B,C,D,H,W]
         :param grad_image: (tensor array) of shape [B,C,2,H,W] or [B,C,3,D,H,W]
         :return: (tensor array) of shape [B,H,W,2]
         """
-        wheigths = self.channel_weight.to(residuals.device)
+        wheigths = self.channel_weight.to(momentum.device)
         W = wheigths.sum()
         # ic(residuals.shape,self.channel_weight.shape)
         return tb.im2grid(self.kernelOperator((
-                -((wheigths * residuals).unsqueeze(2) * grad_image
-                ).sum(dim=1)
+                -((wheigths * momentum).unsqueeze(2) * grad_image
+                  ).sum(dim=1)
                 # / W
         ))) # PAS OUF SI BATCH
 
     def _update_field_multimodal_(self):
         grad_image = tb.spacialGradient(self.image,dx_convention='pixel')
-        self.field = self._compute_vectorField_multimodal_(self.residuals,grad_image)
+        self.field = self._compute_vectorField_multimodal_(self.momentum, grad_image)
         self.field *= self._field_cst_mult()
 
     def _field_cst_mult(self):
@@ -208,35 +209,35 @@ class Geodesic_integrator(torch.nn.Module,ABC):
 
     def _update_field_(self):
         grad_image = tb.spacialGradient(self.image,dx_convention='pixel')
-        self.field = self._compute_vectorField_(self.residuals,grad_image)
+        self.field = self._compute_vectorField_(self.momentum, grad_image)
         self.field *= self._field_cst_mult()
 
     def _update_residuals_Eulerian_(self):
         residuals_dt = - tb.Field_divergence(dx_convention='pixel')(
-                            self.residuals[0,0][None,:,:,None]* self.field,
+            self.momentum[0,0][None, :, :, None] * self.field,
                             )
 
-        self.residuals = self.residuals + residuals_dt /self.n_step
+        self.momentum = self.momentum + residuals_dt / self.n_step
 
     def _update_residuals_semiLagrangian_(self,deformation):
-        div_v_times_z = self.residuals* tb.Field_divergence(dx_convention='pixel')(self.field)[0,0]
+        div_v_times_z = self.momentum * tb.Field_divergence(dx_convention='pixel')(self.field)[0,0]
 
-        self.residuals = tb.imgDeform(self.residuals,
-                                      deformation,
-                                      dx_convention='pixel',
-                                      clamp=False)\
-                         - div_v_times_z/self.n_step
+        self.momentum = tb.imgDeform(self.momentum,
+                                     deformation,
+                                     dx_convention='pixel',
+                                     clamp=False) \
+                        - div_v_times_z / self.n_step
 
     def _compute_sharp_intermediary_residuals_(self):
-        device = self.residuals.device
-        resi_cumul = torch.zeros(self.residuals.shape,device=device)
+        device = self.momentum.device
+        resi_cumul = torch.zeros(self.momentum.shape, device=device)
         # for k,phi in enumerate(self._phis[self._i][:]):
         for k,phi in enumerate(self._phis[self._i][1:]):
-            resi_cumul += tb.imgDeform(self.residuals_stock[k][None].to(device),
+            resi_cumul += tb.imgDeform(self.momentum_stock[k][None].to(device),
                                        phi,
                                        dx_convention='pixel',
                                        clamp=False)
-        resi_cumul = resi_cumul + self.residuals
+        resi_cumul = resi_cumul + self.momentum
         return resi_cumul
         # Non sharp but working residual
         # if self._i >0:
@@ -250,10 +251,10 @@ class Geodesic_integrator(torch.nn.Module,ABC):
 
     def _update_image_Eulerian_(self):
         self.image =  self._image_Eulerian_integrator_(self.image,self.field,1/self.n_step,1)
-        self.image = self.image + (self.residuals *self.mu)/ self.n_step
+        self.image = self.image + (self.momentum * self.mu) / self.n_step
 
     def _update_image_semiLagrangian_(self,deformation,residuals = None,sharp=False):
-        if residuals is None: residuals = self.residuals
+        if residuals is None: residuals = self.momentum
         image = self.source if sharp else self.image
         self.image = tb.imgDeform(image,deformation,dx_convention='pixel')
         if self._get_mu_() != 0: self.image += (residuals *self.mu)/self.n_step
@@ -273,19 +274,19 @@ class Geodesic_integrator(torch.nn.Module,ABC):
                 #     'pixel'
                 # ).to(self.field.device)
 
-    def _update_residuals_weighted_semiLagrangian_(self, deformation):
+    def _update_momentum_weighted_semiLagrangian_(self, deformation):
         f_t = self.rf.f(self._i)
-        fz_times_div_v = f_t * self.residuals * tb.Field_divergence(dx_convention='pixel')(self.field)[0, 0]
-        div_fzv = -tb.imgDeform(f_t * self.residuals,
+        fz_times_div_v = f_t * self.momentum * tb.Field_divergence(dx_convention='pixel')(self.field)[0, 0]
+        div_fzv = -tb.imgDeform(f_t * self.momentum,
                                 deformation,
                                 dx_convention='pixel',
                                 clamp=False)[0, 0] \
                   + fz_times_div_v / self.n_step
-        z_time_dtF = self.residuals * self.rf.dt_F(self._i)
-        self.residuals = - (div_fzv + z_time_dtF) / f_t
+        z_time_dtF = self.momentum * self.rf.dt_F(self._i)
+        self.momentum = - (div_fzv + z_time_dtF) / f_t
 
     def _update_image_weighted_semiLagrangian_(self, deformation,residuals = None,sharp=False):
-        if residuals is None: residuals = self.residuals
+        if residuals is None: residuals = self.momentum
         image = self.source if sharp else self.image
         self.image = tb.imgDeform(image, deformation, dx_convention='pixel') + \
                      (self.rf.F_div_f(self._i) *  residuals) / self.n_step
@@ -303,10 +304,10 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         if self.flag_W:
             free_field = tb.im2grid(
                 # self.kernelOperator((- self.rf.f(self._i) * self.residuals * grad_image[0]))
-                (- self.rf.f(self._i) * self.residuals * grad_image[0])
+                (- self.rf.f(self._i) * self.momentum * grad_image[0])
             )/self._get_mu_()
         else:
-            free_field = self._compute_vectorField_(self.residuals, grad_image)
+            free_field = self._compute_vectorField_(self.momentum, grad_image)
             free_field *= self._field_cst_mult()
         oriented_field = 0
         if self.flag_O:
@@ -365,14 +366,14 @@ class Geodesic_integrator(torch.nn.Module,ABC):
                       origin='lower',
                       vmin=0,vmax=1)
         # v_abs_max = (self.residuals_stock.abs().max()).max()
-        v_abs_max = torch.quantile(self.residuals.abs(),.99)
+        v_abs_max = torch.quantile(self.momentum.abs(), .99)
         kw_residuals_args = dict(cmap='RdYlBu_r',
                       extent=[-1,1,-1,1],
                       origin='lower',
                       vmin=-v_abs_max,
                       vmax=v_abs_max)
         size_fig = 5
-        C = self.residuals_stock.shape[1]
+        C = self.momentum_stock.shape[1]
         plt.rcParams['figure.figsize'] = [size_fig*3,n_figs*size_fig]
         fig,ax = plt.subplots(n_figs,2 + C)
 
@@ -384,8 +385,8 @@ class Geodesic_integrator(torch.nn.Module,ABC):
             fig.colorbar(i_s,ax=ax[i,0],fraction=0.046, pad=0.04)
 
             for j in range(C):
-                r_s =ax[i,j+1].imshow(self.residuals_stock[t,j].detach().numpy(),
-                                **kw_residuals_args)
+                r_s =ax[i,j+1].imshow(self.momentum_stock[t,j].detach().numpy(),
+                                      **kw_residuals_args)
                 ax[i,j+1].axis('off')
 
             fig.colorbar(r_s,ax=ax[i,-2],fraction=0.046, pad=0.04)
@@ -511,10 +512,10 @@ class Geodesic_integrator(torch.nn.Module,ABC):
             image_list_for_gif = [I[0].numpy() for I in self.image_stock]
             image_kw = DLT_KW_IMAGE
         elif 'residual' in object or "z" in object:
-            image_list_for_gif = [z[0].numpy() for z in self.residuals_stock]
+            image_list_for_gif = [z[0].numpy() for z in self.momentum_stock]
             #image_kw = DLT_KW_RESIDUALS
-            image_kw = dict(cmap='RdYlBu_r',origin='lower',
-                            vmin=self.residuals_stock.min(),vmax=self.residuals_stock.max())
+            image_kw = dict(cmap='RdYlBu_r', origin='lower',
+                            vmin=self.momentum_stock.min(), vmax=self.momentum_stock.max())
         elif 'deformation' in object:
             image_list_for_gif = []
             for n in range(self.n_step):
@@ -674,12 +675,12 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
             ))
         else:
             dist = float(self._compute_V_norm_(
-                    self.mp.residuals_stock[0][None],
+                    self.mp.momentum_stock[0][None],
                     self.mp.source
                 ))
-            for t in range(self.mp.residuals_stock.shape[0]-1):
+            for t in range(self.mp.momentum_stock.shape[0] - 1):
                 dist += float(self._compute_V_norm_(
-                    self.mp.residuals_stock[t+1][None],
+                    self.mp.momentum_stock[t + 1][None],
                     self.mp.image_stock[t][None]
                 ))
             return dist

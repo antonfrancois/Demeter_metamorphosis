@@ -69,7 +69,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
         self._update_image_Eulerian_()
         self._update_residuals_Eulerian_()
 
-        return (self.image,self.field,self.residuals)
+        return (self.image,self.field,self.momentum)
 
     def _step_advection_semiLagrangian(self):
         self._update_field_()
@@ -78,7 +78,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
         self._update_image_semiLagrangian_(deformation)
         self._update_residuals_Eulerian_()
 
-        return (self.image,self.field,self.residuals)
+        return (self.image,self.field,self.momentum)
 
     def _step_full_semiLagrangian(self):
         self._update_field_()
@@ -87,7 +87,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
         self._update_image_semiLagrangian_(deformation)
         self._update_residuals_semiLagrangian_(deformation)
 
-        return (self.image,self.field,self.residuals)
+        return (self.image,self.field,self.momentum)
 
     def _step_sharp_semiLagrangian(self):
         # device = self.image.device
@@ -97,7 +97,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
         resi_cumul = 0
         if self._get_mu_() != 0:
             resi_cumul = self._compute_sharp_intermediary_residuals_()
-            resi_cumul = resi_cumul.to(self.residuals.device)
+            resi_cumul = resi_cumul.to(self.momentum.device)
         if self._i > 0: self._phis[self._i - 1] = None
 
         # # DEBUG ============================
@@ -117,7 +117,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
                              ,**DLT_KW_IMAGE)
             if self._i !=0:
                 fig,ax = plt.subplots(1,3,figsize =(15,5))
-                aa = ax[0].imshow(self.residuals.detach()[0,0],**DLT_KW_RESIDUALS)
+                aa = ax[0].imshow(self.momentum.detach()[0,0], **DLT_KW_RESIDUALS)
                 fig.colorbar(aa,ax=ax[0],fraction=0.046, pad=0.04)
 
                 # self._update_residuals_semiLagrangian_(phi_n_n)
@@ -139,7 +139,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
         # if self.mu != 0: self.image += self.mu * resi_cumul/self.n_step
         self._update_residuals_semiLagrangian_(self._phis[self._i][self._i])
 
-        return (self.image, self.field, self.residuals)
+        return (self.image, self.field, self.momentum)
 
     def step(self):
         raise ValueError("You have to specify the method used : 'Eulerian','advection_semiLagrangian'"

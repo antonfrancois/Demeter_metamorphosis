@@ -268,11 +268,11 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
         else:
             def_z = self.id_grid - self.field / self.n_step
             def_I = def_z
-            resi_to_add = self.residuals
+            resi_to_add = self.momentum
 
         if self.flag_W:
             self._update_image_weighted_semiLagrangian_(def_I,resi_to_add,sharp=self.flag_sharp)
-            self._update_residuals_weighted_semiLagrangian_(def_z)
+            self._update_momentum_weighted_semiLagrangian_(def_z)
 
             # DEBUG
             # print(">> ",self._i)
@@ -301,7 +301,7 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
                                                sharp = self.flag_sharp)
             self._update_residuals_semiLagrangian_(def_z)
 
-        return (self.image, self.field, self.residuals)
+        return (self.image, self.field, self.momentum)
 
     def compute_field_sim(self):
         if not self.flag_O:
