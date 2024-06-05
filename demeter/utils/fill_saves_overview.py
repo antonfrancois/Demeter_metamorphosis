@@ -49,12 +49,16 @@ def _optim_to_state_dict_(optim,file_name,write_dict=None,message=None):
         )
     return  {**write_dict , **state_dict}
 
-def _write_dict_to_csv(dict,csv_file = DEFAULT_CSV_FILE):
-    with open(DEFAULT_PATH+csv_file,mode='a') as csv_f:
+def _write_dict_to_csv(dict,csv_file = None,path=None):
+    if csv_file is None: csv_file = DEFAULT_CSV_FILE
+    if path is None: path = DEFAULT_PATH
+    if not os.path.isdir(path):
+        os.mkdir(path)
+    wh = False if os.path.isfile(path+csv_file) else True
+    with open(path+csv_file,mode='a') as csv_f:
         writer = csv.DictWriter(csv_f,dict.keys(),delimiter=';')
-        # writer.writeheader()
+        if wh: writer.writeheader()
         writer.writerow(dict)
-
 def append_to_csv_new(file_name,message=''):
 
     mr = mt.load_optimize_geodesicShooting(file_name)

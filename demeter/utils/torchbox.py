@@ -21,7 +21,7 @@ import utils.bspline as mbs
 import utils.vector_field_to_flow as vff
 import utils.decorators as deco
 from utils.constants import *
-from utils.image_3d_visualisation import image_slice
+# from utils.image_3d_visualisation import image_slice
 
 # ================================================
 #        IMAGE BASICS
@@ -30,7 +30,7 @@ from utils.image_3d_visualisation import image_slice
 def reg_open(number, size = None,requires_grad= False,location = 'local',device='cpu'):
 
     path = ROOT_DIRECTORY
-    path += '/im2Dbank/reg_test_'+number+'.png'
+    path += '/examples/im2Dbank/reg_test_'+number+'.png'
 
     I = rgb2gray(plt.imread(path))
     I = torch.tensor(I[newaxis,newaxis,:],
@@ -354,6 +354,22 @@ def resize_image(image,scale_factor):
     for i in image:
         i_s.append(torch.nn.functional.grid_sample(i.to(image[0].device),id_grid,**DLT_KW_GRIDSAMPLE))
     return i_s
+
+def image_slice(I,coord,dim):
+    """
+    Return a slice of the image I at the given coordinate and dimension
+
+    :param I: [H,W,D] numpy array or tensor
+    :param coord: int coordinate of the slice, if float it will be casted to int
+    :param dim: int in {0,1,2} dimension of the slice
+    """
+    coord = int(coord)
+    if dim == 0:
+        return I[coord,:,:]
+    elif dim == 1:
+        return I[:,coord,:]
+    elif dim == 2:
+        return I[:,:,coord]
 
 def make_3d_flat(img_3D,slice):
     D,H,W = img_3D.shape

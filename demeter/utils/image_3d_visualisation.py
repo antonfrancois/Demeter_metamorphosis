@@ -19,14 +19,7 @@ from utils.toolbox import save_gif_with_plt
 from icecream import ic
 
 # Utility function
-def image_slice(I,coord,dim):
-    coord = int(coord)
-    if dim == 0:
-        return I[coord,:,:]
-    elif dim == 1:
-        return I[:,coord,:]
-    elif dim == 2:
-        return I[:,:,coord]
+
 
 # def line2segmentsCollection(x_coord,y_coord):
 
@@ -92,9 +85,9 @@ def imshow_3d_slider(image,image_cmap = 'gray'):
     kw_image = dict(
         vmin=image.min(),vmax=image.max(),cmap=image_cmap
     )
-    img_x = ax[0].imshow( image_slice(image,init_x_coord,dim=0), **kw_image)
-    img_y = ax[1].imshow( image_slice(image,init_y_coord,dim=1),origin='lower', **kw_image)
-    img_z = ax[2].imshow( image_slice(image,init_z_coord,dim=2),origin='lower', **kw_image)
+    img_x = ax[0].imshow( tb.image_slice(image,init_x_coord,dim=0), **kw_image)
+    img_y = ax[1].imshow( tb.image_slice(image,init_y_coord,dim=1),origin='lower', **kw_image)
+    img_z = ax[2].imshow( tb.image_slice(image,init_z_coord,dim=2),origin='lower', **kw_image)
     ax[0].set_xlabel('X')
     ax[1].set_xlabel('Y')
     ax[2].set_xlabel('Z')
@@ -139,9 +132,9 @@ def imshow_3d_slider(image,image_cmap = 'gray'):
 
     # The function to be called anytime a slider's value changes
     def update(val):
-        img_x.set_data(image_slice(image, x_slider.val, 0))
-        img_y.set_data(image_slice(image, y_slider.val, 1))
-        img_z.set_data(image_slice(image, z_slider.val, 2))
+        img_x.set_data(tb.image_slice(image, x_slider.val, 0))
+        img_y.set_data(tb.image_slice(image, y_slider.val, 1))
+        img_z.set_data(tb.image_slice(image, z_slider.val, 2))
 
         #update lines
         l_x_v.set_xdata([z_slider.val,z_slider.val])
@@ -982,7 +975,7 @@ class Visualize_geodesicOptim:
         # self.image = (self.image - self.image.min()) /(self.image - self.image.min()).max()
         self.image = np.clip(self.image,a_min=0,a_max=1)
         T,D,H,W = self.image.shape
-        res_np = self.gs.mp.residuals_stock.numpy()
+        res_np = self.gs.mp.momentum_stock.numpy()
         self.res_max_abs = res_np.__abs__().max()
         detOfJaco = tb.checkDiffeo(geoShoot.mp.get_deformation()).numpy()[0]
         self.detOfJaco = [vedo.Volume( detOfJaco ).addScalarBar3D()]

@@ -667,6 +667,10 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
     def _get_rho_(self):
         pass
 
+    @abstractmethod
+    def get_all_parameters(self):
+        pass
+
     def get_geodesic_distance(self,only_zero = False):
         if only_zero:
             return float(self._compute_V_norm_(
@@ -957,43 +961,38 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         image_def = tb.imgDeform(self.source,self.mp.get_deformator(),dx_convention='pixel')
         return float(cf.SumSquaredDifference(self.target)(image_def))
 
-    def save(self,source_name,target_name,message=None,destination=None,file=None):
+    def save(self,source_name,target_name,light_save = False,message=None,destination=None,file=None):
         """ Save an optimisation to be later loaded and write all sort of info
         in a csv file
 
         :param source_name: (str) will appear in the file name
         :param target_name: (str) will appear in the file name
+        :param light_save: (bool) if True, only the initial momentum is saved.
+        If False all data, integration, source and target are saved. Setting it to True
+        save a lot of space on the disk, but you might not be able to get the whole
+        registration back if the source image is different or the code used for
+        computing it changed for any reason.
         :param message: (str) will appear in the csv storing all data
         :param destination: path of the folder to store the csvfile overview
         :param file:
         :return:
         """
-
         if self.to_analyse == 'Integration diverged':
             print("Can't save optimisation that didn't converged")
             return 0
         self.to_device('cpu')
-        path =ROOT_DIRECTORY+'/my_metamorphosis/saved_optim/'
+        path = OPTIM_SAVE_DIR
+        ic(path)
         date_time = datetime.now()
         if type(self.mp.sigma_v) is list: n_dim = '2D' if len(self.mp.sigma_v[0]) ==2 else '3D'
         else: n_dim = '2D' if len(self.mp.sigma_v) ==2 else '3D'
         id_num = 0
 
-        # flag for discriminating against different kinds of Optimizers
-        try:
-            isinstance(self.mp.rf,Residual_norm_function)
-            modifier_str = self.mp.rf.__repr__()
-        except AttributeError:
-            modifier_str = 'None'
 
-        if 'afrancois' in ROOT_DIRECTORY:loc = '_atipnp'
-        elif 'anfrancois' in ROOT_DIRECTORY: loc = '_attelecom'
-        elif 'fanton' in ROOT_DIRECTORY: loc = '_atbar'
-        else: loc = ''
         # build file name
         def file_name_maker_(id_num):
             return n_dim+date_time.strftime("_%d_%m_%Y")+'_'+\
-                    source_name+'_to_'+target_name+loc+'_{:03d}'.format(id_num)+\
+                    source_name+'_to_'+target_name+'_{:03d}'.format(id_num)+\
                     '.pk1'
         file_name = file_name_maker_(id_num)
         while file_name in os.listdir(path):
@@ -1016,21 +1015,21 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
 
         #=================
         # save the data
-        # print(self.data_term)
         # copy and clean dictonary containing all values
         dict_copy = {}
-        # print("\n SAVING :")
-        # print(self.__dict__.keys())
+        dict_copy['light_save'] = light_save
+        dict_copy['__repr__'] = self.__repr__()
         for k in FIELD_TO_SAVE:
-            # print(k,' >> ',self.__dict__.get(k))
             dict_copy[k] = self.__dict__.get(k)
-            # ic(dict_copy[k])
             if torch.is_tensor(dict_copy[k]):
                 dict_copy[k] = dict_copy[k].cpu().detach()
-        dict_copy['mp'] = self.mp # For some reason 'mp' wasn't showing in __dict__
+        if light_save:
+            dict_copy['parameters'] = self.get_all_parameters()
+        else:
+            dict_copy['mp'] = self.mp # For some reason 'mp' wasn't showing in __dict__
 
-        # dict_copy['data_term'] = self.data_term
-        if type(self.data_term) != Ssd:
+
+        if type(self.data_term) != dt.Ssd:
             print('\nBUG WARNING : An other data term than Ssd was detected'
                 "For now our method can't save it, it is ok to visualise"
                 "the optimisation, but be careful loading the optimisation.\n")
@@ -1038,17 +1037,12 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         try:
             dict_copy['landmarks'] = (self.source_landmark,self.target_landmark,self.deform_landmark)
         except AttributeError:
-            print('No landmark detected')
+            # print('No landmark detected')
             pass
 
-        # print(dict_copy.keys())
         with open(path+file_name,'wb') as f:
             pickle.dump(dict_copy,f,pickle.HIGHEST_PROTOCOL)
         print('Optimisation saved in '+path+file_name+'\n')
-        if 'afrancois' in ROOT_DIRECTORY:
-            print(f"To get file : sh shell/pull_from_server.sh -vl ipnp -f {file_name}")
-        elif loc == '_attelecom':
-            print(f"To get file : sh shell/pull_from_server.sh -vl gpu3 -f {file_name}")
 
         return file_name,path
 
@@ -1114,7 +1108,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         ax[1,1].set_title("comparaison deformed image with target",fontsize = 25)
         ax[1,0].imshow(self.mp.image[0,0].detach().cpu().numpy(),**image_kw)
         ax[1,0].set_title("Integrated source image",fontsize = 25)
-        tb.quiver_plot(self.mp.get_deformation()- self.id_grid,
+        tb.quiver_plot(self.mp.get_deformation()- self.mp.id_grid,
                        ax=ax[1,1],step=15,color=GRIDDEF_YELLOW,
                        )
 
@@ -1157,102 +1151,3 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
 
 
 
-
-
-
-
-def load_optimize_geodesicShooting(file_name,path=None,verbose=True):
-    """ load previously saved optimisation in order to plot it later."""
-
-    # import pickle
-    import io
-
-    class CPU_Unpickler(pickle.Unpickler):
-        """usage :
-            #contents = pickle.load(f) becomes...
-            contents = CPU_Unpickler(f).load()
-        """
-        def find_class(self, module, name):
-            # print(f"Unpickler DEBUG : module:{module}, name:{name}")
-            if module == 'torch.storage' and name == '_load_from_bytes':
-                return lambda b: torch.load(io.BytesIO(b), map_location='cpu')
-            else:
-                if module == 'metamorphosis': module = 'my_metamorphosis.metamorphosis'
-                if name == 'metamorphosis_path': name = 'Metamorphosis_path'
-                if name == 'multi_scale_GaussianRKHS': name = 'Multi_scale_GaussianRKHS'
-                # print('module :',module,' name : ', name)
-                return super().find_class(module, name)
-
-    if path is None:
-        path =ROOT_DIRECTORY+OPTIM_SAVE_DIR
-    if not file_name in os.listdir(path):
-        raise FileNotFoundError("File "+file_name+" does not exist in "+path)
-    with open(path+file_name,'rb') as f:
-        # opti_dict = pickle.load(f)
-        opti_dict = CPU_Unpickler(f).load()
-
-
-    # ic(opti_dict.keys())
-    # ic(opti_dict['mp']._get_mu_())
-    # ic(opti_dict['optimizer_method_name'])
-    # SELECT THE RIGHT METAMORPHOSIS OPTIMISER
-    # TODO : Modifier ça optimize_geo est une classe abstraite maintenant.
-    # TODO : prevoir de pouvoir ouvrir multimodal optim
-    # prevoir de decider de quelle class on parle en fonction de "F".
-    # optimizer = Multimodal_Optim
-    # print('Multimodal Metamorphosis loaded :' )
-    flag_JM = False
-    try:   # CONSTRAINTED METAMORPHOSIS
-        isinstance(opti_dict['mp'].rf,Residual_norm_function)
-        optimizer = Constrained_Optim
-        if verbose: print('Constrained > Weighted')
-
-    except AttributeError:
-        # ic("the try failed")
-    #     ic(opti_dict.keys())
-    #     pass
-        if type(opti_dict['mp']._get_mu_()) == tuple: # WEIGHTED JOINED MASK METAMORPHOSIS
-            optimizer = Optimize_weighted_joinedMask    # Utiliser le masque sauvé pour detecter si c'est un joined mask
-            flag_JM = True
-            if verbose: print('Weighted joined mask Metamorphosis loaded :' )
-
-        else: # CLASSIC METAMORPHOSIS
-            optimizer = Optimize_metamorphosis
-            if verbose: print('Classic Metamorphosis loaded :' )
-
-    # ic(flag_JM)
-    # ic(opti_dict['source'].shape)
-    if verbose: print('DT:',opti_dict['data_term'])
-    if flag_JM:
-        new_optim = optimizer(opti_dict['source'][:,0][None],
-                              opti_dict['target'][:,0][None],
-                              opti_dict['source'][:,1][None],
-                              opti_dict['target'][:,1][None],
-                              opti_dict['mp'],
-                              cost_cst=opti_dict['cost_cst'],
-                              data_term=opti_dict['data_term'],
-                              optimizer_method=opti_dict['optimizer_method_name'])
-
-    else:
-        new_optim = optimizer(opti_dict['source'],
-                            opti_dict['target'],
-                            opti_dict['mp'],
-                            cost_cst=opti_dict['cost_cst'],
-                            optimizer_method=opti_dict['optimizer_method_name'])
-    for k in FIELD_TO_SAVE[5:]:
-        try:
-            new_optim.__dict__[k] = opti_dict[k]
-        except KeyError:
-            print("old fashioned Metamorphosis : No data_term, default is Ssd")
-            pass
-    # print('\n OPTI DICT',opti_dict.keys())
-    if 'landmarks' in opti_dict.keys():
-        new_optim.compute_landmark_dist(opti_dict['landmarks'][0],opti_dict['landmarks'][1])
-        # new_optim.source_landmark =
-        # new_optim.target_landmark =
-        # new_optim.deform_landmark = opti_dict['landmarks'][2]
-
-    ic(new_optim.__class__.__name__)
-    new_optim.loaded_from_file = file_name
-    if verbose: print(f'New optimiser loaded ({file_name}) :\n',new_optim.__repr__())
-    return new_optim

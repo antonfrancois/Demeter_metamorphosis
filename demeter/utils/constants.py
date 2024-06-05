@@ -8,7 +8,7 @@ ROOT_DIRECTORY = os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))
 ))
 # used in saving metamorphosis saving
-OPTIM_SAVE_DIR = '/my_metamorphosis/saved_optim/'
+OPTIM_SAVE_DIR = ROOT_DIRECTORY + '/saved_optim/'
 FIELD_TO_SAVE = [
             'mp',
             'source', 'target', 'cost_cst', 'optimizer_method_name','data_term',

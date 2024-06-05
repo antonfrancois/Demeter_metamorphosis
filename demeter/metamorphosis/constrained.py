@@ -122,7 +122,8 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
                  sigma_v=(1, 1, 1),
                  n_step=None,
                  border_effect=True,
-                 sharp = False
+                 sharp = False,
+                 **kwargs
     ):
         super(ConstrainedMetamorphosis_integrator, self).__init__(sigma_v)
         if residual_function is None:
@@ -207,6 +208,7 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
             return self.gamma
         else:
             return 0
+
 
     # def _update_residuals_weighted_semiLagrangian_(self, deformation):
     #     f_t = self.rf.f(self._i)
@@ -325,7 +327,7 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
 
 class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
 
-    def __init__(self, source, target, geodesic, cost_cst,data_term=None, optimizer_method='adadelta'):
+    def __init__(self, source, target, geodesic, cost_cst,data_term=None, optimizer_method='adadelta',**kwargs):
         super().__init__(source, target, geodesic, cost_cst,data_term, optimizer_method)
         if self.mp.flag_O: self._cost_saving_ = self._oriented_cost_saving_
 
@@ -338,6 +340,17 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
 
     def _get_gamma_(self):
         return float(self.mp._get_gamma_())
+
+    def get_all_parameters(self):
+        return {
+            'mu':self._get_mu_(),
+            'rho':self._get_rho_(),
+            'gamma':self._get_gamma_(),
+            'lambda':self.cost_cst,
+            'sigma_v':self.mp.sigma_v,
+            'n_step':self.mp.n_step,
+            'sharp':self.mp.flag_sharp,
+        }
 
     # def _compute_V_norm_(self,*args):
     #     """

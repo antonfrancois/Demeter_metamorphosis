@@ -18,7 +18,8 @@ class Metamorphosis_integrator(Geodesic_integrator):
                  rho=1.,
                  sigma_v= (1,1,1),
                  n_step =10,
-                 multiScale_average=False
+                 multiScale_average=False,
+                 **kwargs
                  ):
         """
 
@@ -48,6 +49,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
 
         # self._force_save = False
         sharp = False
+        self.method = method
         if method == 'Eulerian':
             self.step = self._step_fullEulerian
         elif method == 'advection_semiLagrangian':
@@ -161,6 +163,7 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
                      optimizer_method : str = 'grad_descent',
                      # sharp=False
                      # mask = None # For cost_function masking
+                    **kwargs
                  ):
         super().__init__(source,target,geodesic,cost_cst,data_term,optimizer_method)
         # self.mask = mask
@@ -180,6 +183,16 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
 
     def _get_rho_(self):
         return float(self.mp.rho)
+
+    def get_all_parameters(self):
+        return {
+            'mu':self._get_mu_(),
+            'rho':self._get_rho_(),
+            'lambda':self.cost_cst,
+            'sigma_v':self.mp.sigma_v,
+            'n_step':self.mp.n_step,
+            'method':self.mp.method,
+        }
 
     # def _compute_V_norm_(self,*args):
     #     """
