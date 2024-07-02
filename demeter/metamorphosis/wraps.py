@@ -1,15 +1,15 @@
 import torch
-import __init__
+# import __init__
 import sys
 from icecream import ic
 ic(sys.path)
 
 # import metamorphosis as mt
-import metamorphosis.classic as cl
-import metamorphosis.constrained as cn
+from . import classic as cl
+from . import constrained as cn
 
-import utils.torchbox as tb
-from utils.decorators import time_it
+from  ..utils import torchbox as tb
+from ..utils.decorators import time_it
 
 @time_it
 def lddmm(source,target,residuals,

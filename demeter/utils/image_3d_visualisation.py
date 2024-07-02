@@ -10,11 +10,11 @@ from numpy import newaxis
 import os
 from math import prod
 
-import utils.torchbox as tb
-from utils.constants import DLT_KW_RESIDUALS, ROOT_DIRECTORY
+from . import torchbox as tb
+from .constants import DLT_KW_RESIDUALS, ROOT_DIRECTORY
 # TODO : Ajouter Residual_norm_function à la liste des imports dans __init__.py
-from metamorphosis import Metamorphosis_Shooting,Residual_norm_function
-from utils.toolbox import save_gif_with_plt
+from ..metamorphosis import Metamorphosis_Shooting,Residual_norm_function
+from .toolbox import save_gif_with_plt
 
 from icecream import ic
 
@@ -350,8 +350,10 @@ def gridDef_3d_slider(deformation,
 
 from warnings import simplefilter
 simplefilter(action='ignore', category=DeprecationWarning)
-vedo.embedWindow('ipyvtk')
-vedo.settings.useDepthPeeling = True  # if you use transparency <1
+# XXX comment out vedo lines temporarily to avoid error (maybe vedo update?):
+# AttributeError: module 'vedo' has no attribute 'embedWindow' for some reason, maybe a change in last
+# vedo.embedWindow('ipyvtk')
+# vedo.settings.useDepthPeeling = True  # if you use transparency <1
 class deformation_grid3D_vedo:
 
     def __init__(self,show_kwargs=None,

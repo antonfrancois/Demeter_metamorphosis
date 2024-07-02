@@ -6,21 +6,20 @@ import pickle
 import os, sys, csv#, time
 from icecream import ic
 
-sys.path.append(os.path.abspath('../'))
 from datetime import datetime
 from abc import ABC, abstractmethod
 
-from utils.optim import GradientDescent
-from utils.constants import *
-import utils.reproducing_kernels as rk
-import utils.torchbox as tb
-import utils.vector_field_to_flow as vff
-from utils.toolbox import update_progress,format_time, get_size, fig_to_image,save_gif_with_plt
-from utils.decorators import time_it
-import utils.cost_functions as cf
-import utils.fill_saves_overview as fill_saves_overview
+from ..utils.optim import GradientDescent
+from ..utils.constants import *
+from ..utils import reproducing_kernels as rk
+from ..utils import torchbox as tb
+from ..utils import vector_field_to_flow as vff
+from ..utils.toolbox import update_progress,format_time, get_size, fig_to_image,save_gif_with_plt
+from ..utils.decorators import time_it
+from ..utils import cost_functions as cf
+from ..utils import fill_saves_overview as fill_saves_overview
 
-import metamorphosis.data_cost as dt
+from ..metamorphosis import data_cost as dt
 
 # =========================================================================
 #
