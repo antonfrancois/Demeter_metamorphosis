@@ -3,8 +3,8 @@
 # from datetime import datetime
 import re
 import csv
-import metamorphosis as mt
-from utils.constants import *
+from .. import metamorphosis as mt
+from .constants import *
 
 DEFAULT_CSV_FILE,DEFAULT_PATH = 'saves_overview.csv', ROOT_DIRECTORY+'/saved_optim/'
 

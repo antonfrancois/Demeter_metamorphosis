@@ -7,7 +7,7 @@ import torch
 from torch.nn.functional import grid_sample
 from math import log,ceil
 
-import utils.torchbox as tb
+from . import torchbox as tb
 
 
 class FieldIntegrator:

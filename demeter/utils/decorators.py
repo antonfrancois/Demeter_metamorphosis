@@ -2,7 +2,7 @@ import functools
 import inspect
 import warnings
 from time import time
-from utils.toolbox import  format_time
+from .toolbox import  format_time
 
 def time_it(func):
     # This function shows the execution time of

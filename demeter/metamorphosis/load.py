@@ -2,10 +2,13 @@ import torch
 import pickle
 from icecream import ic
 
-from utils.constants import *
+from ..utils.constants import *
 from .classic import Metamorphosis_integrator, Metamorphosis_Shooting
 from .constrained import ConstrainedMetamorphosis_integrator, ConstrainedMetamorphosis_Shooting, Reduce_field_Optim
-from .joined import Weighted_joinedMask_Metamorphosis_integrator,Weighted_joinedMask_Metamorphosis_Shooting
+# TODO joined.py does not exist?
+# from .joined import Weighted_joinedMask_Metamorphosis_integrator,Weighted_joinedMask_Metamorphosis_Shooting
+
+
 def load_optimize_geodesicShooting(file_name,path=None,verbose=True):
     """ load previously saved optimisation in order to plot it later."""
 

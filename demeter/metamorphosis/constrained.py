@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 from math import prod
 
 from abc import ABC, abstractmethod
-from metamorphosis import Geodesic_integrator,Optimize_geodesicShooting
+from .abstract import Geodesic_integrator,Optimize_geodesicShooting
 
-from utils.constants import *
-import utils.torchbox as tb
-import utils.cost_functions as cf
+from ..utils.constants import *
+from ..utils import torchbox as tb
+from ..utils import cost_functions as cf
 
 class Residual_norm_function(ABC):
 

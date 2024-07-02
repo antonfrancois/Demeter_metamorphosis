@@ -1,8 +1,8 @@
 import torch
 from abc import ABC, abstractmethod
 
-import utils.torchbox as tb
-import utils.cost_functions as cf
+from ..utils import torchbox as tb
+from ..utils import cost_functions as cf
 
 
 class DataCost(ABC,torch.nn.Module):

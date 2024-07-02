@@ -4,7 +4,7 @@ import matplotlib
 import sys
 import os
 import torch
-from utils.constants import ROOT_DIRECTORY
+from .constants import ROOT_DIRECTORY
 DEFAULT_DATA_PATH = 'put_file_path_here'
 
 
