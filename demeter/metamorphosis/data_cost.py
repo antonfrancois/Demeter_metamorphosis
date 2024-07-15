@@ -6,6 +6,13 @@ from ..utils import cost_functions as cf
 
 
 class DataCost(ABC,torch.nn.Module):
+    """
+    Abstract class for the data attachment term in the metamorphosis optimisation.
+    The class `Optimize_geodesicShooting` require
+    a data attachment term to be provided as a child class of `DataCost`.
+    All child classes must implement the __init__ and__call__ methods
+     that returns the data attachment term.
+    """
 
     @abstractmethod
     def __init__(self):
@@ -29,6 +36,13 @@ class DataCost(ABC,torch.nn.Module):
 
 
 class Ssd(DataCost):
+    """
+    This class is used to compute the data attachment term
+    as a Sum of Squared Differences (SSD) term. It takes as a parameter
+    the target image.
+
+    target : torch.Tensor  Target image
+    """
 
     def __init__(self,target):
         super(Ssd, self).__init__()
@@ -42,6 +56,14 @@ class Ssd(DataCost):
 
 class Cfm(DataCost):
     def __init__(self,target,mask):
+        """  This class is used to compute the data attachment term
+        as a Cost Function Masking (CFM) term. It takes as a parameter
+        the target image and the mask where the sum must be ignored.
+
+        target : torch.Tensor  Target image
+        mask : torch.Tensor of the same shape as target
+
+        """
         super(Cfm, self).__init__()
         self.cfm = cf.SumSquaredDifference(target,cancer_seg=mask)
 
