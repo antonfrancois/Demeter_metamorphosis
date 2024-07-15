@@ -6,8 +6,8 @@ import kornia
 import kornia.filters.filter as flt
 from math import prod
 
-from utils.fft_conv import fft_conv
-from utils.decorators import deprecated
+from .fft_conv import fft_conv
+from .decorators import deprecated
 
 def fft_filter(input: torch.Tensor, kernel: torch.Tensor,
              border_type: str = 'reflect',

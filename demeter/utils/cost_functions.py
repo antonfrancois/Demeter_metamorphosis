@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import torch
 
-import utils.torchbox as tb
+from . import torchbox as tb
 
 
 class SumSquaredDifference:

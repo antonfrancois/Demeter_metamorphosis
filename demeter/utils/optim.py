@@ -1,6 +1,6 @@
 import torch
 
-from utils.toolbox import update_progress
+from .toolbox import update_progress
 
 
 

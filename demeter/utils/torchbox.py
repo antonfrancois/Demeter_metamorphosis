@@ -16,12 +16,12 @@ import os
 import csv
 
 # import decorators
-from utils.toolbox import rgb2gray
-import utils.bspline as mbs
-import utils.vector_field_to_flow as vff
-import utils.decorators as deco
-from utils.constants import *
-# from utils.image_3d_visualisation import image_slice
+from .toolbox import rgb2gray
+from . import bspline as mbs
+from . import vector_field_to_flow as vff
+from . import decorators as deco
+from .constants import *
+# from .utils.image_3d_visualisation import image_slice
 
 # ================================================
 #        IMAGE BASICS

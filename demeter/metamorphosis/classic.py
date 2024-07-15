@@ -3,10 +3,10 @@ import warnings
 import matplotlib.pyplot as plt
 from math import prod
 
-from metamorphosis import Geodesic_integrator,Optimize_geodesicShooting
+from .abstract import Geodesic_integrator,Optimize_geodesicShooting
 
-from utils.constants import *
-import utils.torchbox as tb
+from ..utils.constants import *
+from ..utils import torchbox as tb
 
 class Metamorphosis_integrator(Geodesic_integrator):
     """ Class integrating over a geodesic shooting. The user can choose the method among
