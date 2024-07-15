@@ -955,7 +955,7 @@ def field2diffeo(in_vectField, N=None,save= False,forward=True):
    return vff.FieldIntegrator(method='fast_exp')(in_vectField.clone(),forward= forward)
 
 
-def imgDeform(I,field,dx_convention ='2square',clamp=True):
+def imgDeform(I,field,dx_convention ='2square',clamp=False):
     if I.shape[0] > 1 and field.shape[0] == 1:
         field = torch.cat(I.shape[0]*[field],dim=0)
     if dx_convention == 'pixel':
