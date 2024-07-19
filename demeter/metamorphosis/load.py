@@ -5,9 +5,8 @@ from icecream import ic
 from ..utils.constants import *
 from .classic import Metamorphosis_integrator, Metamorphosis_Shooting
 from .constrained import ConstrainedMetamorphosis_integrator, ConstrainedMetamorphosis_Shooting, Reduce_field_Optim
-# TODO joined.py does not exist?
-# from .joined import Weighted_joinedMask_Metamorphosis_integrator,Weighted_joinedMask_Metamorphosis_Shooting
-
+from .joined import Weighted_joinedMask_Metamorphosis_integrator,Weighted_joinedMask_Metamorphosis_Shooting
+from .simplex import Simplex_sqrt_Metamorphosis_integrator,Simplex_sqrt_Shooting
 
 def load_optimize_geodesicShooting(file_name,path=None,verbose=True):
     """ load previously saved optimisation in order to plot it later."""
@@ -62,8 +61,8 @@ def find_meta_optimiser_from_repr(repr_str):
         return ConstrainedMetamorphosis_integrator,Reduce_field_Optim
     if 'Optimize_weighted_joinedMask' in repr_str:
         return Weighted_joinedMask_Metamorphosis_integrator,Weighted_joinedMask_Metamorphosis_Shooting
-    # if 'Simplex_sqrt_Shooting' in repr_str:
-    #     return Simplex_sqrt_Shooting,Simplex_sqrt_Metamorphosis_integrator
+    if 'Simplex_sqrt_Shooting' in repr_str:
+        return Simplex_sqrt_Shooting,Simplex_sqrt_Metamorphosis_integrator
     else:
         raise ValueError("No class found for the given repr_str")
 
