@@ -1118,6 +1118,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         ax1[0].set_title("Lambda = "+str(self.cost_cst)+
                     " mu = "+str(self._get_mu_()) +
                     " rho = "+str(self._get_rho_()))
+        return fig1,ax1
 
     def plot_imgCmp(self):
         r""" Display and compare the deformed image $I_1$ with the target$
