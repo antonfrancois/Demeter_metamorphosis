@@ -4,8 +4,6 @@ import warnings
 from math import prod
 import pickle
 import os, sys, csv#, time
-
-
 from icecream import ic
 
 from datetime import datetime
@@ -268,17 +266,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
     def _update_image_semiLagrangian_(self,deformation,residuals = None,sharp=False):
         if residuals is None: residuals = self.momentum
         image = self.source if sharp else self.image
-        # print(f"i {self._i}_update_image_semiLagrangian_")
-        # print("\t image bef ",image.max())
-        # print("\t field", (deformation - self.id_grid).abs().max())
-        # print("\t id_grid convention",self.id_grid.max())
-        self.image = tb.imgDeform(image,deformation,dx_convention=self.dx_convention)
-        # print("\t image aft", self.image.max())
-        # print("\t momentum",self.momentum.max())
-        # print("\t residuals",residuals.max())
-        # print("\t mu",self.mu,self._get_mu_())
-        # print("\t add", ((residuals *self.mu)/self.n_step).max())
-        # print("\t image bef ",self.image.max())
+        self.image = tb.imgDeform(image,deformation,dx_convention='pixel')
         if self._get_mu_() != 0: self.image += (residuals *self.mu)/self.n_step
 
     def _update_sharp_intermediary_field_(self):
@@ -344,37 +332,69 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         self.field = tb.im2grid(self.kernelOperator(tb.grid2im(free_field + oriented_field)))
 
 
-    def get_deformation(self,n_step=None,save=False):
+    def get_deformation(self,from_t=0,to_t=None,save=False):
         r"""Returns the deformation use it for showing results
-        $\Phi = \int_0^1 v_t dt$
+        $\Phi = \int_s^t v_t dt$ with $s < t$ and $t \in [0,n_{step}-1]$
 
-        :return: deformation [1,H,W,2] or [2,H,W,D,3]
+        :params: from_t : (int) the starting time step (default 0)
+        :params: to_t : (int) the ending time step (default n_step)
+        :params: save : (bool) option to save the integration intermediary steps. If true, the return value will have its shape with T>1
+        :return: deformation [T,H,W,2] or [T,H,W,D,3]
         """
-        if n_step == 0:
-            return self.id_grid.detach().cpu() + self.field_stock[0][None].detach().cpu()/self.n_step
+        # if n_step == 0:
+        #     return self.id_grid.detach().cpu() + self.field_stock[0][None].detach().cpu()/self.n_step
+        # temporal_integrator = vff.FieldIntegrator(method='temporal',save=save)
+        # if n_step is None:
+        #     return temporal_integrator(self.field_stock/self.n_step,forward=True)
+        # else:
+        #     return temporal_integrator(self.field_stock[:n_step]/self.n_step,forward=True)
+        #
         temporal_integrator = vff.FieldIntegrator(
             method='temporal',
             save=save,
             dx_convention=self.dx_convention
         )
-        if n_step is None:
-            return temporal_integrator(self.field_stock/self.n_step,forward=True)
-        else:
-            return temporal_integrator(self.field_stock[:n_step]/self.n_step,forward=True)
+        if from_t is None and to_t is None:
+            print('Je suis passé par là')
+            return temporal_integrator(self.field_stock/self.n_step, forward=False)
+        # if from_t is None: from_t = 0
+        if to_t is None: to_t = self.n_step
+        if from_t < 0 and from_t >= to_t:
+            raise ValueError(f"from_t must in [0,n_step-1], got from_t ={from_t} and n_step = {self.n_step}")
+        if to_t > self.n_step:
+            raise ValueError(f"to_t must in [from_t+1,n_step], got to_t ={to_t} and n_step = {self.n_step}")
+        if to_t==1:
+            return self.id_grid.detach().cpu() + self.field_stock[0][None].detach().cpu() / self.n_step
+        # ic(from_t,to_t,self.field_stock[from_t:to_t].shape)
+        return temporal_integrator(self.field_stock[from_t:to_t]/self.n_step, forward=True)
 
-    def get_deformator(self,n_step=None,save = False):
+    def get_deformator(self,from_t=0,to_t=None,save=False):
         r"""Returns the inverse deformation use it for deforming images
-        $\Phi^{-1}$
+        $(\Phi_{s,t})^{-1}$ with $s < t$ and $t \in [0,n_{step}-1]$
 
+        :params: from_t : (int) the starting time step (default 0)
+        :params: to_t : (int) the ending time step (default n_step)
+        :params: save : (bool) option to save the integration intermediary steps. If true, the return value will have its shape with T>1
         :return: deformation [T,H,W,2] or [T,H,W,D,3]
         """
-        if n_step == 0:
-            return self.id_grid.detach().cpu()-self.field_stock[0][None].detach().cpu()/self.n_step
-        temporal_integrator = vff.FieldIntegrator(method='temporal',save=save)
-        if n_step is None:
-            return temporal_integrator(self.field_stock/self.n_step,forward=False)
-        else:
-            return temporal_integrator(self.field_stock[:n_step]/self.n_step,forward=False)
+        temporal_integrator = vff.FieldIntegrator(
+            method='temporal',
+            save=save,
+            dx_convention=self.dx_convention
+        )
+        if from_t is None and to_t is None:
+            print('Je suis passé par là')
+            return temporal_integrator(self.field_stock/self.n_step, forward=False)
+        # if from_t is None: from_t = 0
+        if to_t is None: to_t = self.n_step
+        if from_t < 0 and from_t >= to_t:
+            raise ValueError(f"from_t must in [0,n_step-1], got from_t ={from_t} and n_step = {self.n_step}")
+        if to_t > self.n_step:
+            raise ValueError(f"to_t must in [from_t+1,n_step], got to_t ={to_t} and n_step = {self.n_step}")
+        if to_t==1:
+            return self.id_grid.detach().cpu() - self.field_stock[0][None].detach().cpu() / self.n_step
+        # ic(from_t,to_t,self.field_stock[from_t:to_t].shape)
+        return temporal_integrator(self.field_stock[from_t:to_t]/self.n_step, forward=False)
 
     # ==================================================================
     #                       PLOTS
