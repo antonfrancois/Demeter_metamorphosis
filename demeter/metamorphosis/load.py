@@ -62,7 +62,7 @@ def find_meta_optimiser_from_repr(repr_str):
     if 'Optimize_weighted_joinedMask' in repr_str:
         return Weighted_joinedMask_Metamorphosis_integrator,Weighted_joinedMask_Metamorphosis_Shooting
     if 'Simplex_sqrt_Shooting' in repr_str:
-        return Simplex_sqrt_Shooting,Simplex_sqrt_Metamorphosis_integrator
+        return Simplex_sqrt_Metamorphosis_integrator,Simplex_sqrt_Shooting
     else:
         raise ValueError("No class found for the given repr_str")
 
@@ -70,8 +70,8 @@ def _load_light_optim(opti_dict,verbose):
 
     ## Find with which class we are dealing with
     integrator,optimizer = find_meta_optimiser_from_repr(opti_dict['__repr__'])
-    ic(optimizer,integrator)
-    ic(opti_dict['parameters'])
+    # ic(optimizer,integrator)
+    # ic(opti_dict['parameters'])
     ## Re-shoot the integration
     mp = integrator(**opti_dict['parameters'])
     mp.forward(opti_dict['source'],opti_dict['parameter'],save=True,plot=0)
@@ -80,9 +80,9 @@ def _load_light_optim(opti_dict,verbose):
 
     # inject the shooting in the optimizer
     opti_dict['geodesic'] = mp
-    ic(opti_dict)
+    # ic(opti_dict)
 
-    ic(opti_dict['geodesic'].sigma_v)
+    # ic(opti_dict['geodesic'].sigma_v)
 
     mr = optimizer(**opti_dict)
     mr.to_analyse = opti_dict['to_analyse']
