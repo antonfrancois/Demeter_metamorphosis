@@ -1,8 +1,8 @@
 import torch
 from abc import ABC, abstractmethod
 
-from ..utils import torchbox as tb
-from ..utils import cost_functions as cf
+import utils.torchbox as tb
+import utils.cost_functions as cf
 
 
 class DataCost(ABC,torch.nn.Module):
@@ -47,6 +47,9 @@ class Ssd(DataCost):
     as a Sum of Squared Differences (SSD) term. It takes as a parameter
     the target image.
 
+    Parameters
+    ----------
+
     target : torch.Tensor  Target image
     """
 
@@ -69,8 +72,12 @@ class Cfm(DataCost):
         as a Cost Function Masking (CFM) term. It takes as a parameter
         the target image and the mask where the sum must be ignored.
 
-        target : torch.Tensor  Target image
-        mask : torch.Tensor of the same shape as target
+        Parameters:
+        ----------
+        target : torch.Tensor
+          Target image
+        mask : torch.Tensor
+            of the same shape as target
 
         """
         super(Cfm, self).__init__()
