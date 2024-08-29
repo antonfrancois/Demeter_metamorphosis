@@ -137,6 +137,8 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
                 self.field_stock[i] = field_to_stock[0].detach().to('cpu')
                 self.momentum_stock[i] = momentum_dt[0].detach().to('cpu')
                 self.residuals_stock[i] = residuals_dt.detach().to('cpu')
+            # elif self.save is False and i == 0:
+            #     self.momentum_ini = residuals_dt.detach().to('cpu')
 
             if verbose:
                 update_progress(i/(t_max*self.n_step))
@@ -176,7 +178,6 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
         self.data_loss = self.data_term()
 
         # Norm V
-
         # TODO: explain why there is a rho here
         self.norm_v_2 = rho  * self._compute_V_norm_(momentum_ini,self.source)
 
@@ -185,7 +186,7 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
         self.norm_l2_on_z =  (z ** 2).sum()/prod(self.source.shape[2:])
 
         self.total_cost = self.data_loss + \
-                            self.cost_cst * .5 * (self.norm_v_2 + self.norm_l2_on_z)
+            self.cost_cst * .5 * (self.norm_v_2 + self.norm_l2_on_z)
 
 
         # print('ssd :',self.ssd,' norm_v :',self.norm_v_2)
