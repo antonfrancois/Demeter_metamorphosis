@@ -37,6 +37,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
     def __init__(self,sigma_v,multiScale_average= False):
         super().__init__()
         self._force_save = False
+        self._detach_image = True
 
         if isinstance(sigma_v,tuple):
             self.sigma_v = sigma_v# is used if the optmisation is later saved
@@ -138,7 +139,10 @@ class Geodesic_integrator(torch.nn.Module,ABC):
                                     "changing the parameters is needed (increasing n_step can help) ")
 
             if self.save:
-                self.image_stock[i] = self.image[0].detach().to('cpu')
+                if self._detach_image:
+                    self.image_stock[i] = self.image[0].detach().to('cpu')
+                else:
+                    self.image_stock[i] = self.image[0]
                 self.field_stock[i] = field_to_stock[0].detach().to('cpu')
                 self.momentum_stock[i] = residuals_dt.detach().to('cpu')
 
@@ -639,7 +643,11 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
                 "{'grad_descent', 'LBFGS_torch','adadelta'}"
                              )
 
+
         self.data_term = dt.Ssd(self.target) if data_term is None else data_term
+        if isinstance(self.data_term,type):
+            raise ValueError(f"You provided {self.data_term} as data_term."
+                             f"It seems that you did not initialize it.")
         self.data_term.set_optimizer(self)
 
         # self.temporal_integrator = vff.FieldIntegrator(method='temporal',save=False)
@@ -827,7 +835,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
 
         """
         self.source = self.source.to(z_0.device)
-        self.target = self.target.to(z_0.device)
+        # self.target = self.target.to(z_0.device)
         # self.mp.kernelOperator.kernel = self.mp.kernelOperator.kernel.to(z_0.device)
         self.data_term.to_device(z_0.device)
 
@@ -849,7 +857,10 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
             loss_stock = self._cost_saving_(i,loss_stock)
 
             if verbose:
-                update_progress((i+1)/n_iter,message=('ssd : ',loss_stock[i,0]))
+                update_progress(
+                    (i+1)/n_iter,
+                    message=(f"{self.data_term.__class__.__name__} :", loss_stock[i,0])
+                )
             if plot and i in [n_iter//4,n_iter//2,3*n_iter//4]:
                 self._plot_forward_()
 
@@ -866,10 +877,10 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
     def to_device(self,device):
         # self.mp.kernelOperator.kernel = self.mp.kernelOperator.kernel.to(device)
         self.source = self.source.to(device)
-        self.target = self.target.to(device)
+        self.data_term.to_device(device)
+        # self.target = self.target.to(device)
         self.parameter = self.parameter.to(device)
         self.id_grid = self.id_grid.to(device)
-        self.data_term.to_device(device)
         self.to_analyse = (self.to_analyse[0].to(device),
                            self.to_analyse[1].to(device))
 
@@ -1099,8 +1110,8 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         fig1,ax1 = plt.subplots(1,2,figsize=(10,5))
 
         ssd_plot = self.to_analyse[1][:,0].numpy()
-        ax1[0].plot(ssd_plot,"--",color = 'blue',label='ssd')
-        ax1[1].plot(ssd_plot,"--",color = 'blue',label='ssd')
+        ax1[0].plot(ssd_plot,"--",color = 'blue',label=self.data_term.__class__.__name__)
+        ax1[1].plot(ssd_plot,"--",color = 'blue',label=self.data_term.__class__.__name__)
 
         normv_plot = self.cost_cst*self.to_analyse[1][:,1].detach().numpy()
         ax1[0].plot(normv_plot,"--",color = 'green',label='normv')
