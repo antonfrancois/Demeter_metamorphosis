@@ -36,6 +36,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
     def __init__(self,sigma_v=None,dx_convention = 'pixel',multiScale_average= False):
         super().__init__()
         self._force_save = False
+        self._detach_image = True
         self.dx_convention = dx_convention
 
         if sigma_v is None:
@@ -146,7 +147,10 @@ class Geodesic_integrator(torch.nn.Module,ABC):
                                     "\n- increasing sigma_v (catching less details)")
 
             if self.save:
-                self.image_stock[i] = self.image[0].detach().to('cpu')
+                if self._detach_image:
+                    self.image_stock[i] = self.image[0].detach().to('cpu')
+                else:
+                    self.image_stock[i] = self.image[0]
                 self.field_stock[i] = field_to_stock[0].detach().to('cpu')
                 self.momentum_stock[i] = residuals_dt.detach().to('cpu')
 
@@ -666,7 +670,11 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
                 "{'grad_descent', 'LBFGS_torch','adadelta'}"
                              )
 
+
         self.data_term = dt.Ssd(self.target) if data_term is None else data_term
+        if isinstance(self.data_term,type):
+            raise ValueError(f"You provided {self.data_term} as data_term."
+                             f"It seems that you did not initialize it.")
         self.data_term.set_optimizer(self)
 
         # self.temporal_integrator = vff.FieldIntegrator(method='temporal',save=False)
@@ -855,7 +863,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
 
         """
         self.source = self.source.to(z_0.device)
-        self.target = self.target.to(z_0.device)
+        # self.target = self.target.to(z_0.device)
         # self.mp.kernelOperator.kernel = self.mp.kernelOperator.kernel.to(z_0.device)
         self.data_term.to_device(z_0.device)
 
@@ -1132,8 +1140,8 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
             ax1[1].set_yscale('log')
 
         ssd_plot = self.to_analyse[1][:,0].numpy()
-        ax1[0].plot(ssd_plot,"--",color = 'blue',label='ssd')
-        ax1[1].plot(ssd_plot,"--",color = 'blue',label='ssd')
+        ax1[0].plot(ssd_plot,"--",color = 'blue',label=self.data_term.__class__.__name__)
+        ax1[1].plot(ssd_plot,"--",color = 'blue',label=self.data_term.__class__.__name__)
 
         normv_plot = self.cost_cst*self.to_analyse[1][:,1].detach().numpy()
         ax1[0].plot(normv_plot,"--",color = 'green',label='normv')
