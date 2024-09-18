@@ -641,9 +641,9 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
 
         self.data_term = dt.Ssd(self.target) if data_term is None else data_term
         self.data_term.set_optimizer(self)
-        # print("data_term : ",self.data_term)
+
         # self.temporal_integrator = vff.FieldIntegrator(method='temporal',save=False)
-        self.is_DICE_cmp = False # Is dice alredy computed ?
+        self.is_DICE_cmp = False # Is dice already computed ?
         self._plot_forward_ = self._plot_forward_dlt_
 
         # # Default parameters to save (write to file)
@@ -791,7 +791,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         if loss_stock is None:
             d = 3 if self._get_mu_() != 0 else 2
             return torch.zeros((i,d))
-        if self._get_mu_() != 0: # metamophosis
+        if self._get_mu_() != 0: # metamorphosis
             loss_stock[i,0] = self.data_loss.detach()
             loss_stock[i,1] = self.norm_v_2.detach()
             loss_stock[i,2] = self.norm_l2_on_z.detach()

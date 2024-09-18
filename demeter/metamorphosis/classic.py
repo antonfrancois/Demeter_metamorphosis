@@ -160,7 +160,7 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
                      geodesic : Metamorphosis_integrator,
                      cost_cst : float,
                      data_term=None,
-                     optimizer_method : str = 'grad_descent',
+                     optimizer_method : str = 'adadelta',
                      # sharp=False
                      # mask = None # For cost_function masking
                     **kwargs
