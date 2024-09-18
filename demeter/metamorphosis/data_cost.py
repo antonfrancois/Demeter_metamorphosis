@@ -15,20 +15,26 @@ class DataCost(ABC,torch.nn.Module):
     """
 
     @abstractmethod
-    def __init__(self):
+    def __init__(self,**kwargs):
         super(DataCost, self).__init__()
 
     def __repr__(self):
         return f"DataCost  :({self.__class__.__name__})"
 
     def set_optimizer(self, optimizer):
+        """
+        DataCost object are meant to be used along a
+        method inherited from `Optimize_geodesicShooting`.
+        This method is used to set the optimizer object and is usually
+        used at the optimizer initialisation.
+        """
         self.optimizer = optimizer
 
     def to_device(self,device):
-        pass
+        self.target = self.target.to(device)
 
     @abstractmethod
-    def __call__(self,at_step = -1):
+    def __call__(self,at_step = -1,**kwargs):
         """
         :return:
         """
@@ -44,7 +50,7 @@ class Ssd(DataCost):
     target : torch.Tensor  Target image
     """
 
-    def __init__(self,target):
+    def __init__(self,target,**kwargs):
         super(Ssd, self).__init__()
         self.ssd = cf.SumSquaredDifference(target)
 
@@ -52,13 +58,13 @@ class Ssd(DataCost):
         if at_step is None:
             return self.ssd(self.optimizer.mp.image)
         else:
-            return self.ssd(self.optimizer.mp.image_stock[at_step])
+            return self.ssd(self.optimizer.mp.image_stock[at_step][None])
 
     def to_device(self,device):
         self.ssd.target = self.ssd.target.to(device)
 
 class Cfm(DataCost):
-    def __init__(self,target,mask):
+    def __init__(self,target,mask,**kwargs):
         """  This class is used to compute the data attachment term
         as a Cost Function Masking (CFM) term. It takes as a parameter
         the target image and the mask where the sum must be ignored.
@@ -74,12 +80,12 @@ class Cfm(DataCost):
         if at_step is None:
             return self.cfm(self.optimizer.mp.image)
         else:
-            return self.cfm(self.optimizer.mp.image_stock[at_step])
+            return self.cfm(self.optimizer.mp.image_stock[at_step][None])
 
 class SimiliSegs(DataCost):
     """ Make the deformation register segmentations."""
 
-    def __init__(self,mask_source,mask_target):
+    def __init__(self,mask_source,mask_target,**kwargs):
         super(SimiliSegs, self).__init__()
         self.mask_source = mask_source
         self.mask_target = mask_target
@@ -100,7 +106,7 @@ class SimiliSegs(DataCost):
 
 class Mutlimodal_ssd_cfm(DataCost):
 
-    def __init__(self,target_ssd,target_cfm,source_cfm,mask_cfm):
+    def __init__(self,target_ssd,target_cfm,source_cfm,mask_cfm,**kwargs):
         super(Mutlimodal_ssd_cfm, self).__init__()
         self.cost = cf.Combine_ssd_CFM(target_ssd,target_cfm,mask_cfm)
         self.source_cfm = source_cfm
@@ -111,7 +117,7 @@ class Mutlimodal_ssd_cfm(DataCost):
         if at_step is None:
             return self.cost(self.optimizer.mp.image,source_deform)
         else:
-            return self.cost(self.optimizer.mp.image_stock[at_step],source_deform)
+            return self.cost(self.optimizer.mp.image_stock[at_step][None],source_deform)
 
     def set_optimizer(self, optimizer):
         super(Mutlimodal_ssd_cfm, self).set_optimizer(optimizer)
@@ -123,7 +129,7 @@ class Mutlimodal_ssd_cfm(DataCost):
 
 class Longitudinal_DataCost(DataCost):
 
-    def __init__(self, target_dict,data_cost = Ssd):
+    def __init__(self, target_dict,data_cost = Ssd, **kwargs):
         """ This class is used to compute the data
         attachment term for longitudinal data. It takes
          as a parameter an object inherited from `DataCost'
@@ -150,17 +156,32 @@ class Longitudinal_DataCost(DataCost):
             ```
         """
         super(Longitudinal_DataCost, self).__init__()
-        self.data_cost = data_cost
         self.target_dict = target_dict
         self.target_len = len(target_dict)
+        self.baseline_dataCost_list = []
+        for td in target_dict:
+            bdc = data_cost(**td)
+            self.baseline_dataCost_list.append(bdc)
 
     def __call__(self,at_step = None):
         """
 
         """
         cost = 0
-        for td in self.target_dict:
-            dc = self.data_cost(**td)
-            image_t  = self.optimizer.mp.image_stock[td['time']]
+        for td, bdc in zip(self.target_dict,self.baseline_dataCost_list):
+            cost += bdc(at_step=td['time'])
+            # image_t  = self.optimizer.mp.image_stock[td['time']]
+        return cost
 
-            cost += dc(image_t)
+    def set_optimizer(self, optimizer):
+        super(Longitudinal_DataCost, self).set_optimizer(optimizer)
+        self.optimizer.mp._force_save = True
+        self.optimizer.mp._detach_image = False
+        for bdc in self.baseline_dataCost_list:
+            bdc.set_optimizer(self.optimizer)
+
+    def to_device(self,device):
+        for td in self.target_dict:
+            for key in td.keys():
+                if key == 'time': continue
+                td[key] = td[key].to(device)
