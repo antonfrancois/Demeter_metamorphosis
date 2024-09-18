@@ -188,9 +188,13 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
         # self.total_cost = self.data_loss + \
         #                   self.cost_cst * .5 * ( rho * self.norm_v_2 + (1 - rho) * self.norm_l2_on_z)
 
-        self.norm_v_2 = self._compute_V_norm_(momentum_ini,self.source)
+        # TODO: explain why there is a rho here
+        self.norm_v_2 = rho  * self._compute_V_norm_(momentum_ini,self.source)
 
-        self.norm_l2_on_z =  (momentum_ini**2).sum()/prod(self.source.shape[2:])
+        pi_q = (momentum_ini * self.source).sum(dim=1,keepdim=True) / (self.source ** 2).sum(dim=1,keepdim=True)
+        z = sqrt(1 - rho) * (momentum_ini - pi_q * self.source)
+        self.norm_l2_on_z =  (z ** 2).sum()/prod(self.source.shape[2:])
+
         self.total_cost = self.data_loss + \
                             self.cost_cst * .5 * (self.norm_v_2 + self.norm_l2_on_z)
 
