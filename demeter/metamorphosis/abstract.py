@@ -9,17 +9,17 @@ from icecream import ic
 from datetime import datetime
 from abc import ABC, abstractmethod
 
-from ..utils.optim import GradientDescent
-from ..utils.constants import *
-from ..utils import reproducing_kernels as rk
-from ..utils import torchbox as tb
-from ..utils import vector_field_to_flow as vff
-from ..utils.toolbox import update_progress,format_time, get_size, fig_to_image,save_gif_with_plt
-from ..utils.decorators import time_it
-from ..utils import cost_functions as cf
-from ..utils import fill_saves_overview as fill_saves_overview
+from utils.optim import GradientDescent
+from utils.constants import *
+import utils.reproducing_kernels as rk
+import utils.torchbox as tb
+import utils.vector_field_to_flow as vff
+from utils.toolbox import update_progress,format_time, get_size, fig_to_image,save_gif_with_plt
+from utils.decorators import time_it
+import utils.cost_functions as cf
+import utils.fill_saves_overview as fill_saves_overview
 
-from ..metamorphosis import data_cost as dt
+import metamorphosis.data_cost as dt
 
 # =========================================================================
 #
@@ -887,7 +887,10 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
             loss_stock = self._cost_saving_(i,loss_stock)
 
             if verbose:
-                update_progress((i+1)/n_iter,message=('ssd : ',loss_stock[i,0]))
+                update_progress(
+                    (i+1)/n_iter,
+                    message=(f"{self.data_term.__class__.__name__} :", loss_stock[i,0])
+                )
             if plot and i in [n_iter//4,n_iter//2,3*n_iter//4]:
                 self._plot_forward_()
 
@@ -904,10 +907,10 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
     def to_device(self,device):
         # self.mp.kernelOperator.kernel = self.mp.kernelOperator.kernel.to(device)
         self.source = self.source.to(device)
-        self.target = self.target.to(device)
+        self.data_term.to_device(device)
+        # self.target = self.target.to(device)
         self.parameter = self.parameter.to(device)
         self.id_grid = self.id_grid.to(device)
-        self.data_term.to_device(device)
         self.to_analyse = (self.to_analyse[0].to(device),
                            self.to_analyse[1].to(device))
 
