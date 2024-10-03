@@ -120,6 +120,31 @@ class Mutlimodal_ssd_cfm(DataCost):
     def to_device(self,device):
         self.source_cfm = self.source_cfm.to(device)
 
+class Mutual_Information(DataCost):
+
+    def __init__(self,target,
+                 bins = 20,
+                 min = 0,
+                 max = 1,
+                 mult = 1.0,
+                 ):
+        super(Mutual_Information, self).__init__()
+        self.target = target
+        self.mult = mult
+        self.mi = cf.Mutual_Information(bins, min, max)
+
+    def __call__(self, at_step=-1):
+        if at_step == -1:
+            mi = self.mi(self.optimizer.mp.image,self.target)
+            print("\n\nMI = ",float(mi))
+            return self.mult/mi
+        else:
+            return self.mult / self.mi(self.optimizer.mp.image_stock[at_step],self.target)
+
+    def to_device(self, device):
+        self.target = self.target.to(device)
+
+
 
 class Longitudinal_DataCost(DataCost):
 
