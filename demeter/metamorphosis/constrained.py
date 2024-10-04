@@ -71,10 +71,10 @@ class Residual_norm_borderBoost(Residual_norm_function):
         n_step = mask.shape[0]
 
         # Preparation of the time derivative F(M_t)
-        grad_mask = tb.spacialGradient(self.seg_tumour)
+        grad_mask = tb.spatialGradient(self.seg_tumour)
         self.grad_mask_norm = (grad_mask**2).sum(dim = 2).sqrt()
         # TODO : make sure that this n_step is the same that the geodesic integrator will use
-        grad_dt_mask = tb.spacialGradient((self.seg_tumour[1:] - self.seg_tumour[:-1]) / n_step)
+        grad_dt_mask = tb.spatialGradient((self.seg_tumour[1:] - self.seg_tumour[:-1]) / n_step)
         grad_mask_times_grad_dt_mask = (grad_mask[1:] * grad_dt_mask).sum(dim=2)
         self.dt_F_mask = torch.nan_to_num(grad_mask_times_grad_dt_mask / self.grad_mask_norm[1:])
 
@@ -430,7 +430,7 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
 
         # Norm V
         C = residuals_ini.shape[1]
-        grad_source = tb.spacialGradient(self.source)
+        grad_source = tb.spatialGradient(self.source)
         grad_source_resi = (grad_source * residuals_ini.unsqueeze(2)).sum(dim=1) / C
         K_grad_source_resi = self.mp.kernelOperator(grad_source_resi)
         # print(f"k_grad_source_resi = {K_grad_source_resi.shape}")
@@ -591,7 +591,7 @@ class Reduce_field_Optim(Optimize_geodesicShooting):
 
         # Norm V
         C = residuals_ini.shape[1]
-        grad_source = tb.spacialGradient(self.source)
+        grad_source = tb.spatialGradient(self.source)
         grad_source_resi = (grad_source * residuals_ini.unsqueeze(2)).sum(dim=1) / C
         K_grad_source_resi = self.mp.kernelOperator(grad_source_resi)
         self.norm_v_2 = (grad_source_resi * K_grad_source_resi).sum()

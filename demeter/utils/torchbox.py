@@ -484,13 +484,13 @@ def thresholding(image,bounds = (0,1)):
                                       )
                          )
 
-def spacialGradient(image,dx_convention = 'pixel'):
+def spatialGradient(image, dx_convention ='pixel'):
     if len(image.shape) == 4 :
-        return spacialGradient_2d(image,dx_convention)
+        return spatialGradient_2d(image, dx_convention)
     elif len(image.shape) == 5:
-        return spacialGradient_3d(image,dx_convention)
+        return spatialGradient_3d(image, dx_convention)
 
-def spacialGradient_2d(image,dx_convention = 'pixel'):
+def spatialGradient_2d(image, dx_convention ='pixel'):
     """ Compute the spatial gradient on 2d images by applying
     a sobel kernel
 
@@ -508,7 +508,7 @@ def spacialGradient_2d(image,dx_convention = 'pixel'):
     return grad_image
 
 
-def spacialGradient_3d(image,dx_convention = 'pixel'):
+def spatialGradient_3d(image, dx_convention ='pixel'):
     """
 
     :param image: Tensor [B,1,D,H,W]
@@ -1196,7 +1196,7 @@ def field_divergence(field,dx_convention = 'pixel'):
     return Field_divergence(dx_convention)(field)
 
 def pixel2square_convention(field,grid = True):
-    """ Convert a field in spacial pixelic convention in one on as
+    """ Convert a field in spatial pixelic convention in one on as
     [-1,1]^2 square as requested by pytorch's gridSample
 
     :field: (torch tensor) of size [T,H,W,2] or [T,D,H,W,3]

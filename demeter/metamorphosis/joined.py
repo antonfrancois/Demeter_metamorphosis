@@ -137,7 +137,7 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
         ## update field
         # ic("update field")
         # ic(self.image.shape)
-        grad_image_mask = tb.spacialGradient(self.image,dx_convention='pixel')
+        grad_image_mask = tb.spatialGradient(self.image, dx_convention='pixel')
         # ic(grad_image_mask.max())
 #         ic(grad_image_mask.shape)
 #         ic(self.residuals.shape)

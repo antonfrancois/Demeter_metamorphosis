@@ -28,7 +28,7 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
     def step(self):
         ## 1. Compute the vector field
         ## 1.1 Compute the gradient of the image by finite differences
-        grad_simplex = tb.spacialGradient(self.image,dx_convention='pixel')
+        grad_simplex = tb.spatialGradient(self.image, dx_convention='pixel')
         prefield = reduce(add,[self.momentum[:,n] * grad_simplex[:,n] for n in range(self.momentum.shape[1])])
         self.field = - sqrt(self.rho) * tb.im2grid(self.kernelOperator(prefield))
         # self.field = -  tb.im2grid(self.kernelOperator(prefield))

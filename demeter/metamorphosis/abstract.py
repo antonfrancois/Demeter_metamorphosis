@@ -165,7 +165,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         """
         dt = t_max/n_step
         for t in torch.linspace(0,t_max,n_step):
-            grad_I = tb.spacialGradient(image,dx_convention='pixel')
+            grad_I = tb.spatialGradient(image, dx_convention='pixel')
             grad_I_scalar_v = (grad_I[0]*tb.grid2im(vector_field)).sum(dim=1)
             image = image - grad_I_scalar_v * dt
         return image
@@ -197,7 +197,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         ))) # PAS OUF SI BATCH
 
     def _update_field_multimodal_(self):
-        grad_image = tb.spacialGradient(self.image,dx_convention='pixel')
+        grad_image = tb.spatialGradient(self.image, dx_convention='pixel')
         self.field = self._compute_vectorField_multimodal_(self.momentum, grad_image)
         self.field *= self._field_cst_mult()
 
@@ -208,7 +208,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
             return self._get_rho_()/self._get_mu_()
 
     def _update_field_(self):
-        grad_image = tb.spacialGradient(self.image,dx_convention='pixel')
+        grad_image = tb.spatialGradient(self.image, dx_convention='pixel')
         self.field = self._compute_vectorField_(self.momentum, grad_image)
         self.field *= self._field_cst_mult()
 
@@ -300,7 +300,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         # plt.show()
 
     def _update_field_oriented_weighted_(self):
-        grad_image = tb.spacialGradient(self.image, dx_convention='pixel')
+        grad_image = tb.spatialGradient(self.image, dx_convention='pixel')
         if self.flag_W:
             free_field = tb.im2grid(
                 # self.kernelOperator((- self.rf.f(self._i) * self.residuals * grad_image[0]))
@@ -666,7 +666,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         if len(args) == 2 and not args[0].shape[-1] in [2,3] :
             residual, image = args[0],args[1]
             C = residual.shape[1]
-            grad_source = tb.spacialGradient(image)
+            grad_source = tb.spatialGradient(image)
             grad_source_resi = (grad_source * residual.unsqueeze(2)).sum(dim=1) #/ C
             K_grad_source_resi = self.mp.kernelOperator(grad_source_resi)
 
