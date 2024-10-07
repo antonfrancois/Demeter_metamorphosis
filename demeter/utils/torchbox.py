@@ -484,13 +484,13 @@ def thresholding(image,bounds = (0,1)):
                                       )
                          )
 
-def spacialGradient(image,dx_convention = 'pixel'):
+def spatialGradient(image, dx_convention ='pixel'):
     if len(image.shape) == 4 :
-        return spacialGradient_2d(image,dx_convention)
+        return spatialGradient_2d(image, dx_convention)
     elif len(image.shape) == 5:
-        return spacialGradient_3d(image,dx_convention)
+        return spatialGradient_3d(image, dx_convention)
 
-def spacialGradient_2d(image,dx_convention = 'pixel'):
+def spatialGradient_2d(image, dx_convention ='pixel'):
     """ Compute the spatial gradient on 2d images by applying
     a sobel kernel
 
@@ -508,7 +508,7 @@ def spacialGradient_2d(image,dx_convention = 'pixel'):
     return grad_image
 
 
-def spacialGradient_3d(image,dx_convention = 'pixel'):
+def spatialGradient_3d(image, dx_convention ='pixel'):
     """
 
     :param image: Tensor [B,1,D,H,W]
@@ -538,6 +538,8 @@ def spacialGradient_3d(image,dx_convention = 'pixel'):
     # sobel kernel is not implemented for 3D images yet in kornia
     # grad_image = SpatialGradient3d(mode='sobel')(image)
     kernel = get_sobel_kernel_3d().to(image.device).to(image.dtype)
+    # normalise kernel
+    kernel = kernel / kernel.abs().sum()
     spatial_pad = [1,1,1,1,1,1]
     image_padded = F.pad(image,spatial_pad,'replicate').repeat(1,3,1,1,1)
     grad_image =  F.conv3d(image_padded,kernel,padding=0,groups=3,stride=1)
@@ -556,6 +558,15 @@ def get_sobel_kernel_2d():
             [-2, 0, 2],
             [-1, 0, 1]
         ])
+    # return torch.tensor(
+    #     [
+    #         [-5,  -4,  0,   4,   5],
+    #         [-8, -10,  0,  10,   8],
+    #         [-10, -20,  0,  20,  10],
+    #         [-8, -10,  0,  10,   8],
+    #         [-5, -4,  0,   4,   5]
+    #     ]
+    # )
 
 def get_sobel_kernel_3d():
     return torch.tensor(
@@ -1177,22 +1188,6 @@ def field_divergence(field,dx_convention = 'pixel'):
     fig.colorbar(div_plot)
     plt.show()
     """
-    # _,H,W,_ = field.shape
-    # x_sobel = get_sobel_kernel_2d()/8
-    # # x_sobel = torch.tensor([[-1, 0, 1],
-    # #                         [-2, 0, 2],
-    # #                         [-1, 0, 1]])/8
-    # field_as_im = grid2im(field)
-    # field_x_dx = filter2d(field_as_im[:,0,:,:].unsqueeze(1),
-    #                       x_sobel.unsqueeze(0))# * (2/(H-1)))
-    # field_y_dy = filter2d(field_as_im[:,1,:,:].unsqueeze(1),
-    #                       x_sobel.T.unsqueeze(0))# * (2/(W-1)))
-    #
-    # if dx_convention == '2square':
-    #     _,H,W,_ = field.shape
-    #     return field_x_dx*(H-1)/2 + field_y_dy*(W-1)/2
-    # else:
-    #     return field_x_dx + field_y_dy
     return Field_divergence(dx_convention)(field)
 
 def pixel2square_convention(field,grid = True):
