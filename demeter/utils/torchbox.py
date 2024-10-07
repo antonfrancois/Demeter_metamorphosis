@@ -485,6 +485,9 @@ def thresholding(image,bounds = (0,1)):
                          )
 
 def spatialGradient(image, dx_convention ='pixel'):
+    dx_convention_list = ["pixel", "square", "2square"]
+    if not dx_convention in dx_convention_list:
+        raise ValueError(f"dx_convention must be one of {dx_convention_list}, got {dx_convention}")
     if len(image.shape) == 4 :
         return spatialGradient_2d(image, dx_convention)
     elif len(image.shape) == 5:
@@ -498,13 +501,17 @@ def spatialGradient_2d(image, dx_convention ='pixel'):
     :param dx_convention:
     :return: [B,C,2,H,W]
     """
-
-    grad_image = SpatialGradient(mode='sobel')(image)
+    normalized = True #if dx_convention == "square" else False
+    grad_image = SpatialGradient(mode='sobel',normalized=normalized)(image)
     # grad_image[:,0,1] *= -1
+    if dx_convention == "square":
+        _,_,H,W = image.size()
+        grad_image[:,0,0] *= (W-1)
+        grad_image[:,0,1] *= (H-1)
     if dx_convention == '2square':
         _,_,H,W = image.size()
-        grad_image[:,0,0] *= (H-1)/2
-        grad_image[:,0,1] *= (W-1)/2
+        grad_image[:,0,0] *= (W-1)/2
+        grad_image[:,0,1] *= (H-1)/2
     return grad_image
 
 
