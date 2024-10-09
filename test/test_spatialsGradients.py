@@ -12,13 +12,27 @@ import argparse
 
 import demeter.utils.torchbox as tb
 
+# Test in this file:
+# 1. TestLinearX_pixel (line 21):
+#      Tests spatial derivatives in the x direction for a linear image in x
+#      with pixelic coordinates.
+# 2. TestLinearX_1square (line 78):
+#      Tests spatial derivatives for an image on the [0,1] square area.
+# 3. TestLinearX_2square (line 101):
+#      Tests spatial derivatives for an image on the [-1,1] square area. (Pytorch convention)
+# 4. TestLinearY_pixel (line 124):
+#      Tests spatial derivatives in the y direction for a linear image in y.
+# 5. TestCustom2D_pixel (line 147):
+#      Tests spatial derivatives for an image defined by a custom
+#      polynomial function in 2D.
+# 6. TestLinear3D_pixel (line 170):
+#      Tests spatial derivatives for a linear image in 3D.
+# 7. TestCustom3D_pixel (line 194):
+#      Tests spatial derivatives for an image defined by a custom
+#      function in 3D.
 
 
 
-#%% Coordonées pixeliques.
-
-
-#%%
 
 class TestLinearX_pixel(unittest.TestCase):
 
@@ -546,8 +560,8 @@ if __name__ == '__main__':
 
     unittest.main(argv=[sys.argv[0]])
 
-
- #%% Coordonées 2squares
+"""
+ 
 
 import torch
 import matplotlib.pyplot as plt
@@ -691,3 +705,4 @@ ax[2,1].set_ylabel("Z")
 
 plt.legend()
 plt.show()
+"""
