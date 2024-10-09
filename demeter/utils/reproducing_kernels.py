@@ -4,7 +4,7 @@ from torch.nn.functional import pad
 import kornia
 # from kornia.filters.kernels import normalize_kernel2d
 import kornia.filters.filter as flt
-from math import prod
+from math import prod, sqrt, log
 
 from .fft_conv import fft_conv
 from .decorators import deprecated
@@ -287,3 +287,76 @@ class Multi_scale_GaussianRKHS_notAverage(torch.nn.Module):
         for gauss_rkhs in self.gauss_list:
             output += gauss_rkhs(input)/len(self.gauss_list)
         return output
+
+
+
+def get_sigma_from_img_ratio(img_shape,subdiv,c=.1):
+    """The function get_sigma_from_img_ratio calculates the ideal
+    (\sigma) values for a Gaussian kernel based on the desired grid
+     granularity. Given an image (I) of size (H, W), the goal is to
+    divide the image into a grid of (n_h) (in the H direction) and
+     (n_w) (in the W direction). Suppose (x) is at the center of a
+    square in this (n_h \times n_w) grid. We want to choose
+    (\sigma = (\sigma_h, \sigma_w))
+     such that the Gaussian centered at (x) is negligible outside
+      the grid square.
+
+    In other words, we want to find (\sigma) such that:
+
+    [ e^{\frac{ -\left(\frac{H}{n_h}\right)^2}{2 \sigma^2}} < c; \qquad c \in \mathbb{R} ]
+
+     where (c) is the negligibility constant.
+
+    :param img_shape: torch.Tensor or Tuple[int] : shape of the image
+    :param subdiv: int or Tuple[int] or List[Tuple[int]] : number of subdivisions of the grid
+    :param c: float : value considered as negligible in the gaussian kernel
+    """
+
+    def _get_sigma_monodim(X,nx,c):
+        """
+        :param X: int : size of the image
+        :param nx: int : number subdivisions of the grid
+        :param c: float : value considered as negligible in the gaussian kernel
+        :return: float : sigma
+        """
+        return sqrt(- (X/nx)**2 / 2 * log(c))
+
+    def _check_subdiv_tuple_size(subdiv_, dim):
+        if len(subdiv_) != dim:
+            raise ValueError(f"input subdiv was given as a tuple {subdiv_},"
+                             f" must be of length {dim} to match the"
+                             f" image shape {img_shape}")
+        for i in range(dim):
+            # if not isinstance(subdiv_[i], int):
+            #     raise ValueError(f"subdivisions must be integers")
+            if subdiv_[i] > img_shape[i]:
+                raise ValueError(f"subdivisions {subdiv_} must be smaller than the image shape {img_shape}")
+
+
+    if isinstance(img_shape,torch.Tensor):
+        img_shape = img_shape.shape
+    if len(img_shape) in [4,5]: # 2D or 3D image
+        img_shape = img_shape[2:]
+    d = len(img_shape)
+    if isinstance(subdiv,int):
+        subdiv = [(subdiv,)*d]
+    elif isinstance(subdiv,tuple):
+        _check_subdiv_tuple_size(subdiv,d)
+        subdiv = [subdiv]
+    elif isinstance(subdiv,list):
+        for s in subdiv:
+            if not isinstance(s,tuple):
+                raise ValueError(f"subdiv can be a list of tuples")
+            _check_subdiv_tuple_size(s,d)
+
+    if len(subdiv) == 1:
+        sigma = tuple([_get_sigma_monodim(u,s,c) for s,u in zip(subdiv[0],img_shape)])
+        return sigma
+    else:
+        sigma = [
+            tuple([_get_sigma_monodim(u,s,c) for s,u in zip(sb,img_shape)])
+            for sb in subdiv
+        ]
+
+        return sigma
+
