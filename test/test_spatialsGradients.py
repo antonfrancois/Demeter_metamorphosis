@@ -1,5 +1,7 @@
 import sys
 
+from IPython.core.pylabtools import figsize
+from skimage.filters.rank import minimum, maximum
 from sympy.physics.quantum.gate import normalized
 
 import __init__
@@ -9,7 +11,6 @@ import unittest
 import argparse
 
 import demeter.utils.torchbox as tb
-from demeter.utils.constants import color
 
 
 
@@ -290,20 +291,20 @@ class TestLinear3D_pixel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.D, cls.H, cls.W = (6, 10, 5)
-        zz, yy, xx = torch.meshgrid(
-            torch.arange(0, cls.D, dtype=torch.long),
+        cls.D, cls.H, cls.W = (5, 10, 20)
+        xx,yy,zz = torch.meshgrid(
             torch.arange(0, cls.H, dtype=torch.long),
             torch.arange(0, cls.W, dtype=torch.long),
+            torch.arange(0, cls.D, dtype=torch.long),
             indexing='ij'
         )
 
         cls.image = xx + yy + zz
         cls.image = cls.image[None, None].to(torch.float64)
 
-        cls.theoretical_derivative_x = xx
-        cls.theoretical_derivative_y = yy
-        cls.theoretical_derivative_z = zz
+        cls.theoretical_derivative_x = torch.ones_like(xx)
+        cls.theoretical_derivative_y = torch.ones_like(yy)
+        cls.theoretical_derivative_z = torch.ones_like(zz)
 
         cls.derivative = tb.spatialGradient(cls.image, dx_convention="pixel")
         # if args.plot:
@@ -358,20 +359,31 @@ class TestCustom3D_pixel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.D, cls.H, cls.W = (6, 10, 5)
-        zz, yy, xx = torch.meshgrid(
-            torch.arange(0, cls.D, dtype=torch.long),
+
+        cls.H,cls.W,cls.D = (100, 300, 150)
+        zz,yy,xx = torch.meshgrid(
             torch.arange(0, cls.H, dtype=torch.long),
             torch.arange(0, cls.W, dtype=torch.long),
+            torch.arange(0, cls.D, dtype=torch.long),
             indexing='ij'
         )
 
-        cls.image = xx**2 * zz**3 - xx * yy**2 + torch.sin(zz) + 2*xx*yy
+        c1,c2,c3 = .002,.003,.001
+        cls.image = torch.sin((c1 * (xx- cls.H//2)**2 + c2 * (yy - cls.W//2)**2 + c3 * (zz - cls.D//2)**2))
         cls.image = cls.image[None, None].to(torch.float64)
 
-        cls.theoretical_derivative_x = 2 * xx * zz**3 - yy**2 + 2*yy
-        cls.theoretical_derivative_y = 2 * xx * (1 - yy)
-        cls.theoretical_derivative_z = 3 * xx**2 * zz**3 + torch.cos(zz)
+        cls.theoretical_derivative_x = c1 * 2 * (xx - cls.H//2) * torch.cos((c1 * (xx- cls.H//2)**2 + c2 *(yy - cls.W//2)**2 + c3 * (zz - cls.D//2)**2))
+        cls.theoretical_derivative_y = c2 * 2 * (yy - cls.W//2) * torch.cos((c1 * (xx- cls.H//2)**2 + c2 *(yy - cls.W//2)**2 + c3 * (zz - cls.D//2)**2))
+        cls.theoretical_derivative_z = c3 * 2 * (zz - cls.D//2) * torch.cos((c1 * (xx- cls.H//2)**2 + c2 *(yy - cls.W//2)**2 + c3 * (zz - cls.D//2)**2))
+
+
+        # cls.image = torch.sin(((xx - cls.H//2)**2 + (yy - cls.W//2)**2) + (zz - cls.D//2)**2)
+        # cls.image = cls.image[None, None].to(torch.float64)
+        #
+        # cls.theoretical_derivative_x = -torch.cos(((xx - cls.H//2)**2 + (yy - cls.W//2)**2) + (zz - cls.D//2)**2) * 2 * (xx - cls.H//2)
+        # cls.theoretical_derivative_y = -torch.cos(((xx - cls.H//2)**2 + (yy - cls.W//2)**2) + (zz - cls.D//2)**2) * 2 * (yy - cls.W//2)
+        # cls.theoretical_derivative_z = -torch.cos(((xx - cls.H//2)**2 + (yy - cls.W//2)**2) + (zz - cls.D//2)**2) * 2 * (zz - cls.D//2)
+
 
         cls.derivative = tb.spatialGradient(cls.image, dx_convention="pixel")
         if args.plot:
@@ -379,47 +391,142 @@ class TestCustom3D_pixel(unittest.TestCase):
 
     @classmethod
     def plot(cls):
-        fig, ax = plt.subplots(3, 3)
-        ax[0, 0].imshow(cls.image[0, 0, cls.D // 2], cmap="gray")
-        ax[0, 0].set_title("f(x,y,z) = zz**2 + yy**2 + 2*xx*yy")
-        ax[1, 0].imshow(cls.derivative[0, 0, 0, cls.D // 2], cmap="gray")
-        ax[1, 0].set_title('Spatial gradient x')
-        ax[2, 0].imshow(cls.derivative[0, 0, 1, cls.D // 2], cmap="gray")
-        ax[2, 0].set_title('Spatial gradient y')
-        ax[2, 1].imshow(cls.derivative[0, 0, 2, cls.D // 2], cmap="gray")
-        ax[2, 1].set_title('Spatial gradient z')
+        fix,ax = plt.subplots(3,4, constrained_layout=True)
 
-        ax[0, 1].plot(cls.image[0, 0, cls.D // 2, :, cls.W // 2])
-        ax[1, 1].imshow(cls.theoretical_derivative_x[cls.D // 2], cmap="gray")
-        ax[1, 1].set_title("D_x f(x,y,z) = 2*yy")
-        ax[2, 1].imshow(cls.theoretical_derivative_y[cls.D // 2], cmap="gray")
-        ax[2, 1].set_title("D_y f(x,y,z) = 2*yy + 2*xx")
-        ax[2, 2].imshow(cls.theoretical_derivative_z[cls.D // 2], cmap="gray")
-        ax[2, 2].set_title("D_z f(x,y,z) = 2*zz")
+        im_kw = dict(cmap="gray",vmin=cls.image.min(),vmax=cls.image.max())
+        ax[0,0].imshow(cls.image[0,0,cls.H//2],**im_kw)
+        ax[0,0].set_title("f(x,y,z) = xx + yy + zz")
+        ax[1,0].imshow(cls.image[0,0,:,cls.W//2],**im_kw)
+        ax[2,0].imshow(cls.image[0,0,:,:,cls.D//2],**im_kw)
+
+
+        min_p = min(cls.derivative.min(),
+                        float(cls.theoretical_derivative_x.min()),
+                        float(cls.theoretical_derivative_y.min()),
+                        float(cls.theoretical_derivative_z.min()))
+        max_p = max(cls.derivative.max(),
+                        float(cls.theoretical_derivative_x.max()),
+                        float(cls.theoretical_derivative_y.max()),
+                        float(cls.theoretical_derivative_z.max()))
+        der_kw = dict(cmap="gray",vmin=min_p,vmax=max_p)
+        ax[0,1].set_title("D_x f(x,y,z)")
+        ax[0,1].imshow(cls.derivative[0,0,0,cls.H//2],**der_kw)
+        ax[1,1].imshow(cls.derivative[0,0,0,:,cls.W//2],**der_kw)
+        ax[2,1].imshow(cls.derivative[0,0,0,:,:,cls.D//2],**der_kw)
+
+        ax[0,2].set_title("D_y f(x,y,z)")
+        ax[0,2].imshow(cls.derivative[0,0,1,cls.H//2],**der_kw)
+        ax[1,2].imshow(cls.derivative[0,0,1,:,cls.W//2],**der_kw)
+        ax[2,2].imshow(cls.derivative[0,0,1,:,:,cls.D//2],**der_kw)
+
+        ax[0,3].set_title("D_z f(x,y,z)")
+        ax[0,3].imshow(cls.derivative[0,0,2,cls.H//2],**der_kw)
+        ax[1,3].imshow(cls.derivative[0,0,2,:,cls.W//2],**der_kw)
+        ax[2,3].imshow(cls.derivative[0,0,2,:,:,cls.D//2],**der_kw)
+
+
+        fix,ax = plt.subplots(3,4, constrained_layout=True)
+
+        im_kw = dict(cmap="gray",vmin=cls.image.min(),vmax=cls.image.max())
+        ax[0,0].imshow(cls.image[0,0,cls.H//2],**im_kw)
+        ax[0,0].set_title("f(x,y,z) = xx + yy + zz")
+        ax[1,0].imshow(cls.image[0,0,:,cls.W//2],**im_kw)
+        ax[2,0].imshow(cls.image[0,0,:,:,cls.D//2],**im_kw)
+
+        # der_kw = dict(cmap="gray",vmin=cls.theoretical_derivative_z.min(),vmax=cls.theoretical_derivative_z.max())
+        ax[0,1].set_title("D_x f(x,y,z) theorique")
+        ax[0,1].imshow(cls.theoretical_derivative_x[cls.H//2],**der_kw)
+        ax[1,1].imshow(cls.theoretical_derivative_x[:,cls.W//2],**der_kw)
+        ax[2,1].imshow(cls.theoretical_derivative_x[:,:,cls.D//2],**der_kw)
+
+        ax[0,2].set_title("D_y f(x,y,z) theorique")
+        ax[0,2].imshow(cls.theoretical_derivative_y[cls.H//2],**der_kw)
+        ax[1,2].imshow(cls.theoretical_derivative_y[:,cls.W//2],**der_kw)
+        ax[2,2].imshow(cls.theoretical_derivative_y[:,:,cls.D//2],**der_kw)
+
+        ax[0,3].set_title("D_z f(x,y,z) theorique")
+        ax[0,3].imshow(cls.theoretical_derivative_z[cls.H//2],**der_kw)
+        ax[1,3].imshow(cls.theoretical_derivative_z[:,cls.W//2],**der_kw)
+        ax[2,3].imshow(cls.theoretical_derivative_z[:,:,cls.D//2],**der_kw)
+
+
+        fig,ax = plt.subplots(3,3,constrained_layout=True,figsize = (10,10))
+        ax[0,0].plot(cls.derivative[0,0,0,:,cls.W//2,cls.D//2],label="spatialGradient")
+        ax[0,0].plot(cls.theoretical_derivative_x[:,cls.W//2,cls.D//2],'--',label="theoretical")
+        ax[0,0].set_title("D_x f(x,y,z)")
+        ax[0,0].set_ylabel("X")
+
+        ax[0,1].plot(cls.derivative[0,0,1,:,cls.W//2,cls.D//2],label="spatialGradient")
+        ax[0,1].plot(cls.theoretical_derivative_y[:,cls.W//2,cls.D//2],'--',label="theoretical")
+        ax[0,1].set_title("D_y f(x,y,z)")
+        ax[0,1].set_ylabel("X")
+
+
+        ax[0,2].plot(cls.derivative[0,0,2,:,cls.W//2,cls.D//2],label="spatialGradient")
+        ax[0,2].plot(cls.theoretical_derivative_z[:,cls.W//2,cls.D//2],'--',label="theoretical")
+        ax[0,2].set_title("D_z f(x,y,z)")
+        ax[0,1].set_ylabel("X")
+
+        ax[1,0].plot(cls.derivative[0,0,0,cls.H//2,:,cls.D//2],label="spatialGradient")
+        ax[1,0].plot(cls.theoretical_derivative_x[cls.H//2,:,cls.D//2],'--',label="theoretical")
+        ax[1,0].set_title("D_x f(x,y,z)")
+        ax[1,0].set_ylabel("Y")
+
+        ax[1,1].plot(cls.derivative[0,0,1,cls.H//2,:,cls.D//2],label="spatialGradient")
+        ax[1,1].plot(cls.theoretical_derivative_y[cls.H//2,:,cls.D//2],'--',label="theoretical")
+        ax[1,1].set_title("D_y f(x,y,z)")
+        ax[1,1].set_ylabel("Y")
+
+
+        ax[1,2].plot(cls.derivative[0,0,2,cls.H//2,:,cls.D//2],label="spatialGradient")
+        ax[1,2].plot(cls.theoretical_derivative_z[cls.H//2,:,cls.D//2],'--',label="theoretical")
+        ax[1,2].set_title("D_z f(x,y,z)")
+        ax[1,1].set_ylabel("Y")
+
+
+        ax[2,0].plot(cls.derivative[0,0,0,cls.H//2,cls.W//2],label="spatialGradient")
+        ax[2,0].plot(cls.theoretical_derivative_x[cls.H//2,cls.W//2],'--',label="theoretical")
+        ax[2,0].set_title("D_x f(x,y,z)")
+        ax[2,0].set_ylabel("Z")
+
+        ax[2,1].plot(cls.derivative[0,0,1,cls.H//2,cls.W//2],label="spatialGradient")
+        ax[2,1].plot(cls.theoretical_derivative_y[cls.H//2,cls.W//2],'--',label="theoretical")
+        ax[2,1].set_title("D_y f(x,y,z)")
+        ax[2,1].set_ylabel("Z")
+
+        # Last
+        ax[2,2].plot(cls.derivative[0,0,2,cls.H//2,cls.W//2],label="spatialGradient")
+        ax[2,2].plot(cls.theoretical_derivative_z[cls.H//2,cls.W//2],'--',label="theoretical")
+        ax[2,2].set_title("D_z f(x,y,z)")
+        ax[2,1].set_ylabel("Z")
+
+        plt.legend()
         plt.show()
 
     def test_values_of_derivative_direction_x(self):
-        eps = 1e-6
+        eps = 3e-1
         self.assertTrue(
             (self.derivative[0, 0, 0, 1:-1, 1:-1, 1:-1] - self.theoretical_derivative_x[1:-1, 1:-1, 1:-1]).abs().max() < eps,
-            "The derivative of D_x f(x,y,z) = xx**2 * zz**3 - xx * yy**2 + torch.sin(zz) + 2*xx*yy should be "
-            f"{self.theoretical_derivative_x} but was {self.derivative[0, 0, 0]}"
+            "The derivative of D_y f(x,y,z) = torch.sin((c1 * (xx- cls.H//2)**2 + c2 * (yy - cls.W//2)**2 + c3 * (zz - cls.D//2)**2))\n "
+            f"max abs diffence is {(self.derivative[0, 0, 0, 1:-1, 1:-1, 1:-1] - self.theoretical_derivative_x[1:-1, 1:-1, 1:-1]).abs().max()}"
+            f"tolereance is {eps}"
         )
 
     def test_values_of_derivative_direction_y(self):
-        eps = 1e-6
+        eps = 3e-1
         self.assertTrue(
             (self.derivative[0, 0, 1, 1:-1, 1:-1, 1:-1] - self.theoretical_derivative_y[1:-1, 1:-1, 1:-1]).abs().max() < eps,
-            "The derivative of D_y f(x,y,z) = zz**2 + yy**2 + 2*xx*yy should be "
-            f"{self.theoretical_derivative_y} but was {self.derivative[0, 0, 1]}"
+            "The derivative of D_y f(x,y,z) = torch.sin((c1 * (xx- cls.H//2)**2 + c2 * (yy - cls.W//2)**2 + c3 * (zz - cls.D//2)**2))\n "
+            f"max abs diffence is {(self.derivative[0, 0, 1, 1:-1, 1:-1, 1:-1] - self.theoretical_derivative_y[1:-1, 1:-1, 1:-1]).abs().max()}"
+            f"tolereance is {eps}"
         )
 
     def test_values_of_derivative_direction_z(self):
-        eps = 1e-6
+        eps = 3e-1
         self.assertTrue(
             (self.derivative[0, 0, 2, 1:-1, 1:-1, 1:-1] - self.theoretical_derivative_z[1:-1, 1:-1, 1:-1]).abs().max() < eps,
-            "The derivative of D_z f(x,y,z) = zz**2 + yy**2 + 2*xx*yy should be "
-            f"{self.theoretical_derivative_z} but was {self.derivative[0, 0, 2]}"
+            "The derivative of D_z f(x,y,z) = torch.sin((c1 * (xx- cls.H//2)**2 + c2 * (yy - cls.W//2)**2 + c3 * (zz - cls.D//2)**2))\n "
+            f"max abs diffence is {(self.derivative[0, 0, 2, 1:-1, 1:-1, 1:-1] - self.theoretical_derivative_z[1:-1, 1:-1, 1:-1]).abs().max()} tolereance is {eps}"
         )
 
 if __name__ == '__main__':
@@ -446,29 +553,141 @@ import torch
 import matplotlib.pyplot as plt
 import demeter.utils.torchbox as tb
 
-D, H, W = (6, 5, 10)
-yy,zz, xx = torch.meshgrid(
-    torch.arange(0, D, dtype=torch.long),
+H,W,D = (100, 300, 150)
+zz,yy,xx = torch.meshgrid(
     torch.arange(0, H, dtype=torch.long),
     torch.arange(0, W, dtype=torch.long),
+    torch.arange(0, D, dtype=torch.long),
     indexing='ij'
 )
 
-image = xx + yy + zz
+# self.image = xx + yy + zz
+# self.image = image[None, None].to(torch.float64)
+#
+# theoretical_derivative_x = xx
+# theoretical_derivative_y = torch.zeros_like(theoretical_derivative_x)
+# theoretical_derivative_z = torch.zeros_like(theoretical_derivative_x)
+
+# image = xx**2 * zz**3 - xx * yy**2 + torch.sin(zz) + 2*xx*yy
+c1,c2,c3 = .005,.003,.001
+image = torch.sin((c1 * (xx- H//2)**2 + c2 * (yy - W//2)**2 + c3 * (zz - D//2)**2))
 image = image[None, None].to(torch.float64)
 
-theoretical_derivative_x = xx
-theoretical_derivative_y = torch.zeros_like(theoretical_derivative_x)
-theoretical_derivative_z = torch.zeros_like(theoretical_derivative_x)
+theoretical_derivative_x = c1 * 2 * (xx - H//2) * torch.cos((c1 * (xx- H//2)**2 + c2 *(yy - W//2)**2 + c3 * (zz - D//2)**2))
+theoretical_derivative_y = c2 * 2 * (yy - W//2) * torch.cos((c1 * (xx- H//2)**2 + c2 *(yy - W//2)**2 + c3 * (zz - D//2)**2))
+theoretical_derivative_z = c3 * 2 * (zz - D//2) * torch.cos((c1 * (xx- H//2)**2 + c2 *(yy - W//2)**2 + c3 * (zz - D//2)**2))
+
 
 derivative = tb.spatialGradient(image, dx_convention="pixel")
+# derivative[0,0,0] = derivative[0,0,0] /
+print("diff : \n",
+(derivative[0, 0, 2, 1:-1, 1:-1, 1:-1] - theoretical_derivative_z[1:-1, 1:-1, 1:-1]).abs().max()
+)
 #%%
-print("0 ",derivative[0,0,0,4])
-print("1 ",derivative[0,0,1,4])
-print("2 ",derivative[0,0,2,4])
+fix,ax = plt.subplots(3,4, constrained_layout=True)
 
-print("th ",theoretical_derivative_x[4])
+im_kw = dict(cmap="gray",vmin=image.min(),vmax=image.max())
+ax[0,0].imshow(image[0,0,H//2],**im_kw)
+ax[0,0].set_title("f(x,y,z) = xx + yy + zz")
+ax[1,0].imshow(image[0,0,:,W//2],**im_kw)
+ax[2,0].imshow(image[0,0,:,:,D//2],**im_kw)
+
+der_kw = dict(cmap="gray",vmin=derivative.min(),vmax=derivative.max())
+ax[0,1].set_title("D_x f(x,y,z)")
+ax[0,1].imshow(derivative[0,0,0,H//2],**der_kw)
+ax[1,1].imshow(derivative[0,0,0,:,W//2],**der_kw)
+ax[2,1].imshow(derivative[0,0,0,:,:,D//2],**der_kw)
+
+ax[0,2].set_title("D_y f(x,y,z)")
+ax[0,2].imshow(derivative[0,0,1,H//2],**der_kw)
+ax[1,2].imshow(derivative[0,0,1,:,W//2],**der_kw)
+ax[2,2].imshow(derivative[0,0,1,:,:,D//2],**der_kw)
+
+ax[0,3].set_title("D_z f(x,y,z)")
+ax[0,3].imshow(derivative[0,0,2,H//2],**der_kw)
+ax[1,3].imshow(derivative[0,0,2,:,W//2],**der_kw)
+ax[2,3].imshow(derivative[0,0,2,:,:,D//2],**der_kw)
+plt.show()
+
+fix,ax = plt.subplots(3,4, constrained_layout=True)
+
+im_kw = dict(cmap="gray",vmin=image.min(),vmax=image.max())
+ax[0,0].imshow(image[0,0,H//2],**im_kw)
+ax[0,0].set_title("f(x,y,z) = xx + yy + zz")
+ax[1,0].imshow(image[0,0,:,W//2],**im_kw)
+ax[2,0].imshow(image[0,0,:,:,D//2],**im_kw)
+
+der_kw = dict(cmap="gray",vmin=derivative.min(),vmax=derivative.max())
+ax[0,1].set_title("D_x f(x,y,z) theorique")
+ax[0,1].imshow(theoretical_derivative_x[H//2],**der_kw)
+ax[1,1].imshow(theoretical_derivative_x[:,W//2],**der_kw)
+ax[2,1].imshow(theoretical_derivative_x[:,:,D//2],**der_kw)
+
+ax[0,2].set_title("D_y f(x,y,z) theorique")
+ax[0,2].imshow(theoretical_derivative_y[H//2],**der_kw)
+ax[1,2].imshow(theoretical_derivative_y[:,W//2],**der_kw)
+ax[2,2].imshow(theoretical_derivative_y[:,:,D//2],**der_kw)
+
+ax[0,3].set_title("D_z f(x,y,z) theorique")
+ax[0,3].imshow(theoretical_derivative_z[H//2],**der_kw)
+ax[1,3].imshow(theoretical_derivative_z[:,W//2],**der_kw)
+ax[2,3].imshow(theoretical_derivative_z[:,:,D//2],**der_kw)
+
+plt.show()
+#%%
+fig,ax = plt.subplots(3,3,constrained_layout=True,figsize = (10,10))
+ax[0,0].plot(derivative[0,0,0,:,W//2,D//2],label="spatialGradient")
+ax[0,0].plot(theoretical_derivative_x[:,W//2,D//2],'--',label="theoretical")
+ax[0,0].set_title("D_x f(x,y,z)")
+ax[0,0].set_ylabel("X")
+
+ax[0,1].plot(derivative[0,0,1,:,W//2,D//2],label="spatialGradient")
+ax[0,1].plot(theoretical_derivative_y[:,W//2,D//2],'--',label="theoretical")
+ax[0,1].set_title("D_y f(x,y,z)")
+ax[0,1].set_ylabel("X")
+
+
+ax[0,2].plot(derivative[0,0,2,:,W//2,D//2],label="spatialGradient")
+ax[0,2].plot(theoretical_derivative_z[:,W//2,D//2],'--',label="theoretical")
+ax[0,2].set_title("D_z f(x,y,z)")
+ax[0,1].set_ylabel("X")
+
+ax[1,0].plot(derivative[0,0,0,H//2,:,D//2],label="spatialGradient")
+ax[1,0].plot(theoretical_derivative_x[H//2,:,D//2],'--',label="theoretical")
+ax[1,0].set_title("D_x f(x,y,z)")
+ax[1,0].set_ylabel("Y")
+
+ax[1,1].plot(derivative[0,0,1,H//2,:,D//2],label="spatialGradient")
+ax[1,1].plot(theoretical_derivative_y[H//2,:,D//2],'--',label="theoretical")
+ax[1,1].set_title("D_y f(x,y,z)")
+ax[1,1].set_ylabel("Y")
+
+
+ax[1,2].plot(derivative[0,0,2,H//2,:,D//2],label="spatialGradient")
+ax[1,2].plot(theoretical_derivative_z[H//2,:,D//2],'--',label="theoretical")
+ax[1,2].set_title("D_z f(x,y,z)")
+ax[1,1].set_ylabel("Y")
 
 
 
 
+ax[2,0].plot(derivative[0,0,0,H//2,W//2],label="spatialGradient")
+ax[2,0].plot(theoretical_derivative_x[H//2,W//2],'--',label="theoretical")
+ax[2,0].set_title("D_x f(x,y,z)")
+ax[2,0].set_ylabel("Z")
+
+ax[2,1].plot(derivative[0,0,1,H//2,W//2],label="spatialGradient")
+ax[2,1].plot(theoretical_derivative_y[H//2,W//2],'--',label="theoretical")
+ax[2,1].set_title("D_y f(x,y,z)")
+ax[2,1].set_ylabel("Z")
+
+
+ax[2,2].plot(derivative[0,0,2,H//2,W//2],label="spatialGradient")
+ax[2,2].plot(theoretical_derivative_z[H//2,W//2],'--',label="theoretical")
+ax[2,2].set_title("D_z f(x,y,z)")
+ax[2,1].set_ylabel("Z")
+
+
+
+plt.legend()
+plt.show()

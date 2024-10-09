@@ -546,7 +546,7 @@ def spatialGradient_3d(image, dx_convention ='pixel'):
     # grad_image = SpatialGradient3d(mode='sobel')(image)
     kernel = get_sobel_kernel_3d().to(image.device).to(image.dtype)
     # normalise kernel
-    kernel = kernel / kernel.abs().sum()
+    kernel = 3 * kernel / kernel.abs().sum()
     spatial_pad = [1,1,1,1,1,1]
     image_padded = F.pad(image,spatial_pad,'replicate').repeat(1,3,1,1,1)
     grad_image =  F.conv3d(image_padded,kernel,padding=0,groups=3,stride=1)
@@ -614,8 +614,6 @@ def get_sobel_kernel_3d():
           [2,4,2],
           [1,2,1]]]
     ]).unsqueeze(1)
-
-
 
 # =================================================
 #            PLOT
