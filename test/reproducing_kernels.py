@@ -57,5 +57,27 @@ class TestGetSigmaFromImgRatio(unittest.TestCase):
         with self.assertRaises(ValueError):
             rk.get_sigma_from_img_ratio(self.image_3d.shape, [(5, 10, 15), (10, 20)])
 
+    def test_list_of_values_2d(self):
+         result = rk.get_sigma_from_img_ratio(
+             self.image_2d.shape,
+             [[5, 10],
+                    [1],
+                    [10, 20,30]]
+         )
+         expected = [
+             [
+                rk.get_sigma_from_img_ratio(self.image_2d,5),
+                rk.get_sigma_from_img_ratio(self.image_2d,10)
+             ],
+             [rk.get_sigma_from_img_ratio(self.image_2d,1)],
+             [
+                rk.get_sigma_from_img_ratio(self.image_2d,10),
+                rk.get_sigma_from_img_ratio(self.image_2d,20),
+                rk.get_sigma_from_img_ratio(self.image_2d,30)
+             ]
+         ]
+         self.assertEqual(result, expected,
+                          f"Expected: {expected}\nGot: {result}")
+
 if __name__ == '__main__':
     unittest.main()

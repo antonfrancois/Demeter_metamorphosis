@@ -307,8 +307,18 @@ def get_sigma_from_img_ratio(img_shape,subdiv,c=.1):
 
      where (c) is the negligibility constant.
 
+
     :param img_shape: torch.Tensor or Tuple[int] : shape of the image
-    :param subdiv: int or Tuple[int] or List[Tuple[int]] : number of subdivisions of the grid
+    :param subdiv: int or Tuple[int] or List[Tuple[float]] or List[List[int]] :
+        meant to encode the number of subdivisions of the grid, lets details
+        the different cases:
+         - int : the grid is divided in the same number of subdivisions in each direction
+         - Tuple[int] : the grid is divided in the number of subdivisions given in the tuple
+                            according to the dimensions of the image
+         - List[Tuple[float]] : If a tuple is given, we consider that it contains values of sigmas
+         - List[List[int]] : If a list of list is given, we consider that each element of the list
+                            is a list of integers that represent the number of subdivisions in each direction
+                            we simply apply the 'int case' to each element of the list.
     :param c: float : value considered as negligible in the gaussian kernel
     """
 
@@ -344,10 +354,18 @@ def get_sigma_from_img_ratio(img_shape,subdiv,c=.1):
         _check_subdiv_tuple_size(subdiv,d)
         subdiv = [subdiv]
     elif isinstance(subdiv,list):
-        for s in subdiv:
-            if not isinstance(s,tuple):
-                raise ValueError(f"subdiv can be a list of tuples")
-            _check_subdiv_tuple_size(s,d)
+        for sb in subdiv:
+            if isinstance(sb,list):
+
+                for j in range(len(sb)):
+                    if not isinstance(sb[j],int):
+                        raise ValueError(f"subdiv was given as a list of lists {subdiv},"
+                                         f" all elements must be integers")
+                    sb[j] = get_sigma_from_img_ratio(img_shape,sb[j],c)
+
+            elif isinstance(sb,tuple):
+                _check_subdiv_tuple_size(sb,d)
+        return subdiv
 
     if len(subdiv) == 1:
         sigma = tuple([_get_sigma_monodim(u,s,c) for s,u in zip(subdiv[0],img_shape)])
