@@ -81,3 +81,48 @@ class TestGetSigmaFromImgRatio(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+#%%
+import torch
+import demeter.utils.reproducing_kernels as rk
+import matplotlib.pyplot as plt
+#%%
+img = torch.rand(1,1,100,150,200)
+result = rk.get_sigma_from_img_ratio(
+         img.shape,
+    (11,16,21)
+)
+
+print("result",result)
+strr = rk.GaussianRKHS(result)
+print(strr)
+
+#%%
+import matplotlib.pyplot as plt
+vv = rk.GaussianRKHS((5,5))
+fig, ax = plt.subplots()
+ax.imshow(vv.kernel[0])
+plt.show()
+
+#%%
+big_odd = lambda val : max(6,int(val*6)) + (1 - max(6,int(val*6)) %2)
+
+sigmas = torch.linspace(0,50,100)
+fig, ax = plt.subplots(1,2,figsize=(7,4),constrained_layout=True)
+ax[0].plot(sigmas,[big_odd(i) for i in sigmas])
+ax[0].set_ylabel('kernel size')
+ax[0].set_xlabel('sigma')
+ax[0].grid(linestyle='--')
+
+
+subdivs = torch.arange(5,100)
+ax[1].plot(subdivs,[rk._get_sigma_monodim(100,i) for i in subdivs])
+ax[1].set_xlabel('subdiv')
+ax[1].set_ylabel('sigma')
+ax[1].set_title('sigma for a 100 pixel strip')
+ax[1].grid(linestyle='--')
+
+plt.show()
+
+#%%
+rk.get_sigma_from_img_ratio()

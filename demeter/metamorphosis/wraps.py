@@ -25,7 +25,7 @@ def lddmm(source,target,residuals,
     residuals.requires_grad = True
     if sharp: integration_method = 'sharp'
 
-    sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
+    # sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
 
     mp = cl.Metamorphosis_integrator(method=integration_method,
                         mu=0, rho=0,
@@ -85,7 +85,7 @@ def weighted_metamorphosis(source,target,residual,mask,
                            n_iter,grad_coef,data_term=None,sharp=False,
                            safe_mode=True):
     device = source.device
-    sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
+#     sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
     if rf_method == 'identity':
         rf = cn.Residual_norm_identity(mask.to(device),mu,rho)
     elif rf_method == 'borderBoost':
@@ -141,7 +141,7 @@ def constrained_metamorphosis(source,target,residual,
                            n_iter,grad_coef):
     mask = mp_orienting.image_stock.to(source.device)
     orienting_field = mp_orienting.field_stock.to(source.device)
-    sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
+#     sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
 
     if rf_method == 'identity':
         rf_method = cn.Residual_norm_identity(mask,mu,rho)

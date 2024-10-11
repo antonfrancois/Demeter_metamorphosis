@@ -110,6 +110,7 @@ class parse_brats:
             # print(f"\n!!!!!! {self.flag_bratsReg_2022} <<<<<<<<\n")
             self.flag_bratsReg_2022 = True
 
+        self.after_first_call = False
 
         # TODO : check that the list is correct by parsing with os.get_dir ...
         if brats_list is None:
@@ -130,6 +131,18 @@ class parse_brats:
 
             self.template_seg = nib_load(template_folder+'seg_sri24.mgz').get_fdata()
 
+
+    def get_img_size(self,scale = None):
+        if self.flag_bratsReg_2022:
+            if scale is None:
+                scale = self.scale if self.after_first_call else 1
+            img,_,_,_,_ = self._call_bratsReg_2022(0,True,scale)
+            if scale == 1:
+                return img.shape
+            else:
+                return tuple([int(max(s*scale,1)) for s in img.shape])
+        elif self.flag_brats_2021:
+            return self.template_img.shape
 
     def _make_brats_list(self,folder):
         self.brats_list = []
@@ -215,6 +228,7 @@ class parse_brats:
 
     def _call_brats_2021_(self,index,to_torch,normalize=False):
         brats_name = self.brats_list[index]
+        self.after_first_call = True
         print("mean")
         gliom = open_nib(brats_name,self.modality.lower(),'brats_2021',normalize='min_max',to_torch=False)
         segmentation_tumor = open_nib(brats_name,'seg','brats_2021',normalize=False,to_torch=to_torch)
@@ -228,7 +242,7 @@ class parse_brats:
         if self.flag_get_template and normalize:
             gliom_img[gliom_img > 0] = match_histograms(gliom_img[gliom_img > 0], self.template_img[self.template_img > 0])
             gliom_img = (gliom_img - gliom_img.min()) / (gliom_img.max() - gliom_img.min())
-
+        self.scale = 1
         if to_torch:
             gliom_img = torch.Tensor(gliom_img,device=self.device)[None,None]
         return (gliom_img,
@@ -242,7 +256,8 @@ class parse_brats:
         !!! Do not use rigidly_reg it does not work
         """
         path = self.brats_folder
-
+        self.after_first_call = True
+        self.scale = scale
 
         folder_name = self.brats_list[index]
         path += folder_name+'/'

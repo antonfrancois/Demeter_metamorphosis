@@ -166,7 +166,8 @@ class GaussianRKHS(torch.nn.Module):
         sig_str= f'sigma :{self.sigma}' if hasattr(self,'sigma') else ''
         return self.__class__.__name__+\
         ','+str(self._dim)+'D '+\
-        f'filter :{self.filter.__name__}, '+sig_str
+        f'\n\tfilter :{self.filter.__name__}, '+sig_str+\
+        f'\n\tkernel_size :{tuple(self.kernel.shape)}'
 
     def forward(self, input: torch.Tensor):
         """
@@ -183,6 +184,8 @@ class GaussianRKHS(torch.nn.Module):
                              f"{input.shape}")
 
 def get_gaussian_kernel3d(kernel_size,sigma):
+    print(f"kernel_size : {kernel_size}")
+    print(f"sigma : {sigma}")
     if not isinstance(kernel_size, tuple) or len(kernel_size) != 3:
         raise TypeError(f"kernel_size must be a tuple of length three. Got {kernel_size}")
     if not isinstance(sigma, tuple) or len(sigma) != 3:
@@ -195,8 +198,10 @@ def get_gaussian_kernel3d(kernel_size,sigma):
     kernel_d: torch.Tensor = kornia.filters.kernels.get_gaussian_kernel1d(ksize_d, sigma_d)
     kernel_h: torch.Tensor = kornia.filters.kernels.get_gaussian_kernel1d(ksize_h, sigma_h)
     kernel_w: torch.Tensor = kornia.filters.kernels.get_gaussian_kernel1d(ksize_w, sigma_w)
-    kernel_2d: torch.Tensor = kernel_d[:,None] * kernel_h[None]
-    kernel_3d: torch.Tensor = kernel_2d[:,:,None] * kernel_w[None,None]
+    # kernel_2d: torch.Tensor = kernel_d[:,None] * kernel_h[None]
+    # kernel_3d: torch.Tensor = kernel_2d[:,:,None] * kernel_w[None,None]
+    kerned_2d = torch.matmul(kernel_d.T,kernel_h)[...,None]
+    kernel_3d = torch.matmul(kerned_2d,kernel_w)[None]
     return kernel_3d
 
 @deprecated("Please use GaussianRKHS instead.")
@@ -218,6 +223,7 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
         super(Multi_scale_GaussianRKHS, self).__init__()
         _ks = []
         for sigma in list_sigmas:
+            print("sigma : ",sigma)
             big_odd = lambda val : max(6,int(val*6)) + (1 - max(6,int(val*6)) %2)
             kernel_size = tuple([big_odd(s) for s in sigma])
             _ks.append(kernel_size)
@@ -288,7 +294,14 @@ class Multi_scale_GaussianRKHS_notAverage(torch.nn.Module):
             output += gauss_rkhs(input)/len(self.gauss_list)
         return output
 
-
+def _get_sigma_monodim(X,nx,c=.1):
+    """
+    :param X: int : size of the image
+    :param nx: int : number subdivisions of the grid
+    :param c: float : value considered as negligible in the gaussian kernel
+    :return: float : sigma
+    """
+    return sqrt(- (X/nx)**2 / 2 * log(c))
 
 def get_sigma_from_img_ratio(img_shape,subdiv,c=.1):
     """The function get_sigma_from_img_ratio calculates the ideal
@@ -321,15 +334,11 @@ def get_sigma_from_img_ratio(img_shape,subdiv,c=.1):
                             we simply apply the 'int case' to each element of the list.
     :param c: float : value considered as negligible in the gaussian kernel
     """
+    # TODO : Ajouter un warning en disant que le sigma choisi va produire un kernel plus
+    #  grand que la taille de l'image ... Ou voir pourquoi ce n'est pas possible et pourquoi
+    # ça le fait quand même.
 
-    def _get_sigma_monodim(X,nx,c):
-        """
-        :param X: int : size of the image
-        :param nx: int : number subdivisions of the grid
-        :param c: float : value considered as negligible in the gaussian kernel
-        :return: float : sigma
-        """
-        return sqrt(- (X/nx)**2 / 2 * log(c))
+
 
     def _check_subdiv_tuple_size(subdiv_, dim):
         if len(subdiv_) != dim:
