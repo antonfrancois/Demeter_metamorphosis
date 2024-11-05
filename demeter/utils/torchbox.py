@@ -27,7 +27,7 @@ from .constants import *
 #        IMAGE BASICS
 # ================================================
 
-def reg_open(number, size = None,requires_grad= False,location = 'local',device='cpu'):
+def reg_open(number, size = None,requires_grad= False,device='cpu'):
 
     path = ROOT_DIRECTORY
     path += '/examples/im2Dbank/reg_test_'+number+'.png'
@@ -521,8 +521,8 @@ def spatialGradient_2d(image, dx_convention ='pixel'):
     # grad_image[:,0,1] *= -1
     if dx_convention == "square":
         _,_,H,W = image.size()
-        grad_image[:,0,0] *= (W-1)
-        grad_image[:,0,1] *= (H-1)
+        grad_image[:,0,0] *= (W - 1)
+        grad_image[:,0,1] *= (H - 1)
     if dx_convention == '2square':
         _,_,H,W = image.size()
         grad_image[:,0,0] *= (W-1)/2
@@ -556,7 +556,7 @@ def spatialGradient_3d(image, dx_convention ='pixel'):
     # iv3d.imshow_3d_slider(grad_image_sum[0])
 
     """
-
+    _,_,D,H,W, = image.size()
     # sobel kernel is not implemented for 3D images yet in kornia
     # grad_image = SpatialGradient3d(mode='sobel')(image)
     kernel = get_sobel_kernel_3d().to(image.device).to(image.dtype)
@@ -564,14 +564,19 @@ def spatialGradient_3d(image, dx_convention ='pixel'):
     kernel = 3 * kernel / kernel.abs().sum()
     spatial_pad = [1,1,1,1,1,1]
     image_padded = F.pad(image,spatial_pad,'replicate').repeat(1,3,1,1,1)
-    grad_image =  F.conv3d(image_padded,kernel,padding=0,groups=3,stride=1)
+    grad_image =  F.conv3d(image_padded,kernel,padding=0,groups=3,stride=1)[None]
+    if dx_convention == 'square':
+        grad_image[0,0,0] *= (W-1)
+        grad_image[0,0,1] *= (H-1)
+        grad_image[0,0,2] *= (D-1)
+        print(f"grad_image min = {grad_image.min()};{grad_image.max()}")
     if dx_convention == '2square':
-        _,_,D,H,W, = image.size()
-        grad_image[0,0,0] *= (D-1)/2
-        grad_image[0,0,1] *= (W-1)/2
-        grad_image[0,0,2] *= (H-1)/2
+        # _,_,D,H,W, = image.size()
+        grad_image[0,0,0] *= (W-1)/2
+        grad_image[0,0,1] *= (H-1)/2
+        grad_image[0,0,2] *= (D-1)/2
 
-    return grad_image.unsqueeze(1)
+    return grad_image
 
 def get_sobel_kernel_2d():
     return torch.tensor(
@@ -1026,6 +1031,159 @@ def vect_spline_diffeo(control_matrix,field_size, N = None,forward = True):
     field = mbs.field2D_bspline(control_matrix, field_size, dim_stack=2)[None]
     return vff.FieldIntegrator(method='fast_exp')(field.clone(),forward= forward)
 
+class RandomGaussianImage:
+    """
+    Generate a random image made from a sum of N gaussians
+    and compute the derivative of the image with respect
+     to the parameters of the gaussians.
+    """
+
+
+    def __init__(self, size, n_gaussians, dx_convention,a =None,b=None,c=None):
+        """
+
+        :param size: tuple with the image dimensions to create
+        :param n_gaussians: Number of gaussians to sum.
+        """
+        if a is None:
+            self.a = 2 * torch.rand((n_gaussians,)) - 1
+        else:
+            if len(a) != n_gaussians:
+                raise ValueError(f"len(a) = {len(a)} should be equal to n_gaussians = {n_gaussians}")
+            self.a = torch.tensor(a)
+        if b is None:
+            self.b = torch.randint(1, int(min(size)/5), (n_gaussians,))
+        else:
+            if len(b) != n_gaussians:
+                raise ValueError(f"len(b) = {len(b)} should be equal to n_gaussians = {n_gaussians}")
+            self.b = torch.tensor(b)
+
+        self.N = n_gaussians
+        self.size = size
+
+        def make_meshgrid(tensor_list):
+            mesh = tuple(
+                list(
+                    torch.meshgrid(tensor_list,indexing='ij')
+                )[::-1]  # reverse the order of the list
+            )
+            return torch.stack(mesh,dim=-1).to(torch.float)
+
+        if dx_convention == 'pixel':
+            self.X = make_meshgrid(
+                [torch.arange(0,s) for s in size]
+            )
+            if c is None:
+                self.c = torch.stack(
+                    [torch.randint(0, s - 1, (n_gaussians,)) for s in size],
+                    dim = 1
+                )
+            else:
+                self.c = torch.tensor(c)
+            # self.c = torch.randn((n_gaussians, 2))
+            # self.c[:,0] = (self.c[:,0] + 1) * size[0] / 2
+            # self.c[:,1] = (self.c[:,1] + 1) * size[1] / 2
+
+
+        elif dx_convention == '2square':
+            self.X = make_meshgrid(
+                [torch.linspace(-1,1,s) for s in size],
+            )
+            if c is None:
+                self.c = 2 * torch.rand((n_gaussians, len(size))) - 1
+            else:
+                self.c = torch.tensor(c)
+            if b is None:
+                self.b = self.b.to(torch.float)
+                bmax = self.b.max()
+                self.b *= 1 / bmax
+                bmax = self.b.max()
+                self.b = bmax * (self.b / bmax)**2
+
+        elif dx_convention == 'square':
+            self.X = make_meshgrid(
+                [torch.linspace(0, 1, s) for s in size],
+            )
+            if c is None:
+                self.c = torch.rand((n_gaussians, len(size)))
+            else:
+                self.c = torch.tensor(c)
+            if b is None:
+                self.b = self.b.to(torch.float)
+                bmax = self.b.max()
+                self.b *= 1/(2*bmax)
+                bmax = self.b.max()
+                self.b = bmax * (self.b / bmax)**2
+        else:
+            raise NotImplementedError("Et oui")
+
+
+    def gaussian(self,i):
+        """
+        return the gaussian with the parameters a,b,c at pos i
+        :param i: (int) position of the gaussian
+        """
+        # print(self.X - self.c[i])
+        return self.a[i] * torch.exp(- ((self.X - self.c[i])**2).sum(-1) / (2*self.b[i]**2))
+
+    def image(self):
+        """
+        return the image made from the sum of the gaussians
+        : return: torch.Tensor of shape [1,1,H,W] or [1,1,D,H,W]
+        """
+        image = torch.zeros(self.size)
+        for i in range(self.N):
+            image += self.gaussian(i)
+
+        return image[None,None]
+
+    def derivative(self):
+        """
+        Compute the derivative of the image with respect to the position of the gaussians
+        : return: torch.Tensor of shape [1,2,H,W] of [1,3,D,H,W]
+        """
+        derivative = torch.zeros_like(self.X)
+        for i in range(self.N):
+            derivative += - 1/self.b[i]**2 * (self.X - self.c[i]) * self.gaussian(i)[...,None]
+        return grid2im(derivative[None])
+
+
+class RandomGaussianField:
+
+    def __init__(self, size, n_gaussian, dx_convention,a=None,b=None,c=None):
+        """
+        :param size: tuple with dimensions  of the field to create with convention:
+                    (H,W,2) in 2d, (D,H,W,3) in 3d
+        :param n_gaussian: Number of gaussians to sum.
+        """
+        a = [None]*size[-1] if a is None else a
+        b = [None]*size[-1] if b is None else b
+        c = [None]*size[-1] if c is None else c
+        self.rgi_list =  [
+            RandomGaussianImage(size[:-1], n_gaussian, dx_convention,a=a[i],b=b[i],c=c[i])
+            for i in range(size[-1])
+        ]
+
+    def field(self):
+        """
+        return the field made from the sum of the gaussians
+        : return: torch.Tensor of shape [1,H,W,2] or [1,D,H,W,3]
+        """
+        field = torch.stack(
+            [rgi.image()[0,0] for rgi in self.rgi_list],
+            dim = -1
+        )
+        return field[None]
+
+    def divergence(self):
+        divergence = torch.zeros(self.rgi_list[0].size)
+        print(divergence.shape)
+        for i,rgi in enumerate(self.rgi_list):
+            print(rgi.derivative().shape)
+            divergence += rgi.derivative()[0,i]
+        return divergence[None,None]
+
+
 def field_2d_jacobian(field):
     r"""
 
@@ -1131,10 +1289,13 @@ class Field_divergence(torch.nn.Module):
         )
 
     def forward(self,field):
+        """
+        Note: we don't use the implementation in SpatialGradient to save computation
+        """
         field_as_im = grid2im(field)
         if field.shape[-1] == 2:
             x_sobel = get_sobel_kernel_2d().to(field.device)/8
-
+            _,H,W,_ = field.shape
             field_x_dx = filter2d(field_as_im[:,0,:,:].unsqueeze(1),
                           x_sobel.unsqueeze(0))# * (2/(H-1)))
             field_y_dy = filter2d(field_as_im[:,1,:,:].unsqueeze(1),
@@ -1144,7 +1305,7 @@ class Field_divergence(torch.nn.Module):
 
         elif field.shape[-1] == 3:
             x_sobel = get_sobel_kernel_3d().to(field.device)
-
+            _,D,H,W,_ = field.shape
             field_x_dx = filter3d(field_as_im[:,0].unsqueeze(1),
                                   x_sobel[0]/x_sobel[0].abs().sum())
             field_y_dy = filter3d(field_as_im[:,1].unsqueeze(1),
@@ -1153,9 +1314,14 @@ class Field_divergence(torch.nn.Module):
                                   x_sobel[2]/x_sobel[2].abs().sum())
             field_div = torch.stack([field_x_dx, field_y_dy, field_z_dz],dim=0)
 
+        if self.dx_convention == 'square':
+            return torch.stack(
+                [(s-1)*field_div[i] for i,s in enumerate(field_as_im.shape[2:][::-1])],
+                dim=0).sum(dim=0)
+
         if self.dx_convention == '2square':
             return torch.stack(
-                [(s-1)/2*field_div[i] for i,s in enumerate(field_as_im.shape[2:])],
+                [(s-1)/2*field_div[i] for i,s in enumerate(field_as_im.shape[2:][::-1])],
                 dim=0).sum(dim=0)
         else:
             return field_div.sum(dim=0)
