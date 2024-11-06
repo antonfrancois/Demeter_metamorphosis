@@ -763,7 +763,7 @@ def gridDef_plot_2d(deformation,
     if add_grid:
         reg_grid = make_regular_grid(deform.size(),dx_convention='pixel')
         if dx_convention == '2square':
-            reg_grid = pixel2square_convention(reg_grid)
+            reg_grid = pixel_to_2square_convention(reg_grid)
         deform += reg_grid
 
     if check_diffeo :
@@ -991,12 +991,14 @@ def field2diffeo(in_vectField, N=None,save= False,forward=True):
    return vff.FieldIntegrator(method='fast_exp')(in_vectField.clone(),forward= forward)
 
 
-def imgDeform(I,field,dx_convention ='2square',clamp=False):
-    if I.shape[0] > 1 and field.shape[0] == 1:
-        field = torch.cat(I.shape[0]*[field],dim=0)
+def imgDeform(I,deform_grid,dx_convention ='2square',clamp=False):
+    if I.shape[0] > 1 and deform_grid.shape[0] == 1:
+        deform_grid = torch.cat(I.shape[0]*[deform_grid],dim=0)
     if dx_convention == 'pixel':
-        field = pixel2square_convention(field)
-    deformed = F.grid_sample(I,field,**DLT_KW_GRIDSAMPLE)
+        deform_grid = pixel_to_2square_convention(deform_grid)
+    elif dx_convention == 'square':
+        deform_grid = square2_to_square_convention(deform_grid)
+    deformed = F.grid_sample(I,deform_grid,**DLT_KW_GRIDSAMPLE)
     # if len(I.shape) == 5:
     #     deformed = deformed.permute(0,1,4,3,2)
     if clamp:
@@ -1013,8 +1015,11 @@ def compose_fields(field,grid_on,dx_convention='2square'):
         raise RuntimeError("Expexted all tensors to be on same device but got"
                            f"field on {field.device} and grid on {grid_on.device}")
     if dx_convention == 'pixel':
-        field = pixel2square_convention(field,grid=False)
-        grid_on = pixel2square_convention(grid_on,grid=True)
+        field = pixel_to_2square_convention(field, is_grid=False)
+        grid_on = pixel_to_2square_convention(grid_on, is_grid=True)
+    elif dx_convention == 'square':
+        field = square_to_2square_convention(field,is_grid = False)
+        grid_on = square_to_2square_convention(grid_on,is_grid = True)
 
     composition = im2grid(
         F.grid_sample(
@@ -1023,7 +1028,9 @@ def compose_fields(field,grid_on,dx_convention='2square'):
         )
     )
     if dx_convention == 'pixel':
-        return square2pixel_convention(composition,grid=False)
+        return square2_to_pixel_convention(composition, is_grid=False)
+    elif dx_convention == 'square':
+        return square2_to_square_convention(composition,is_grid=False)
     else:
         return composition
 
@@ -1369,7 +1376,7 @@ def field_divergence(field,dx_convention = 'pixel'):
     """
     return Field_divergence(dx_convention)(field)
 
-def pixel2square_convention(field,grid = True):
+def pixel_to_2square_convention(field, is_grid = True):
     """ Convert a field in spacial pixelic convention in one on as
     [-1,1]^2 square as requested by pytorch's gridSample
 
@@ -1384,7 +1391,7 @@ def pixel2square_convention(field,grid = True):
         mult = torch.tensor((2/(W-1),2/(H-1))).to(field.device)
         if not torch.is_tensor(field):
             mult = mult.numpy()
-        sub = 1 if grid else 0
+        sub = 1 if is_grid else 0
         return field * mult[None,None,None] - sub
     elif field.shape[-1] == 3 and len(field.shape) == 5:
         _,D,H,W,_ = field.shape
@@ -1392,12 +1399,12 @@ def pixel2square_convention(field,grid = True):
         # if not torch.is_tensor(field): # does not works anymore for a reason
         if not is_tensor(field):
             mult = mult.numpy()
-        sub =1 if grid else 0
+        sub =1 if is_grid else 0
         return field * mult[None,None,None,None] - sub
     else:
         raise NotImplementedError("Indeed")
 
-def square2pixel_convention(field,grid=True):
+def square2_to_pixel_convention(field, is_grid=True):
     """ Convert a field on a square centred and from -1 to 1 convention
     as requested by pytorch's gridSample to one in pixelic convention
 
@@ -1409,18 +1416,42 @@ def square2pixel_convention(field,grid=True):
         mult = torch.tensor(((W-1)/2,(H-1)/2)).to(field.device)
         if not is_tensor(field):
             mult = mult.numpy()
-        add = 1 if grid else 0
+        add = 1 if is_grid else 0
         return (field + add) * mult[None,None,None]
     elif field.shape[-1] == 3 and len(field.shape) == 5:
         _,D,H,W,_ = field.shape
         mult = torch.tensor(((W-1)/2,(H-1)/2,(D-1)/2)).to(field.device)
         if not is_tensor(field):
             mult = mult.numpy()
-        add = 1 if grid else 0
+        add = 1 if is_grid else 0
         return (field + add) * mult[None,None,None,None]
     else:
         raise NotImplementedError("Indeed")
 
+def square_to_2square_convention(field,is_grid= True):
+    """ convert from the square convention to the 2square one,
+    meaning: \([0,1]^d \mapsto [-1,1]^d\)
+
+    : param field: torch.Tensor of shape (n,H,W,2) or (n,D,H,W,3)
+    :parma is_grid: (bool) Must be True if field is a grid+vector field and
+                    False if a vector field only
+
+    """
+    sub = 1 if is_grid else 0
+    return 2 * field - sub
+
+
+def square2_to_square_convention(field, is_grid = True):
+    """ convert from the 2square convention to the square one,
+    meaning: \([-1,1]^d \mapsto [0,1]^d\)
+
+    : param field: torch.Tensor of shape (n,H,W,2) or (n,D,H,W,3)
+    :parma is_grid: (bool) Must be True if field is a grid+vector field and
+                    False if a vector field only
+    : return: Tensor of same shape as input
+    """
+    add = 1 if is_grid else 0
+    return (field + add)/2
 
 def grid2im(grid):
     """Reshape a grid tensor into an image tensor

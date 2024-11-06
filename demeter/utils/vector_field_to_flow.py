@@ -41,7 +41,9 @@ class FieldIntegrator:
     def __call__(self,in_vectField,forward=True,verbose = False):
         self.shape = in_vectField.shape
         if self.dx_convention == 'pixel':
-            self.in_vectField = tb.pixel2square_convention(in_vectField,grid=False)
+            self.in_vectField = tb.pixel_to_2square_convention(in_vectField, is_grid=False)
+        elif self.dx_convention == 'square':
+            self.in_vectField = tb.square_to_2square_convention(in_vectField,is_grid=False)
         elif self.dx_convention == '2square':
             self.in_vectField = in_vectField.clone()
 
@@ -65,7 +67,9 @@ class FieldIntegrator:
         integrated = self.integrator()
 
         if self.dx_convention == 'pixel':
-            integrated = tb.square2pixel_convention(integrated)
+            integrated = tb.square2_to_pixel_convention(integrated)
+        elif self.dx_convention == 'square':
+            integrated = tb.square2_to_square_convention(integrated)
         if self.flag:
             self.N = None
         return integrated
