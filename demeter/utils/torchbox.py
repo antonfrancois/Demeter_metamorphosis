@@ -1061,18 +1061,11 @@ class RandomGaussianImage:
         self.N = n_gaussians
         self.size = size
 
-        def make_meshgrid(tensor_list):
-            mesh = tuple(
-                list(
-                    torch.meshgrid(tensor_list,indexing='ij')
-                )[::-1]  # reverse the order of the list
-            )
-            return torch.stack(mesh,dim=-1).to(torch.float)
-
+        self.X = make_regular_grid(size,dx_convention)
         if dx_convention == 'pixel':
-            self.X = make_meshgrid(
-                [torch.arange(0,s) for s in size]
-            )
+            # self.X = make_meshgrid(
+            #     [torch.arange(0,s) for s in size]
+            # )
             if c is None:
                 self.c = torch.stack(
                     [torch.randint(0, s - 1, (n_gaussians,)) for s in size],
@@ -1086,9 +1079,9 @@ class RandomGaussianImage:
 
 
         elif dx_convention == '2square':
-            self.X = make_meshgrid(
-                [torch.linspace(-1,1,s) for s in size],
-            )
+            # self.X = make_meshgrid(
+            #     [torch.linspace(-1,1,s) for s in size],
+            # )
             if c is None:
                 self.c = 2 * torch.rand((n_gaussians, len(size))) - 1
             else:
@@ -1101,9 +1094,9 @@ class RandomGaussianImage:
                 self.b = bmax * (self.b / bmax)**2
 
         elif dx_convention == 'square':
-            self.X = make_meshgrid(
-                [torch.linspace(0, 1, s) for s in size],
-            )
+            # self.X = make_meshgrid(
+            #     [torch.linspace(0, 1, s) for s in size],
+            # )
             if c is None:
                 self.c = torch.rand((n_gaussians, len(size)))
             else:
@@ -1539,45 +1532,6 @@ def format_sigmas(sigmas,dim):
     elif type(sigmas) == list:
         return [(s,)*dim for s in sigmas]
 
-def create_meshgrid3d(
-    depth: int,
-    height: int,
-    width: int,
-    normalized_coordinates: bool = True,
-    device = torch.device('cpu'),
-    dtype: torch.dtype = torch.float32,
-) -> torch.Tensor:
-    """Generate a coordinate grid for an image.
-
-    When the flag ``normalized_coordinates`` is set to True, the grid is
-    normalized to be in the range :math:`[-1,1]` to be consistent with the pytorch
-    function :py:func:`torch.nn.functional.grid_sample`.
-
-    Args:
-        depth: the image depth (channels).
-        height: the image height (rows).
-        width: the image width (cols).
-        normalized_coordinates: whether to normalize
-          coordinates in the range :math:`[-1,1]` in order to be consistent with the
-          PyTorch function :py:func:`torch.nn.functional.grid_sample`.
-        device: the device on which the grid will be generated.
-        dtype: the data type of the generated grid.
-
-    Return:
-        grid tensor with shape :math:`(1, D, H, W, 3)`.
-    """
-
-    lx: torch.Tensor = torch.linspace(0, depth - 1, depth, device=device, dtype=dtype)
-    ly: torch.Tensor = torch.linspace(0, height - 1, height, device=device, dtype=dtype)
-    lz: torch.Tensor = torch.linspace(0, width - 1, width, device=device, dtype=dtype)
-    # Fix TracerWarning
-    if normalized_coordinates:
-        lx = (lx / (depth - 1) - 0.5) * 2
-        ly = (ly / (height - 1) - 0.5) * 2
-        lz = (lz / (width - 1) - 0.5) * 2
-    # generate grid by stacking coordinates
-    mx,my,mz = torch.meshgrid([lx,ly,lz])
-    return torch.stack((mz,my,mx),dim=-1)[None]
 
 
 def make_regular_grid(deformation_shape,
@@ -1592,33 +1546,37 @@ def make_regular_grid(deformation_shape,
     :return: will return 2D identity deformation with size (1,H,W,2) or
     3D identity deformation with size (1,D,H,W,3)
     """
+    def make_meshgrid(tensor_list):
+        mesh = tuple(
+            list(
+                torch.meshgrid(tensor_list,indexing='ij')
+            )[::-1]  # reverse the order of the list
+        )
+        return torch.stack(mesh,dim=-1)[None]#.to(torch.float)
+
+    if len(deformation_shape) == 4 or len(deformation_shape) == 5 :
+        deformation_shape = deformation_shape[1:-1]
+
     if dx_convention == 'pixel':
-        normalized_coordinates = False
+        return make_meshgrid(
+            [torch.arange(0,s,dtype=torch.float) for s in deformation_shape]
+        )
+
     elif dx_convention == '2square':
-        # warnings.warn("There is a bug in kornia.create_meshgrid3d, if it is "
-        #               "not fixed yet, use dx_convetion=='pixel and adapt with"
-        #               "my_torchbox.pixel2square_convention")
-        normalized_coordinates = True
+        return make_meshgrid(
+            [torch.linspace(-1,1,s) for s in deformation_shape],
+        )
 
-    if len(deformation_shape) == 2 :
-        H,W = deformation_shape
-        return kg.create_meshgrid(H,W,
-                                  normalized_coordinates=normalized_coordinates,device=device)
-    elif len(deformation_shape) == 3:
-        D,H,W = deformation_shape
-        return create_meshgrid3d(D,H,W,
-                                    normalized_coordinates=normalized_coordinates,device=device)
-    elif len(deformation_shape) == 4 or len(deformation_shape) == 5 :
-        d = deformation_shape[-1]
+    elif dx_convention == 'square':
+        return make_meshgrid(
+            [torch.linspace(0, 1, s) for s in deformation_shape],
+        )
 
-        if d ==2:
-            _,H,W,_ = deformation_shape
-            return kg.create_meshgrid(H,W,
-                                      normalized_coordinates=normalized_coordinates,device=device)
-        elif d == 3:
-            _,D,H,W,_ = deformation_shape
-            return create_meshgrid3d(D,H,W,
-                                        normalized_coordinates=normalized_coordinates,device=device)
+    else:
+        raise ValueError(f"make_regular_grid : dx_convention must be among"
+                         f" ['pixel','2square','square']"
+                         f"got {dx_convention}")
+
 
 # =================================================================
 #             LIE ALGEBRA
