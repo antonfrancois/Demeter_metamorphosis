@@ -997,7 +997,7 @@ def imgDeform(I,deform_grid,dx_convention ='2square',clamp=False):
     if dx_convention == 'pixel':
         deform_grid = pixel_to_2square_convention(deform_grid)
     elif dx_convention == 'square':
-        deform_grid = square2_to_square_convention(deform_grid)
+        deform_grid = square_to_2square_convention(deform_grid)
     deformed = F.grid_sample(I,deform_grid,**DLT_KW_GRIDSAMPLE)
     # if len(I.shape) == 5:
     #     deformed = deformed.permute(0,1,4,3,2)
@@ -1068,7 +1068,7 @@ class RandomGaussianImage:
         self.N = n_gaussians
         self.size = size
 
-        self.X = make_regular_grid(size,dx_convention)
+        self.X = make_regular_grid(size,dx_convention=dx_convention)
         if dx_convention == 'pixel':
             # self.X = make_meshgrid(
             #     [torch.arange(0,s) for s in size]
@@ -1131,11 +1131,11 @@ class RandomGaussianImage:
         return the image made from the sum of the gaussians
         : return: torch.Tensor of shape [1,1,H,W] or [1,1,D,H,W]
         """
-        image = torch.zeros(self.size)
+        image = torch.zeros((1,) +self.size)
         for i in range(self.N):
             image += self.gaussian(i)
 
-        return image[None,None]
+        return image[None]
 
     def derivative(self):
         """
@@ -1145,7 +1145,7 @@ class RandomGaussianImage:
         derivative = torch.zeros_like(self.X)
         for i in range(self.N):
             derivative += - 1/self.b[i]**2 * (self.X - self.c[i]) * self.gaussian(i)[...,None]
-        return grid2im(derivative[None])
+        return grid2im(derivative)
 
 
 class RandomGaussianField:
@@ -1177,9 +1177,7 @@ class RandomGaussianField:
 
     def divergence(self):
         divergence = torch.zeros(self.rgi_list[0].size)
-        print(divergence.shape)
         for i,rgi in enumerate(self.rgi_list):
-            print(rgi.derivative().shape)
             divergence += rgi.derivative()[0,i]
         return divergence[None,None]
 
@@ -1290,7 +1288,7 @@ class Field_divergence(torch.nn.Module):
 
     def forward(self,field):
         """
-        Note: we don't use the implementation in SpatialGradient to save computation
+        Note: we don't use the sobel implementation in SpatialGradient to save computation
         """
         field_as_im = grid2im(field)
         if field.shape[-1] == 2:
@@ -1566,8 +1564,9 @@ def format_sigmas(sigmas,dim):
 
 
 def make_regular_grid(deformation_shape,
+                      dx_convention = 'pixel',
                       device = torch.device('cpu'),
-                      dx_convention = 'pixel'):
+                      ):
     """API for create_meshgrid, it is the identity deformation
 
     :param deformation_shape: tuple such as
@@ -1583,14 +1582,14 @@ def make_regular_grid(deformation_shape,
                 torch.meshgrid(tensor_list,indexing='ij')
             )[::-1]  # reverse the order of the list
         )
-        return torch.stack(mesh,dim=-1)[None]#.to(torch.float)
+        return torch.stack(mesh,dim=-1)[None].to(device)
 
     if len(deformation_shape) == 4 or len(deformation_shape) == 5 :
         deformation_shape = deformation_shape[1:-1]
 
     if dx_convention == 'pixel':
         return make_meshgrid(
-            [torch.arange(0,s,dtype=torch.float) for s in deformation_shape]
+            [torch.arange(0,s,dtype=torch.float) for s in deformation_shape],
         )
 
     elif dx_convention == '2square':

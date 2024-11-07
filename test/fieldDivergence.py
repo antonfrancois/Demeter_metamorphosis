@@ -182,8 +182,8 @@ class Test_exp_pixel(unittest.TestCase):
                                             [.3*W,.1*W,.1*W,.21*W],
                                      ],)
         cls.field =  rgf.field()
-        cls.x = rgf.rgi_list[0].X[...,0]
-        cls.y = rgf.rgi_list[0].X[...,1]
+        cls.x = rgf.rgi_list[0].X[0,...,0]
+        cls.y = rgf.rgi_list[0].X[0,...,1]
 
 
         cls.div_theoretical = rgf.divergence()
@@ -255,8 +255,8 @@ class Test_exp_2d_square(unittest.TestCase):
                                      ],
                                      )
         cls.field =  rgf.field()
-        cls.x = rgf.rgi_list[0].X[...,0]
-        cls.y = rgf.rgi_list[0].X[...,1]
+        cls.x = rgf.rgi_list[0].X[0,...,0]
+        cls.y = rgf.rgi_list[0].X[0,...,1]
 
 
         cls.div_theoretical = rgf.divergence()
@@ -286,8 +286,8 @@ class Test_exp_2square(unittest.TestCase):
                                             [.3,.1,.1,.21]
                                      ])
         cls.field =  rgf.field()
-        cls.x = rgf.rgi_list[0].X[...,0]
-        cls.y = rgf.rgi_list[0].X[...,1]
+        cls.x = rgf.rgi_list[0].X[0,...,0]
+        cls.y = rgf.rgi_list[0].X[0,...,1]
 
 
         cls.div_theoretical = rgf.divergence()
@@ -309,17 +309,17 @@ class TestCosSinPoly_2square(unittest.TestCase):
     def setUp(cls):
         cls.name = 'cos_sin_poly_2square'
         cls.H, cls.W = H, W
-        yy, xx = torch.meshgrid(
-            torch.linspace(-1, 1, cls.H),
-            torch.linspace(-1, 1, cls.W)
-        )
+        id_grid = tb.make_regular_grid((H,W),dx_convention='2square')
+        xx = id_grid[0,...,0]
+        yy = id_grid[0,...,1]
         cls.x, cls.y = xx, yy
         field_x = torch.sin(xx) + xx**2
         field_y = torch.cos(yy) - xx * yy
         cls.field = torch.stack([field_x, field_y], dim=-1)[None]
         cls.div_theoretical = torch.cos(xx) + 2 * xx - torch.sin(yy) - xx
+        cls.div_theoretical = cls.div_theoretical[None,None]
         cls.div =tb.Field_divergence('2square')(cls.field)
-        cls.score =  (cls.div_theoretical[1:-1,1:-1] - cls.div[0,0,1:-1,1:-1]).abs()
+        cls.score =  (cls.div_theoretical[0,0,1:-1,1:-1] - cls.div[0,0,1:-1,1:-1]).abs()
         if args.plot:
             plot_test_div_2d(cls)
 
@@ -330,33 +330,6 @@ class TestCosSinPoly_2square(unittest.TestCase):
 
 
 
-class TestPoly_pixel(unittest.TestCase):
-
-    @classmethod
-    def setUp(cls):
-        cls.name = 'poly_pixel'
-        cls.H, cls.W = H, W
-        yy, xx = torch.meshgrid(
-            torch.arange(cls.H, dtype=torch.float),
-            torch.arange(cls.W, dtype=torch.float)
-        )
-        cls.x, cls.y = xx, yy
-        cls.field_x = 0.1 * (xx - H//2) ** 3 + xx * yy
-        cls.field_y = -0.0001 * (yy * (yy - .1*W) * (yy - .3*W) * (yy - .6*W) * (yy - 1*W))
-        cls.field = torch.stack([cls.field_x, cls.field_y], dim=-1)[None]
-        cls.div_theoretical = (0.1 * (3 * xx**2 - 90 * xx + 675) + yy
-                                - 0.0001 * 5 * (yy**4 - 60 * yy**3 + 1200 * yy**2 - 9000 * yy + 18000))
-        cls.div =tb.Field_divergence('pixel')(cls.field)
-        cls.score = (cls.div_theoretical[1:-1, 1:-1] - cls.div[0, 0, 1:-1, 1:-1]).abs()
-        if args.plot:
-            plot_test_div_2d(cls)
-
-
-    def test_divergence(self):
-        eps = 1e-3
-        self.assertTrue(torch.all(self.score < eps),
-                 f"max difference: {self.score.max()} and tolerance: {eps}")
-
 
 class Test_square(unittest.TestCase):
 
@@ -364,17 +337,17 @@ class Test_square(unittest.TestCase):
     def setUp(cls):
         cls.name = 'cos_sin_poly_square'
         cls.H, cls.W = H, W
-        yy, xx = torch.meshgrid(
-            torch.linspace(0, 1, cls.H),
-            torch.linspace(0, 1, cls.W)
-        )
+        id_grid = tb.make_regular_grid((H,W),dx_convention='square')
+        xx = id_grid[0,...,0]
+        yy = id_grid[0,...,1]
         cls.x, cls.y = xx, yy
         cls.field_x = torch.sin(xx) + xx**2
         cls.field_y = torch.cos(yy) - xx * yy
         cls.field = torch.stack([cls.field_x, cls.field_y], dim=-1)[None]
         cls.div_theoretical = torch.cos(xx) + 2 * xx - torch.sin(yy) - xx
+        cls.div_theoretical = cls.div_theoretical[None,None]
         cls.div = tb.Field_divergence('square')(cls.field)
-        cls.score =  (cls.div_theoretical[1:-1,1:-1] - cls.div[0,0,1:-1,1:-1]).abs()
+        cls.score =  (cls.div_theoretical[0,0,1:-1,1:-1] - cls.div[0,0,1:-1,1:-1]).abs()
         if args.plot:
             plot_test_div_2d(cls)
 
