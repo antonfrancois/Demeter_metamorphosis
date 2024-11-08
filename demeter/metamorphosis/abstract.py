@@ -141,7 +141,11 @@ class Geodesic_integrator(torch.nn.Module,ABC):
 
             if self.image.isnan().any() or self.momentum.isnan().any():
                 raise OverflowError("Some nan where produced ! the integration diverged",
-                                    "changing the parameters is needed (increasing n_step can help) ")
+                                    "changing the parameters is needed. "
+                                    "You can try:"
+                                    "\n- increasing n_step (deformation more complex"
+                                    "\n- decreasing grad_coef (convergence slower but more stable)"
+                                    "\n- increasing sigma_v (catching less details)")
 
             if self.save:
                 self.image_stock[i] = self.image[0].detach().to('cpu')
