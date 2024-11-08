@@ -28,7 +28,7 @@ def lddmm(source,target,residuals,
     residuals.requires_grad = True
     if sharp: integration_method = 'sharp'
 
-    sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
+    # sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
 
     mp = cl.Metamorphosis_integrator(method=integration_method,
                         mu=0, rho=0,
@@ -56,8 +56,8 @@ def metamorphosis(source,target,residuals,
                   data_term=None,
                   sharp=False,
                   safe_mode = True,
-                  integration_method='semiLagrangian'
-                  ,
+                  integration_method='semiLagrangian',
+                  optimizer_method='adadelta',
                   dx_convention = 'pixel'):
     if type(residuals) == int: residuals = torch.zeros(source.shape,device=source.device)
     # residuals = torch.zeros(source.size()[2:],device=device)
@@ -75,7 +75,7 @@ def metamorphosis(source,target,residuals,
                                 cost_cst=cost_cst,
                                 data_term=data_term,
                                 # optimizer_method='LBFGS_torch')
-                                optimizer_method='adadelta')
+                                optimizer_method=optimizer_method)
     if not safe_mode:
         mr.forward(residuals,n_iter=n_iter,grad_coef=grad_coef)
     else:
@@ -90,6 +90,7 @@ def weighted_metamorphosis(source,target,residual,mask,
                            mu,rho,rf_method,sigma,cost_cst,
                            n_iter,grad_coef,data_term=None,sharp=False,
                            safe_mode=True,
+                           optimizer_method='adadelta',
                            dx_convention = 'pixel'):
     device = source.device
 #     sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
@@ -109,7 +110,8 @@ def weighted_metamorphosis(source,target,residual,mask,
     )
     mr_weighted = cn.ConstrainedMetamorphosis_Shooting(
         source,target,mp_weighted,
-        cost_cst=cost_cst,optimizer_method='adadelta',
+        cost_cst=cost_cst,
+        optimizer_method=optimizer_method,
         data_term=data_term
     )
     if not safe_mode:

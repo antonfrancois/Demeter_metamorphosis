@@ -15,6 +15,7 @@ from skimage.exposure import match_histograms
 import os
 import csv
 
+
 # import decorators
 from .toolbox import rgb2gray
 from . import bspline as mbs
@@ -760,10 +761,19 @@ def gridDef_plot_2d(deformation,
     if color is None: color = 'black'
     if linewidth is None: linewidth = 2
 
+    if dx_convention == '2square':
+        deform = square2_to_pixel_convention(
+            deform,
+            is_grid=True
+        )
+    elif dx_convention == 'square':
+        deform = square_to_pixel_convention(
+            deform,
+            is_grid=True
+        )
+
     if add_grid:
         reg_grid = make_regular_grid(deform.size(),dx_convention='pixel')
-        if dx_convention == '2square':
-            reg_grid = pixel_to_2square_convention(reg_grid)
         deform += reg_grid
 
     if check_diffeo :
@@ -822,7 +832,12 @@ def quiver_plot(field,
     if color is None:
         color = 'black'
 
-    reg_grid = make_regular_grid(field.size(),dx_convention=dx_convention)
+    reg_grid = make_regular_grid(field.size(),dx_convention='pixel')
+    if dx_convention == '2square':
+        field = square2_to_pixel_convention(field,is_grid=False)
+    elif dx_convention == 'square':
+        field = square_to_pixel_convention(field,is_grid=False)
+
     if check_diffeo :
          cD = checkDiffeo(reg_grid+field)
          title += 'diffeo = '+str(cD[:,:,0].sum()<=0)
@@ -837,7 +852,6 @@ def quiver_plot(field,
             ((field[0,::step, ::step, 1] ).detach().numpy()),
             color=color,
             scale_units=scale_units, scale=scale)
-
     return ax
 
 def is_tensor(input):
@@ -1426,9 +1440,35 @@ def square2_to_pixel_convention(field, is_grid=True):
     else:
         raise NotImplementedError("Indeed")
 
+def square_to_pixel_convention(field, is_grid= True):
+    r""" convert from the square convention to the pixel one,
+    meaning: $[-1,1]^d \mapsto [0,W-1]\times[0,H-1]$
+
+    : param field: torch.Tensor of shape (n,H,W,2) or (n,D,H,W,3)
+    :parma is_grid: (bool) useless in this function, kept for
+    consistency with others converters
+
+    """
+    for i,s in enumerate(field.shape[1:-1]):
+        field[...,i] *= (s-1)
+    return field
+
+def pixel_to_square_convention(field, is_grid=True):
+    r""" convert from the pixel convention to the square one,
+    meaning: $[0,W-1]\times[0,H-1] \mapsto [-1,1]^d$
+
+    : param field: torch.Tensor of shape (n,H,W,2) or (n,D,H,W,3)
+    :parma is_grid: (bool) useless in this function, kept for
+    consistency with others converters
+
+    """
+    for i,s in enumerate(field.shape[1:-1]):
+        field[...,i] /= (s-1)
+    return field
+
 def square_to_2square_convention(field,is_grid= True):
-    """ convert from the square convention to the 2square one,
-    meaning: \([0,1]^d \mapsto [-1,1]^d\)
+    r""" convert from the square convention to the 2square one,
+    meaning: $[0,1]^d \mapsto [-1,1]^d$
 
     : param field: torch.Tensor of shape (n,H,W,2) or (n,D,H,W,3)
     :parma is_grid: (bool) Must be True if field is a grid+vector field and
@@ -1440,8 +1480,8 @@ def square_to_2square_convention(field,is_grid= True):
 
 
 def square2_to_square_convention(field, is_grid = True):
-    """ convert from the 2square convention to the square one,
-    meaning: \([-1,1]^d \mapsto [0,1]^d\)
+    r""" convert from the 2square convention to the square one,
+    meaning: $[-1,1]^d \mapsto [0,1]^d$
 
     : param field: torch.Tensor of shape (n,H,W,2) or (n,D,H,W,3)
     :parma is_grid: (bool) Must be True if field is a grid+vector field and
