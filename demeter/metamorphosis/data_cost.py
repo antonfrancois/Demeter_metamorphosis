@@ -88,7 +88,7 @@ class SimiliSegs(DataCost):
     def __call__(self):
         mask_deform = tb.imgDeform(self.mask_source.cpu(),
                                    self.optimizer.mp.get_deformator(),
-                                   dx_convention='pixel')
+                                   dx_convention=self.optimize.dx_convention)
         return  (mask_deform - self.mask_target).pow(2).sum()*.5
 
 class Mutlimodal_ssd_cfm(DataCost):
@@ -100,7 +100,7 @@ class Mutlimodal_ssd_cfm(DataCost):
 
     def __call__(self):
         deformator = self.optimizer.mp.get_deformator().to(self.source_cfm.device)
-        source_deform = tb.imgDeform(self.source_cfm,deformator,dx_convention='pixel')
+        source_deform = tb.imgDeform(self.source_cfm,deformator,dx_convention=self.optimize.dx_convention)
         return self.cost(self.optimizer.mp.image,source_deform)
 
     def set_optimizer(self, optimizer):

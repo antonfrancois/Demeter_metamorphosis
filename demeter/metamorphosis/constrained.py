@@ -125,7 +125,7 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
                  sharp = False,
                  **kwargs
     ):
-        super(ConstrainedMetamorphosis_integrator, self).__init__(sigma_v)
+        super(ConstrainedMetamorphosis_integrator, self).__init__(sigma_v,**kwargs)
         if residual_function is None:
             self.flag_W, self.mu, self.rho = False, mu, rho
             print("not Weighted")
@@ -599,7 +599,9 @@ class Reduce_field_Optim(Optimize_geodesicShooting):
         self.total_cost = self.ssd + lamb * self.norm_v_2
 
         # Reduce field norm
-        mask_1 = tb.imgDeform(self.mask_reduce[0][None].cpu(),self.mp.get_deformator(),dx_convention='pixel')
+        mask_1 = tb.imgDeform(self.mask_reduce[0][None].cpu(),
+                              self.mp.get_deformator(),
+                              dx_convention=self.dx_convention)
         self.norm_l2_on_mask1 = (mask_1**2).sum()/prod(self.source.shape[2:])
 
         self.total_cost += lamb * self._get_gamma_() *self.norm_l2_on_mask1

@@ -33,11 +33,14 @@ class Geodesic_integrator(torch.nn.Module,ABC):
 
     """
     @abstractmethod
-    def __init__(self,sigma_v,multiScale_average= False):
+    def __init__(self,sigma_v=None,dx_convention = 'pixel',multiScale_average= False):
         super().__init__()
         self._force_save = False
+        self.dx_convention = dx_convention
 
-        if isinstance(sigma_v,tuple):
+        if sigma_v is None:
+            raise ValueError("Please specify a value for sigma_v. Got sigma_v = None.")
+        elif isinstance(sigma_v,tuple):
             self.sigma_v = sigma_v# is used if the optmisation is later saved
             self.kernelOperator = rk.GaussianRKHS(sigma_v,
                                                      border_type='constant')
@@ -111,7 +114,9 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         except AttributeError:
             self.save = save
 
-        self.id_grid = tb.make_regular_grid(momentum_ini.shape[2:], device=device)
+        self.id_grid = tb.make_regular_grid(momentum_ini.shape[2:],
+                                            dx_convention=self.dx_convention,
+                                            device=device)
         assert self.id_grid != None
 
         if field_ini is None:
@@ -164,7 +169,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         """
         dt = t_max/n_step
         for t in torch.linspace(0,t_max,n_step):
-            grad_I = tb.spatialGradient(image, dx_convention='pixel')
+            grad_I = tb.spatialGradient(image, dx_convention=self.dx_convention)
             grad_I_scalar_v = (grad_I[0]*tb.grid2im(vector_field)).sum(dim=1)
             image = image - grad_I_scalar_v * dt
         return image
@@ -196,7 +201,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         ))) # PAS OUF SI BATCH
 
     def _update_field_multimodal_(self):
-        grad_image = tb.spatialGradient(self.image, dx_convention='pixel')
+        grad_image = tb.spatialGradient(self.image, dx_convention=self.dx_convention)
         self.field = self._compute_vectorField_multimodal_(self.momentum, grad_image)
         self.field *= self._field_cst_mult()
 
@@ -212,7 +217,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         self.field *= self._field_cst_mult()
 
     def _update_residuals_Eulerian_(self):
-        residuals_dt = - tb.Field_divergence(dx_convention='pixel')(
+        residuals_dt = - tb.Field_divergence(dx_convention=self.dx_convention)(
             self.momentum[0,0][None, :, :, None] * self.field,
                             )
 
@@ -220,10 +225,12 @@ class Geodesic_integrator(torch.nn.Module,ABC):
 
     def _update_residuals_semiLagrangian_(self,deformation):
         div_v_times_z = self.momentum * tb.Field_divergence(dx_convention='pixel')(self.field)[0,0]
+        div_v_times_z = (self.momentum
+                         * tb.Field_divergence(dx_convention=self.dx_convention)(self.field)[0,0])
 
         self.momentum = tb.imgDeform(self.momentum,
                                      deformation,
-                                     dx_convention='pixel',
+                                     dx_convention=self.dx_convention,
                                      clamp=False) \
                         - div_v_times_z / self.n_step
 
@@ -234,7 +241,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         for k,phi in enumerate(self._phis[self._i][1:]):
             resi_cumul += tb.imgDeform(self.momentum_stock[k][None].to(device),
                                        phi,
-                                       dx_convention='pixel',
+                                       dx_convention=self.dx_convention,
                                        clamp=False)
         resi_cumul = resi_cumul + self.momentum
         return resi_cumul
@@ -243,7 +250,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         #     for k,z in enumerate(self._resi_deform):
         #         self._resi_deform[k] = tb.imgDeform(z[None,None].to(device),
         #                                             self._phis[self._i][self._i],
-        #                                             'pixel')[0,0]
+        #                                             self.dx_convention)[0,0]
         #     self._phis[self._i - 1] = None
         # self._resi_deform.append(self.residuals.clone())
 
@@ -256,6 +263,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         if residuals is None: residuals = self.momentum
         image = self.source if sharp else self.image
         self.image = tb.imgDeform(image,deformation,dx_convention='pixel')
+        self.image = tb.imgDeform(image,deformation,dx_convention=self.dx_convention)
         if self._get_mu_() != 0: self.image += (residuals *self.mu)/self.n_step
 
     def _update_sharp_intermediary_field_(self):
@@ -264,7 +272,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         if self._i > 0:
             for k,phi in enumerate(self._phis[self._i - 1]):
                 self._phis[self._i][k] = phi + tb.compose_fields(
-                    -self.field/self.n_step,phi,'pixel'
+                    -self.field/self.n_step,phi,self.dx_convention
                 ).to(self.field.device)
                 # self._phis[self._i][k] = tb.compose_fields(
                 #     phi,
@@ -275,10 +283,10 @@ class Geodesic_integrator(torch.nn.Module,ABC):
 
     def _update_momentum_weighted_semiLagrangian_(self, deformation):
         f_t = self.rf.f(self._i)
-        fz_times_div_v = f_t * self.momentum * tb.Field_divergence(dx_convention='pixel')(self.field)[0, 0]
+        fz_times_div_v = f_t * self.momentum * tb.Field_divergence(dx_convention=self.dx_convention)(self.field)[0, 0]
         div_fzv = -tb.imgDeform(f_t * self.momentum,
                                 deformation,
-                                dx_convention='pixel',
+                                dx_convention=self.dx_convention,
                                 clamp=False)[0, 0] \
                   + fz_times_div_v / self.n_step
         z_time_dtF = self.momentum * self.rf.dt_F(self._i)
@@ -287,7 +295,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
     def _update_image_weighted_semiLagrangian_(self, deformation,residuals = None,sharp=False):
         if residuals is None: residuals = self.momentum
         image = self.source if sharp else self.image
-        self.image = tb.imgDeform(image, deformation, dx_convention='pixel') + \
+        self.image = tb.imgDeform(image, deformation, dx_convention=self.dx_convention) + \
                      (self.rf.F_div_f(self._i) *  residuals) / self.n_step
 
                      # (self.rf.mu * self.rf.mask[self._i] * residuals) / self.n_step
@@ -299,7 +307,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         # plt.show()
 
     def _update_field_oriented_weighted_(self):
-        grad_image = tb.spatialGradient(self.image, dx_convention='pixel')
+        grad_image = tb.spatialGradient(self.image, dx_convention=self.dx_convention)
         if self.flag_W:
             free_field = tb.im2grid(
                 # self.kernelOperator((- self.rf.f(self._i) * self.residuals * grad_image[0]))
@@ -329,7 +337,11 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         """
         if n_step == 0:
             return self.id_grid.detach().cpu() + self.field_stock[0][None].detach().cpu()/self.n_step
-        temporal_integrator = vff.FieldIntegrator(method='temporal',save=save)
+        temporal_integrator = vff.FieldIntegrator(
+            method='temporal',
+            save=save,
+            dx_convention=self.dx_convention
+        )
         if n_step is None:
             return temporal_integrator(self.field_stock/self.n_step,forward=True)
         else:
@@ -391,10 +403,12 @@ class Geodesic_integrator(torch.nn.Module,ABC):
             fig.colorbar(r_s,ax=ax[i,-2],fraction=0.046, pad=0.04)
 
             tb.gridDef_plot_2d(self.get_deformation(t),
-                            add_grid=True,
+                            add_grid=False,
                             ax=ax[i,-1],
                             step=int(min(self.field_stock.shape[2:-1])/30),
-                            check_diffeo=True)
+                            check_diffeo=True,
+                            dx_convention=self.dx_convention
+            )
 
         return fig,ax
 
@@ -407,7 +421,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         # temporal integration over v_t
         temporal_integrator = vff.FieldIntegrator(method='temporal',
                                                   save=temporal,
-                                                  dx_convention='pixel')
+                                                  dx_convention=self.dx_convention)
 
 
         # field_stock_toplot = tb.pixel2square_convention(self.field_stock)
@@ -429,13 +443,17 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         # show resulting deformation
 
         tb.gridDef_plot_2d(full_deformation,step=int(max(self.image.shape)/30),ax = axes[0,0],
-                         check_diffeo=True,dx_convention='2square')
-        tb.quiver_plot(full_deformation -self.id_grid.cpu() ,step=int(max(self.image.shape)/30),
-                        ax = axes[0,1],check_diffeo=False)
+                         check_diffeo=True,dx_convention=self.dx_convention)
+        tb.quiver_plot(full_deformation -self.id_grid.cpu() ,
+                       step=int(max(self.image.shape)/30),
+                        ax = axes[0,1],
+                       check_diffeo=False,
+                       dx_convention=self.dx_convention
+                       )
 
         # show S deformed by full_deformation
         S_deformed = tb.imgDeform(self.source.cpu(),full_deformator,
-                                  dx_convention='pixel')
+                                  dx_convention=self.dx_convention)
         # axes[1,0].imshow(self.source[0,0,:,:].cpu().permute(1,2,0),cmap='gray',origin='lower',vmin=0,vmax=1)
         # axes[1,1].imshow(target[0].cpu().permute(1,2,0),cmap='gray',origin='lower',vmin=0,vmax=1)
         # axes[2,0].imshow(S_deformed[0,0,:,:].permute(1,2,0),cmap='gray',origin='lower',vmin=0,vmax=1)
@@ -579,6 +597,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         """
         super().__init__()
         self.mp = geodesic
+        self.dx_convention = self.mp.dx_convention
         self.source = source
         self.target = target
         if isinstance(self.mp.sigma_v, tuple) and len(self.mp.sigma_v) != len(source.shape[2:]) :
@@ -805,7 +824,9 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         self.parameter = z_0 # optimized variable
         self._initialize_optimizer_(grad_coef,max_iter=n_iter)
 
-        self.id_grid = tb.make_regular_grid(z_0.shape[2:],z_0.device)
+        self.id_grid = tb.make_regular_grid(z_0.shape[2:],
+                    dx_convention=self.dx_convention,
+                    device = z_0.device)
         if self.id_grid is None:
             raise ValueError(f"The initial momentum provided might have the wrong shape, got :{z_0.shape}")
 
@@ -933,7 +954,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         if len(source_segmentation.shape) == 2 or (len(source_segmentation.shape))==3:
             source_segmentation = source_segmentation[None,None]
         source_deformed = tb.imgDeform(source_segmentation,deformator.to(device),
-                                       dx_convention='pixel')
+                                       dx_convention=self.dx_convention)
         # source_deformed[source_deformed>1e-2] =1
         # prod_seg = source_deformed * target_segmentation
         # sum_seg = source_deformed + target_segmentation
@@ -957,7 +978,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
 
 
     def get_ssd_def(self):
-        image_def = tb.imgDeform(self.source,self.mp.get_deformator(),dx_convention='pixel')
+        image_def = tb.imgDeform(self.source,self.mp.get_deformator(),dx_convention=self.dx_convention)
         return float(cf.SumSquaredDifference(self.target)(image_def))
 
     def save(self,source_name,target_name,light_save = False,message=None,destination=None,file=None):
@@ -1062,12 +1083,15 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
                 total_cost += self.cost_cst*(self._get_rho_()[0])* self.to_analyse[1][:,2]
         return total_cost
 
-    def plot_cost(self):
+    def plot_cost(self,y_log = False ):
         """ To display the evolution of cost during the optimisation.
 
 
         """
         fig1,ax1 = plt.subplots(1,2,figsize=(10,5))
+        if y_log:
+            ax1[0].set_yscale('log')
+            ax1[1].set_yscale('log')
 
         ssd_plot = self.to_analyse[1][:,0].numpy()
         ax1[0].plot(ssd_plot,"--",color = 'blue',label='ssd')
@@ -1109,6 +1133,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         ax[1,0].set_title("Integrated source image",fontsize = 25)
         tb.quiver_plot(self.mp.get_deformation().detach().cpu()- self.id_grid,
                        ax=ax[1,1],step=15,color=GRIDDEF_YELLOW,
+                       dx_convention=self.dx_convention
                        )
 
         text_param = f"mu = {self._get_mu_()}, rho = {self.mp._get_rho_()},"

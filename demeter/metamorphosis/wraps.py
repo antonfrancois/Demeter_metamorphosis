@@ -2,7 +2,8 @@ import torch
 # import __init__
 import sys
 from icecream import ic
-ic(sys.path)
+
+
 
 # import metamorphosis as mt
 from . import classic as cl
@@ -19,19 +20,22 @@ def lddmm(source,target,residuals,
           sharp=False,
           safe_mode = False,
           integration_method='semiLagrangian',
-          multiScale_average = False
+          multiScale_average = False,
+          dx_convention = 'pixel'
           ):
-    if type(residuals) == int: residuals = torch.zeros(source.shape,device=source.device)
+    if type(residuals) in [int,float]:
+        residuals = residuals * torch.ones(source.shape,device=source.device)
     residuals.requires_grad = True
     if sharp: integration_method = 'sharp'
 
-    # sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
+    sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
 
     mp = cl.Metamorphosis_integrator(method=integration_method,
                         mu=0, rho=0,
-                        sigma_v=sigma,
                         n_step=integration_steps,
-                        multiScale_average=multiScale_average
+                        sigma_v=sigma,
+                        multiScale_average=multiScale_average,
+                        dx_convention=dx_convention
                         )
     mr = cl.Metamorphosis_Shooting(source,target,mp,
                                 cost_cst=cost_cst,
@@ -53,7 +57,8 @@ def metamorphosis(source,target,residuals,
                   sharp=False,
                   safe_mode = True,
                   integration_method='semiLagrangian'
-                  ):
+                  ,
+                  dx_convention = 'pixel'):
     if type(residuals) == int: residuals = torch.zeros(source.shape,device=source.device)
     # residuals = torch.zeros(source.size()[2:],device=device)
     residuals.requires_grad = True
@@ -64,6 +69,7 @@ def metamorphosis(source,target,residuals,
                         mu=mu, rho=rho,
                         sigma_v=sigma,
                         n_step=integration_steps,
+                        dx_convention=dx_convention
                         )
     mr = cl.Metamorphosis_Shooting(source,target,mp,
                                 cost_cst=cost_cst,
@@ -83,7 +89,8 @@ def metamorphosis(source,target,residuals,
 def weighted_metamorphosis(source,target,residual,mask,
                            mu,rho,rf_method,sigma,cost_cst,
                            n_iter,grad_coef,data_term=None,sharp=False,
-                           safe_mode=True):
+                           safe_mode=True,
+                           dx_convention = 'pixel'):
     device = source.device
 #     sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
     if rf_method == 'identity':
@@ -97,7 +104,8 @@ def weighted_metamorphosis(source,target,residual,mask,
 
     mp_weighted = cn.ConstrainedMetamorphosis_integrator(
         residual_function=rf,sigma_v=sigma,
-        sharp=sharp
+        sharp=sharp,
+        dx_convention=dx_convention
     )
     mr_weighted = cn.ConstrainedMetamorphosis_Shooting(
         source,target,mp_weighted,
@@ -113,7 +121,8 @@ def weighted_metamorphosis(source,target,residual,mask,
 @time_it
 def oriented_metamorphosis(source,target,residual,mp_orienting,
                            mu,rho,gamma,sigma,cost_cst,
-                           n_iter,grad_coef):
+                           n_iter,grad_coef,
+                           dx_convention = 'pixel'):
     mask = mp_orienting.image_stock.to(source.device)
     orienting_field = mp_orienting.field_stock.to(source.device)
     if type(residual) == int: residual = torch.zeros(source.shape)
@@ -123,7 +132,8 @@ def oriented_metamorphosis(source,target,residual,mp_orienting,
     mp_orient = cn.ConstrainedMetamorphosis_integrator(orienting_mask=mask,
                                       orienting_field=orienting_field,
                                 mu=mu,rho=rho,gamma=gamma,
-                                sigma_v=(sigma,)*len(residual.shape)
+                                sigma_v=(sigma,)*len(residual.shape),
+                                dx_convention=dx_convention
                                 # n_step=20 # n_step is defined from mask.shape[0]
                                 )
     mr_orient = cn.ConstrainedMetamorphosis_Shooting(source,target,mp_orient,
@@ -138,7 +148,8 @@ def constrained_metamorphosis(source,target,residual,
                            rf_method,mu,rho,mask_w,
                            mp_orienting,gamma,mask_o,
                            sigma,cost_cst,sharp,
-                           n_iter,grad_coef):
+                           n_iter,grad_coef,
+                              dx_convention = 'pixel'):
     mask = mp_orienting.image_stock.to(source.device)
     orienting_field = mp_orienting.field_stock.to(source.device)
 #     sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
@@ -159,6 +170,7 @@ def constrained_metamorphosis(source,target,residual,
                                 mu=mu,rho=rho,gamma=gamma,
                                 sigma_v=sigma,
                                 sharp=sharp,
+                                dx_convention=dx_convention
                                 # n_step=20 # n_step is defined from mask.shape[0]
                                 )
     mr_constr = cn.ConstrainedMetamorphosis_Shooting(source,target,mp_constr,

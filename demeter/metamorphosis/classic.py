@@ -16,9 +16,9 @@ class Metamorphosis_integrator(Geodesic_integrator):
     def __init__(self,method,
                  mu=1.,
                  rho=1.,
-                 sigma_v= (1,1,1),
+                 # sigma_v= (1,1,1),
                  n_step =10,
-                 multiScale_average=False,
+                 # multiScale_average=False,
                  **kwargs
                  ):
         """
@@ -32,7 +32,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
          over the geodesic integration
         """
         # print('Before super() my weight is ',get_size(self))
-        super().__init__(sigma_v,multiScale_average)
+        super().__init__(**kwargs)
         # self.mu = mu if callable(mu) else lambda :mu
         # self.rho = rho if callable(rho) else lambda :rho
         self.mu = mu
@@ -115,7 +115,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
 
                 ax_im = ax[1,k_y] if self._i != 0 else ax[1]
                 ax_im.imshow(tb.imgDeform(self.source.detach(),phi.detach(),
-                                          dx_convention='pixel')[0,0]
+                                          dx_convention=self.dx_convention)[0,0]
                              ,**DLT_KW_IMAGE)
             if self._i !=0:
                 fig,ax = plt.subplots(1,3,figsize =(15,5))
@@ -137,7 +137,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
                                            sharp=True)
         # self.image = tb.imgDeform(self.source.to(self.image.device),
         #                           self._phis[self._i][0],
-        #                           dx_convention='pixel')
+        #                           dx_convention=self.dx_convention)
         # if self.mu != 0: self.image += self.mu * resi_cumul/self.n_step
         self._update_residuals_semiLagrangian_(self._phis[self._i][self._i])
 
