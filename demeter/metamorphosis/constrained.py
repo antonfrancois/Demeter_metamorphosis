@@ -498,9 +498,11 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
             self.mp.orienting_field = self.mp.orienting_field.to(device)
         super(ConstrainedMetamorphosis_Shooting, self).to_device(device)
 
-    def plot_cost(self):
+    def plot_cost(self,y_log=False):
         fig1, ax1 = plt.subplots(1, 2,figsize=(10,10))
-
+        if y_log:
+            ax1[0].set_yscale('log')
+            ax1[1].set_yscale('log')
         cost_stock = self.to_analyse[1].detach().numpy()
 
         ssd_plot = cost_stock[:, 0]

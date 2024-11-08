@@ -4,6 +4,8 @@ import warnings
 from math import prod
 import pickle
 import os, sys, csv#, time
+
+
 from icecream import ic
 
 from datetime import datetime
@@ -262,8 +264,17 @@ class Geodesic_integrator(torch.nn.Module,ABC):
     def _update_image_semiLagrangian_(self,deformation,residuals = None,sharp=False):
         if residuals is None: residuals = self.momentum
         image = self.source if sharp else self.image
-        self.image = tb.imgDeform(image,deformation,dx_convention='pixel')
+        # print(f"i {self._i}_update_image_semiLagrangian_")
+        # print("\t image bef ",image.max())
+        # print("\t field", (deformation - self.id_grid).abs().max())
+        # print("\t id_grid convention",self.id_grid.max())
         self.image = tb.imgDeform(image,deformation,dx_convention=self.dx_convention)
+        # print("\t image aft", self.image.max())
+        # print("\t momentum",self.momentum.max())
+        # print("\t residuals",residuals.max())
+        # print("\t mu",self.mu,self._get_mu_())
+        # print("\t add", ((residuals *self.mu)/self.n_step).max())
+        # print("\t image bef ",self.image.max())
         if self._get_mu_() != 0: self.image += (residuals *self.mu)/self.n_step
 
     def _update_sharp_intermediary_field_(self):
@@ -385,8 +396,10 @@ class Geodesic_integrator(torch.nn.Module,ABC):
                       vmax=v_abs_max)
         size_fig = 5
         C = self.momentum_stock.shape[1]
-        plt.rcParams['figure.figsize'] = [size_fig*3,n_figs*size_fig]
-        fig,ax = plt.subplots(n_figs,2 + C)
+        # plt.rcParams['figure.figsize'] = [size_fig*3,n_figs*size_fig]
+        fig,ax = plt.subplots(n_figs,2 + C,
+                              constrained_layout=True,
+                              figsize =(size_fig*3,n_figs*size_fig))
 
         for i,t in enumerate(plot_id):
             i_s =ax[i,0].imshow(self.image_stock[t,:,:,:].detach().permute(1,2,0).numpy(),
@@ -1168,8 +1181,8 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         self.mp.forward(self.source.clone(),residuals,save=True,plot=0)
         self.mp.plot_deform(self.target,temporal_nfigs)
 
-    def plot(self):
-        self.plot_cost()
+    def plot(self,y_log = False):
+        self.plot_cost(y_log)
         self.plot_imgCmp()
         # self.plot_deform()
 
