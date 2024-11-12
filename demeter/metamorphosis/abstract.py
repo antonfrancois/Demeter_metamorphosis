@@ -750,7 +750,8 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         self.optimizer = torch.optim.LBFGS([self.parameter],
                                            max_eval=15,
                                            max_iter=max_iter,
-                                           lr=dt_step)
+                                           lr=dt_step,
+                                           line_search_fn='strong_wolfe')
 
         def closure():
             self.optimizer.zero_grad()

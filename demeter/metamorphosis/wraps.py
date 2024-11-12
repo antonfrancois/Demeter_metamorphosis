@@ -1,5 +1,5 @@
 import torch
-# import __init__
+import __init__
 import sys
 from icecream import ic
 
@@ -21,7 +21,8 @@ def lddmm(source,target,residuals,
           safe_mode = False,
           integration_method='semiLagrangian',
           multiScale_average = False,
-          dx_convention = 'pixel'
+          dx_convention = 'pixel',
+          optimizer_method='adadelta',
           ):
     if type(residuals) in [int,float]:
         residuals = residuals * torch.ones(source.shape,device=source.device)
@@ -40,7 +41,7 @@ def lddmm(source,target,residuals,
     mr = cl.Metamorphosis_Shooting(source,target,mp,
                                 cost_cst=cost_cst,
                                 # optimizer_method='LBFGS_torch',
-                                optimizer_method='adadelta',
+                                optimizer_method=optimizer_method,
                                 data_term=data_term
                                )
     if not safe_mode:
