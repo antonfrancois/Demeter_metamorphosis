@@ -335,6 +335,10 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         # self.field = free_field + oriented_field
         self.field = tb.im2grid(self.kernelOperator(tb.grid2im(free_field + oriented_field)))
 
+    def to_device(self,device):
+        # TODO: completer ça
+        self.id_grid = self.id_grid.to(device)
+        self.image = self.image.to(device)
 
     def get_deformation(self,from_t=0,to_t=None,save=False):
         r"""Returns the deformation use it for showing results
@@ -903,6 +907,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
 
     def to_device(self,device):
         # self.mp.kernelOperator.kernel = self.mp.kernelOperator.kernel.to(device)
+        self.mp.to_device(device)
         self.source = self.source.to(device)
         self.target = self.target.to(device)
         self.parameter = self.parameter.to(device)
