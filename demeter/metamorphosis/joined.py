@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 from math import prod
 
 from abc import ABC, abstractmethod
-from metamorphosis import Geodesic_integrator,Optimize_geodesicShooting
+from demeter.metamorphosis import Geodesic_integrator,Optimize_geodesicShooting
 
-from utils.constants import *
-import utils.torchbox as tb
-import utils.cost_functions as cf
+from demeter.utils.constants import *
+import demeter.utils.torchbox as tb
+import demeter.utils.cost_functions as cf
 
 class Mask_intensity(ABC):
     """ Class for customizing the intensity addition area at the image update state.
@@ -373,7 +373,7 @@ class Weighted_joinedMask_Metamorphosis_Shooting(Optimize_geodesicShooting):
         # Norm L2 on z_I
         zI = residuals_ini[0,0]
         mask = self.source[0,1]
-        self.norm_zI_2 = self.mp.rho_I * (zI * mask * zI).sum()/prod(self.source.shape[2:])
+        self.norm_zI_2 = self.mp.rho_I * (zI * mask * zI).sum() /prod(self.source.shape[2:])
         # Norm L2 on z_M
         self.total_cost = self.data_loss + lamb * (self.norm_v_2 + self.norm_zI_2)
 

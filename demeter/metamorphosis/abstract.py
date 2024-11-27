@@ -1148,12 +1148,13 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         ax1[0].plot(ssd_plot,"--",color = 'blue',label=self.data_term.__class__.__name__)
         ax1[1].plot(ssd_plot,"--",color = 'blue',label=self.data_term.__class__.__name__)
 
-        normv_plot = self.cost_cst*self.to_analyse[1][:,1].detach().numpy()
+        nbpix = prod(self.source.shape[2:])
+        normv_plot =  (self.cost_cst / nbpix )*self.to_analyse[1][:,1].detach().numpy()
         ax1[0].plot(normv_plot,"--",color = 'green',label='normv')
         ax1[1].plot(self.to_analyse[1][:,1].detach().numpy(),"--",color = 'green',label='normv')
-        total_cost = ssd_plot +normv_plot
+        total_cost = ssd_plot + normv_plot
         if self._get_mu_() != 0:
-            norm_l2_on_z = self.cost_cst*(self._get_rho_())* self.to_analyse[1][:,2].numpy()
+            norm_l2_on_z = (self.cost_cst / nbpix)*(self._get_rho_())* self.to_analyse[1][:,2].numpy()
             total_cost += norm_l2_on_z
             ax1[0].plot(norm_l2_on_z,"--",color = 'orange',label='norm_l2_on_z')
             ax1[1].plot(self.to_analyse[1][:,2].numpy(),"--",color = 'orange',label='norm_l2_on_z')

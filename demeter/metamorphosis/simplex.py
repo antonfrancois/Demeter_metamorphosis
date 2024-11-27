@@ -1,12 +1,12 @@
 from math import prod,sqrt
 
-from metamorphosis import Geodesic_integrator,Optimize_geodesicShooting
+from demeter.metamorphosis import Geodesic_integrator,Optimize_geodesicShooting
 
-from utils.constants import *
-import utils.torchbox as tb
+from demeter.utils.constants import *
+import demeter.utils.torchbox as tb
 from functools import reduce
 from operator import add
-from utils.toolbox import update_progress
+from demeter.utils.toolbox import update_progress
 
 class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
 
@@ -28,7 +28,7 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
     def step(self):
         ## 1. Compute the vector field
         ## 1.1 Compute the gradient of the image by finite differences
-        grad_simplex = tb.spacialGradient(self.image,dx_convention='pixel')
+        grad_simplex = tb.spatialGradient(self.image,dx_convention='pixel')
         prefield = reduce(add,[self.momentum[:,n] * grad_simplex[:,n] for n in range(self.momentum.shape[1])])
         self.field = - sqrt(self.rho) * tb.im2grid(self.kernelOperator(prefield))
         # self.field = -  tb.im2grid(self.kernelOperator(prefield))
@@ -175,6 +175,7 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
         rho = self._get_rho_()
         self.mp.forward(self.source, momentum_ini, save=False, plot=0)
         # Compute the data_term. Default is the Ssd
+        nbpix = prod(self.source.shape[2:])
         self.data_loss = self.data_term()
 
         # Norm V
@@ -189,14 +190,14 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
         #                   self.cost_cst * .5 * ( rho * self.norm_v_2 + (1 - rho) * self.norm_l2_on_z)
 
         # TODO: explain why there is a rho here
-        self.norm_v_2 = rho  * self._compute_V_norm_(momentum_ini,self.source)
+        self.norm_v_2 = .5 * rho  * self._compute_V_norm_(momentum_ini,self.source)
 
         pi_q = (momentum_ini * self.source).sum(dim=1,keepdim=True) / (self.source ** 2).sum(dim=1,keepdim=True)
         z = sqrt(1 - rho) * (momentum_ini - pi_q * self.source)
-        self.norm_l2_on_z =  (z ** 2).sum()/prod(self.source.shape[2:])
+        self.norm_l2_on_z = .5 * (z ** 2).sum() # /prod(self.source.shape[2:])
 
         self.total_cost = self.data_loss + \
-                            self.cost_cst * .5 * (self.norm_v_2 + self.norm_l2_on_z)
+                            (self.cost_cst/nbpix) * (self.norm_v_2 + self.norm_l2_on_z)
 
 
         # print('ssd :',self.ssd,' norm_v :',self.norm_v_2)
