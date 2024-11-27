@@ -75,17 +75,38 @@ def surf_bspline(cm,n_pts, degree = (1,1)):
     b_p = bspline_basis(p,n_pts[0],degree[0])
     b_q = bspline_basis(q,n_pts[1],degree[1])
 
-    Q_i = torch.zeros((q,n_pts[0]))
-    surf = torch.zeros(n_pts)
-
-    # for i in range(q):
-    #     Q_i[i] = b_p @ cm[:,i]
     Q_i = (b_p @ cm).T
-    # for n in range(n_pts[0]):
-        # surf[n] = b_q @ Q_i[:,n]
     surf = (b_q @ Q_i)
 
     return surf
+
+def surf_bspline_3D(cm,n_pts, degree = (1,1,1)):
+    """ Generate a 3D surface from a control matrix
+
+    :param cm     = 3D matrix Control point Matrix
+    :param n_pts  = (tuple), number of points on the curve.
+    :param degree = (tuple), degree of the spline in each direction
+    :return: 3D surface of shape (n_pts[0],n_pts[1],n_pts[2])
+
+    test:
+    ```python
+    P_im = torch.rand((5,6,7),dtype=torch.float)
+    img = surf_bspline_3D(P_im,(100,200,300))
+    ```
+    """
+
+    p,q,r = cm.shape
+
+    b_p = bspline_basis(p,n_pts[0],degree[0])
+    b_q = bspline_basis(q,n_pts[1],degree[1])
+    b_r = bspline_basis(r,n_pts[2],degree[2])
+
+    Q_i = torch.einsum('ij,jkl->ikl', b_p, cm)
+    Q_ij = torch.einsum('ij,jkl->ikl', b_q, Q_i.transpose(0, 1)).transpose(0, 1)
+    surf_3d = torch.einsum('ij,jkl->ikl', b_r, Q_ij.transpose(0, 2)).transpose(0, 2)
+
+
+    return surf_3d
 
 def field2D_bspline(cms,n_pts,degree = (1,1),dim_stack =0):
     """ Generate 2D fields from a 2D control matix
@@ -100,6 +121,23 @@ def field2D_bspline(cms,n_pts,degree = (1,1),dim_stack =0):
     field_y = surf_bspline(cms[1],n_pts,degree)
 
     return torch.stack((field_x,field_y),dim=dim_stack)
+
+def field3D_bspline(cms,n_pts,degree = (1,1,1),dim_stack =0):
+    """ Generate 3D fields from a 3D control matix
+
+    :param cms: shape = (3,p,q,r) Control matricies
+    :param n_pts: (tuple) grid dimension
+    :param degree: (tuple), degree of the spline in each direction
+    :param dim_stack: (int) dimension to stack the field
+    :return: vector field of shape (3,n_pts[0],n_pts[1],n_pts[2]) if dim_stack = 0
+            vector field of shape (n_pts[0],n_pts[1],n_pts[2],3) if dim_stack = -1
+    """
+
+    field_x = surf_bspline_3D(cms[0],n_pts,degree)
+    field_y = surf_bspline_3D(cms[1],n_pts,degree)
+    field_z = surf_bspline_3D(cms[2],n_pts,degree)
+
+    return torch.stack((field_x,field_y,field_z),dim=dim_stack)
 
 
 # ===== CMS EXAMPLES +==================
