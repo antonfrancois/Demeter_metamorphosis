@@ -59,12 +59,27 @@ class Ssd(DataCost):
 
     def __call__(self,at_step = None):
         if at_step is None:
-            return self.ssd(self.optimizer.mp.image)
+            return self.ssd(self.optimizer.mp.image) #/ prod(self.optimizer.mp.image.shape[2:])
         else:
-            return self.ssd(self.optimizer.mp.image_stock[at_step][None])
+            return self.ssd(self.optimizer.mp.image_stock[at_step][None])  #/ prod(self.optimizer.mp.image.shape[2:])
 
     def to_device(self,device):
         self.ssd.target = self.ssd.target.to(device)
+
+class Ssd_normalized(DataCost):
+
+    def __init__(self,target,**kwargs):
+        print('Ssd_normalized will initialize')
+        super(Ssd_normalized,self).__init__()
+        print('Ssd_normalized was initialized')
+        self.ssd = cf.SumSquaredDifference(target)
+
+    def __call__(self, at_step=None):
+        print(self.optimizer.mp.image.shape)
+        if at_step is None:
+            return self.ssd(self.optimizer.mp.image) / prod(self.optimizer.mp.image.shape[2:])
+        else:
+            return self.ssd(self.optimizer.mp.image_stock[at_step][None])  / prod(self.optimizer.mp.image.shape[2:])
 
 class Cfm(DataCost):
     def __init__(self,target,mask,**kwargs):
