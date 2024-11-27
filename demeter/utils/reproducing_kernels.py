@@ -328,7 +328,7 @@ class GaussianRKHS(torch.nn.Module):
         self.sigma_dx = tuple(
             [s*dx for dx,s in zip(dx_convention, sigma)]
         )
-        print(f"sigma_pixel : {self.sigma_dx}")
+        print(f"sigma_dx : {self.sigma_dx}")
         self.prod_sigma_on_dx = prod(
             [dx/s for dx,s in zip(dx_convention, sigma)]
         )
@@ -368,7 +368,7 @@ class GaussianRKHS(torch.nn.Module):
     def __repr__(self) -> str:
         # the if is there for compatibilities with older versions
         sig_str= f'\n\tsigma :{self.sigma}' if hasattr(self,'sigma') else ''
-        sig_str+= f'\n\tsigma_pixel :{self.sigma_dx}' if hasattr(self, 'sigma_pixel') else ''
+        sig_str+= f'\n\tsigma_dx :{self.sigma_dx}' if hasattr(self, 'sigma_dx') else ''
         return self.__class__.__name__+\
         ','+str(self._dim)+'D '+\
         f'\n\tfilter :{self.filter.__name__}, '+sig_str+\

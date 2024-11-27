@@ -209,16 +209,17 @@ def log_diff(a,b):
 
 #%%
 
-dx_convention = 'pixel'
-# Construction d'une iamge et de moments  bsplines aléatoires à partir d'une matrice
-# de points de controle
-P_im = torch.rand((10,10),dtype=torch.float)
-P_mom = torch.rand((10,10),dtype=torch.float)*2 - 1
+dx_convention = 'square'
 s = 4
 size = (150,175)
+sigma = (5,20)
+
+# Construction d'une iamge et de moments  bsplines aléatoires à partir d'une matrice
+# de points de controle
+# P_im = torch.rand((10,10),dtype=torch.float)
+# P_mom = torch.rand((10,10),dtype=torch.float)*2 - 1
 size_s = tuple([int(i*s) for i in size])
 # On défini les noyaux
-sigma = (5,20)
 sigma_s = tuple([i*s for i in sigma]) if dx_convention == 'pixel' else tuple([i for i in sigma])
 dx = (1,1) if dx_convention == 'pixel' else (1./(size[0]-1),1./(size[1]-1))
 dx_s = (1,1) if dx_convention == 'pixel' else (1./(size_s[0]-1),1./(size_s[1]-1))
@@ -257,15 +258,16 @@ print(f"norm2 on q {compute_z_norm(moments):.4e}, on q_s {compute_z_norm(moments
 
 #%% 3D  !!!
 
-dx_convention = 'square'
+dx_convention = 'pixel'
+s = 2
+size = (201,151,41)
+sigma = (4,5,7)
+
 # Construction d'une iamge et de moments  bsplines aléatoires à partir d'une matrice
 # de points de controle
 P_im = torch.rand((20,20,20),dtype=torch.float)
 P_mom = torch.rand((20,20,20),dtype=torch.float)*2 - 1
-s = 2
-size = (201,151,41)
 size_s = tuple([int(i*s) for i in size])
-sigma = (4,4,4)
 sigma_s = tuple([i*s for i in sigma]) if dx_convention == 'pixel' else tuple([i for i in sigma])
 dx = (1,1,1) if dx_convention == 'pixel' else (1./size[0],1./size[1],1./size[2])
 dx_s = (1,1,1) if dx_convention == 'pixel' else (1./size_s[0],1./size_s[1],1./size_s[2])
@@ -287,6 +289,8 @@ norm_V_s, field_s = compute_V_norm(moments_s,img_s,kernelOp_s,dx_convention,dx_s
 field = tb.im2grid(field)
 field_s = tb.im2grid(field_s)
 
+print("kernelOp",kernelOp)
+print("kernelOp_s",kernelOp_s)
 print(f"norm_V = {norm_V:.4e}, norm_V_s = {norm_V_s:.4e}, diff = {log_diff(norm_V, norm_V_s):.4e}")
 print(f"norm2 on q {compute_z_norm(moments):.4e}, on q_s {compute_z_norm(moments_s):.4e}, diff = {log_diff(compute_z_norm(moments), compute_z_norm(moments_s)):.4e}")
 
