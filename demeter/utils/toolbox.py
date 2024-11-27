@@ -53,7 +53,7 @@ def update_progress(progress,message = None):
     block = int(round(barLength*progress))
     text = "\rProgress: [{0}] {1:6.2f}% {2}".format( "#"*block + "-"*(barLength-block), progress*100, status)
     if not message is None:
-        text += f' ({message[0]} ,{message[1]:8.2f}).'
+        text += f' ({message[0]} ,{message[1]:8.4f}).'
     sys.stdout.write(text)
     sys.stdout.flush()
 
