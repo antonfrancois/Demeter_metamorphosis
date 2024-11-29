@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 from ..utils import torchbox as tb
 from ..utils import cost_functions as cf
+from math import prod
 
 
 class DataCost(ABC,torch.nn.Module):
