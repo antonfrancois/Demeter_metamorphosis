@@ -690,35 +690,21 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
     # @abstractmethod
     # def _compute_V_norm_(self,*args):
     #     pass
-    def _compute_V_norm_(self,*args):
+    def _compute_V_norm_(self,momentum, image):
         """
 
-        usage 1: _compute_V_norm_(field)
-            :field: torch Tensor of shape [1,H,W,2] or [1,D,H,W,3]
-        usage 2: _compute_V_norm_(residual, image)
-            :residual: torch Tensor of shape [1,C,H,W] or [1,C,D,H,W]
+         _compute_V_norm_(momentum, image)
+            :momentum: torch Tensor of shape [1,C,H,W] or [1,C,D,H,W]
             :image: torch Tensor of shape [1,C,H,W] or [1,C,D,H,W]
         :return: float
         """
 
         # Computes only
-        if len(args) == 2 and not args[0].shape[-1] in [2,3] :
-            residual, image = args[0],args[1]
-            C = residual.shape[1]
-            grad_source = tb.spatialGradient(image)
-            grad_source_resi = (grad_source * residual.unsqueeze(2)).sum(dim=1) #/ C
-            K_grad_source_resi = self.mp.kernelOperator(grad_source_resi)
+        grad_source = tb.spatialGradient(image, dx_convention=self.dx_convention)
+        grad_source_resi = (grad_source * momentum.unsqueeze(2)).sum(dim=1) #/ C
+        K_grad_source_resi = self.mp.kernelOperator(grad_source_resi) / prod(self.dx_convention)
 
-            return (grad_source_resi * K_grad_source_resi).sum()
-        elif len(args) == 1 and args[0].shape[-1] in [2,3]:
-            print("\n Warning !!!!  make sure that kernelOrerator is self adjoint.")
-            raise ValueError("This method to compute the V norm is wrong"
-                             " with gaussian Kernels")
-            field = args[0]
-            k_field = self.mp.kernelOperator(field)
-            return (k_field * field).sum()
-        else:
-            raise ValueError(f"Bad arguments, see usage in Doc got args = {args}")
+        return (grad_source_resi * K_grad_source_resi).sum()
 
 
     @abstractmethod
