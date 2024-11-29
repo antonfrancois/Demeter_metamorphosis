@@ -518,13 +518,26 @@ def thresholding(image,bounds = (0,1)):
                          )
 
 def spatialGradient(image, dx_convention ='pixel'):
-    dx_convention_list = ["pixel", "square", "2square"]
-    if not dx_convention in dx_convention_list:
-        raise ValueError(f"dx_convention must be one of {dx_convention_list}, got {dx_convention}")
+    if isinstance(dx_convention,str):
+        dx_convention_list = ["pixel", "square", "2square"]
+
+        if not dx_convention in dx_convention_list:
+            raise ValueError(f"dx_convention must be one of {dx_convention_list}, got {dx_convention}")
+    elif not isinstance(dx_convention,torch.Tensor):
+        raise ValueError(f"dx_convention must be a string or a tensor, got {type(dx_convention)}")
     if len(image.shape) == 4 :
-        return spatialGradient_2d(image, dx_convention)
+        grad_image = spatialGradient_2d(image, dx_convention)
     elif len(image.shape) == 5:
-        return spatialGradient_3d(image, dx_convention)
+        grad_image = spatialGradient_3d(image, dx_convention)
+    else:
+        raise ValueError(f"image should be [B,C,H,W] or [B,C,D,H,W] got {image.shape}")
+
+    if isinstance(dx_convention,torch.Tensor):
+        B,_,d = grad_image.size()[:3]
+        grad_image *= 1./dx_convention.view(B, 1, d, *([1] * d))
+        return grad_image
+    else:
+        return grad_image
 
 def spatialGradient_2d(image, dx_convention ='pixel'):
     """ Compute the spatial gradient on 2d images by applying
@@ -536,7 +549,9 @@ def spatialGradient_2d(image, dx_convention ='pixel'):
     """
     normalized = True #if dx_convention == "square" else False
     grad_image = SpatialGradient(mode='sobel',normalized=normalized)(image)
-    # grad_image[:,0,1] *= -1
+
+    # other normalisation than the pixel one
+
     if dx_convention == "square":
         _,_,H,W = image.size()
         grad_image[:,0,0] *= (W - 1)
@@ -552,7 +567,7 @@ def spatialGradient_3d(image, dx_convention ='pixel'):
     """
 
     :param image: Tensor [B,1,D,H,W]
-    :param dx_convention:
+    :param dx_convention: str in {'pixel','square','2square'} or tensor of shape [B,3]
     :return: Tensor [B,C,3,D,H,W]
 
     :Example:
@@ -574,7 +589,6 @@ def spatialGradient_3d(image, dx_convention ='pixel'):
     # iv3d.imshow_3d_slider(grad_image_sum[0])
 
     """
-    _,_,D,H,W, = image.size()
     # sobel kernel is not implemented for 3D images yet in kornia
     # grad_image = SpatialGradient3d(mode='sobel')(image)
     kernel = get_sobel_kernel_3d().to(image.device).to(image.dtype)
@@ -583,6 +597,9 @@ def spatialGradient_3d(image, dx_convention ='pixel'):
     spatial_pad = [1,1,1,1,1,1]
     image_padded = F.pad(image,spatial_pad,'replicate').repeat(1,3,1,1,1)
     grad_image =  F.conv3d(image_padded,kernel,padding=0,groups=3,stride=1)[None]
+
+    # other normalisation than the pixel one
+    _,_,D,H,W, = image.size()
     if dx_convention == 'square':
         grad_image[0,0,0] *= (W-1)
         grad_image[0,0,1] *= (H-1)
