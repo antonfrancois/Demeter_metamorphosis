@@ -523,6 +523,8 @@ def spatialGradient(image, dx_convention ='pixel'):
 
         if not dx_convention in dx_convention_list:
             raise ValueError(f"dx_convention must be one of {dx_convention_list}, got {dx_convention}")
+    elif isinstance(dx_convention,tuple):
+        dx_convention = torch.tensor(dx_convention)
     elif not isinstance(dx_convention,torch.Tensor):
         raise ValueError(f"dx_convention must be a string or a tensor, got {type(dx_convention)}")
     if len(image.shape) == 4 :
@@ -534,7 +536,30 @@ def spatialGradient(image, dx_convention ='pixel'):
 
     if isinstance(dx_convention,torch.Tensor):
         B,_,d = grad_image.size()[:3]
-        grad_image *= 1./dx_convention.view(B, 1, d, *([1] * d))
+        grad_image *= 1./dx_convention.flip(dims=(0,)).view(B, 1, d, *([1] * d)).to(grad_image.device)
+        # grad_image *= 1./dx_convention.view(B, 1, d, *([1] * d)).to(grad_image.device)
+
+        return grad_image
+    elif dx_convention == 'square':
+        # equivalent to
+        # grad_image[0,0,0] *= (W-1)
+        # grad_image[0,0,1] *= (H-1)
+        # grad_image[0,0,2] *= (D-1)
+        # but works for all dim and batches
+        B,_,d = grad_image.size()[:3]
+        size = torch.tensor(grad_image.size())[3:].flip(dims=(0,)).view(B,1,d,*([1]*d)).to(grad_image.device)
+        grad_image *= size -1
+        return grad_image
+    elif dx_convention == '2square':
+        # equivalent to
+        # grad_image[0,0,0] *= 2/(W-1)
+        # grad_image[0,0,1] *= 2/(H-1)
+        # grad_image[0,0,2] *= 2/(D-1)
+        # but works for all dim and batches
+
+        B,_,d = grad_image.size()[:3]
+        size = torch.tensor(grad_image.size())[3:].flip(dims=(0,)).view(B,1,d,*([1]*d)).to(grad_image.device)
+        grad_image *= (size -1)/2
         return grad_image
     else:
         return grad_image
@@ -552,23 +577,23 @@ def spatialGradient_2d(image, dx_convention ='pixel'):
 
     # other normalisation than the pixel one
 
-    if dx_convention == "square":
-        _,_,H,W = image.size()
-        grad_image[:,0,0] *= (W - 1)
-        grad_image[:,0,1] *= (H - 1)
-    if dx_convention == '2square':
-        _,_,H,W = image.size()
-        grad_image[:,0,0] *= (W-1)/2
-        grad_image[:,0,1] *= (H-1)/2
+    # if dx_convention == "square":
+    #     _,_,H,W = image.size()
+    #     grad_image[:,0,0] *= (W - 1)
+    #     grad_image[:,0,1] *= (H - 1)
+    # if dx_convention == '2square':
+    #     _,_,H,W = image.size()
+    #     grad_image[:,0,0] *= (W-1)/2
+    #     grad_image[:,0,1] *= (H-1)/2
     return grad_image
 
 
 def spatialGradient_3d(image, dx_convention ='pixel'):
     """
 
-    :param image: Tensor [B,1,D,H,W]
+    :param image: Tensor [B,1,D,H,W] or [1,C,D,H,W]
     :param dx_convention: str in {'pixel','square','2square'} or tensor of shape [B,3]
-    :return: Tensor [B,C,3,D,H,W]
+    :return: Tensor [1,C,3,D,H,W] or [B,1,3,D,H,W]
 
     :Example:
     H,W,D = (50,75,100)
@@ -589,27 +614,38 @@ def spatialGradient_3d(image, dx_convention ='pixel'):
     # iv3d.imshow_3d_slider(grad_image_sum[0])
 
     """
+    B,C,_,_,_ = image.size()
+    if C > 1 and B >1:
+        raise ValueError(f"Can't compute gradient on multi channel images with batch size > 1 got {image.size()}")
+    if C > 1:
+        image = image[0].unsqueeze(1)
+
+
     # sobel kernel is not implemented for 3D images yet in kornia
     # grad_image = SpatialGradient3d(mode='sobel')(image)
     kernel = get_sobel_kernel_3d().to(image.device).to(image.dtype)
     # normalise kernel
     kernel = 3 * kernel / kernel.abs().sum()
     spatial_pad = [1,1,1,1,1,1]
-    image_padded = F.pad(image,spatial_pad,'replicate').repeat(1,3,1,1,1)
-    grad_image =  F.conv3d(image_padded,kernel,padding=0,groups=3,stride=1)[None]
 
+    image_padded = F.pad(image,spatial_pad,'replicate').repeat(1,3,1,1,1)
+    grad_image =  F.conv3d(image_padded,kernel,padding=0,groups=3,stride=1)
+    if C > 1:
+        grad_image = grad_image[None]
+    else:
+        grad_image = grad_image.unsqueeze(1)
     # other normalisation than the pixel one
-    _,_,D,H,W, = image.size()
-    if dx_convention == 'square':
-        grad_image[0,0,0] *= (W-1)
-        grad_image[0,0,1] *= (H-1)
-        grad_image[0,0,2] *= (D-1)
-        print(f"grad_image min = {grad_image.min()};{grad_image.max()}")
-    if dx_convention == '2square':
-        # _,_,D,H,W, = image.size()
-        grad_image[0,0,0] *= (W-1)/2
-        grad_image[0,0,1] *= (H-1)/2
-        grad_image[0,0,2] *= (D-1)/2
+    # _,_,D,H,W, = image.size()
+    # if dx_convention == 'square':
+    #     grad_image[0,0,0] *= (W-1)
+    #     grad_image[0,0,1] *= (H-1)
+    #     grad_image[0,0,2] *= (D-1)
+    #     print(f"grad_image min = {grad_image.min()};{grad_image.max()}")
+    # if dx_convention == '2square':
+    #     # _,_,D,H,W, = image.size()
+    #     grad_image[0,0,0] *= (W-1)/2
+    #     grad_image[0,0,1] *= (H-1)/2
+    #     grad_image[0,0,2] *= (D-1)/2
 
     return grad_image
 

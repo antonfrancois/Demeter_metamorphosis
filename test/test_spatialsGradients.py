@@ -870,7 +870,7 @@ class TestExp3D_square(unittest.TestCase):
 
 class TestExp2D_custom_dx(unittest.TestCase):
 
-    def test_dx_consicency_square(self):
+    def test_dx_consistency_square(self):
         rgi = tb.RandomGaussianImage((300, 400), 20, 'square',
                                      # a=[-1, 1],
                                      # b=[15, 25],
@@ -880,10 +880,11 @@ class TestExp2D_custom_dx(unittest.TestCase):
         self.theoretical_derivative = rgi.derivative()
         self.derivative = tb.spatialGradient(self.image, dx_convention="square")
         H,W = self.image.shape[-2:]
-        dx = torch.tensor([[1./(W-1), 1./(H-1)]],dtype=torch.float64)
+        dx = torch.tensor([[1. / (H-1), 1. / (W-1)]], dtype=torch.float64)
         self.derivative_2 = tb.spatialGradient(self.image, dx_convention=dx)
         self.assertTrue((self.derivative_2 - self.derivative).abs().max() < 1e-6,
-        "The derivative of D_x f(x,y) should be the same with dx = 1/(W-1), 1/(H-1) and dx_convention = square"
+        "The derivative of D_x f(x,y) should be the same with dx = 1/(W-1), 1/(H-1)"
+        f" and dx_convention = square; max difference is {(self.derivative_2 - self.derivative).abs().max()}"
         )
 
     def test_dx_consistency_square_3d(self):
@@ -893,15 +894,15 @@ class TestExp2D_custom_dx(unittest.TestCase):
         self.theoretical_derivative = rgi.derivative()
         self.derivative = tb.spatialGradient(self.image, dx_convention="square")
         D,H,W = self.image.shape[-3:]
-        dx = torch.tensor([[1./(W-1),1./(H-1), 1./(D-1)]],dtype=torch.float64)
+        dx = torch.tensor([[1. / (D-1), 1. / (H-1), 1. / (W-1)]],dtype=torch.float64)
         self.derivative_2 = tb.spatialGradient(self.image, dx_convention=dx)
         print("3d der2 - der",(self.derivative_2 - self.derivative).abs().max() )
         self.assertTrue((self.derivative_2 - self.derivative).abs().max() < 1e-5,
         "The derivative of D_x f(x,y) should be the same with dx = (1/(D-1), 1/(W-1), 1/(H-1))"
-        " and dx_convention = square"
+        f" and dx_convention = square; max difference is {(self.derivative_2 - self.derivative).abs().max()}"
         )
 
-    def test_dx_consicency_pixel(self):
+    def test_dx_consistency_pixel(self):
         rgi = tb.RandomGaussianImage((300, 400), 2, 'pixel',
                                      a=[-1, 1],
                                      b=[15, 25],
@@ -915,6 +916,34 @@ class TestExp2D_custom_dx(unittest.TestCase):
         self.assertTrue((self.derivative_2 - self.derivative).abs().max() < 1e-6,
         "The derivative of D_x f(x,y) should be the same with dx = 1, 1 and dx_convention = pixel"
         )
+
+class TestSpatialGradient(unittest.TestCase):
+
+    def test_case_1(self):
+        image = torch.rand(1, 4, 100, 80, 50)
+        gd = tb.spatialGradient(image, dx_convention="pixel")
+        self.assertEqual(gd.shape, (1, 4, 3, 100, 80, 50))
+
+    def test_case_2(self):
+        image = torch.rand(5, 1, 100, 80, 50)
+        gd = tb.spatialGradient(image, dx_convention="pixel")
+        self.assertEqual(gd.shape, (5, 1, 3, 100, 80, 50))
+
+    def test_case_3(self):
+        image = torch.rand(2, 2, 100, 80, 50)
+        with self.assertRaises(ValueError):
+            tb.spatialGradient(image, dx_convention="pixel")
+
+    def test_case_4(self):
+        image = torch.rand(1, 4, 100, 80)
+        gd = tb.spatialGradient(image, dx_convention="pixel")
+        self.assertEqual(gd.shape, (1, 4, 2, 100, 80))
+
+    def test_case_5(self):
+        image = torch.rand(5, 1, 100, 80)
+        gd = tb.spatialGradient(image, dx_convention="pixel")
+        self.assertEqual(gd.shape, (5, 1, 2, 100, 80))
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -988,13 +1017,8 @@ if __name__ == '__main__':
 # fig.suptitle("dx convention on the square $[0,1]^2$")
 # plt.show()
 
+
 #%%
-
-
-
-
- 
-
 """
 import torch
 import matplotlib.pyplot as plt
