@@ -11,7 +11,7 @@ from .fft_conv import fft_conv
 from .decorators import deprecated
 
 def fft_filter(input: torch.Tensor, kernel: torch.Tensor,
-             border_type: str = 'reflect',
+             border_type: str = 'constant',
              normalized: bool = False) -> torch.Tensor:
     r"""Function that convolves a tensor with a kernel. This function is almost
     the function filter2d from kornia, adapted to work with 2d and 3d tensors.
@@ -110,13 +110,14 @@ def get_gaussian_kernel1d(sigma,dx = 1, kernel_size = None, device='cpu', dtype=
     if isinstance(sigma, float):
         sigma = torch.tensor([[sigma]], device=device, dtype=dtype)
     batch_size = sigma.shape[0]
-    x = torch.linspace(-kernel_size *dx / 2, kernel_size *dx/ 2, kernel_size,
-                       device=device, dtype=dtype
-                       ).expand(batch_size, -1)
+    # TODO : Remove the dxs
+    # x = torch.linspace(-kernel_size *dx / 2, kernel_size *dx/ 2, kernel_size,
+    #                    device=device, dtype=dtype
+    #                    ).expand(batch_size, -1)
     # linspace correction to ensure that the kernel is centered on zero exactly
-    x = x - x[0,torch.argmin(x.abs())]
-    # x = (torch.arange(kernel_size, device=sigma.device, dtype=sigma.dtype)
-    #      - kernel_size // 2).expand(batch_size, -1)
+    # x = x - x[0,torch.argmin(x.abs())]
+    x = (torch.arange(kernel_size, device=sigma.device, dtype=sigma.dtype)
+         - kernel_size // 2).expand(batch_size, -1)
 
     if kernel_size % 2 == 0:
         x = x + 0.5
@@ -131,7 +132,7 @@ def get_gaussian_kernel2d( sigma,dx =(1.,1.), kernel_size=None):
     Args:
         kernel_size (Tuple[int, int]): the size of the kernel.
         dx (Tuple[float, float]): the spacing between the kernel points.
-        sigma (Tuple[float, float]): the standard deviation of the kernel.
+        sigma (Tuple[float, float]|torch.Tensor): the standard deviation of the kernel.
 
     Returns:
         torch.Tensor: 2D tensor with the filter coefficients.
@@ -145,7 +146,9 @@ def get_gaussian_kernel2d( sigma,dx =(1.,1.), kernel_size=None):
     kernel_h: torch.Tensor = get_gaussian_kernel1d(sigma_h, dh, ksize_h)
     kernel_w: torch.Tensor = get_gaussian_kernel1d(sigma_w, dw, ksize_w)
     print(f"kernel_h : {kernel_h.shape}, kernel_w : {kernel_w.shape}")
-    kernel_2d: torch.Tensor = torch.matmul(kernel_h[...,None], kernel_w)
+    # kernel_2d: torch.Tensor = torch.matmul(kernel_h[...,None], kernel_w)
+    print(kernel_h.shape)
+    kernel_2d = kernel_h[:,:, None] * kernel_w[:,None, :]
     return kernel_2d
 
 def get_gaussian_kernel3d(sigma, dx=(1.,)*3 , kernel_size =None):
@@ -155,7 +158,7 @@ def get_gaussian_kernel3d(sigma, dx=(1.,)*3 , kernel_size =None):
         kernel_size = (None,)*3
     if not isinstance(kernel_size, tuple) or len(kernel_size) != 3:
         raise TypeError(f"kernel_size must be a tuple of length three. Got {kernel_size}")
-    if not isinstance(sigma, tuple) or len(sigma) != 3:
+    if not ( isinstance(sigma, tuple) or isinstance(sigma,torch.Tensor)) or len(sigma) != 3:
         raise TypeError(f"sigma must be a tuple of length three. Got {sigma}")
     ksize_d, ksize_h, ksize_w= kernel_size
     #print(f"ksize_d : {ksize_d}, ksize_h : {ksize_h}, ksize_w : {ksize_w}")
@@ -169,8 +172,13 @@ def get_gaussian_kernel3d(sigma, dx=(1.,)*3 , kernel_size =None):
     # kernel_2d: torch.Tensor = kernel_d[:,None] * kernel_h[None]
     # kernel_3d: torch.Tensor = kernel_2d[:,:,None] * kernel_w[None,None]
     print(f"kernel_d : {kernel_d.shape},\n kernel_h : {kernel_h.shape},\n kernel_w : {kernel_w.shape}")
-    kerned_2d = torch.matmul(kernel_d.T,kernel_h)[...,None]
-    kernel_3d = torch.matmul(kerned_2d,kernel_w)[None]
+    # kerned_2d = torch.matmul(kernel_d.T,kernel_h)[...,None]
+    # kernel_3d = torch.matmul(kerned_2d,kernel_w)[None]
+
+    kernel_3d = (kernel_d[:,:, None, None]
+                 * kernel_h[:,None, :, None]
+                 * kernel_w[:,None, None, :])
+
     return kernel_3d
 
 def plot_gaussian_kernel_1d(kernel: torch.Tensor,sigma,ax =None,rotated = False):
@@ -261,6 +269,7 @@ def dx_convention_handler(dx_convention, dim):
             raise ValueError(f"dx_convention must be a tuple of length {dim},"
                              f" got {len(dx_convention)}")
 
+
 class GaussianRKHS(torch.nn.Module):
     """ Is equivalent to a gaussian blur. This function support 2d and 3d images in the
     PyTorch convention
@@ -302,9 +311,7 @@ class GaussianRKHS(torch.nn.Module):
     # iv3.imshow_3d_slider(blured)
     """
     def __init__(self,sigma : Tuple,
-                 border_type: str = 'replicate',
-                 dx_convention = (1,),
-                 # image_shape = None,
+                 border_type: str = 'constant',
                  device = 'cpu'):
         """
 
@@ -316,41 +323,16 @@ class GaussianRKHS(torch.nn.Module):
         """
         # big_odd = lambda val : max(6,int(val*6)) + (1 - max(6,int(val*6)) %2)
         # kernel_size = tuple([big_odd(s) for s in sigma])
-        self.sigma = torch.tensor(sigma)
+        self.sigma = sigma
         super().__init__()
         self._dim = len(sigma)
-        # if dx_convention == 'square':
-        #     if image_shape is None:
-        #         raise ValueError("image_shape must be provided if dx_convention is not 'pixel'")
-        dx_convention = dx_convention_handler(dx_convention,self._dim)
-        print("dx_convention : ",dx_convention)
-        print("sigma : ",sigma)
-        self.sigma_dx = tuple(
-            [s*dx for dx,s in zip(dx_convention, sigma)]
-        )
-        print(f"sigma_dx : {self.sigma_dx}")
-        self.prod_sigma_on_dx = prod(
-            [dx/s for dx,s in zip(dx_convention, sigma)]
-        )
         if self._dim == 2:
-
-            self.kernel = get_gaussian_kernel2d(self.sigma_dx, dx_convention)#[None]
-
-            # Travail avec Alain (cas isotrope)
-            # kernel_cst = 1.0/self.kernel.max()
-            # self.kernel *= kernel_cst
-            # End Travail avec Alain
+            self.kernel = get_gaussian_kernel2d(sigma)#[None]
             # self.kernel *= prod(sigma)
             self.filter = flt.filter2d
         elif self._dim == 3:
-            self.kernel = get_gaussian_kernel3d(self.sigma_dx, dx_convention)#[None]
-
-            # Travail avec Alain (cas isotrope)
-            # kernel_cst = prod(sigma)**(2.0/self._dim - 1)#/self.kernel.max()
-            # self.kernel *= kernel_cst
-            # End Travail avec Alain
-
-            # self.kernel *= prod(sigma)
+            self.kernel = get_gaussian_kernel3d(sigma)#[None]
+            self.kernel *= prod(sigma)
             # self.filter = flt.filter3d
             self.filter = fft_filter
         else:
@@ -360,15 +342,14 @@ class GaussianRKHS(torch.nn.Module):
 
         # TODO : define better the condition for using the fft filter
         # this filter works in 2d and 3d
-        kernel_size = self.kernel.shape[2:]
-        if max(kernel_size) > 7:
+
+        if max(self.kernel.shape) > 7:
             self.filter = fft_filter
         # print(f"filter used : {self.filter}")
 
     def __repr__(self) -> str:
         # the if is there for compatibilities with older versions
-        sig_str= f'\n\tsigma :{self.sigma}' if hasattr(self,'sigma') else ''
-        sig_str+= f'\n\tsigma_dx :{self.sigma_dx}' if hasattr(self, 'sigma_dx') else ''
+        sig_str= f'sigma :{self.sigma}' if hasattr(self,'sigma') else ''
         return self.__class__.__name__+\
         ','+str(self._dim)+'D '+\
         f'\n\tfilter :{self.filter.__name__}, '+sig_str+\
@@ -379,14 +360,130 @@ class GaussianRKHS(torch.nn.Module):
 
         :param input: (torch.Tensor): the input tensor with shape of
           :math:`(B, C, H, W)` or :math:`(B, C, D, H, W)`
-        :return: (torch.Tensor): ouput tensor with same size than the input tensor with shape of
+        :return:
+        """
+        if (self._dim == 2 and len(input.shape) == 4) or (self._dim == 3 and len(input.shape) == 5):
+            return self.filter(input,self.kernel,self.border_type)
+        else:
+            raise ValueError(f"{self.__class__.__name__} was initialized "
+                             f"with a {self._dim}D mask and input shape is : "
+                             f"{input.shape}")
+
+class VolNormalizedGaussianRKHS(torch.nn.Module):
+    """
+
+    Args :
+
+
+        border_type (str): the padding mode to be applied before convolving.
+          The expected modes are: ``'constant'``, ``'reflect'``,
+          ``'replicate'`` or ``'circular'``. Default: ``'reflect'``.
+        normalized (bool): If True, kernel will be L1 normalized.
+
+    Return:
+        torch.Tensor: the convolved tensor of same size and numbers of channels
+        as the input.
+
+
+    """
+    def __init__(self,sigma: Tuple,
+                 sigma_convention= 'pixel',
+                 dx = (1,),
+                 border_type: str = 'constant',
+                 device = 'cpu'):
+        """
+
+        :param sigma: (Tuple[float,float] or [float,float,float]) : the standard
+        deviation of the kernel expressed in pixel unit.
+        :param sigma_convention: default 'pixel'. expected modes are: {'pixel','continuous'}
+        The unit `sigma` input should be considered
+        :param dx: (str or Tuple[float,float] or [float,float,float]) : the length of a pixel in each dimension.
+        if the image is isotropic, dx_convention can be a float. If the image is anisotropic, dx_convention must be a tuple
+        of length equal to the image dimension. The default value is 1.
+        :border_type: the padding mode to be applied before convolving.
+          The expected modes are: ``'constant'``,
+          ``'replicate'`` or ``'circular'``.
+          the ``'reflect'`` one is not implemented yet by pytorch
+        """
+        # big_odd = lambda val : max(6,int(val*6)) + (1 - max(6,int(val*6)) %2)
+        # kernel_size = tuple([big_odd(s) for s in sigma])
+        self._dim = len(sigma)
+        self.dx = dx_convention_handler(dx,self._dim)
+        if sigma_convention == 'pixel':
+            self.sigma = torch.tensor(sigma)
+            self.sigma_continuous = torch.tensor(
+                [s*d for d,s in zip(self.dx, sigma)]
+            )
+        elif sigma_convention == 'continuous':
+            self.sigma_continuous = torch.tensor(sigma)
+            self.sigma = torch.tensor(
+                [s/d for d,s in zip(self.dx, sigma)]
+            )
+        else:
+            raise ValueError("argument sigma_convention must be 'pixel' or 'continuous'"
+                             f"got {sigma_convention}")
+        super().__init__()
+
+        # print("dx : ",self.dx)
+        # print("sigma : ",self.sigma)
+        # print("sigma_continuous : ",self.sigma_continuous)
+        if self._dim == 2:
+            self.kernel = get_gaussian_kernel2d(self.sigma )#[None]
+
+            self.filter = flt.filter2d
+        elif self._dim == 3:
+            self.kernel = get_gaussian_kernel3d(self.sigma)#[None]
+            self.filter = fft_filter
+        else:
+            raise ValueError("Sigma is expected to be a tuple of size 2 or 3 same as the input dimension,"
+                             +"len(sigma) == {}".format(len(sigma)))
+
+        #  We normalize the kernel to multiply by the product of
+        # dx / sigma_continuous, which is equal to 1/sigma.
+        # ic(prod(self.sigma_continuous))
+        self.kernel /=  prod(self.sigma_continuous)
+        self.border_type = border_type
+
+        # TODO : define better the condition for using the fft filter
+        # this filter works in 2d and 3d
+        kernel_size = self.kernel.shape[2:]
+        if max(kernel_size) > 7:
+            self.filter = fft_filter
+        # print(f"filter used : {self.filter}")
+
+    def init_kernel(self,image):
+        if isinstance(self.sigma, tuple) and len(self.sigma) != len(image.shape[2:]) :
+            raise ValueError(f"kernelOperator :{self.__class__.__name__}"
+                             f"was initialised to be {len(self.sigma)}D"
+                             f" with sigma = {self.sigma} and got image "
+                             f"source.size() = {image.shape}"
+                             )
+        self.sigma_continuous = self.sigma_continuous.to(image.device)
+        self.sigma = self.sigma.to(image.device)
+
+
+    def __repr__(self) -> str:
+        # the if is there for compatibilities with older versions
+        sig_str= f'\n\tsigma_pixel :{self.sigma}' if hasattr(self,'sigma') else ''
+        sig_str+= f'\n\tsigma_continous :{self.sigma_continuous}' if hasattr(self, 'sigma_continuous') else ''
+        return self.__class__.__name__+\
+        ','+str(self._dim)+'D '+\
+        f'\n\tfilter :{self.filter.__name__}, '+sig_str+\
+        f'\n\tkernel_size :{tuple(self.kernel.shape)}'
+
+    def forward(self, input: torch.Tensor):
+        """
+
+        :param input: (torch.Tensor): the input tensor with shape of
+          :math:`(B, C, H, W)` or :math:`(B, C, D, H, W)`
+        :return: (torch.Tensor): output tensor with same size than the input tensor with shape of
           :math:`(B, C, H, W)` or :math:`(B, C, D, H, W)`
         """
         if (self._dim == 2 and len(input.shape) == 4) or (self._dim == 3 and len(input.shape) == 5):
             view_sig = (1,-1) + (1,)*(len(input.shape)-2)
-            input *= self.sigma.view(view_sig)**2 * self.prod_sigma_on_dx
+            # input *= self.sigma_continuous.to(input.device).view(view_sig)**2
             convol = self.filter(input,self.kernel,self.border_type)
-            # convol *= self.sigma.view(view_sig)**2 * self.prod_sigma_on_dx
+            convol *= self.sigma.view(view_sig)**2
             return convol
         else:
             raise ValueError(f"{self.__class__.__name__} was initialized "
@@ -395,13 +492,13 @@ class GaussianRKHS(torch.nn.Module):
 
     def plot(self):
         if self._dim == 2:
-            plot_gaussian_kernel_2d(self.kernel, self.sigma_dx)
+            plot_gaussian_kernel_2d(self.kernel, self.sigma_continuous)
         elif self._dim == 3:
-            plot_gaussian_kernel_3d(self.kernel, self.sigma_dx)
+            plot_gaussian_kernel_3d(self.kernel, self.sigma_continuous)
 
 
 @deprecated("Please use GaussianRKHS instead.")
-class GaussianRKHS2d(GaussianRKHS):
+class GaussianRKHS2d(VolNormalizedGaussianRKHS):
 
     def __init__(self,
                  sigma: Tuple[float, float],
@@ -478,7 +575,7 @@ class Multi_scale_GaussianRKHS_notAverage(torch.nn.Module):
 
         self.gauss_list = []
         for sigma in list_sigmas:
-            self.gauss_list.append(GaussianRKHS(sigma))
+            self.gauss_list.append(VolNormalizedGaussianRKHS(sigma))
 
 
 
