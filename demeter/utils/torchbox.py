@@ -16,7 +16,6 @@ from skimage.exposure import match_histograms
 import os
 import csv
 
-
 # import decorators
 from .toolbox import rgb2gray
 from . import bspline as mbs
@@ -1082,7 +1081,10 @@ def imgDeform(I,deform_grid,dx_convention ='2square',clamp=False):
         deform_grid = pixel_to_2square_convention(deform_grid)
     elif dx_convention == 'square':
         deform_grid = square_to_2square_convention(deform_grid)
-    deformed = F.grid_sample(I,deform_grid,**DLT_KW_GRIDSAMPLE)
+    deformed = F.grid_sample(I.to(deform_grid.dtype),
+                             deform_grid,
+                             **DLT_KW_GRIDSAMPLE
+                             )
     # if len(I.shape) == 5:
     #     deformed = deformed.permute(0,1,4,3,2)
     if clamp:
