@@ -33,26 +33,31 @@ class Geodesic_integrator(torch.nn.Module,ABC):
 
     """
     @abstractmethod
-    def __init__(self,sigma_v=None,dx_convention = 'pixel',multiScale_average= False):
+    def __init__(self,kernelOperator,dx_convention = 'pixel'):
         super().__init__()
         self._force_save = False
         self._detach_image = True
         self.dx_convention = dx_convention
 
-        if sigma_v is None:
-            raise ValueError("Please specify a value for sigma_v. Got sigma_v = None.")
-        elif isinstance(sigma_v,tuple):
-            self.sigma_v = sigma_v# is used if the optmisation is later saved
-            self.kernelOperator = rk.GaussianRKHS(sigma_v,
-                                                     border_type='constant')
-        elif isinstance(sigma_v,list):
-            self.sigma_v = sigma_v
-            if multiScale_average:
-                self.kernelOperator = rk.Multi_scale_GaussianRKHS_notAverage(sigma_v)
-            else:
-                self.kernelOperator = rk.Multi_scale_GaussianRKHS(sigma_v)
-        else:
-            ValueError("Something went wrong with sigma_v")
+        self.kernelOperator = kernelOperator
+
+        # Get sigma from the kernelOperator
+        # self.sigma_v = self.kernelOperator.sigma_v
+
+        # if sigma_v is None:
+        #     raise ValueError("Please specify a value for sigma_v. Got sigma_v = None.")
+        # elif isinstance(sigma_v,tuple):
+        #     self.sigma_v = sigma_v# is used if the optimization is later saved
+        #     self.kernelOperator = rk.VolNormalizedGaussianRKHS(sigma_v,
+        #                                                        border_type='constant')
+        # elif isinstance(sigma_v,list):
+        #     self.sigma_v = sigma_v
+        #     if multiScale_average:
+        #         self.kernelOperator = rk.Multi_scale_GaussianRKHS_notAverage(sigma_v)
+        #     else:
+        #         self.kernelOperator = rk.Multi_scale_GaussianRKHS(sigma_v)
+        # else:
+        #     ValueError("Something went wrong with sigma_v")
         # self.border_effect = border_effect
         # self._init_sharp_()
 
@@ -632,7 +637,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
                  ):
         """
 
-        Important note to potential forks : all childs of this method
+        Important note to potential forks : all children of this method
         must have the same __init__ method for proper loading.
         :param source:
         :param target:
@@ -645,12 +650,20 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         self.dx_convention = self.mp.dx_convention
         self.source = source
         self.target = target
-        if isinstance(self.mp.sigma_v, tuple) and len(self.mp.sigma_v) != len(source.shape[2:]) :
-            raise ValueError(f"Geodesic integrator :{self.mp.__class__.__name__}"
-                             f"was initialised to be {len(self.mp.sigma_v)}D"
-                             f" with sigma_v = {self.mp.sigma_v} and got image "
-                             f"source.size() = {source.shape}"
-                             )
+
+        self.mp.kernelOperator.init_kernel(source)
+        try:
+            self.dx = self.mp.kernelOperator.dx
+        except AttributeError:
+            if self.dx_convention == 'pixel':
+                self.dx = (1,)*len(source.shape[2:])
+            elif self.dx_convention == 'square':
+                self.dx = tuple([ 1/(h-1) for h in source.shape[2:]])
+            elif self.dx_convention == '2square':
+                self.dx = tuple([ 2/(h-1) for h in source.shape[2:]])
+            else:
+                raise ValueError("dx_convention must be in ['pixel','square']")
+
 
         self.cost_cst = cost_cst
         # optimize on the cost as defined in the 2021 paper.
@@ -701,10 +714,10 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
 
         # Computes only
         grad_source = tb.spatialGradient(image, dx_convention=self.dx_convention)
-        grad_source_resi = (grad_source * momentum.unsqueeze(2)).sum(dim=1) #/ C
-        K_grad_source_resi = self.mp.kernelOperator(grad_source_resi) / prod(self.dx_convention)
+        field_momentum = (grad_source * momentum.unsqueeze(2)).sum(dim=1) #/ C
+        field = self.mp.kernelOperator(field_momentum)
 
-        return (grad_source_resi * K_grad_source_resi).sum()
+        return (field_momentum * field).sum() #* prod(self.dx)
 
 
     @abstractmethod

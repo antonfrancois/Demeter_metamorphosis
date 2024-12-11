@@ -10,8 +10,8 @@ from demeter.utils.toolbox import update_progress
 
 class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
 
-    def __init__(self, rho,sigma_v, n_step=None):
-        super().__init__(sigma_v)
+    def __init__(self, rho,kernelOperator, n_step=None,**kwargs):
+        super().__init__(kernelOperator,**kwargs)
         self.rho = rho
         self.n_step = n_step
 
@@ -23,7 +23,10 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
 
 
     def __repr__(self):
-        return f"Simplex_srqt_Metamorphosis_integrator(rho={self.rho},sigma_v={self.sigma_v},n_step={self.n_step})"
+        return (f"Simplex_srqt_Metamorphosis_integrator("
+                f"\n\trho={self.rho},"
+                f"\n\tkernelOperator={self.kernelOperator},"
+                f"\n\tn_step={self.n_step}\n)")
 
     def step(self):
         ## 1. Compute the vector field
@@ -107,7 +110,10 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
         except AttributeError:
             self.save = save
 
-        self.id_grid = tb.make_regular_grid(momentum_ini.shape[2:], device=device)
+        self.id_grid = tb.make_regular_grid(momentum_ini.shape[2:],
+                                            device=device,
+                                            dx_convention=self.dx_convention,
+                                            ).to(torch.double)
         assert self.id_grid != None
 
         if field_ini is None:
@@ -153,7 +159,9 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
     def __init__(self, source, target, integrator, cost_cst,optimizer_method='adadelta',**kwargs):
         source = torch.sqrt(source)
         target = torch.sqrt(target)
-        super().__init__(source, target, integrator, cost_cst, optimizer_method=optimizer_method)
+        super().__init__(source, target, integrator, cost_cst,
+                         optimizer_method=optimizer_method,
+                         **kwargs)
         # self._cost_saving_ = self._simplex_cost_saving_
 
     def _get_mu_(self):
@@ -175,7 +183,6 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
         rho = self._get_rho_()
         self.mp.forward(self.source, momentum_ini, save=False, plot=0)
         # Compute the data_term. Default is the Ssd
-        nbpix = prod(self.source.shape[2:])
         self.data_loss = self.data_term()
 
         # Norm V
@@ -184,8 +191,8 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
 
         pi_q = (momentum_ini * self.source).sum(dim=1,keepdim=True) / (self.source ** 2).sum(dim=1,keepdim=True)
         z = sqrt(1 - rho) * (momentum_ini - pi_q * self.source)
-        self.norm_l2_on_z = .5 * (z ** 2).sum() # /prod(self.source.shape[2:])
-
+        self.norm_l2_on_z = .5 * (z ** 2).sum() * prod(self.dx) # /prod(self.source.shape[2:])
+        # ic(float(self.norm_v_2),float(self.norm_l2_on_z))
         self.total_cost = self.data_loss + \
             self.cost_cst * .5 * (self.norm_v_2 + self.norm_l2_on_z)
 
