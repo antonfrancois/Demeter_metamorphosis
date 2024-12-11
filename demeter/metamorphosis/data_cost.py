@@ -15,7 +15,8 @@ class DataCost(ABC,torch.nn.Module):
     """
 
     @abstractmethod
-    def __init__(self,**kwargs):
+    def __init__(self,target,**kwargs):
+        self.target = target
         super(DataCost, self).__init__()
 
     def __repr__(self):
@@ -29,6 +30,12 @@ class DataCost(ABC,torch.nn.Module):
         used at the optimizer initialisation.
         """
         self.optimizer = optimizer
+        if self.target.shape != self.optimizer.source.shape\
+                and not self.target is None:
+            raise ValueError("Target and source shape are different."
+                             f"Got source.shape = {self.optimizer.source.shape}"
+                             f"and target.shape = {self.target.shape}."
+                             f"Have you checked your DataCost initialisation ?")
 
     def to_device(self,device):
         self.target = self.target.to(device)
@@ -54,7 +61,7 @@ class Ssd(DataCost):
     """
 
     def __init__(self,target,**kwargs):
-        super(Ssd, self).__init__()
+        super(Ssd, self).__init__(target)
         self.ssd = cf.SumSquaredDifference(target)
 
     def __call__(self,at_step = None):
@@ -69,17 +76,18 @@ class Ssd(DataCost):
 class Ssd_normalized(DataCost):
 
     def __init__(self,target,**kwargs):
-        print('Ssd_normalized will initialize')
-        super(Ssd_normalized,self).__init__()
-        print('Ssd_normalized was initialized')
+        super(Ssd_normalized,self).__init__(target)
         self.ssd = cf.SumSquaredDifference(target)
 
     def __call__(self, at_step=None):
-        print(self.optimizer.mp.image.shape)
+        # print("in ssd normalized img shape",self.optimizer.mp.image.shape)
         if at_step is None:
             return self.ssd(self.optimizer.mp.image) / prod(self.optimizer.mp.image.shape[2:])
         else:
             return self.ssd(self.optimizer.mp.image_stock[at_step][None])  / prod(self.optimizer.mp.image.shape[2:])
+
+    def to_device(self,device):
+        self.ssd.target = self.ssd.target.to(device)
 
 class Cfm(DataCost):
     def __init__(self,target,mask,**kwargs):
@@ -95,7 +103,7 @@ class Cfm(DataCost):
             of the same shape as target
 
         """
-        super(Cfm, self).__init__()
+        super(Cfm, self).__init__(target)
         self.cfm = cf.SumSquaredDifference(target,cancer_seg=mask)
 
     def __call__(self,at_step = None):
@@ -108,7 +116,7 @@ class SimiliSegs(DataCost):
     """ Make the deformation register segmentations."""
 
     def __init__(self,mask_source,mask_target,**kwargs):
-        super(SimiliSegs, self).__init__()
+        super(SimiliSegs, self).__init__(None)
         self.mask_source = mask_source
         self.mask_target = mask_target
 
@@ -129,7 +137,7 @@ class SimiliSegs(DataCost):
 class Mutlimodal_ssd_cfm(DataCost):
 
     def __init__(self,target_ssd,target_cfm,source_cfm,mask_cfm,**kwargs):
-        super(Mutlimodal_ssd_cfm, self).__init__()
+        super(Mutlimodal_ssd_cfm, self).__init__(None)
         self.cost = cf.Combine_ssd_CFM(target_ssd,target_cfm,mask_cfm)
         self.source_cfm = source_cfm
 
@@ -177,7 +185,7 @@ class Longitudinal_DataCost(DataCost):
             >>> ldc = Longitudinal_DataCost(target_dict,data_cost)
             ```
         """
-        super(Longitudinal_DataCost, self).__init__()
+        super(Longitudinal_DataCost, self).__init__(None)
         self.target_dict = target_dict
         self.target_len = len(target_dict)
         self.baseline_dataCost_list = []
