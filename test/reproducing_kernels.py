@@ -128,12 +128,12 @@ result = rk.get_sigma_from_img_ratio(
 )
 
 print("result",result)
-strr = rk.GaussianRKHS(result)
+strr = rk.VolNormalizedGaussianRKHS(result)
 print(strr)
 
 #%%
 import matplotlib.pyplot as plt
-vv = rk.GaussianRKHS((5,5))
+vv = rk.VolNormalizedGaussianRKHS((5, 5))
 fig, ax = plt.subplots()
 ax.imshow(vv.kernel[0])
 plt.show()
@@ -172,7 +172,7 @@ import matplotlib.pyplot as plt
 #%%
 sigma = (5,15)
 dx_convention = (1./100,1./100)
-kernelOp = rk.GaussianRKHS(sigma,dx_convention=dx_convention)
+kernelOp = rk.VolNormalizedGaussianRKHS(sigma, dx=dx_convention)
 kernelOp.plot()
 # fig, axes = plt.subplots(2, 2, figsize=(10, 5))
 plt.show()
@@ -197,7 +197,7 @@ def compute_V_norm(momentum,image,kernelOperator,dx_convention,dx):
     print("grad_source_resi",grad_source_resi.shape)
     K_grad_source_resi = kernelOperator(grad_source_resi)
     print("K_grad_source_resi",K_grad_source_resi.shape)
-    norm_V = (grad_source_resi * K_grad_source_resi).sum() /(prod(dx))
+    norm_V = (grad_source_resi * K_grad_source_resi).sum()
     print("norm_V",norm_V)
     return norm_V, K_grad_source_resi
 
@@ -209,20 +209,23 @@ def log_diff(a,b):
 
 #%%
 
-dx_convention = 'square'
-s = 4
-size = (150,175)
-sigma = (5,20)
+dx_convention = 'pixel'
+s = 3
+size = (1500,3850)
+sigma = (100,100)
 
-# Construction d'une iamge et de moments  bsplines aléatoires à partir d'une matrice
+# norm_V = 5.6376e-03, norm_V_s = 4.5766e-01, diff = 1.9094e+00
+# norm2 on q 9.2916e-02, on q_s 9.2900e-02, diff = 7.4600e-05
+
+# Construction d'une image et de moments  bsplines aléatoires à partir d'une matrice
 # de points de controle
-# P_im = torch.rand((10,10),dtype=torch.float)
-# P_mom = torch.rand((10,10),dtype=torch.float)*2 - 1
+P_im = torch.rand((10,10),dtype=torch.float)
+P_mom = torch.rand((10,10),dtype=torch.float)*2 - 1
 size_s = tuple([int(i*s) for i in size])
 # On défini les noyaux
-sigma_s = tuple([i*s for i in sigma]) if dx_convention == 'pixel' else tuple([i for i in sigma])
-dx = (1,1) if dx_convention == 'pixel' else (1./(size[0]-1),1./(size[1]-1))
-dx_s = (1,1) if dx_convention == 'pixel' else (1./(size_s[0]-1),1./(size_s[1]-1))
+sigma_s = tuple([i*s for i in sigma]) #if dx_convention == 'pixel' else tuple([i for i in sigma])
+dx = (1,1) if dx_convention == 'pixel' else tuple([1./i for i in size])
+dx_s = (1,1) if dx_convention == 'pixel' else tuple([1./i for i in size])
 
 img = bs.surf_bspline(P_im,size,degree=(2,2))[None,None]
 img_s = bs.surf_bspline(P_im,size_s,degree=(2,2))[None,None]
@@ -232,8 +235,8 @@ moments_s = bs.surf_bspline(P_mom,size_s,degree=(2,2))[None,None]
 id_grid = tb.make_regular_grid(size,dx_convention=dx_convention)
 id_grid_s = tb.make_regular_grid(size_s,dx_convention=dx_convention)
 
-kernelOp = rk.GaussianRKHS(sigma,dx_convention=dx)
-kernelOp_s = rk.GaussianRKHS(sigma_s,dx_convention=dx_s)
+kernelOp = rk.VolNormalizedGaussianRKHS(sigma, dx=dx)
+kernelOp_s = rk.VolNormalizedGaussianRKHS(sigma_s, dx=dx_s)
 # calcul de la norme de V (et en même temps du champ)
 norm_V, field = compute_V_norm(moments,img,kernelOp,dx_convention,dx)
 norm_V_s, field_s = compute_V_norm(moments_s,img_s,kernelOp_s,dx_convention,dx_s)
@@ -258,7 +261,7 @@ print(f"norm2 on q {compute_z_norm(moments):.4e}, on q_s {compute_z_norm(moments
 
 #%% 3D  !!!
 
-dx_convention = 'pixel'
+dx_convention = 'square'
 s = 2
 size = (201,151,41)
 sigma = (4,5,7)
@@ -268,7 +271,7 @@ sigma = (4,5,7)
 P_im = torch.rand((20,20,20),dtype=torch.float)
 P_mom = torch.rand((20,20,20),dtype=torch.float)*2 - 1
 size_s = tuple([int(i*s) for i in size])
-sigma_s = tuple([i*s for i in sigma]) if dx_convention == 'pixel' else tuple([i for i in sigma])
+sigma_s = tuple([i*s for i in sigma]) #if dx_convention == 'pixel' else tuple([i for i in sigma])
 dx = (1,1,1) if dx_convention == 'pixel' else (1./size[0],1./size[1],1./size[2])
 dx_s = (1,1,1) if dx_convention == 'pixel' else (1./size_s[0],1./size_s[1],1./size_s[2])
 
@@ -281,8 +284,8 @@ id_grid = tb.make_regular_grid(size,dx_convention=dx_convention)
 id_grid_s = tb.make_regular_grid(size_s,dx_convention=dx_convention)
 
 # On défini les noyaux
-kernelOp = rk.GaussianRKHS(sigma,dx_convention=dx)
-kernelOp_s = rk.GaussianRKHS(sigma_s,dx_convention=dx_s)
+kernelOp = rk.VolNormalizedGaussianRKHS(sigma, dx=dx)
+kernelOp_s = rk.VolNormalizedGaussianRKHS(sigma_s, dx=dx_s)
 # calcul de la norme de V (et en même temps du champ)
 norm_V, field = compute_V_norm(moments,img,kernelOp,dx_convention,dx)
 norm_V_s, field_s = compute_V_norm(moments_s,img_s,kernelOp_s,dx_convention,dx_s)
@@ -296,35 +299,3 @@ print(f"norm2 on q {compute_z_norm(moments):.4e}, on q_s {compute_z_norm(moments
 
 #%%
 
-a,b = 1e-3,2e-3
-print(log_diff(a,b))
-
-#%%
-# def surf_bspline_3D(cm,n_pts, degree = (1,1,1)):
-#     """ Generate a 3D surface from a control matrix
-#
-#     :param cm     = 3D matrix Control point Matrix
-#     :param n_pts  = (tuple), number of points on the curve.
-#     :param degree = (tuple), degree of the spline in each direction
-#     :return:
-#     """
-#
-#     p,q,r = cm.shape
-#     d,h,w = n_pts
-#     print("p,q,r",p,q,r)
-#     print("d,h,w",d,h,w)
-#
-#     b_p = bs.bspline_basis(p,d,degree[0])
-#     b_q = bs.bspline_basis(q,h,degree[1])
-#     b_r = bs.bspline_basis(r,w,degree[2])
-#
-#
-#     Q_i = torch.einsum('ij,jkl->ikl', b_p, cm)
-#     Q_ij = torch.einsum('ij,jkl->ikl', b_q, Q_i.transpose(0, 1)).transpose(0, 1)
-#     surf_3d = torch.einsum('ij,jkl->ikl', b_r, Q_ij.transpose(0, 2)).transpose(0, 2)
-#     return surf_3d
-
-
-
-P_im = torch.rand((5,6,7),dtype=torch.float)
-img = surf_bspline_3D(P_im,(100,200,300))
