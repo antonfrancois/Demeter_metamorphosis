@@ -15,13 +15,12 @@ from ..utils.decorators import time_it
 
 @time_it
 def lddmm(source,target,residuals,
-          sigma,cost_cst,
+          kernelOperator,cost_cst,
           integration_steps,n_iter,grad_coef,
           data_term =None,
           sharp=False,
           safe_mode = False,
           integration_method='semiLagrangian',
-          multiScale_average = False,
           dx_convention = 'pixel',
           optimizer_method='adadelta',
           ):
@@ -32,11 +31,12 @@ def lddmm(source,target,residuals,
 
     # sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
 
+
     mp = cl.Metamorphosis_integrator(method=integration_method,
-                        mu=0, rho=0,
+                        rho=1,
                         n_step=integration_steps,
-                        sigma_v=sigma,
-                        multiScale_average=multiScale_average,
+                        # sigma_v=sigma,
+                        kernelOperator=kernelOperator,
                         dx_convention=dx_convention
                         )
     mr = cl.Metamorphosis_Shooting(source,target,mp,
@@ -53,8 +53,9 @@ def lddmm(source,target,residuals,
 
 @time_it
 def metamorphosis(source,target,residuals,
-                  mu,rho,sigma,cost_cst,
+                  rho,cost_cst,
                   integration_steps,n_iter,grad_coef,
+                  kernelOperator,
                   data_term=None,
                   sharp=False,
                   safe_mode = True,
@@ -65,11 +66,11 @@ def metamorphosis(source,target,residuals,
     # residuals = torch.zeros(source.size()[2:],device=device)
     residuals.requires_grad = True
     if sharp: integration_method= 'sharp'
-    sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
+    # sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
 
     mp = cl.Metamorphosis_integrator(method=integration_method,
-                        mu=mu, rho=rho,
-                        sigma_v=sigma,
+                        rho=rho,
+                        kernelOperator=kernelOperator,
                         n_step=integration_steps,
                         dx_convention=dx_convention
                         )

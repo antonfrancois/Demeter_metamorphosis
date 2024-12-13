@@ -218,34 +218,37 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         self.field = self._compute_vectorField_multimodal_(self.momentum, grad_image)
         self.field *= self._field_cst_mult()
 
+    # Done
     def _field_cst_mult(self):
-        if self._get_mu_() == 0:
-            return 1
-        else:
-            return self._get_rho_()/self._get_mu_()
+        rho = self._get_rho_()
+        if rho == 1: return 1
+        return rho/(1-rho)
 
+    # Done
     def _update_field_(self):
         grad_image = tb.spatialGradient(self.image, dx_convention='pixel')
         self.field = self._compute_vectorField_(self.momentum, grad_image)
         self.field *= self._field_cst_mult()
 
+    # Done
     def _update_residuals_Eulerian_(self):
         residuals_dt = - tb.Field_divergence(dx_convention=self.dx_convention)(
             self.momentum[0,0][None, :, :, None] * self.field,
                             )
 
-        self.momentum = self.momentum + residuals_dt / self.n_step
+        self.momentum = self.momentum + (1 - self.rho) * residuals_dt / self.n_step
 
+    # Done
     def _update_residuals_semiLagrangian_(self,deformation):
-        div_v_times_z = self.momentum * tb.Field_divergence(dx_convention='pixel')(self.field)[0,0]
         div_v_times_z = (self.momentum
                          * tb.Field_divergence(dx_convention=self.dx_convention)(self.field)[0,0])
-
-        self.momentum = tb.imgDeform(self.momentum,
-                                     deformation,
-                                     dx_convention=self.dx_convention,
-                                     clamp=False) \
-                        - div_v_times_z / self.n_step
+        self.momentum =  (
+                tb.imgDeform(self.momentum,
+                         deformation,
+                         dx_convention=self.dx_convention,
+                         clamp=False)
+                - div_v_times_z / self.n_step
+        )
 
     def _compute_sharp_intermediary_residuals_(self):
         device = self.momentum.device
@@ -267,16 +270,19 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         #     self._phis[self._i - 1] = None
         # self._resi_deform.append(self.residuals.clone())
 
-
+    # Done
     def _update_image_Eulerian_(self):
+        # Warning, in classical metamorphosis, the momentum (p) is proportional to the residual (z)
+        # with the relation z = (1 - rho) * p. Here we use the momentum as the residual
         self.image =  self._image_Eulerian_integrator_(self.image,self.field,1/self.n_step,1)
-        self.image = self.image + (self.momentum * self.mu) / self.n_step
+        self.image = self.rho * self.image + (self.momentum * (1 - self.rho)) / self.n_step
 
+    # Done
     def _update_image_semiLagrangian_(self,deformation,residuals = None,sharp=False):
         if residuals is None: residuals = self.momentum
         image = self.source if sharp else self.image
-        self.image = tb.imgDeform(image,deformation,dx_convention='pixel')
-        if self._get_mu_() != 0: self.image += (residuals *self.mu)/self.n_step
+        self.image = self.rho * tb.imgDeform(image,deformation,dx_convention='pixel')
+        if self.rho < 1: self.image += (residuals * (1 - self.rho))/self.n_step
 
     def _update_sharp_intermediary_field_(self):
         # print('update phi ',self._i,self._phis[self._i])
@@ -324,7 +330,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
             free_field = tb.im2grid(
                 # self.kernelOperator((- self.rf.f(self._i) * self.residuals * grad_image[0]))
                 (- self.rf.f(self._i) * self.momentum * grad_image[0])
-            )/self._get_mu_()
+            )/self._get_mu_() # !!!!!!
         else:
             free_field = self._compute_vectorField_(self.momentum, grad_image)
             free_field *= self._field_cst_mult()
@@ -369,7 +375,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         )
         if from_t is None and to_t is None:
             print('Je suis passé par là')
-            return temporal_integrator(self.field_stock/self.n_step, forward=True)
+            return temporal_integrator(self.field_stock/self.n_step, forward=False)
         # if from_t is None: from_t = 0
         if to_t is None: to_t = self.n_step
         if from_t < 0 and from_t >= to_t:
@@ -724,11 +730,6 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
     def cost(self,residual_ini):
         pass
 
-
-    @abstractmethod
-    def _get_mu_(self):
-        pass
-
     @abstractmethod
     def _get_rho_(self):
         pass
@@ -757,7 +758,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
 
     def __repr__(self) -> str:
         return self.__class__.__name__ +\
-            '(cost_parameters : {\n\t\tmu ='+ str(self._get_mu_())     +\
+            '(cost_parameters : {'+\
             ', \n\t\trho ='+str(self._get_rho_()) +\
             ', \n\t\tlambda =' + str(self.cost_cst)+'\n\t},'+\
             f'\n\tgeodesic integrator : '+ self.mp.__repr__()+\
@@ -779,7 +780,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
     # LBFGS
     def _initialize_LBFGS_(self,dt_step,max_iter = 20):
         self.optimizer = torch.optim.LBFGS([self.parameter],
-                                           max_eval=15,
+                                           max_eval=30,
                                            max_iter=max_iter,
                                            lr=dt_step,
                                            line_search_fn='strong_wolfe')
@@ -828,9 +829,9 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         """
         #initialise loss_stock
         if loss_stock is None:
-            d = 3 if self._get_mu_() != 0 else 2
+            d = 3 if self._get_rho_() < 1 else 2
             return torch.zeros((i,d))
-        if self._get_mu_() != 0: # metamorphosis
+        if self._get_rho_() < 1: # metamorphosis
             loss_stock[i,0] = self.data_loss.detach()
             loss_stock[i,1] = self.norm_v_2.detach()
             loss_stock[i,2] = self.norm_l2_on_z.detach()
@@ -881,17 +882,16 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
 
         self.cost(self.parameter)
 
-        #loss_stock = self._cost_saving_(n_iter,None) # initialisation
-        loss_stock = torch.zeros((n_iter+1,3))
+        loss_stock = self._cost_saving_(n_iter,None) # initialisation
         loss_stock = self._cost_saving_(0,loss_stock)
 
-        for i in range(1,n_iter+1):
+        for i in range(1,n_iter):
             # print("\n",i,"==========================")
             self._step_optimizer_()
             loss_stock = self._cost_saving_(i,loss_stock)
 
             if verbose:
-                update_progress(i/n_iter,message=('ssd : ',loss_stock[i,0]))
+                update_progress((i+1)/n_iter,message=('ssd : ',loss_stock[i,0]))
             if plot and i in [n_iter//4,n_iter//2,3*n_iter//4]:
                 self._plot_forward_()
 
@@ -1126,8 +1126,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
     def get_total_cost(self):
         total_cost = self.to_analyse[1][:,0] + \
                     self.cost_cst * self.to_analyse[1][:,1]
-        if self._get_mu_() != 0 :
-            ic(type(self._get_rho_()))
+        if self._get_rho_() < 1 :
             if type(self._get_rho_()) == float:
                 total_cost += self.cost_cst*(self._get_rho_())* self.to_analyse[1][:,2]
             elif type(self._get_rho_()) == tuple:
@@ -1153,7 +1152,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         ax1[0].plot(normv_plot,"--",color = 'green',label='normv')
         ax1[1].plot(self.to_analyse[1][:,1].detach().numpy(),"--",color = 'green',label='normv')
         total_cost = ssd_plot + normv_plot
-        if self._get_mu_() != 0:
+        if self._get_rho_() < 1:
             norm_l2_on_z = self.cost_cst * self.to_analyse[1][:,2].numpy()
             total_cost += norm_l2_on_z
             ax1[0].plot(norm_l2_on_z,"--",color = 'orange',label='norm_l2_on_z')
@@ -1163,7 +1162,6 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         ax1[0].legend()
         ax1[1].legend()
         ax1[0].set_title("Lambda = "+str(self.cost_cst)+
-                    " mu = "+str(self._get_mu_()) +
                     " rho = "+str(self._get_rho_()))
         return fig1,ax1
 
@@ -1189,7 +1187,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
                        dx_convention=self.dx_convention
                        )
 
-        text_param = f"mu = {self._get_mu_()}, rho = {self.mp._get_rho_()},"
+        text_param = f"rho = {self.mp._get_rho_()},"
         try:
             text_param += f" gamma = {self.mp._get_gamma_()}"
         except AttributeError:

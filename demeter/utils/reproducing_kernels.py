@@ -346,6 +346,14 @@ class GaussianRKHS(torch.nn.Module):
             self.filter = fft_filter
         # print(f"filter used : {self.filter}")
 
+    def init_kernel(self,image):
+        if isinstance(self.sigma, tuple) and len(self.sigma) != len(image.shape[2:]) :
+            raise ValueError(f"kernelOperator :{self.__class__.__name__}"
+                             f"was initialised to be {len(self.sigma)}D"
+                             f" with sigma = {self.sigma} and got image "
+                             f"source.size() = {image.shape}"
+                             )
+
     def __repr__(self) -> str:
         # the if is there for compatibilities with older versions
         sig_str= f'sigma :{self.sigma}' if hasattr(self,'sigma') else ''
