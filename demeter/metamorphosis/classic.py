@@ -14,7 +14,6 @@ class Metamorphosis_integrator(Geodesic_integrator):
 
     """
     def __init__(self,method,
-                 mu=1.,
                  rho=1.,
                  # sigma_v= (1,1,1),
                  n_step =10,
@@ -35,14 +34,9 @@ class Metamorphosis_integrator(Geodesic_integrator):
         super().__init__(**kwargs)
         # self.mu = mu if callable(mu) else lambda :mu
         # self.rho = rho if callable(rho) else lambda :rho
-        self.mu = mu
+        if rho < 0 or rho > 1:
+            raise ValueError("This is the new version of Metamorphosis, rho must be in [0,1]")
         self.rho = rho
-        if mu < 0: self.mu = 0
-        if(mu == 0 and rho != 0):
-            warnings.warn("mu as been set to zero in methamorphosis_path, "
-                          "automatic reset of rho to zero."
-                         )
-            self.rho = 0
         self.n_step = n_step
 
         # inner methods
@@ -97,7 +91,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
         self._update_sharp_intermediary_field_()
 
         resi_cumul = 0
-        if self._get_mu_() != 0:
+        if self._get_rho_() < 1:
             resi_cumul = self._compute_sharp_intermediary_residuals_()
             resi_cumul = resi_cumul.to(self.momentum.device)
         if self._i > 0: self._phis[self._i - 1] = None
@@ -147,9 +141,6 @@ class Metamorphosis_integrator(Geodesic_integrator):
         raise ValueError("You have to specify the method used : 'Eulerian','advection_semiLagrangian'"
                              " or 'semiLagrangian'")
 
-    def _get_mu_(self):
-        return self.mu
-
     def _get_rho_(self):
         return float(self.rho)
 
@@ -160,7 +151,7 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
                      geodesic : Metamorphosis_integrator,
                      cost_cst : float,
                      data_term=None,
-                     optimizer_method : str = 'adadelta',
+                     optimizer_method : str = 'LBFGS_torch',
                      # sharp=False
                      # mask = None # For cost_function masking
                     **kwargs
@@ -178,15 +169,11 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
     #         '\noptimisation method : '+ self.optimizer_method_name+\
     #         '\n# geodesic steps =' +      str(self.mp.n_step) + ')'
 
-    def _get_mu_(self):
-        return self.mp.mu
-
     def _get_rho_(self):
         return float(self.mp.rho)
 
     def get_all_parameters(self):
         return {
-            'mu':self._get_mu_(),
             'rho':self._get_rho_(),
             'lambda':self.cost_cst,
             'sigma_v':self.mp.sigma_v,
@@ -229,28 +216,28 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
         :return: $H(z_0)$ a single valued tensor
         """
         #_,_,H,W = self.source.shape
-        rho = self.mp.rho
+        # rho = self.mp.rho
         lamb = self.cost_cst
-        if(self.mp.mu == 0 and rho != 0):
-            warnings.warn("mu as been set to zero in methamorphosis_path, "
-                          "automatic reset of rho to zero."
-                         )
-            rho = 0
+        # if(self.mp.mu == 0 and rho != 0):
+        #     warnings.warn("mu as been set to zero in methamorphosis_path, "
+        #                   "automatic reset of rho to zero."
+        #                  )
+        #     rho = 0
         self.mp.forward(self.source,residuals_ini,save=False,plot=0)
 
         # Compute the data_term. Default is the Ssd
         self.data_loss = self.data_term()
 
         # Norm V
-        self.norm_v_2 = self._compute_V_norm_(residuals_ini,self.source)
+        self.norm_v_2 = .5 * self._compute_V_norm_(residuals_ini,self.source)
 
 
         # norm_2 on z
-        if self.mp.mu != 0:
+        if self.mp.rho < 1:
             # # Norm on the residuals only
-            self.norm_l2_on_z = (residuals_ini**2).sum()/prod(self.source.shape[2:])
+            self.norm_l2_on_z = .5 * (residuals_ini**2).sum()/prod(self.source.shape[2:])
             self.total_cost = self.data_loss + \
-                              lamb * (self.norm_v_2 + (rho) *self.norm_l2_on_z)
+                              lamb * (self.norm_v_2 + self.norm_l2_on_z)
         else:
              self.total_cost = self.data_loss + lamb * self.norm_v_2
         # print('ssd :',self.ssd,' norm_v :',self.norm_v_2)
