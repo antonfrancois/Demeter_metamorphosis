@@ -31,25 +31,29 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
     def step(self):
         ## 1. Compute the vector field
         ## 1.1 Compute the gradient of the image by finite differences
-        grad_simplex = tb.spatialGradient(self.image,dx_convention='pixel')
+        grad_simplex = tb.spatialGradient(self.image,dx_convention=self.dx_convention)
         prefield = reduce(add,[self.momentum[:,n] * grad_simplex[:,n] for n in range(self.momentum.shape[1])])
         self.field = - sqrt(self.rho) * tb.im2grid(self.kernelOperator(prefield))
         # self.field = -  tb.im2grid(self.kernelOperator(prefield))
 
-
+        try:
+            volDelta = prod(self.kernelOperator.dx)
+        except AttributeError:
+            volDelta = 1
         ## 2. Compute the residuals
         ## 2.1 Compute the scalar product of the momentum and the image,
         # It will be used later as well
-        pi_q = (self.momentum * self.image).sum(dim=1,keepdim=True) / (self.image ** 2).sum(dim=1,keepdim=True)
-        self.residuals = sqrt(1 - self.rho) * (self.momentum - pi_q * self.image)
+        pi_q = (self.momentum / volDelta * self.image).sum(dim=1,keepdim=True) / (self.image ** 2).sum(dim=1,keepdim=True)
+        self.residuals = sqrt(1 - self.rho) * (self.momentum/volDelta - pi_q * self.image)
         # self.residuals = (self.momentum - pi_q * self.image) / self.rho
-
         # ic(self.residuals.min(),self.residuals.max(),self.residuals[0,:,15,80])
 
         ## 3. Compute the image update
         deform = self.id_grid - sqrt(self.rho) * self.field / self.n_step
-        self.image =  (tb.imgDeform(self.image,deform,dx_convention='pixel')
-                       +  sqrt(1 - self.rho) * self.residuals / self.n_step)
+        self.image =  (
+                tb.imgDeform(self.image,deform,dx_convention=self.dx_convention)
+                +  sqrt(1 - self.rho) * self.residuals / self.n_step
+                       )
         # cette ligne remet l'image sur la sphere, c'est un test pour
         # voir la stabilité du shémas numérique.
         self.image = self.image/(self.image**2).sum(dim=1,keepdim=True).sqrt()
@@ -58,10 +62,10 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
         # ic(self.image.min(),self.image.max(),self.image[0,:,15,80])
 
         ## 4. Compute the momentum update
-        div_v_times_p = self.momentum * tb.Field_divergence(dx_convention='pixel')(self.field)[0,0]
-        self.momentum = ( tb.imgDeform(self.momentum,deform,dx_convention='pixel')
+        div_v_times_p = self.momentum * tb.Field_divergence(dx_convention=self.dx_convention)(self.field)[0,0]
+        self.momentum = (tb.imgDeform(self.momentum,deform,dx_convention=self.dx_convention)
                          + (
-                               sqrt(1 - self.rho) * self.residuals * pi_q
+                               sqrt(1 - self.rho) * self.residuals * pi_q * volDelta
                                 - sqrt(self.rho) * div_v_times_p
                          ) / self.n_step)
         # print("moins")
@@ -71,8 +75,8 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
         #                     +  div_v_times_q
         #                  ) / self.n_step)
 
-
-        return self.image, self.field,self.momentum, self.residuals
+        #
+        return self.image, self.field * sqrt(self.rho),self.momentum, self.residuals * sqrt(1 - self.rho)
 
     # TODO : create a default parameter saving update to match
     # with classical metamorphosis methods,
@@ -113,13 +117,12 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
         self.id_grid = tb.make_regular_grid(momentum_ini.shape[2:],
                                             device=device,
                                             dx_convention=self.dx_convention,
-                                            ).to(torch.double)
-        assert self.id_grid != None
+                                            )#.to(torch.double)
 
         if field_ini is None:
             self.field = self.id_grid.clone()
         else:
-            self.field = field_ini #/self.n_step
+            self.field = field_ini
 
         if plot > 0:
             self.save = True
@@ -189,9 +192,13 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
         # TODO: explain why there is a rho here
         self.norm_v_2 = .5 * rho  * self._compute_V_norm_(momentum_ini,self.source)
 
-        pi_q = (momentum_ini * self.source).sum(dim=1,keepdim=True) / (self.source ** 2).sum(dim=1,keepdim=True)
+
+        # Norm L2 on z
+        volDelta = prod(self.dx)
+        pi_q = (momentum_ini / volDelta * self.source).sum(dim=1,keepdim=True) / (self.source ** 2).sum(dim=1,keepdim=True)
         z = sqrt(1 - rho) * (momentum_ini - pi_q * self.source)
-        self.norm_l2_on_z = .5 * (z ** 2).sum() * prod(self.dx) # /prod(self.source.shape[2:])
+        # print("self.dx = ",self.dx)
+        self.norm_l2_on_z = .5 * (z ** 2).sum() * volDelta # /prod(self.source.shape[2:])
         # ic(float(self.norm_v_2),float(self.norm_l2_on_z))
         self.total_cost = self.data_loss + \
             self.cost_cst * .5 * (self.norm_v_2 + self.norm_l2_on_z)

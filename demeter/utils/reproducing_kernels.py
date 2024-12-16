@@ -230,7 +230,6 @@ def plot_gaussian_kernel_2d(kernel: torch.Tensor, sigma, axes=None):
     axes[1].axis('off')
 
     # plot kernel profile
-    print("rfs")
     plot_gaussian_kernel_1d(kernel[:,:,kernel.shape[2]//2], sigma[0], ax=axes[2],rotated=True)
     plot_gaussian_kernel_1d(kernel[:,kernel.shape[1]//2], sigma[1], ax=axes[0])
 
@@ -354,6 +353,14 @@ class GaussianRKHS(torch.nn.Module):
         ','+str(self._dim)+'D '+\
         f'\n\tfilter :{self.filter.__name__}, '+sig_str+\
         f'\n\tkernel_size :{tuple(self.kernel.shape)}'
+
+    def init_kernel(self,image):
+        if isinstance(self.sigma, tuple) and len(self.sigma) != len(image.shape[2:]) :
+            raise ValueError(f"kernelOperator :{self.__class__.__name__}"
+                             f"was initialised to be {len(self.sigma)}D"
+                             f" with sigma = {self.sigma} and got image "
+                             f"source.size() = {image.shape}"
+                             )
 
     def forward(self, input: torch.Tensor):
         """

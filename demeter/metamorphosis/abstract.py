@@ -369,7 +369,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         )
         if from_t is None and to_t is None:
             print('Je suis passé par là')
-            return temporal_integrator(self.field_stock/self.n_step, forward=False)
+            return temporal_integrator(self.field_stock/self.n_step, forward=True)
         # if from_t is None: from_t = 0
         if to_t is None: to_t = self.n_step
         if from_t < 0 and from_t >= to_t:
@@ -663,7 +663,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
                 self.dx = tuple([ 2/(h-1) for h in source.shape[2:]])
             else:
                 raise ValueError("dx_convention must be in ['pixel','square']")
-
+        print(f"dx = {self.dx}")
 
         self.cost_cst = cost_cst
         # optimize on the cost as defined in the 2021 paper.
@@ -1151,12 +1151,12 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         ax1[1].plot(ssd_plot,"--",color = 'blue',label=self.data_term.__class__.__name__)
 
         nbpix = prod(self.source.shape[2:])
-        normv_plot =  (self.cost_cst / nbpix )*self.to_analyse[1][:,1].detach().numpy()
+        normv_plot =  self.cost_cst * self.to_analyse[1][:,1].detach().numpy()
         ax1[0].plot(normv_plot,"--",color = 'green',label='normv')
         ax1[1].plot(self.to_analyse[1][:,1].detach().numpy(),"--",color = 'green',label='normv')
         total_cost = ssd_plot + normv_plot
         if self._get_mu_() != 0:
-            norm_l2_on_z = (self.cost_cst / nbpix)*(self._get_rho_())* self.to_analyse[1][:,2].numpy()
+            norm_l2_on_z = self.cost_cst * self.to_analyse[1][:,2].numpy()
             total_cost += norm_l2_on_z
             ax1[0].plot(norm_l2_on_z,"--",color = 'orange',label='norm_l2_on_z')
             ax1[1].plot(self.to_analyse[1][:,2].numpy(),"--",color = 'orange',label='norm_l2_on_z')
