@@ -83,9 +83,6 @@ class Geodesic_integrator(torch.nn.Module,ABC):
     def step(self):
         pass
 
-    @abstractmethod
-    def _get_mu_(self):
-        pass
 
     def forward(self, image, momentum_ini,
                 field_ini=None,

@@ -70,7 +70,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
     def _step_advection_semiLagrangian(self):
         self._update_field_()
         # Lagrangian scheme on images
-        deformation = self.id_grid - self.field/self.n_step
+        deformation = self.id_grid - self.rho * self.field/self.n_step
         self._update_image_semiLagrangian_(deformation)
         self._update_residuals_Eulerian_()
 
@@ -79,7 +79,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
     def _step_full_semiLagrangian(self):
         self._update_field_()
         # Lagrangian scheme on images and residuals
-        deformation = self.id_grid - self.field/self.n_step
+        deformation = self.id_grid - self.rho * self.field/self.n_step
         self._update_image_semiLagrangian_(deformation)
         self._update_residuals_semiLagrangian_(deformation)
 
