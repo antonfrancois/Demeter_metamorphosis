@@ -663,7 +663,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
                 self.dx = tuple([ 2/(h-1) for h in source.shape[2:]])
             else:
                 raise ValueError("dx_convention must be in ['pixel','square']")
-        print(f"dx = {self.dx}")
+
 
         self.cost_cst = cost_cst
         # optimize on the cost as defined in the 2021 paper.
@@ -881,10 +881,11 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
 
         self.cost(self.parameter)
 
-        loss_stock = self._cost_saving_(n_iter,None) # initialisation
+        #loss_stock = self._cost_saving_(n_iter,None) # initialisation
+        loss_stock = torch.zeros((n_iter+1,3))
         loss_stock = self._cost_saving_(0,loss_stock)
 
-        for i in range(1,n_iter):
+        for i in range(1,n_iter+1):
             # print("\n",i,"==========================")
             self._step_optimizer_()
             loss_stock = self._cost_saving_(i,loss_stock)

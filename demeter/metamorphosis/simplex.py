@@ -76,7 +76,10 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
         #                  ) / self.n_step)
 
         #
-        return self.image, self.field * sqrt(self.rho),self.momentum, self.residuals * sqrt(1 - self.rho)
+        return (self.image,
+                self.field * sqrt(self.rho),
+                self.momentum,
+                self.residuals * sqrt(1 - self.rho))
 
     # TODO : create a default parameter saving update to match
     # with classical metamorphosis methods,
@@ -117,7 +120,7 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
         self.id_grid = tb.make_regular_grid(momentum_ini.shape[2:],
                                             device=device,
                                             dx_convention=self.dx_convention,
-                                            )#.to(torch.double)
+                                            ).to(torch.double)
 
         if field_ini is None:
             self.field = self.id_grid.clone()
@@ -192,13 +195,12 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
         # TODO: explain why there is a rho here
         self.norm_v_2 = .5 * rho  * self._compute_V_norm_(momentum_ini,self.source)
 
-
         # Norm L2 on z
         volDelta = prod(self.dx)
-        pi_q = (momentum_ini / volDelta * self.source).sum(dim=1,keepdim=True) / (self.source ** 2).sum(dim=1,keepdim=True)
-        z = sqrt(1 - rho) * (momentum_ini - pi_q * self.source)
-        # print("self.dx = ",self.dx)
-        self.norm_l2_on_z = .5 * (z ** 2).sum() * volDelta # /prod(self.source.shape[2:])
+        pi_q = ((momentum_ini/volDelta) * self.source).sum(dim=1,keepdim=True) / (self.source ** 2).sum(dim=1,keepdim=True)
+        z = sqrt(1 - rho) * (momentum_ini/volDelta - pi_q * self.source)
+        #self.norm_l2_on_z = .5 * (z ** 2).sum() * prod(self.dx) # /prod(self.source.shape[2:])
+        self.norm_l2_on_z = .5 * (z ** 2).sum() * volDelta
         # ic(float(self.norm_v_2),float(self.norm_l2_on_z))
         self.total_cost = self.data_loss + \
             self.cost_cst * .5 * (self.norm_v_2 + self.norm_l2_on_z)
