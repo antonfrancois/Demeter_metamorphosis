@@ -301,7 +301,7 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
         else:
             self._update_image_semiLagrangian_(def_I,resi_to_add,
                                                sharp = self.flag_sharp)
-            self._update_residuals_semiLagrangian_(def_z)
+            self._update_momentum_semiLagrangian_(def_z)
 
         return (self.image, self.field, self.momentum)
 

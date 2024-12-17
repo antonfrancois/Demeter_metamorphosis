@@ -184,7 +184,7 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
         # # update residual
 #         ic(self.residuals.shape)
         z_I = self.residuals[:,0]
-        self._update_residuals_semiLagrangian_(deform)
+        self._update_momentum_semiLagrangian_(deform)
         # add term into the residual of the mask
         self.residuals[:,1] = (self.residuals[:,1]
                 + self.mask_function.derivative(self.image[:,1].clone(),self._i) * z_I**2)
@@ -243,7 +243,7 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
         # # update residual
 #         ic(self.residuals.shape)
         z_I = self.residuals[:,0]
-        self._update_residuals_semiLagrangian_(deform)
+        self._update_momentum_semiLagrangian_(deform)
         # add term into the residual of the mask
         self.residuals[:,1] = (self.residuals[:,1]
                 + self.mask_function.derivative(self.image[:,1].clone(),self._i) * z_I**2)
