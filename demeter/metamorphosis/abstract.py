@@ -1,7 +1,7 @@
 import torch
 import matplotlib.pyplot as plt
 import warnings
-from math import prod
+from math import prod, sqrt
 import pickle
 import os, sys, csv#, time
 from icecream import ic
@@ -221,26 +221,29 @@ class Geodesic_integrator(torch.nn.Module,ABC):
 
     # Done
     def _field_cst_mult(self):
+        warnings.warn("The method _field_cst_mult should not be used anymore,"
+                      "You might have to check the integrator steps equations.")
         rho = self._get_rho_()
         if rho == 1: return 1
         return rho/(1-rho)
 
     # Done
     def _update_field_(self):
-        grad_image = tb.spatialGradient(self.image, dx_convention='pixel')
+        grad_image = tb.spatialGradient(self.image, dx_convention=self.dx_convention)
         self.field = self._compute_vectorField_(self.momentum, grad_image)
-        self.field *= self._field_cst_mult()
+        # self.field *= self._field_cst_mult()
+        self.field *= sqrt(self.rho)
 
     # Done
-    def _update_residuals_Eulerian_(self):
-        residuals_dt = - tb.Field_divergence(dx_convention=self.dx_convention)(
+    def _update_momentum_Eulerian_(self):
+        momentum_dt = - tb.Field_divergence(dx_convention=self.dx_convention)(
             self.momentum[0,0][None, :, :, None] * self.field,
                             )
 
-        self.momentum = self.momentum + (1 - self.rho) * residuals_dt / self.n_step
+        self.momentum = self.momentum + sqrt(self.rho) * momentum_dt / self.n_step
 
     # Done
-    def _update_residuals_semiLagrangian_(self,deformation):
+    def _update_momentum_semiLagrangian_(self, deformation):
         div_v_times_z = (self.momentum
                          * tb.Field_divergence(dx_convention=self.dx_convention)(self.field)[0,0])
         self.momentum =  (
@@ -276,14 +279,19 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         # Warning, in classical metamorphosis, the momentum (p) is proportional to the residual (z)
         # with the relation z = (1 - rho) * p. Here we use the momentum as the residual
         self.image =  self._image_Eulerian_integrator_(self.image,self.field,1/self.n_step,1)
-        self.image = self.rho * self.image + (self.momentum * (1 - self.rho)) / self.n_step
+        # z = sqrt(1 - rho) * p and I = v gradI + sqrt(1-rho) * z
+        residuals = (1 - self.rho) * self.momentum
+        self.image = (sqrt(self.rho) * self.image + residuals) / self.n_step
 
     # Done
     def _update_image_semiLagrangian_(self,deformation,residuals = None,sharp=False):
-        if residuals is None: residuals = self.momentum
+        if residuals is None:
+            # z = sqrt(1 - rho) * p and I = v gradI + sqrt(1-rho) * z
+            residuals = (1 - self.rho) * self.momentum
         image = self.source if sharp else self.image
-        self.image = self.rho * tb.imgDeform(image,deformation,dx_convention='pixel')
-        if self.rho < 1: self.image += (residuals * (1 - self.rho))/self.n_step
+        # if self.rho > 0:
+        self.image = tb.imgDeform(image,deformation,dx_convention=self.dx_convention)
+        if self.rho < 1: self.image += residuals / self.n_step
 
     def _update_sharp_intermediary_field_(self):
         # print('update phi ',self._i,self._phis[self._i])

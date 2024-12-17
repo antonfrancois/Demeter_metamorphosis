@@ -1,7 +1,7 @@
 import torch
 import warnings
 import matplotlib.pyplot as plt
-from math import prod
+from math import prod, sqrt
 
 from .abstract import Geodesic_integrator,Optimize_geodesicShooting
 
@@ -70,20 +70,20 @@ class Metamorphosis_integrator(Geodesic_integrator):
     def _step_advection_semiLagrangian(self):
         self._update_field_()
         # Lagrangian scheme on images
-        deformation = self.id_grid - self.rho * self.field/self.n_step
+        deformation = self.id_grid - sqrt(self.rho) * self.field/self.n_step
         self._update_image_semiLagrangian_(deformation)
-        self._update_residuals_Eulerian_()
+        self._update_momentum_Eulerian_()
 
-        return (self.image,self.field,self.momentum)
+        return (self.image,sqrt(self.rho) * self.field,sqrt(1 - self.rho) * self.momentum)
 
     def _step_full_semiLagrangian(self):
         self._update_field_()
         # Lagrangian scheme on images and residuals
-        deformation = self.id_grid - self.rho * self.field/self.n_step
+        deformation = self.id_grid - sqrt(self.rho) * self.field/self.n_step
         self._update_image_semiLagrangian_(deformation)
-        self._update_residuals_semiLagrangian_(deformation)
+        self._update_momentum_semiLagrangian_(deformation)
 
-        return (self.image,self.field,self.momentum)
+        return (self.image,sqrt(self.rho) * self.field,sqrt(1 - self.rho) * self.momentum)
 
     def _step_sharp_semiLagrangian(self):
         # device = self.image.device
@@ -133,7 +133,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
         #                           self._phis[self._i][0],
         #                           dx_convention=self.dx_convention)
         # if self.mu != 0: self.image += self.mu * resi_cumul/self.n_step
-        self._update_residuals_semiLagrangian_(self._phis[self._i][self._i])
+        self._update_momentum_semiLagrangian_(self._phis[self._i][self._i])
 
         return (self.image, self.field, self.momentum)
 
