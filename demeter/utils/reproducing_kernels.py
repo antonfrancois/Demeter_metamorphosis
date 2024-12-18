@@ -87,15 +87,22 @@ def fft_filter(input: torch.Tensor, kernel: torch.Tensor,
                     groups=c, padding=0, stride=1)
 
 
-def get_gaussian_kernel1d(sigma,dx = 1, kernel_size = None, device='cpu', dtype=torch.float):
+def get_gaussian_kernel1d(sigma,dx = 1, kernel_size = None,kernel_reach=6, device='cpu', dtype=torch.float):
     r"""Function that returns Gaussian filter coefficients.
 
     Args:
-        kernel_size (int): the size of the kernel.
-        dx (float): the spacing between the kernel points.
-        sigma (float, Tensor): the standard deviation of the kernel.
-        device (torch.device): the desired device of the kernel.
-        dtype (torch.dtype): the desired data type of the kernel.
+        : kernel_size (int): the size of the kernel.
+        : kernel_reach (int | float): the reach of the kernel assuming sigma = 1.
+        For a given value of kernel reach, the kernel size is calculated as
+        kernel_size = max(kernel_reach,int(sigma*kernel_reach/dx)) + (1 - max(kernel_reach,int(sigma*kernel_reach/dx)) %2)
+        meaning that the kernel size is always odd and have 6 * sigma pixel between the
+        center and the kernel border. The default value is 6, should be
+        enough for most of the applications, but if you notice negative V_norms,
+        increasing this value might help.
+        : dx (float): the spacing between the kernel points.
+        : sigma (float, Tensor): the standard deviation of the kernel.
+        : device (torch.device): the desired device of the kernel.
+        : dtype (torch.dtype): the desired data type of the kernel.
 
     Returns:
         torch.Tensor: 1D tensor with the filter coefficients.
@@ -104,7 +111,8 @@ def get_gaussian_kernel1d(sigma,dx = 1, kernel_size = None, device='cpu', dtype=
         - Output: :math:`(K,)`
     """
     if kernel_size is None:
-        kernel_size = max(6,int(sigma*6/dx)) + (1 - max(6,int(sigma*6/dx)) %2)
+        s = kernel_reach
+        kernel_size = max(s,int(sigma*s/dx)) + (1 - max(s,int(sigma*s/dx)) %2)
     if isinstance(sigma,int):
         sigma = float(sigma)
     if isinstance(sigma, float):
@@ -126,11 +134,18 @@ def get_gaussian_kernel1d(sigma,dx = 1, kernel_size = None, device='cpu', dtype=
 
     return kernel
 
-def get_gaussian_kernel2d( sigma,dx =(1.,1.), kernel_size=None):
+def get_gaussian_kernel2d( sigma,dx =(1.,1.), kernel_size=None, kernel_reach=6):
     r"""Function that returns Gaussian filter coefficients.
 
     Args:
         kernel_size (Tuple[int, int]): the size of the kernel.
+        kernel_reach (int | float): the reach of the kernel assuming sigma = 1.
+        For a given value of kernel reach, the kernel size is calculated as
+        kernel_size = max(kernel_reach,int(sigma*kernel_reach/dx)) + (1 - max(kernel_reach,int(sigma*kernel_reach/dx)) %2)
+        meaning that the kernel size is always odd and have 6 * sigma pixel between the
+        center and the kernel border. The default value is 6, should be
+        enough for most of the applications, but if you notice negative V_norms,
+        increasing this value might help.
         dx (Tuple[float, float]): the spacing between the kernel points.
         sigma (Tuple[float, float]|torch.Tensor): the standard deviation of the kernel.
 
@@ -143,15 +158,15 @@ def get_gaussian_kernel2d( sigma,dx =(1.,1.), kernel_size=None):
     ksize_h, ksize_w = kernel_size if kernel_size is not None else (None,)*2
     sigma_h, sigma_w = [float(s) for s in sigma]
     dh, dw = [float(d) for d in dx]
-    kernel_h: torch.Tensor = get_gaussian_kernel1d(sigma_h, dh, ksize_h)
-    kernel_w: torch.Tensor = get_gaussian_kernel1d(sigma_w, dw, ksize_w)
+    kernel_h: torch.Tensor = get_gaussian_kernel1d(sigma_h, dh, ksize_h, kernel_reach)
+    kernel_w: torch.Tensor = get_gaussian_kernel1d(sigma_w, dw, ksize_w, kernel_reach)
     print(f"kernel_h : {kernel_h.shape}, kernel_w : {kernel_w.shape}")
     # kernel_2d: torch.Tensor = torch.matmul(kernel_h[...,None], kernel_w)
     print(kernel_h.shape)
     kernel_2d = kernel_h[:,:, None] * kernel_w[:,None, :]
     return kernel_2d
 
-def get_gaussian_kernel3d(sigma, dx=(1.,)*3 , kernel_size =None):
+def get_gaussian_kernel3d(sigma, dx=(1.,)*3 , kernel_size =None, kernel_reach=6):
     print(f"kernel_size : {kernel_size}")
     print(f"sigma : {sigma}")
     if kernel_size is None:
@@ -166,9 +181,9 @@ def get_gaussian_kernel3d(sigma, dx=(1.,)*3 , kernel_size =None):
     sigma_d, sigma_h, sigma_w = [ float(s) for s in sigma]
     dd, dh, dw = [float(d) for d in dx]
     #print(f"sigma_d : {sigma_d}, sigma_h : {sigma_h}, sigma_w : {sigma_w}")
-    kernel_d: torch.Tensor = get_gaussian_kernel1d(sigma_d, dd, ksize_d)
-    kernel_h: torch.Tensor = get_gaussian_kernel1d(sigma_h, dh,ksize_h)
-    kernel_w: torch.Tensor = get_gaussian_kernel1d(sigma_w, dw, ksize_w)
+    kernel_d: torch.Tensor = get_gaussian_kernel1d(sigma_d, dd, ksize_d, kernel_reach)
+    kernel_h: torch.Tensor = get_gaussian_kernel1d(sigma_h, dh,ksize_h, kernel_reach)
+    kernel_w: torch.Tensor = get_gaussian_kernel1d(sigma_w, dw, ksize_w, kernel_reach)
     # kernel_2d: torch.Tensor = kernel_d[:,None] * kernel_h[None]
     # kernel_3d: torch.Tensor = kernel_2d[:,:,None] * kernel_w[None,None]
     print(f"kernel_d : {kernel_d.shape},\n kernel_h : {kernel_h.shape},\n kernel_w : {kernel_w.shape}")
@@ -397,7 +412,8 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
                  sigma_convention= 'pixel',
                  dx = (1,),
                  border_type: str = 'constant',
-                 device = 'cpu'):
+                 device = 'cpu',
+                 kernel_reach = 6):
         """
 
         :param sigma: (Tuple[float,float] or [float,float,float]) : the standard
@@ -411,6 +427,13 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
           The expected modes are: ``'constant'``,
           ``'replicate'`` or ``'circular'``.
           the ``'reflect'`` one is not implemented yet by pytorch
+        :param kernel_reach: the reach of the kernel assuming sigma = 1.
+        For a given value of kernel reach, the kernel size is calculated as
+        kernel_size = max(kernel_reach,int(sigma*kernel_reach/dx)) + (1 - max(kernel_reach,int(sigma*kernel_reach/dx)) %2)
+        meaning that the kernel size is always odd and have (kernel_reach/2) * sigma pixel between the
+        center and the kernel border. The default value is 6, should be
+        enough for most of the applications, but if you notice negative V_norms,
+        increasing this value might help.
         """
         # big_odd = lambda val : max(6,int(val*6)) + (1 - max(6,int(val*6)) %2)
         # kernel_size = tuple([big_odd(s) for s in sigma])
@@ -435,11 +458,11 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
         # print("sigma : ",self.sigma)
         # print("sigma_continuous : ",self.sigma_continuous)
         if self._dim == 2:
-            self.kernel = get_gaussian_kernel2d(self.sigma )#[None]
+            self.kernel = get_gaussian_kernel2d(self.sigma ,kernel_reach=kernel_reach)#[None]
 
             self.filter = flt.filter2d
         elif self._dim == 3:
-            self.kernel = get_gaussian_kernel3d(self.sigma)#[None]
+            self.kernel = get_gaussian_kernel3d(self.sigma, kernel_reach=kernel_reach)#[None]
             self.filter = fft_filter
         else:
             raise ValueError("Sigma is expected to be a tuple of size 2 or 3 same as the input dimension,"
@@ -448,14 +471,19 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
         #  We normalize the kernel to multiply by the product of
         # dx / sigma_continuous, which is equal to 1/sigma.
         # ic(prod(self.sigma_continuous))
+        # TODO : remplacer par sigma !!!
         self.kernel /=  prod(self.sigma_continuous)
         self.border_type = border_type
 
         # TODO : define better the condition for using the fft filter
         # this filter works in 2d and 3d
-        kernel_size = self.kernel.shape[2:]
-        if max(kernel_size) > 7:
-            self.filter = fft_filter
+        self.filter = flt.filter2d
+        self.kwargs_filter = {'border_type':self.border_type,
+                              'behaviour': 'conv'}
+
+        # kernel_size = self.kernel.shape[2:]
+        # if max(kernel_size) > 7:
+        #     self.filter = fft_filter
         # print(f"filter used : {self.filter}")
 
     def init_kernel(self,image):
@@ -489,7 +517,7 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
         if (self._dim == 2 and len(input.shape) == 4) or (self._dim == 3 and len(input.shape) == 5):
             view_sig = (1,-1) + (1,)*(len(input.shape)-2)
             # input *= self.sigma_continuous.to(input.device).view(view_sig)**2
-            convol = self.filter(input,self.kernel,self.border_type)
+            convol = self.filter(input,self.kernel,**self.kwargs_filter)
             convol *= self.sigma.view(view_sig)**2
             return convol
         else:
