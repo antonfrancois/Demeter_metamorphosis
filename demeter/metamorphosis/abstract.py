@@ -716,8 +716,12 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         grad_source = tb.spatialGradient(image, dx_convention=self.dx_convention)
         field_momentum = (grad_source * momentum.unsqueeze(2)).sum(dim=1) #/ C
         field = self.mp.kernelOperator(field_momentum)
+        norm_V = (field_momentum * field).sum()
 
-        return (field_momentum * field).sum() #* prod(self.dx)
+        if norm_V < 0:
+            warnings.warn(f"We computed norm_V = {norm_V} < 0 ! Increasing the"
+                          f"parameter `kernel_reach` in kernelOperator might help.")
+        return norm_V
 
 
     @abstractmethod
