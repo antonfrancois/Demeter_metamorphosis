@@ -192,7 +192,10 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         :return: (tensor array) of shape [B,H,W,2]
         """
         # C = residuals.shape[1]
-        return tb.im2grid(self.kernelOperator((-(momentum.unsqueeze(2) * grad_image).sum(dim=1))))
+        return tb.im2grid(self.kernelOperator(
+                (-(momentum.unsqueeze(2) * grad_image).sum(dim=1))
+            )
+        )
 
     def _compute_vectorField_multimodal_(self, momentum, grad_image):
         r""" operate the equation $K \star (z_t \cdot \nabla I_t)$
@@ -248,7 +251,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
                          dx_convention=self.dx_convention,
                          clamp=False)
                 - div_v_times_z / self.n_step
-        )
+        ) * sqrt(self.rho)
 
     def _compute_sharp_intermediary_residuals_(self):
         device = self.momentum.device
@@ -283,7 +286,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
     def _update_image_semiLagrangian_(self,deformation,residuals = None,sharp=False):
         if residuals is None:
             # z = sqrt(1 - rho) * p and I = v gradI + sqrt(1-rho) * z
-            residuals = (1 - self.rho) * self.momentum
+            residuals = sqrt(1 - self.rho) * self.momentum
         image = self.source if sharp else self.image
         # if self.rho > 0:
         self.image = tb.imgDeform(image,deformation,dx_convention=self.dx_convention)
