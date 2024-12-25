@@ -207,35 +207,35 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
     #         raise ValueError(f"Bad arguments, see usage in Doc got args = {args}")
 
 
-    def cost(self, residuals_ini : torch.Tensor) -> torch.Tensor:
+    def cost(self, momentum_ini : torch.Tensor) -> torch.Tensor:
         r""" cost computation
 
         $H(z_0) =   \frac 12\| \im{1} - \ti \|_{L_2}^2 + \lambda \Big[ \|v_0\|^2_V + \mu ^2 \|z_0\|^2_{L_2} \Big]$
 
-        :param residuals_ini: z_0
+        :param momentum_ini: Moment initial z_0
         :return: $H(z_0)$ a single valued tensor
         """
         #_,_,H,W = self.source.shape
         # rho = self.mp.rho
         lamb = self.cost_cst
         # if(self.mp.mu == 0 and rho != 0):
-        #     warnings.warn("mu as been set to zero in methamorphosis_path, "
+        #     warnings.warn("mu as been set to zero in metamorphosis_path, "
         #                   "automatic reset of rho to zero."
         #                  )
         #     rho = 0
-        self.mp.forward(self.source,residuals_ini,save=False,plot=0)
+        self.mp.forward(self.source,momentum_ini,save=False,plot=0)
 
         # Compute the data_term. Default is the Ssd
         self.data_loss = self.data_term()
 
         # Norm V
-        self.norm_v_2 = .5 * self._compute_V_norm_(residuals_ini,self.source)
+        self.norm_v_2 = .5 * self._compute_V_norm_(momentum_ini,self.source)
 
 
         # norm_2 on z
         if self.mp.rho < 1:
             # # Norm on the residuals only
-            self.norm_l2_on_z = .5 * (residuals_ini**2).sum()/prod(self.source.shape[2:])
+            self.norm_l2_on_z = .5 * (momentum_ini**2).sum()/prod(self.source.shape[2:])
             self.total_cost = self.data_loss + \
                               lamb * (self.norm_v_2 + self.norm_l2_on_z)
         else:
