@@ -81,7 +81,9 @@ class Metamorphosis_integrator(Geodesic_integrator):
         # Lagrangian scheme on images and residuals
         deformation = self.id_grid - sqrt(self.rho) * self.field/self.n_step
         self._update_image_semiLagrangian_(deformation)
-        self._update_momentum_semiLagrangian_(deformation)
+        # self._update_momentum_semiLagrangian_(deformation)
+        self.momentum = self._compute_div_momentum_semiLagrangian_(deformation,self.momentum)
+        self.momentum *= sqrt(self.rho)
 
         return (self.image,sqrt(self.rho) * self.field,sqrt(1 - self.rho) * self.momentum)
 

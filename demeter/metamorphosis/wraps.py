@@ -89,25 +89,26 @@ def metamorphosis(source,target,residuals,
 #  From contrained.py
 
 @time_it
-def weighted_metamorphosis(source,target,residual,mask,
-                           mu,rho,rf_method,sigma,cost_cst,
-                           n_iter,grad_coef,data_term=None,sharp=False,
+def weighted_metamorphosis(source,target,residual,
+                           residual_mask,
+                           kernelOperator,
+                           cost_cst,
+                           n_iter,
+                           grad_coef,
+                           data_term=None,
+                           sharp=False,
                            safe_mode=True,
                            optimizer_method='adadelta',
                            dx_convention = 'pixel'):
+    print('plop')
     device = source.device
 #     sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
-    if rf_method == 'identity':
-        rf = cn.Residual_norm_identity(mask.to(device),mu,rho)
-    elif rf_method == 'borderBoost':
-        rf = cn.Residual_norm_borderBoost(mask.to(device),mu,rho)
-    else:
-        raise ValueError(f"rf_method must be 'identity' or 'borderBoost'")
     if type(residual) == int: residual = torch.zeros(source.shape,device=device)
     residual.requires_grad = True
 
     mp_weighted = cn.ConstrainedMetamorphosis_integrator(
-        residual_function=rf,sigma_v=sigma,
+        residual_mask=residual_mask,
+        kernelOperator=kernelOperator,
         sharp=sharp,
         dx_convention=dx_convention
     )
