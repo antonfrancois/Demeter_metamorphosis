@@ -558,6 +558,15 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
         self.kernel /= len(list_sigmas)
         self.border_type = 'constant'
 
+    def init_kernel(self,image):
+        for sig in self.list_sigma:
+            if isinstance(sig, tuple) and len(sig) != len(image.shape[2:]) :
+                raise ValueError(f"kernelOperator :{self.__class__.__name__}"
+                                 f"was initialised to be {len(sig)}D"
+                                 f" with list sigma = {self.list_sigma} and got image "
+                                 f"source.size() = {image.shape}"
+                                 )
+
     def __repr__(self) -> str:
         # the if is there for compatibilities with older versions
         return self.__class__.__name__+\
