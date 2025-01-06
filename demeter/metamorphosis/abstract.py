@@ -352,19 +352,22 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         free_field = tb.im2grid(
              (self.momentum * grad_image[0]) * torch.sqrt(self.residual_mask[self._i])
         )
+        print(f'\n {self._i}')
+        print('free_field min max',free_field.min().item(),free_field.max().item())
         oriented_field = 0
         if self.flag_O:
-            mask_i = self.orienting_mask[self._i][..., None].clone()
 
-            oriented_field = self.orienting_field[self._i][None].clone()
-            oriented_field *= mask_i
-
-        self.field = - tb.im2grid(self.kernelOperator(tb.grid2im(free_field + oriented_field)))
+            oriented_field = self.orienting_field[self._i][None]
+            oriented_field *= self.orienting_mask[self._i][..., None]
+            print('oriented_field min max',oriented_field.min().item(),oriented_field.max().item())
+        self.field = - tb.im2grid(self.kernelOperator(tb.grid2im(free_field - oriented_field)))
 
     def to_device(self,device):
         # TODO: completer ça
-        self.id_grid = self.id_grid.to(device)
-        self.image = self.image.to(device)
+        try:
+            self.image = self.image.to(device)
+        except AttributeError:
+            pass
 
     def get_deformation(self,from_t=0,to_t=None,save=False):
         r"""Returns the deformation use it for showing results
@@ -885,10 +888,10 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         :param verbose: (bool) display advancement
 
         """
-        self.source = self.source.to(z_0.device)
+        # self.source = self.source.to(z_0.device)
         # self.target = self.target.to(z_0.device)
         # self.mp.kernelOperator.kernel = self.mp.kernelOperator.kernel.to(z_0.device)
-        self.data_term.to_device(z_0.device)
+        # self.data_term.to_device(z_0.device)
 
         self.parameter = z_0 # optimized variable
         self._initialize_optimizer_(grad_coef,max_iter=n_iter)
@@ -896,6 +899,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         self.id_grid = tb.make_regular_grid(z_0.shape[2:],
                     dx_convention=self.dx_convention,
                     device = z_0.device)
+        self.to_device(z_0.device)
         if self.id_grid is None:
             raise ValueError(f"The initial momentum provided might have the wrong shape, got :{z_0.shape}")
 
@@ -932,8 +936,12 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
         self.parameter = self.parameter.to(device)
         self.id_grid = self.id_grid.to(device)
         self.data_term.to_device(device)
-        self.to_analyse = (self.to_analyse[0].to(device),
+        try:
+            # To analyse might not have been initialized yet.
+            self.to_analyse = (self.to_analyse[0].to(device),
                            self.to_analyse[1].to(device))
+        except AttributeError:
+            pass
 
     def forward_safe_mode(self,
                           z_0,

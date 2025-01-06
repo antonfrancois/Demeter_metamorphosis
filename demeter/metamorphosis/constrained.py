@@ -20,22 +20,13 @@ from ..utils import cost_functions as cf
 
 class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
 
-    def __init__(self, residual_mask: torch.Tensor = None,
+    def __init__(self, residual_mask: torch.Tensor = None | int | float,
                  orienting_field: torch.Tensor = None,
                  orienting_mask: torch.Tensor = None,
                  sharp = False,
                  **kwargs
     ):
         super(ConstrainedMetamorphosis_integrator, self).__init__(**kwargs)
-        if residual_mask is None:
-            self.flag_W = False
-            self.residual_mask = torch.tensor([1])
-            print("not Weighted")
-        else:
-            print("Weighted")
-            self.residual_mask = residual_mask
-            self.n_step = residual_mask.shape[0]
-            self.flag_W = True
         if orienting_field is None:
             print("not oriented")
             self.orienting_mask, self.orienting_field = None, None
@@ -46,6 +37,22 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
             self.orienting_mask = orienting_mask
             self.orienting_field = orienting_field
             self.n_step = orienting_mask.shape[0]
+        if (residual_mask is None
+                or isinstance(residual_mask,int) or isinstance(residual_mask,float)):
+            self.flag_W = False
+            if not self.flag_O:
+                raise ValueError("You did not set any mask, did you want to use classical Metamorphosis ?")
+            if isinstance(residual_mask,int) or isinstance(residual_mask,float):
+                rho = residual_mask
+            else: rho =1
+            self.residual_mask = torch.ones((self.n_step,1)) * rho
+
+            print("not Weighted")
+        else:
+            print("Weighted")
+            self.residual_mask = residual_mask
+            self.n_step = residual_mask.shape[0]
+            self.flag_W = True
 
         # Verify that masks and have the same size
         if self.flag_O and self.flag_W:
@@ -62,6 +69,9 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
 
         # self.n_step = n_step
 
+    def to_device(self,device):
+        self.residual_mask = self.residual_mask.to(device)
+        super().to_device(device)
 
 
     def __repr__(self):
@@ -252,8 +262,8 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
         )
         # Oriented field norm
         if self.mp.flag_O:
-            self.scaprod_v_w = (field * self.mp.oriented_field[0][None]).sum(dim=-1)
-            self.scaprod_v_w *= self.mp.oriented_mask[0][None]
+            self.scaprod_v_w = (tb.im2grid(field) * self.mp.orienting_field[0][None]).sum(dim=-1)
+            self.scaprod_v_w *= self.mp.orienting_mask[0]
             self.scaprod_v_w = self.scaprod_v_w.sum()/prod(self.source.shape[2:])
 
             self.total_cost += lamb * self.scaprod_v_w
@@ -283,8 +293,8 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
         self.to_device('cpu')
 
     def to_device(self, device):
-        if self.mp.flag_W:
-            self.mp.residual_mask = self.mp.residual_mask.to(device)
+        # if self.mp.flag_W:
+        self.mp.residual_mask = self.mp.residual_mask.to(device)
         if self.mp.flag_O:
             self.mp.orienting_mask = self.mp.orienting_mask.to(device)
             self.mp.orienting_field = self.mp.orienting_field.to(device)

@@ -151,38 +151,31 @@ def oriented_metamorphosis(source,target,residual,mp_orienting,
 
 @time_it
 def constrained_metamorphosis(source,target,residual,
-                           rf_method,mu,rho,mask_w,
-                           mp_orienting,gamma,mask_o,
-                           sigma,cost_cst,sharp,
-                           n_iter,grad_coef,
+                        mask_w,
+                        field_orienting,
+                        mask_o,
+                        kernelOperator,
+                        cost_cst,
+                        n_iter,
+                        grad_coef,
+                        sharp= False,
                               dx_convention = 'pixel'):
-    mask = mp_orienting.image_stock.to(source.device)
-    orienting_field = mp_orienting.field_stock.to(source.device)
-#     sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
-
-    if rf_method == 'identity':
-        rf_method = cn.Residual_norm_identity(mask,mu,rho)
-    elif rf_method == 'borderBoost':
-        rf_method = cn.Residual_norm_borderBoost(mask,mu,rho)
-    else:
-        raise ValueError(f"rf_method must be 'identity' or 'borderBoost'")
     if type(residual) == int: residual = torch.zeros(source.shape,device=source.device)
     residual.requires_grad = True
 
     # start = time.time()
-    mp_constr = cn.ConstrainedMetamorphosis_integrator(orienting_mask=mask,
-                                      orienting_field=orienting_field,
-                                      residual_function=rf_method,
-                                mu=mu,rho=rho,gamma=gamma,
-                                sigma_v=sigma,
+    mp_constr = cn.ConstrainedMetamorphosis_integrator(orienting_mask=mask_o,
+                                      orienting_field=field_orienting,
+                                      residual_mask=mask_w,
+                                kernelOperator=kernelOperator,
                                 sharp=sharp,
                                 dx_convention=dx_convention
                                 # n_step=20 # n_step is defined from mask.shape[0]
                                 )
     mr_constr = cn.ConstrainedMetamorphosis_Shooting(source,target,mp_constr,
                                        cost_cst=cost_cst,
-                                       # optimizer_method='LBFGS_torch')
-                                       optimizer_method='adadelta')
+                                       optimizer_method='LBFGS_torch')
+                                       # optimizer_method='adadelta')
     mr_constr.forward(residual,n_iter=n_iter,grad_coef=grad_coef)
     return mr_constr
 
