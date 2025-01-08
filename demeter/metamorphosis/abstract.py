@@ -33,13 +33,14 @@ class Geodesic_integrator(torch.nn.Module,ABC):
 
     """
     @abstractmethod
-    def __init__(self,kernelOperator,dx_convention = 'pixel'):
+    def __init__(self,kernelOperator,n_step,dx_convention = 'pixel'):
         super().__init__()
         self._force_save = False
         self._detach_image = True
         self.dx_convention = dx_convention
 
         self.kernelOperator = kernelOperator
+        self.n_step = n_step
 
         # Get sigma from the kernelOperator
         # self.sigma_v = self.kernelOperator.sigma_v
@@ -257,6 +258,16 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         )
 
     def _compute_div_momentum_semiLagrangian_(self,deformation,momentum):
+        """
+        Compute the divergence of the momentum in the semiLagrangian scheme
+        meaning
+        $$ \nabla \cdot (a v) = v \cdot \nabla a + a \nabla \cdot v$$
+        with $a : \Omega \to \mathbb{R}$ and $v : \Omega \to \mathbb{R}^d$
+
+        :param deformation: (tensor array) of shape [1,H,W,2] or [1,D,H,W,3]
+        :param momentum: (tensor array) of shape [1,1,H,W] or [1,1,D,H,W]
+        :return: (tensor array) of shape [1,1,H,W] or [1,1,D,H,W]
+        """
         div_v_times_z = (momentum
                          * tb.Field_divergence(dx_convention=self.dx_convention)(self.field)[0,0])
         momentum =  (

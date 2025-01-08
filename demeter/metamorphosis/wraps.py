@@ -9,6 +9,7 @@ from icecream import ic
 from . import classic as cl
 from . import constrained as cn
 from . import simplex as sp
+from . import joined as jn
 
 from  ..utils import torchbox as tb
 from ..utils.decorators import time_it
@@ -179,6 +180,50 @@ def constrained_metamorphosis(source,target,residual,
     mr_constr.forward(residual,n_iter=n_iter,grad_coef=grad_coef)
     return mr_constr
 
+def joined_metamorphosis(source_image,
+                         target_image,
+                         source_mask,
+                         target_mask,
+                         momentum_ini,
+                         rho,
+                         kernelOperator,
+                         data_term=None,
+                         dx_convention='pixel',
+                          n_step=10,
+                          n_iter=1000,
+                          grad_coef=2,
+                          cost_cst = .001 ,
+                          plot=False,
+                          safe_mode=False
+                         ):
+    # source = torch.stack([source_image,source_mask],dim=1)
+    # target = torch.stack([target_image,target_mask],dim=1)
+    if type(momentum_ini) in [int,float]:
+        shape = (1,2) + source_image.shape[2:]
+        momentum_ini = momentum_ini * torch.ones(shape,
+                                                 device=source_image.device,
+                                                 dtype=source_image.dtype)
+    momentum_ini.requires_grad = True
+
+    mp = jn.Weighted_joinedMask_Metamorphosis_integrator(
+                            rho=rho,
+                            kernelOperator=kernelOperator,
+                            n_step=n_step,
+                            dx_convention=dx_convention,
+                            # debug=True
+                            )
+    mr = jn.Weighted_joinedMask_Metamorphosis_Shooting(
+        source_image,target_image,source_mask,target_mask,mp,
+        cost_cst=cost_cst,
+        data_term=data_term,
+        optimizer_method='LBFGS_torch',
+        # optimizer_method='adadelta'
+    )
+    if safe_mode:
+        mr.forward_safe_mode(momentum_ini,n_iter, grad_coef,plot)
+    else:
+        mr.forward(momentum_ini,n_iter=n_iter,grad_coef=grad_coef,plot=plot)
+    return mr
 
 def simplex_metamorphosis(source,
                           target,

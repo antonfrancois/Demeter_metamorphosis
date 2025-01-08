@@ -211,8 +211,8 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
                          **kwargs)
         # self._cost_saving_ = self._simplex_cost_saving_
 
-    def _get_mu_(self):
-        return self.mp._get_mu_()
+    # def _get_mu_(self):
+    #     return self.mp._get_mu_()
 
     def _get_rho_(self):
         return self.mp._get_rho_()

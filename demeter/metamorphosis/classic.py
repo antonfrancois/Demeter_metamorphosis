@@ -9,27 +9,23 @@ from ..utils.constants import *
 from ..utils import torchbox as tb
 
 class Metamorphosis_integrator(Geodesic_integrator):
-    """ Class integrating over a geodesic shooting. The user can choose the method among
+    r""" Class integrating over a geodesic shooting. The user can choose the method among
     'Eulerian', 'advection_semiLagrangian' and 'semiLagrangian.
 
+    :param rho: (float) $\rho \in [0,1]$  Control parameter for geodesic shooting intensities changes
+        $rho = 1$ is LDDMM
+        $mu = 0$ is pure photomeric changes and any value in between is a mix of both.
+    :param sigma_v: sigma of the gaussian RKHS in the V norm
+    :param n_step: number of time step in the segment [0,1]
+         over the geodesic integration
     """
     def __init__(self,method,
                  rho=1.,
                  # sigma_v= (1,1,1),
-                 n_step =10,
                  # multiScale_average=False,
                  **kwargs
                  ):
-        """
 
-        :param mu: Control parameter for geodesic shooting intensities changes
-        For more details see eq. 3 of the article
-        mu = 0 is LDDMM
-        mu > 0 is metamorphosis
-        :param sigma_v: sigma of the gaussian RKHS in the V norm
-        :param n_step: number of time step in the segment [0,1]
-         over the geodesic integration
-        """
         # print('Before super() my weight is ',get_size(self))
         super().__init__(**kwargs)
         # self.mu = mu if callable(mu) else lambda :mu
@@ -37,7 +33,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
         if rho < 0 or rho > 1:
             raise ValueError("This is the new version of Metamorphosis, rho must be in [0,1]")
         self.rho = rho
-        self.n_step = n_step
+        # self.n_step = n_step
 
         # inner methods
 
@@ -212,19 +208,13 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
     def cost(self, momentum_ini : torch.Tensor) -> torch.Tensor:
         r""" cost computation
 
-        $H(z_0) =   \frac 12\| \im{1} - \ti \|_{L_2}^2 + \lambda \Big[ \|v_0\|^2_V + \mu ^2 \|z_0\|^2_{L_2} \Big]$
+        .. math::
+            H(z_0) =   \frac 12\| I_1 - T \|_{L_2}^2 + \lambda \Big[ \|v_0\|^2_V + \mu ^2 \|z_0\|^2_{L_2} \Big]
 
-        :param momentum_ini: Moment initial z_0
-        :return: $H(z_0)$ a single valued tensor
+        :param momentum_ini: Moment initial p_0
+        :return: :math:`H(z_0)` a single valued tensor
         """
-        #_,_,H,W = self.source.shape
-        # rho = self.mp.rho
         lamb = self.cost_cst
-        # if(self.mp.mu == 0 and rho != 0):
-        #     warnings.warn("mu as been set to zero in metamorphosis_path, "
-        #                   "automatic reset of rho to zero."
-        #                  )
-        #     rho = 0
         self.mp.forward(self.source,momentum_ini,save=False,plot=0)
 
         # Compute the data_term. Default is the Ssd

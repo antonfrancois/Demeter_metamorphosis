@@ -26,7 +26,7 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
                  sharp = False,
                  **kwargs
     ):
-        super(ConstrainedMetamorphosis_integrator, self).__init__(**kwargs)
+        super(ConstrainedMetamorphosis_integrator, self).__init__(n_step = None,**kwargs)
         if orienting_field is None:
             print("not oriented")
             self.orienting_mask, self.orienting_field = None, None
@@ -100,7 +100,7 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
         mask = self.residual_mask[self._i,0]
         deform = (self.id_grid -
                         torch.sqrt(mask[...,None]) * self.field / self.n_step)
-        resi_to_add = torch.sqrt(1 - mask) * self.momentum
+        resi_to_add = (1 - mask) * self.momentum
 
         self._update_image_weighted_semiLagrangian_(deform,resi_to_add,sharp=False)
         # self._update_momentum_semiLagrangian_(deform)

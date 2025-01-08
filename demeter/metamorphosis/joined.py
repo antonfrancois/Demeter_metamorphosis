@@ -1,9 +1,12 @@
 import torch
 import warnings
 import matplotlib.pyplot as plt
-from math import prod
+from math import prod,sqrt
 
 from abc import ABC, abstractmethod
+
+from sympy import transpose
+
 from demeter.metamorphosis import Geodesic_integrator,Optimize_geodesicShooting
 
 from demeter.utils.constants import *
@@ -77,48 +80,29 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
     avec image[:,0] l'image et image[:,1] le masque.
 
     """
-    def __init__(self,rho_I,
-                 mu_I=1,
-                 rho_M=0, # It is best to keep rho_M = mu_M = 0
-                 mu_M=0,  # but id mu_M = 0, rho_M must be 0
-                 sigma_v=(1, 1),
-                 mask_function : Mask_intensity = None, # used for adding a precomputed mask to the image intensity addintions.
-                 n_step=None,
-                 border_effect=True,
-                 sharp = False,
+    def __init__(self,rho,
                  **kwargs
                  ):
-        super(Weighted_joinedMask_Metamorphosis_integrator, self).__init__(sigma_v)
-        if mu_I < 0: mu_I = 0
-        if mu_M is None or rho_M is None: mu_M, rho_M = 0, 0
-        if mu_M < 0: mu_M = 0
-        if mu_M == 0 and rho_M>0:
-            warnings.warn("mu_M <= 0 but rho_M > 0, rho_M will be set to 0")
-            rho_M = mu_M = 0
-        self.mu_I, self.mu_M = mu_I, mu_M
-        self.rho_I, self.rho_M = rho_I, rho_M
-        self.n_step = n_step
+        super(Weighted_joinedMask_Metamorphosis_integrator, self).__init__(**kwargs)
+        self.rho = rho
 
-        if mask_function is None:
-            self.mask_function = mask_default()
-        elif isinstance(mask_function,Mask_intensity):
-            self.mask_function = mask_function
-        else:
-            raise ValueError("mask_function must be a Mask_intensity object")
+        # if mask_function is None:
+        #     self.mask_function = mask_default()
+        # elif isinstance(mask_function,Mask_intensity):
+        #     self.mask_function = mask_function
+        # else:
+        #     raise ValueError("mask_function must be a Mask_intensity object")
 
 
-        if rho_M == 0:
-            self.channel_weight = torch.tensor([self.rho_I, 1])
-        else:
-            self.channel_weight = torch.tensor([ self.rho_I, self.rho_M])[None,:]
+        # if rho_M == 0:
+        #     self.channel_weight = torch.tensor([self.rho_I, 1])
+        # else:
+        self.channel_weight = torch.tensor([ 1, self.rho])[None,:]
 
     def __repr__(self):
-        mask_identity = self.mask_function.__repr__()
-        return self.__class__.__name__ + f"(\n\t\tmask intensity additons : {mask_identity}),\n" \
-                                         f"\t\t{self.kernelOperator.__repr__()} \n\t)"
-
-    def _get_mu_(self):
-        return self.mu_I,self.mu_M
+        return (self.__class__.__name__ +
+                f"(\n\trho (mask) = {self.rho},\n" +
+                f"\t\t{self.kernelOperator.__repr__()} \n\t)")
 
 
     def _field_I_cst_mult_(self):
@@ -135,60 +119,47 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
 
     def step(self):
         ## update field
-        # ic("update field")
-        # ic(self.image.shape)
-        grad_image_mask = tb.spacialGradient(self.image,dx_convention='pixel')
-        # ic(grad_image_mask.max())
-#         ic(grad_image_mask.shape)
-#         ic(self.residuals.shape)
-        cst_I, cst_M = self._field_I_cst_mult_(), self._field_M_cst_mult_()
-        # ic(grad_image_mask.shape)
-        # ic(self.residuals.shape)
-        pre_field_I = cst_I * self.residuals[:,0] * grad_image_mask[:,0]
-        # ic(pre_field_I.shape)
-#         ic(pre_field_I.shape)
-#         ic((self.residuals[:,0] * grad_image_mask[:,0]).shape)
-#         ic((self.residuals[:,1] * grad_image_mask[:,1]).shape)
-
-        pre_field = (pre_field_I
-                     + cst_M * self.residuals[:,1] * grad_image_mask[:,1])#.sum(dim=1,keepdim=True)
-        # ic(pre_field.shape)
+        # Note that self.image is a concatenation of the image and the mask
+        grad_image_mask = tb.spatialGradient(self.image,dx_convention=self.dx_convention)
+        pre_field_I = self.momentum[:,0] * grad_image_mask[:,0]
+        pre_field_M = self.momentum[:,1] * grad_image_mask[:,1]
+        pre_field = (torch.sqrt(self.image[:,1]) * pre_field_I
+                     + sqrt(self.rho)      * pre_field_M)
         self.field = tb.im2grid(self.kernelOperator(-(pre_field)))
-#         ic(self.field.shape)
-#         ic(self.field.max())
 
+        ## prepare mask for group mutliplication
+        masks = torch.stack(
+            [
+            self.image[:,1],
+            self.rho * torch.ones_like(self.image[:,1])
+            ], dim=1
+        )
         ## prepare deformation
-#         ic("prepare deformation")
-        deform = self.id_grid - self.field / self.n_step
-        # resi_to_add = self.residuals
+        sq_msk = torch.sqrt(self.image[0,1])
+        deform_I = (self.id_grid
+                    - sq_msk[...,None] * self.field / self.n_step)
+        deform_M = (self.id_grid
+                    - sqrt(self.rho) * self.field / self.n_step)
+        deform = torch.cat([deform_I,deform_M],dim=0)
 
         # # update image and mask
-        #         ic("update image and mask")
         # apply deformation to both the image and mask
-        self.image = tb.imgDeform(self.image,deform,dx_convention='pixel')
-        # ic(self.image.shape)
+        self.image = tb.imgDeform(self.image.transpose(0,1),deform,dx_convention=self.dx_convention).transpose(0,1)
+        self.image *= torch.sqrt(masks)
+
         # add the residual times the mask to the image
-        resi_I = self.residuals[:,0].clone()
-        resi_M = self.residuals[:,1].clone()
+        # resi_I = (1 - self.image[:,1]) * self.momentum[:,0]
+        # resi_M = (1 - self.rho) * self.momentum[:,1]
+        # self.residuals = torch.stack([resi_I,resi_M],dim=1)
+        self.residuals = torch.sqrt(1 - masks) * self.momentum
 
-        if self.mu_I > 0:
-            self.image[:,0] = (self.image[:,0]
-                               + self.mu_I * resi_I * self.mask_function(self.image[:,1].clone(),self._i) / self.n_step)
-        # if self.mu_I > 0:
-        #     self.image[:,0] = self.image[:,0] + self.mu_I * resi_I * torch.rand(self.image[:,0].shape).to(device) / self.n_step
+        self.image = self.image + self.residuals / self.n_step
 
-        # ic(self.image.shape)
-        if self.mu_M > 0:
-            self.image[:,1] = self.image[:,1] + self.mu_M * resi_M/self.n_step
 
         # # update residual
-#         ic(self.residuals.shape)
-        z_I = self.residuals[:,0]
-        self._update_momentum_semiLagrangian_(deform)
-        # add term into the residual of the mask
-        self.residuals[:,1] = (self.residuals[:,1]
-                + self.mask_function.derivative(self.image[:,1].clone(),self._i) * z_I**2)
-        # ic(self.residuals.shape)
+        self.momentum = self._compute_div_momentum_semiLagrangian_(
+                            deform,self.momentum.transpose(0,1)
+        ).transpose(0,1)
 
         return (self.image, self.field, self.residuals)
 
@@ -265,8 +236,8 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
 
     def to_device(self,device):
         # self.channel_weight = self.channel_weight.to(device)
-        # super(Weighted_joinedMask_Metamorphosis_integrator, self).to_device(device)
-        self.mask_function.to_device(device)
+        super(Weighted_joinedMask_Metamorphosis_integrator, self).to_device(device)
+        # self.mask_function.to_device(device)
 
     def plot(self,n_figs=5):
         if n_figs == -1:
@@ -329,59 +300,45 @@ class Weighted_joinedMask_Metamorphosis_Shooting(Optimize_geodesicShooting):
 
         self._plot_forward_ = self._plot_forward_joined_
 
-    # def __repr__(self):
-
-
-    def _get_mu_I(self):
-        return self.mp.mu_I
-
-    def _get_mu_M(self):
-        return self.mp.mu_M
-
-    def _get_mu_(self):
-        # TODO : ce n'est pas kacher
-        return (self._get_mu_I(), self._get_mu_M())
-    def _get_rho_I(self):
-        return self.mp.rho_I
-
-    def _get_rho_M(self):
-        return self.mp.rho_M
-
-    def _get_rho_(self):
-        # TODO : ce n'est pas kacher
-        return (self._get_rho_I(), self._get_rho_M())
+    def get_all_parameters(self):
+        return {
+            'lambda':self.cost_cst,
+            'rho':self.rho,
+            'kernelOperator':self.kernelOperator.__repr__(),
+            'n_step':self.mp.n_step,
+            'sharp':self.mp.flag_sharp,
+        }
 
     def get_ssd_def(self,only_image = False):
-        image_def = tb.imgDeform(self.source,self.mp.get_deformator(),dx_convention='pixel')
+        image_def = tb.imgDeform(self.source,self.mp.get_deformator(),dx_convention=self.dx_convention)
         if only_image:
             return float(cf.SumSquaredDifference(self.target[:,0][None])(image_def[:,0][None]))
         else:
             return float(cf.SumSquaredDifference(self.target)(image_def))
 
-    def cost(self,residuals_ini: torch.Tensor) -> torch.Tensor:
+    def cost(self, momentum_ini: torch.Tensor) -> torch.Tensor:
         lamb = self.cost_cst
-        rho = self._get_rho_()
 
-        self.mp.forward(self.source, residuals_ini, save=False, plot=0)
+        self.mp.forward(self.source, momentum_ini, save=False, plot=0)
 
          # Compute the data_term, a specific data term has been written for this class
         self.data_loss = self.data_term()
 
         # Norm V
-        self.norm_v_2 = self._compute_V_norm_(residuals_ini,self.source)
+        self.norm_v_2 = self._compute_V_norm_(momentum_ini, self.source)
 
         # Norm L2 on z_I
-        zI = residuals_ini[0,0]
+        mI = momentum_ini[0,0]
         mask = self.source[0,1]
-        self.norm_zI_2 = self.mp.rho_I * (zI * mask * zI).sum() /prod(self.source.shape[2:])
+        self.norm_zI_2 =  (mI * mask * mI).sum() /prod(self.source.shape[2:])
         # Norm L2 on z_M
         self.total_cost = self.data_loss + lamb * (self.norm_v_2 + self.norm_zI_2)
 
-        if self.mp.rho_M != 0:
+        # if self.mp.rho_M != 0:
             # Norm L2 on z_M
-            zM = residuals_ini[0,1]
-            self.norm_zM_2 = self.mp.rho_M * (zM  * zM).sum()/prod(self.source.shape[2:])
-            self.total_cost += lamb * self.norm_zM_2
+        mM = momentum_ini[0,1]
+        self.norm_zM_2 = self.mp.rho * (mM  * mM).sum()/prod(self.source.shape[2:])
+        self.total_cost += lamb * self.norm_zM_2
 
         return self.total_cost
 
@@ -408,8 +365,7 @@ class Weighted_joinedMask_Metamorphosis_Shooting(Optimize_geodesicShooting):
         loss_stock[i,0] = self.data_loss.cpu().detach()
         loss_stock[i,1] = self.norm_v_2.cpu().detach()
         loss_stock[i,2] = self.norm_zI_2.cpu().detach()
-        if self.mp.rho_M != 0:
-            loss_stock[i,3] = self.norm_zM_2.cpu().detach()
+        loss_stock[i,3] = self.norm_zM_2.cpu().detach()
 
         return loss_stock
 
