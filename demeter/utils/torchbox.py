@@ -500,6 +500,14 @@ def thresholding(image,bounds = (0,1)):
                          )
 
 def spatialGradient(image, dx_convention ='pixel'):
+    """ Compute the spatial gradient on 2d or 3d images by applying a sobel kernel
+
+    :param image: Tensor [B,C,H,W] or [B,C,D,H,W]
+    :param dx_convention: str in {'pixel','square','2square'} or tensor of shape [B,3]
+    containing the pixel size in each dimension direction.
+    :return: Tensor [B,C,2,H,W] or [B,C,3,D,H,W]
+
+    """
     if isinstance(dx_convention,str):
         dx_convention_list = ["pixel", "square", "2square"]
 
