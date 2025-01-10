@@ -1,5 +1,6 @@
 
 import warnings
+from collections.abc import Iterable
 
 import matplotlib.pyplot as plt
 import nrrd
@@ -362,13 +363,29 @@ def nib_normalize(img,method='mean'):
         raise ValueError(f"method must be 'mean' or 'min_max' got {method}")
     return img
 
-def resize_image(image,scale_factor):
+def resize_image(image : torch.Tensor,
+                 scale_factor: float | int | Iterable
+                 ):
+    """
+    Resize an image by a scale factor $s = (s1,s2,s3)$
+
+
+    :param image: list of tensors [B,C,H,W] or [B,C,D,H,W] torch tensor
+    :param scale_factor: float or list or tuple of image dimention size
+
+    : return: tensor of size [B,C,s1*H,s2*W] or [B,C,s1*D, s2*H, s3*W] or list
+    containing tensors.
+    """
     Ishape = image[0].shape[2:]
-    Ishape_D = tuple([int(s * scale_factor) for s in Ishape])
+    if isinstance(scale_factor,float | int):
+        scale_factor = (scale_factor,)*len(Ishape)
+    Ishape_D = tuple([int(s * f) for s,f in zip(Ishape,scale_factor)])
     id_grid = make_regular_grid(Ishape_D,dx_convention='2square').to(image[0].device)
     i_s = []
     for i in image:
         i_s.append(torch.nn.functional.grid_sample(i.to(image[0].device),id_grid,**DLT_KW_GRIDSAMPLE))
+    if len(i_s) == 1:
+        return i_s[0]
     return i_s
 
 def image_slice(I,coord,dim):
