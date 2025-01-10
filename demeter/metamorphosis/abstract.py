@@ -145,6 +145,11 @@ class Geodesic_integrator(torch.nn.Module,ABC):
 
             _,field_to_stock,residuals_dt = self.step()
 
+            # ic(self._i,self.field.min().item(),self.field.max().item(),
+            #    self.momentum.min().item(),self.momentum.max().item(),
+            #     self.image.min().item(),self.image.max().item())
+
+
             if self.image.isnan().any() or self.momentum.isnan().any():
                 raise OverflowError("Some nan where produced ! the integration diverged",
                                     "changing the parameters is needed. "
@@ -258,7 +263,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         )
 
     def _compute_div_momentum_semiLagrangian_(self,deformation,momentum):
-        """
+        r"""
         Compute the divergence of the momentum in the semiLagrangian scheme
         meaning
         $$ \nabla \cdot (a v) = v \cdot \nabla a + a \nabla \cdot v$$
@@ -825,6 +830,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
             # if(self._it_count >1 and L < self._loss_stock[:self._it_count].min()):
             #     cms_tosave.data = self.cms_ini.detach().data
             L.backward()
+            ic('LBFGS',L,self.parameter.grad)
             return L
         self.closure = closure
 
@@ -844,6 +850,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
             # if(self._it_count >1 and L < self._loss_stock[:self._it_count].min()):
             #     cms_tosave.data = self.cms_ini.detach().data
             L.backward()
+            ic("adadelta",L,self.parameter.grad)
             return L
         self.closure = closure
 
@@ -921,6 +928,7 @@ class Optimize_geodesicShooting(torch.nn.Module,ABC):
 
         for i in range(1,n_iter):
             # print("\n",i,"==========================")
+
             self._step_optimizer_()
             loss_stock = self._cost_saving_(i,loss_stock)
 
