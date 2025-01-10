@@ -121,13 +121,20 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
         ## update field
         # Note that self.image is a concatenation of the image and the mask
         grad_image_mask = tb.spatialGradient(self.image,dx_convention=self.dx_convention)
+
         pre_field_I = self.momentum[:,0] * grad_image_mask[:,0]
         pre_field_M = self.momentum[:,1] * grad_image_mask[:,1]
+        ic(self._i,grad_image_mask.min().item(),grad_image_mask.max().item(),
+           self.momentum.min().item(),self.momentum.max().item(),
+           pre_field_I.min().item(),pre_field_I.max().item(),pre_field_M.min().item(),pre_field_M.max().item())
+
         pre_field = (torch.sqrt(self.image[:,1]) * pre_field_I
                      + sqrt(self.rho)      * pre_field_M)
-        self.field = tb.im2grid(self.kernelOperator(-(pre_field)))
 
-        ## prepare mask for group mutliplication
+        self.field = tb.im2grid(self.kernelOperator(-(pre_field)))
+        ic(self._i,self.field.min().item(),self.field.max().item())
+
+        ## prepare mask for group multiplication
         masks = torch.stack(
             [
             self.image[:,1],
@@ -160,6 +167,7 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
         self.momentum = self._compute_div_momentum_semiLagrangian_(
                             deform,self.momentum.transpose(0,1)
         ).transpose(0,1)
+        ic(self._i,self.momentum.min().item(),self.momentum.max().item())
 
         return (self.image, self.field, self.residuals)
 
@@ -319,6 +327,7 @@ class Weighted_joinedMask_Metamorphosis_Shooting(Optimize_geodesicShooting):
     def cost(self, momentum_ini: torch.Tensor) -> torch.Tensor:
         lamb = self.cost_cst
 
+        ic(momentum_ini.min().item(),momentum_ini.max().item())
         self.mp.forward(self.source, momentum_ini, save=False, plot=0)
 
          # Compute the data_term, a specific data term has been written for this class
@@ -328,16 +337,16 @@ class Weighted_joinedMask_Metamorphosis_Shooting(Optimize_geodesicShooting):
         self.norm_v_2 = self._compute_V_norm_(momentum_ini, self.source)
 
         # Norm L2 on z_I
-        mI = momentum_ini[0,0]
         mask = self.source[0,1]
-        self.norm_zI_2 =  (mI * mask * mI).sum() /prod(self.source.shape[2:])
+        mI =  momentum_ini[0,0]
+        self.norm_zI_2 =  ((1 - mask) * mI * mI).sum() /prod(self.source.shape[2:])
         # Norm L2 on z_M
         self.total_cost = self.data_loss + lamb * (self.norm_v_2 + self.norm_zI_2)
 
         # if self.mp.rho_M != 0:
             # Norm L2 on z_M
         mM = momentum_ini[0,1]
-        self.norm_zM_2 = self.mp.rho * (mM  * mM).sum()/prod(self.source.shape[2:])
+        self.norm_zM_2 = (1 - self.mp.rho) * (mM  * mM).sum()/prod(self.source.shape[2:])
         self.total_cost += lamb * self.norm_zM_2
 
         return self.total_cost

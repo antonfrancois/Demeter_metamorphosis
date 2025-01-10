@@ -216,8 +216,8 @@ def joined_metamorphosis(source_image,
         source_image,target_image,source_mask,target_mask,mp,
         cost_cst=cost_cst,
         data_term=data_term,
-        optimizer_method='LBFGS_torch',
-        # optimizer_method='adadelta'
+        # optimizer_method='LBFGS_torch',
+        optimizer_method='adadelta'
     )
     if safe_mode:
         mr.forward_safe_mode(momentum_ini,n_iter, grad_coef,plot)
