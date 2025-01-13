@@ -799,24 +799,33 @@ def gridDef_plot(defomation,
                     color=color,dx_convention=dx_convention)
 
 
-def gridDef_plot_2d(deformation,
+def gridDef_plot_2d(deformation : torch.Tensor,
                  ax=None,
-                 step=2,
-                 add_grid=False,
-                 check_diffeo=False,
-                 dx_convention='pixel',
-                 title="",
-                 color=None,
-                linewidth=None,
-                origin='lower',
+                 step : int | tuple[int] =2,
+                 add_grid : bool = False,
+                 check_diffeo : bool = False,
+                 dx_convention : str  ='pixel',
+                 title : str = "",
+                #  color : str | None = None,
+                # linewidth : int | float = None,
+                # origin : str = 'lower',
+                **kwargs
                 ):
-    """
+    """ Plot the deformation field as a grid.
 
-    :param field: field to represent
-    :param grid:
-    :param saxes[1]:
-    :param title:
-    :return:
+    :param deformation: torch.Tensor of shape (1,H,W,2)
+    :param ax: matplotlib axis object, if None, the plot makes one new (default None)
+    :param step: int | Tuple[int], step of the grid (default 2)
+    :param add_grid: (bool), to use if  ̀defomation` is a field (default False).
+    If True, add a regular grid to the field.
+    :param check_diffeo: (bool), check if the deformation is a diffeomorphism (default False)
+    :param dx_convention: (str) convention of the deformation field (default 'pixel')
+    :param title: (str) title of the plot
+    :param color: (str) color of the grid (default None = black)
+    :param linewidth: (int) width of the grid lines (default None = 2)
+    :param origin: (str) origin of the plot (default 'lower')
+
+    :return: matplotlib axis object
     """
     # if not torch.is_tensor(deformation):
     #     raise TypeError("showDef has to be tensor object")
@@ -827,8 +836,10 @@ def gridDef_plot_2d(deformation,
     if ax is None:
         fig, ax = plt.subplots()
 
-    if color is None: color = 'black'
-    if linewidth is None: linewidth = 2
+    # Définir les valeurs par défaut pour les paramètres kwargs
+    kwargs.setdefault('color', 'black')
+    kwargs.setdefault('linewidth', 2)
+    origin = kwargs.pop('origin', 'lower')
 
     if dx_convention == '2square':
         deform = square2_to_pixel_convention(
@@ -853,18 +864,23 @@ def gridDef_plot_2d(deformation,
         ax.imshow(cD,interpolation='none',origin='lower')
         origin = 'lower'
 
+    if isinstance(step, int | float):
+        step_x,step_y = (step,step)
+    else:
+        step_x,step_y = step
+
     sign = 1 if origin == 'lower' else -1
-    kw = dict(color=color,linewidth=linewidth)
-    ax.plot(deform[0,:,::step, 0].numpy(),
-                 sign * deform[0,:,::step, 1].numpy(), **kw)
-    ax.plot(deform[0,::step,:, 0].numpy().T,
-                 sign * deform[0,::step,:, 1].numpy().T, **kw)
+    # kw = dict(color=color,linewidth=linewidth)
+    ax.plot(deform[0,:,::step_y, 0].numpy(),
+                 sign * deform[0,:,::step_y, 1].numpy(), **kwargs)
+    ax.plot(deform[0,::step_x,:, 0].numpy().T,
+                 sign * deform[0,::step_x,:, 1].numpy().T, **kwargs)
 
     # add the last lines on the right and bottom edges
     ax.plot(deform[0,:,-1, 0].numpy(),
-                 sign * deform[0,:,-1, 1].numpy(), **kw)
+                 sign * deform[0,:,-1, 1].numpy(), **kwargs)
     ax.plot(deform[0,-1,:, 0].numpy().T,
-                 sign * deform[0,-1,:, 1].numpy().T, **kw)
+                 sign * deform[0,-1,:, 1].numpy().T, **kwargs)
     ax.set_aspect('equal')
     ax.set_title(title)
 
