@@ -43,8 +43,8 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
         ## 2. Compute the residuals
         ## 2.1 Compute the scalar product of the momentum and the image,
         # It will be used later as well
-        pi_q = (self.momentum / volDelta * self.image).sum(dim=1,keepdim=True) / (self.image ** 2).sum(dim=1,keepdim=True)
-        self.residuals = sqrt(1 - self.rho) * (self.momentum/volDelta - pi_q * self.image)
+        pi_q = (self.momentum  * self.image).sum(dim=1,keepdim=True) / (self.image ** 2).sum(dim=1,keepdim=True)
+        self.residuals = sqrt(1 - self.rho) * (self.momentum - pi_q * self.image) / volDelta
         # self.residuals = (self.momentum - pi_q * self.image) / self.rho
         # ic(self.residuals.min(),self.residuals.max(),self.residuals[0,:,15,80])
 
@@ -65,7 +65,7 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
         div_v_times_p = self.momentum * tb.Field_divergence(dx_convention=self.dx_convention)(self.field)[0,0]
         self.momentum = (tb.imgDeform(self.momentum,deform,dx_convention=self.dx_convention)
                          + (
-                               sqrt(1 - self.rho) * self.residuals * pi_q * volDelta
+                               sqrt(1 - self.rho) * self.residuals * pi_q  #* volDelta
                                 - sqrt(self.rho) * div_v_times_p
                          ) / self.n_step)
         # print("moins")
