@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 from .fft_conv import fft_conv
 from .decorators import deprecated
+from .torchbox import make_regular_grid, gridDef_plot_2d
 
 def fft_filter(input: torch.Tensor, kernel: torch.Tensor,
              border_type: str = 'constant',
@@ -264,6 +265,72 @@ def plot_gaussian_kernel_3d(kernel: torch.Tensor, sigma, ):
     plot_gaussian_kernel_2d(kernel[...,kernel.shape[3]//2], sigma[1:], axes=ax1)
     plot_gaussian_kernel_2d(kernel[:,:,kernel.shape[2]//2], sigma[::2], axes=ax2)
     plot_gaussian_kernel_2d(kernel[:,kernel.shape[1]//2], sigma[:2], axes=ax3)
+
+def plot_kernel_on_image(kernelOperator,
+                         subdiv = None,
+                         image = None,
+                         image_shape = None,
+                         ax = None
+                         ):
+
+
+    kernel = kernelOperator.kernel
+    print("kernel shape:",kernel.shape)
+    if image is None:
+        flag_image = False
+    else:
+        flag_image = True
+        if image_shape is None:
+            image_shape = image.shape
+
+    id_grid = make_regular_grid(image_shape[2:], dx_convention='pixel')
+    if ax is None:
+        fig, ax = plt.subplots()
+    if flag_image:
+        ax.imshow(image)
+
+    # Calculate the step size for the grid
+    if subdiv is not None:
+        if isinstance(subdiv, int):
+            step = (image_shape[-2] // subdiv, image_shape[-1] // subdiv)
+        else:
+            step = tuple((s[0] // s[1] for s in zip(image_shape[-2:], subdiv)))
+
+        gridDef_plot_2d(id_grid, step=step, ax=ax,alpha=.5)
+
+    # Calculate the extent to center the kernel on the target image
+    kernel_height, kernel_width = kernel[0].shape
+    image_height, image_width = image_shape[2], image_shape[3]
+    print('kernel shape:',kernel_height,kernel_width)
+    extent = [
+        (image_width - kernel_width)//2,
+        (image_width - kernel_width)//2 + kernel_width,
+        (image_height - kernel_height)//2,
+        (image_height - kernel_height)//2 + kernel_height,
+    ]
+    # Display the kernel centered on the target image
+    x = torch.linspace(
+        (image_width - kernel_width)//2,
+        (image_width - kernel_width)//2 + kernel_width,
+        kernel_width
+    )
+    y = torch.linspace(
+        (image_height - kernel_height)//2,
+        (image_height - kernel_height)//2 + kernel_height,
+        kernel_height
+    )
+    X, Y = torch.meshgrid(x, y)
+    print('x, y', X.shape,Y.shape)
+    contour = ax.contour(X.T, Y.T, kernel[0], alpha=1,
+                         extent=extent
+                         )
+
+    # Add labels to the contour lines
+    ax.clabel(contour, inline=True, fontsize=8)
+    sigma = tuple([s for s in kernelOperator.sigma])
+    ax.set_title(f"sigma = {sigma}, subdiv = {subdiv}")
+    plt.show()
+    return ax
 
 def dx_convention_handler(dx_convention, dim):
     if isinstance(dx_convention, str):
@@ -637,21 +704,21 @@ def _get_sigma_monodim(X,nx,c=.1):
     return sqrt(- (X/nx)**2 / 2 * log(c))
 
 def get_sigma_from_img_ratio(img_shape,subdiv,c=.1):
-    """The function get_sigma_from_img_ratio calculates the ideal
-    (\sigma) values for a Gaussian kernel based on the desired grid
-     granularity. Given an image (I) of size (H, W), the goal is to
-    divide the image into a grid of (n_h) (in the H direction) and
-     (n_w) (in the W direction). Suppose (x) is at the center of a
-    square in this (n_h \times n_w) grid. We want to choose
-    (\sigma = (\sigma_h, \sigma_w))
-     such that the Gaussian centered at (x) is negligible outside
+    r"""The function get_sigma_from_img_ratio calculates the ideal
+    $sigma$ values for a Gaussian kernel based on the desired grid
+     granularity. Given an image $I$ of size $(H, W)$, the goal is to
+    divide the image into a grid of $n_h$ (in the H direction) and
+     $n_w$ (in the W direction). Suppose $x$ is at the center of a
+    square in this $n_h \times n_w$ grid. We want to choose
+    $\sigma = (\sigma_h, \sigma_w)$
+     such that the Gaussian centered at $x$ is negligible outside
       the grid square.
 
-    In other words, we want to find (\sigma) such that:
+    In other words, we want to find $\sigma$ such that:
 
-    [ e^{\frac{ -\left(\frac{H}{n_h}\right)^2}{2 \sigma^2}} < c; \qquad c \in \mathbb{R} ]
+    $$ e^{\frac{ -\left(\frac{H}{n_h}\right)^2}{2 \sigma^2}} < c; \qquad c \in \mathbb{R} $$
 
-     where (c) is the negligibility constant.
+     where $c$ is the negligibility constant.
 
 
     :param img_shape: torch.Tensor or Tuple[int] : shape of the image
