@@ -83,9 +83,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
     def step(self):
         pass
 
-    @abstractmethod
-    def _get_mu_(self):
-        pass
+
 
     def forward(self, image, momentum_ini,
                 field_ini=None,
@@ -94,7 +92,9 @@ class Geodesic_integrator(torch.nn.Module,ABC):
                 t_max = 1,
                 verbose=False,
                 sharp=None,
-                debug= False):
+                debug= False,
+                hamiltonian_integration = False,
+                ):
         r""" This method is doing the temporal loop using the good method `_step_`
 
         :param image: (tensor array) of shape [1,1,H,W]. Source image ($I_0$)
@@ -115,6 +115,7 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         self.image = image.clone().to(device)
         self.momentum = momentum_ini
         self.debug = debug
+        self.flag_hamilt_integration = hamiltonian_integration
         try:
             self.save = True if self._force_save else save
         except AttributeError:

@@ -29,23 +29,34 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
                 f"\n\tn_step={self.n_step}\n)")
 
     def step(self):
+
         ## 1. Compute the vector field
         ## 1.1 Compute the gradient of the image by finite differences
-        grad_simplex = tb.spatialGradient(self.image,dx_convention=self.dx_convention)
-        prefield = reduce(add,[self.momentum[:,n] * grad_simplex[:,n] for n in range(self.momentum.shape[1])])
-        self.field = - sqrt(self.rho) * tb.im2grid(self.kernelOperator(prefield))
-        # self.field = -  tb.im2grid(self.kernelOperator(prefield))
+
+        grad_simplex = tb.spatialGradient(self.image,dx_convention='pixel')
+
+        field_momentum = (grad_simplex * self.momentum.unsqueeze(2)).sum(dim=1) #/ C
+        field = self.kernelOperator(field_momentum)
+        self.field = - sqrt(self.rho) * tb.im2grid(field)
 
         try:
             volDelta = prod(self.kernelOperator.dx)
         except AttributeError:
             volDelta = 1
+
         ## 2. Compute the residuals
         ## 2.1 Compute the scalar product of the momentum and the image,
         # It will be used later as well
-        pi_q = (self.momentum  * self.image).sum(dim=1,keepdim=True) / (self.image ** 2).sum(dim=1,keepdim=True)
-        self.residuals = sqrt(1 - self.rho) * (self.momentum - pi_q * self.image) / volDelta
+        pi_q = (self.momentum * self.image).sum(dim=1,keepdim=True) / (self.image ** 2).sum(dim=1,keepdim=True)
+        self.residuals = sqrt(1 - self.rho) * (self.momentum - pi_q * self.image)/volDelta
+
+        if (self.flag_hamilt_integration):
+            norm_v_2 = .5 * self.rho  * (field_momentum * field).sum()
+            norm_l2_on_z = .5 * (self.residuals ** 2).sum() * volDelta
+            self.ham_value = norm_l2_on_z + norm_v_2
+
         # self.residuals = (self.momentum - pi_q * self.image) / self.rho
+
         # ic(self.residuals.min(),self.residuals.max(),self.residuals[0,:,15,80])
 
         ## 3. Compute the image update
@@ -68,18 +79,31 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
                                sqrt(1 - self.rho) * self.residuals * pi_q  #* volDelta
                                 - sqrt(self.rho) * div_v_times_p
                          ) / self.n_step)
-        # print("moins")
-        # self.momentum = (tb.imgDeform(self.momentum,deform,dx_convention='pixel')
-        #                  - (
-        #                        self.residuals * pi_q
-        #                     +  div_v_times_q
-        #                  ) / self.n_step)
 
-        #
-        return (self.image,
-                self.field * sqrt(self.rho),
-                self.momentum,
-                self.residuals * sqrt(1 - self.rho))
+
+
+        #return self.image, self.field,self.momentum, self.residuals
+        return self.image, sqrt(self.rho)*self.field,self.momentum, sqrt(1-self.rho)*self.residuals
+
+    # def hamiltonian(self):
+    #     # compute the hamiltonian from the current values of image, and momentum
+    #     rho = self.rho
+    #
+    #     # Computation of |v|^2/2
+    #     grad_image = tb.spatialGradient(self.image, dx_convention=self.dx_convention)
+    #     field_momentum = (grad_image * self.momentum.unsqueeze(2)).sum(dim=1) #/ C
+    #     field = self.kernelOperator(field_momentum)
+    #     self.norm_v_2 = .5 * rho  * (field_momentum * field).sum()
+    #
+    #     # Computation of |z|2/2
+    #     volDelta = prod(self.kernelOperator.dx)
+    #     pi_q = (self.momentum * self.image).sum(dim=1,keepdim=True) / (self.image ** 2).sum(dim=1,keepdim=True)
+    #     z = sqrt(1 - rho) * (self.momentum - pi_q * self.image)/volDelta
+    #     #self.norm_l2_on_z = .5 * (z ** 2).sum() * prod(self.dx) # /prod(self.source.shape[2:])
+    #     self.norm_l2_on_z = .5 * (z ** 2).sum() * volDelta
+    #     # ic(float(self.norm_v_2),float(self.norm_l2_on_z))
+    #     return (self.norm_v_2 + self.norm_l2_on_z)
+
 
     # TODO : create a default parameter saving update to match
     # with classical metamorphosis methods,
@@ -91,7 +115,9 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
                 t_max = 1,
                 verbose=False,
                 sharp=None,
-                debug= False):
+                debug= False,
+                hamiltonian_integration = False,
+                ):
         r""" This method is doing the temporal loop using the good method `_step_`
 
         :param image: (tensor array) of shape [1,1,H,W]. Source image ($I_0$)
@@ -112,6 +138,8 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
         self.momentum = momentum_ini
         self.residuals = torch.zeros_like(momentum_ini,device=device)
         self.debug = debug
+        self.flag_hamilt_integration = hamiltonian_integration
+
         try:
             self.save = True if self._force_save else save
         except AttributeError:
@@ -121,11 +149,12 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
                                             device=device,
                                             dx_convention=self.dx_convention,
                                             ).to(torch.double)
+        assert self.id_grid != None
 
         if field_ini is None:
             self.field = self.id_grid.clone()
         else:
-            self.field = field_ini
+            self.field = field_ini #/self.n_step
 
         if plot > 0:
             self.save = True
@@ -136,12 +165,19 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
             self.residuals_stock = torch.zeros((t_max*self.n_step,) + momentum_ini.shape[1:])
             self.momentum_stock = torch.zeros((t_max*self.n_step,) + momentum_ini.shape[1:])
 
+        if self.flag_hamilt_integration:
+            self.ham_integration = 0.
+
         for i,t in enumerate(torch.linspace(0,t_max,t_max*self.n_step)):
             self._i = i
 
             _,field_to_stock,momentum_dt,residuals_dt = self.step()
+
+            if self.flag_hamilt_integration:
+                self.ham_integration += self.ham_value / self.n_step
+
             if self.image.isnan().any() or self.residuals.isnan().any():
-                raise OverflowError("Some nan where produced ! the integration diverged",
+                raise OverflowError("Some nan where produced !e the integration diverged",
                                     "changing the parameters is needed (increasing n_step can help) ")
 
             if self.save:
@@ -152,8 +188,13 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
             # elif self.save is False and i == 0:
             #     self.momentum_ini = residuals_dt.detach().to('cpu')
 
+
             if verbose:
                 update_progress(i/(t_max*self.n_step))
+                if self.flag_hamilt_integration:
+                    print('ham :', self.ham_value.detach().cpu().item(),
+                      self.norm_v_2.detach().cpu().item(),
+                      self.norm_l2_on_z.detach().cpu().item())
 
         # print(f"image max : {self.image.max()}")
         if plot>0:
@@ -162,11 +203,11 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
 
 class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
 
-    def __init__(self, source, target, integrator, cost_cst,optimizer_method='adadelta',**kwargs):
+    def __init__(self, source, target, integrator, cost_cst,hamiltonian_integration =False,**kwargs):
         source = torch.sqrt(source)
         target = torch.sqrt(target)
+        self.flag_hamiltonian_integration = hamiltonian_integration
         super().__init__(source, target, integrator, cost_cst,
-                         optimizer_method=optimizer_method,
                          **kwargs)
         # self._cost_saving_ = self._simplex_cost_saving_
 
@@ -187,23 +228,44 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
     def cost(self,momentum_ini:torch.Tensor):
 
         rho = self._get_rho_()
-        self.mp.forward(self.source, momentum_ini, save=False, plot=0)
+        # Geodesic shooting.
+        self.mp.forward(self.source, momentum_ini,
+                        save=False,
+                        plot=0,
+                        hamiltonian_integration=self.flag_hamiltonian_integration)
+
+        #if self.mp.ham:
+        #    print('ham_int :', self.mp.ham_int)
+
         # Compute the data_term. Default is the Ssd
         self.data_loss = self.data_term()
 
         # Norm V
+        # self.norm_v_2 = self._compute_V_norm_(momentum_ini,self.source)
+        #
+        # # norm_2 on z
+        # # # Norm on the residuals only
+        # # self.norm_l2_on_z = (momentum_ini**2).sum()/prod(self.source.shape[2:])
+        # self.norm_l2_on_z = (self.mp.residual_ini**2).sum()/prod(self.source.shape[2:])
+        #
+        # self.total_cost = self.data_loss + \
+        #                   self.cost_cst * .5 * ( rho * self.norm_v_2 + (1 - rho) * self.norm_l2_on_z)
+
         # TODO: explain why there is a rho here
         self.norm_v_2 = .5 * rho  * self._compute_V_norm_(momentum_ini,self.source)
-
-        # Norm L2 on z
         volDelta = prod(self.dx)
+
         pi_q = ((momentum_ini/volDelta) * self.source).sum(dim=1,keepdim=True) / (self.source ** 2).sum(dim=1,keepdim=True)
         z = sqrt(1 - rho) * (momentum_ini/volDelta - pi_q * self.source)
         #self.norm_l2_on_z = .5 * (z ** 2).sum() * prod(self.dx) # /prod(self.source.shape[2:])
         self.norm_l2_on_z = .5 * (z ** 2).sum() * volDelta
         # ic(float(self.norm_v_2),float(self.norm_l2_on_z))
-        self.total_cost = self.data_loss + \
-            self.cost_cst * .5 * (self.norm_v_2 + self.norm_l2_on_z)
+        if self.flag_hamiltonian_integration:
+            self.total_cost = self.data_loss + \
+                            (self.cost_cst) * self.mp.ham_integration
+        else:
+            self.total_cost = self.data_loss + \
+                            (self.cost_cst) * (self.norm_v_2 + self.norm_l2_on_z)
 
 
         # print('ssd :',self.ssd,' norm_v :',self.norm_v_2)

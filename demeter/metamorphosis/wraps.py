@@ -197,7 +197,9 @@ def simplex_metamorphosis(source,
                           grad_coef=2,
                           cost_cst = .001 ,
                           plot=False,
-                          safe_mode=False):
+                          safe_mode=False,
+                          ham = False
+                          ):
 
     if type(momentum_ini) in [int,float]:
         momentum_ini = momentum_ini * torch.ones(source.shape,device=source.device,dtype=source.dtype)
@@ -214,6 +216,7 @@ def simplex_metamorphosis(source,
                                 data_term=data_term,
                                 optimizer_method='LBFGS_torch',
                                 # optimizer_method='adadelta'
+                                hamiltonian_integration=ham
                                 )
     if safe_mode:
         mr.forward_safe_mode(momentum_ini,n_iter, grad_coef,plot)
