@@ -122,52 +122,75 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
         # Note that self.image is a concatenation of the image and the mask
         grad_image_mask = tb.spatialGradient(self.image,dx_convention=self.dx_convention)
 
-        pre_field_I = self.momentum[:,0] * grad_image_mask[:,0]
-        pre_field_M = self.momentum[:,1] * grad_image_mask[:,1]
-        ic(self._i,grad_image_mask.min().item(),grad_image_mask.max().item(),
-           self.momentum.min().item(),self.momentum.max().item(),
-           pre_field_I.min().item(),pre_field_I.max().item(),pre_field_M.min().item(),pre_field_M.max().item())
-
-        pre_field = (torch.sqrt(self.image[:,1]) * pre_field_I
-                     + sqrt(self.rho)      * pre_field_M)
-
-        self.field = tb.im2grid(self.kernelOperator(-(pre_field)))
-        ic(self._i,self.field.min().item(),self.field.max().item())
-
-        ## prepare mask for group multiplication
         masks = torch.stack(
             [
-            self.image[:,1],
+            self.image[:,1].clone(),
             self.rho * torch.ones_like(self.image[:,1])
             ], dim=1
-        )
+        ).detach()
+        # masks[masks == 0] = 1e-8
+        # masks[masks == 1] = 1 - 1e-8
+        # assert (masks == 0).any(), "there are some zeros in masks"
+        field_momentum = ((torch.sqrt(masks) * self.momentum)[:,:,None] * grad_image_mask).sum(dim=1)
+        ic(grad_image_mask.min().item(),grad_image_mask.max().item(),
+           self.momentum.min().item(),self.momentum.max().item(),
+           field_momentum.min().item(),field_momentum.max().item()
+           )
+        assert not torch.isnan(field_momentum).any(), "NaN detected in field_momentum"
+        assert not torch.isinf(field_momentum).any(), "Inf detected in field_momentum"
+        # pre_field_I = self.momentum[:,0] * grad_image_mask[:,0]
+        # pre_field_M = self.momentum[:,1] * grad_image_mask[:,1]
+        # pre_field = (torch.sqrt(self.image[:,1]) * pre_field_I
+        #              + sqrt(self.rho)      * pre_field_M)
+        # ic(self._i,grad_image_mask.min().item(),grad_image_mask.max().item(),
+        #    self.momentum.min().item(),self.momentum.max().item(),
+        #    field_momentum.min().item(),field_momentum.max().item()
+        #    )
+
+
+        self.field = tb.im2grid(self.kernelOperator(-(field_momentum)))
+
+        ## prepare mask for group multiplication
         ## prepare deformation
-        sq_msk = torch.sqrt(self.image[0,1])
+        # sq_msk = torch.sqrt(self.image[0,1])
         deform_I = (self.id_grid
-                    - sq_msk[...,None] * self.field / self.n_step)
+                    - torch.sqrt(masks[0,0])[...,None] * self.field / self.n_step)
         deform_M = (self.id_grid
                     - sqrt(self.rho) * self.field / self.n_step)
         deform = torch.cat([deform_I,deform_M],dim=0)
+        assert not torch.isnan(deform).any(), "NaN detected in deform"
+        assert not torch.isinf(deform).any(), "Inf detected in deform"
+        ic(self._i,self.field.min().item(),self.field.max().item(),
+           self.id_grid.min().item(),self.id_grid.max().item(),
+           torch.sqrt(masks).mean().item(),sqrt(self.rho)
+           )
 
         # # update image and mask
         # apply deformation to both the image and mask
-        self.image = tb.imgDeform(self.image.transpose(0,1),deform,dx_convention=self.dx_convention).transpose(0,1)
-        self.image *= torch.sqrt(masks)
+        image_def = tb.imgDeform(self.image.transpose(0,1),deform,dx_convention=self.dx_convention).transpose(0,1)
+        # image_def *= torch.sqrt(masks)
 
         # add the residual times the mask to the image
         # resi_I = (1 - self.image[:,1]) * self.momentum[:,0]
         # resi_M = (1 - self.rho) * self.momentum[:,1]
         # self.residuals = torch.stack([resi_I,resi_M],dim=1)
-        self.residuals = torch.sqrt(1 - masks) * self.momentum
+        self.residuals = (1 - masks) * self.momentum
 
-        self.image = self.image + self.residuals / self.n_step
+        # if self._i > 8:
+        #     plt.figure()
+        #     plt.imshow(self.residuals[0,0].detach().cpu(),cmap='gray')
+        #     plt.show()
+        self.image = image_def + self.residuals / self.n_step
+        assert not torch.isnan(self.momentum).any(), "NaN detected in self.momentum"
+        assert not torch.isinf(self.momentum).any(), "Inf detected in self.momentum"
 
-
+        ic(self.momentum.transpose(0,1).shape, deform.shape)
         # # update residual
         self.momentum = self._compute_div_momentum_semiLagrangian_(
-                            deform,self.momentum.transpose(0,1)
+                            deform,self.momentum.transpose(0,1),torch.sqrt(masks).transpose(0,1)
         ).transpose(0,1)
-        ic(self._i,self.momentum.min().item(),self.momentum.max().item())
+        assert not torch.isnan(self.momentum).any(), "NaN detected in self.momentum"
+        assert not torch.isinf(self.momentum).any(), "Inf detected in self.momentum"
 
         return (self.image, self.field, self.residuals)
 
@@ -352,10 +375,13 @@ class Weighted_joinedMask_Metamorphosis_Shooting(Optimize_geodesicShooting):
         return self.total_cost
 
     def _plot_forward_joined_(self):
-        fig,ax = plt.subplots(1,2,figsize=(10,5))
+        fig,ax = plt.subplots(1,4,figsize=(20,5))
         ax[0].imshow(self.mp.image[0,0].detach().cpu(),**DLT_KW_IMAGE)
         ax[1].imshow(self.mp.image[0,1].detach().cpu(),**DLT_KW_IMAGE)
-
+        a = ax[2].imshow(self.mp.momentum[0,0].detach().cpu(),cmap='RdYlBu_r',origin='lower')
+        fig.colorbar(a,ax=ax[2],fraction=0.046, pad=0.04)
+        b = ax[3].imshow(self.mp.residuals[0,0].detach().cpu(),cmap='RdYlBu_r',origin='lower')
+        fig.colorbar(b,ax=ax[3],fraction=0.046, pad=0.04)
         plt.show()
 
     def _joined_cost_saving_(self,i,loss_stock):
@@ -392,26 +418,22 @@ class Weighted_joinedMask_Metamorphosis_Shooting(Optimize_geodesicShooting):
         ax1[1].plot(cost_stock[:, 1], "--", color='green', label='normv')
         total_cost = ssd_plot + normv_plot
 
-        norm_l2_on_zI = cost_stock[:, 2] / self.cost_cst * self.mp.rho_I
+        norm_l2_on_zI = cost_stock[:, 2] / self.cost_cst
         total_cost += norm_l2_on_zI
         ax1[0].plot(norm_l2_on_zI, "--", color='orange', label='norm L2 on zI')
         ax1[1].plot(cost_stock[:, 2], "--", color='orange', label='norm L2 on zI')
 
-        if self.mp.rho_M != 0:
-            norm_l2_on_zM = cost_stock[:, 3] / self.cost_cst * self.mp.rho_M
-            total_cost += norm_l2_on_zM
-            ax1[0].plot(norm_l2_on_zM, "--", color="purple", label='norm L2 on zM')
-            ax1[1].plot(cost_stock[:, 3], "--", color='purple', label='norm L2 on zM')
+        norm_l2_on_zM = cost_stock[:, 3] / self.cost_cst
+        total_cost += norm_l2_on_zM
+        ax1[0].plot(norm_l2_on_zM, "--", color="purple", label='norm L2 on zM')
+        ax1[1].plot(cost_stock[:, 3], "--", color='purple', label='norm L2 on zM')
 
         ax1[0].plot(total_cost, color='black', label=r'\Sigma')
         ax1[0].legend()
         ax1[1].legend()
-        str_cst = "" if self.mp.mu_M == 0 else (f"mu_M = {str(self.mp.mu_M)},"
-                                                 f" rho_M = {str(self.mp.rho_M)},")
+
         ax1[0].set_title(f"Lambda = {str(self.cost_cst)},"+
-                         f" mu_I = {str(self.mp.mu_I)}," +
-                         f" rho_I = {str(self.mp.rho_I)},"+
-                            str_cst
+                         f" rho = {str(self.mp.rho)},"
                          )
 
     def plot_imgCmp(self):
@@ -442,12 +464,9 @@ class Weighted_joinedMask_Metamorphosis_Shooting(Optimize_geodesicShooting):
             tb.quiver_plot(self.mp.get_deformation()- self.id_grid,
                            ax=ax[1,1],step=15,color=GRIDDEF_YELLOW,
                            )
-            str_cst = "" if self.mp.mu_M == 0 else (f"mu_M = {str(self.mp.mu_M)},"
-                                                 f" rho_M = {str(self.mp.rho_M)},")
 
             text_param = (f"Lambda = {str(self.cost_cst)},"+
-                         f" mu_I = {str(self.mp.mu_I)}," +
-                         f" rho_I = {str(self.mp.rho_I)},"+ str_cst)
+                         f" rho = {str(self.mp.rho)},")
             try:
                 text_param += f" gamma = {self.mp._get_gamma_()}"
             except AttributeError:
