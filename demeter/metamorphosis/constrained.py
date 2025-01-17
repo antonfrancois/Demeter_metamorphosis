@@ -104,8 +104,11 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
 
         self._update_image_weighted_semiLagrangian_(deform,resi_to_add,sharp=False)
         # self._update_momentum_semiLagrangian_(deform)
-        self.momentum  = self._compute_div_momentum_semiLagrangian_(deform,self.momentum)
-        self.momentum *= torch.sqrt(mask)
+        self.momentum  = self._compute_div_momentum_semiLagrangian_(
+            deform,
+            self.momentum,
+            torch.sqrt(mask)
+        )
 
         return (self.image,
                 torch.sqrt(mask)[...,None] * self.field,

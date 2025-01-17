@@ -3,9 +3,7 @@ import warnings
 import matplotlib.pyplot as plt
 from math import prod,sqrt
 
-from abc import ABC, abstractmethod
-
-from sympy import transpose
+from sympy.physics.units import momentum
 
 from demeter.metamorphosis import Geodesic_integrator,Optimize_geodesicShooting
 
@@ -13,63 +11,64 @@ from demeter.utils.constants import *
 import demeter.utils.torchbox as tb
 import demeter.utils.cost_functions as cf
 
-class Mask_intensity(ABC):
-    """ Class for customizing the intensity addition area at the image update state.
 
-
-
-    """
-    def __init__(self,precomputed_mask):
-        self.precomputed_mask = precomputed_mask
-
-    @abstractmethod
-    def __call__(self,integrated_mask,i):
-        pass
-
-    def to_device(self,device):
-        self.precomputed_mask = self.precomputed_mask.to(device)
-
-    @abstractmethod
-    def derivative(self,*args):
-        pass
-
-    def get_mask(self):
-        return 0
-
-class mask_default(Mask_intensity):
-
-    def __init__(self):
-        pass
-
-    def __repr__(self):
-        return self.__class__.__name__ + " - no precomputed mask"
-
-    def __call__(self,integrated_mask,i):
-        return integrated_mask
-
-    def to_device(self,device):
-        pass
-
-    def derivative(self,*args):
-        return 1
-
-
-class mask_sum(Mask_intensity):
-    def __init__(self,precomputed_mask):
-        super().__init__(precomputed_mask)
-
-    def __repr__(self):
-        return self.__class__.__name__ + " - precomputed mask: f(N_t,P_t) = N_t + P_t"
-
-    def __call__(self,integrated_mask,i):
-        # self.integrated_mask = integrated_mask
-        return integrated_mask + self.precomputed_mask[i][None]
-
-    def derivative(self,*args):
-        return 1
-
-    def get_mask(self):
-        return self.precomputed_mask.detach().cpu()
+# class Mask_intensity(ABC):
+#     """ Class for customizing the intensity addition area at the image update state.
+#
+#
+#
+#     """
+#     def __init__(self,precomputed_mask):
+#         self.precomputed_mask = precomputed_mask
+#
+#     @abstractmethod
+#     def __call__(self,integrated_mask,i):
+#         pass
+#
+#     def to_device(self,device):
+#         self.precomputed_mask = self.precomputed_mask.to(device)
+#
+#     @abstractmethod
+#     def derivative(self,*args):
+#         pass
+#
+#     def get_mask(self):
+#         return 0
+#
+# class mask_default(Mask_intensity):
+#
+#     def __init__(self):
+#         pass
+#
+#     def __repr__(self):
+#         return self.__class__.__name__ + " - no precomputed mask"
+#
+#     def __call__(self,integrated_mask,i):
+#         return integrated_mask
+#
+#     def to_device(self,device):
+#         pass
+#
+#     def derivative(self,*args):
+#         return 1
+#
+#
+# class mask_sum(Mask_intensity):
+#     def __init__(self,precomputed_mask):
+#         super().__init__(precomputed_mask)
+#
+#     def __repr__(self):
+#         return self.__class__.__name__ + " - precomputed mask: f(N_t,P_t) = N_t + P_t"
+#
+#     def __call__(self,integrated_mask,i):
+#         # self.integrated_mask = integrated_mask
+#         return integrated_mask + self.precomputed_mask[i][None]
+#
+#     def derivative(self,*args):
+#         return 1
+#
+#     def get_mask(self):
+#         return self.precomputed_mask.detach().cpu()
 
 class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
     """
@@ -128,26 +127,9 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
             self.rho * torch.ones_like(self.image[:,1])
             ], dim=1
         ).detach()
-        # masks[masks == 0] = 1e-8
-        # masks[masks == 1] = 1 - 1e-8
-        # assert (masks == 0).any(), "there are some zeros in masks"
-        field_momentum = ((torch.sqrt(masks) * self.momentum)[:,:,None] * grad_image_mask).sum(dim=1)
-        ic(grad_image_mask.min().item(),grad_image_mask.max().item(),
-           self.momentum.min().item(),self.momentum.max().item(),
-           field_momentum.min().item(),field_momentum.max().item()
-           )
-        assert not torch.isnan(field_momentum).any(), "NaN detected in field_momentum"
-        assert not torch.isinf(field_momentum).any(), "Inf detected in field_momentum"
-        # pre_field_I = self.momentum[:,0] * grad_image_mask[:,0]
-        # pre_field_M = self.momentum[:,1] * grad_image_mask[:,1]
-        # pre_field = (torch.sqrt(self.image[:,1]) * pre_field_I
-        #              + sqrt(self.rho)      * pre_field_M)
-        # ic(self._i,grad_image_mask.min().item(),grad_image_mask.max().item(),
-        #    self.momentum.min().item(),self.momentum.max().item(),
-        #    field_momentum.min().item(),field_momentum.max().item()
-        #    )
-
-
+        field_momentum = ((torch.sqrt(masks) * self.momentum) * grad_image_mask).sum(dim=1)
+        # print("field_momentum",field_momentum.shape)
+        # print("masks",masks.shape)
         self.field = tb.im2grid(self.kernelOperator(-(field_momentum)))
 
         ## prepare mask for group multiplication
@@ -160,14 +142,19 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
         deform = torch.cat([deform_I,deform_M],dim=0)
         assert not torch.isnan(deform).any(), "NaN detected in deform"
         assert not torch.isinf(deform).any(), "Inf detected in deform"
-        ic(self._i,self.field.min().item(),self.field.max().item(),
-           self.id_grid.min().item(),self.id_grid.max().item(),
-           torch.sqrt(masks).mean().item(),sqrt(self.rho)
-           )
+        # ic(self._i,self.field.min().item(),self.field.max().item(),
+        #    self.id_grid.min().item(),self.id_grid.max().item(),
+        #    torch.sqrt(masks).mean().item(),sqrt(self.rho)
+        #    )
 
         # # update image and mask
         # apply deformation to both the image and mask
-        image_def = tb.imgDeform(self.image.transpose(0,1),deform,dx_convention=self.dx_convention).transpose(0,1)
+        image_defI = tb.imgDeform(self.image[:,0][None],deform_I,dx_convention=self.dx_convention)
+        image_defM = tb.imgDeform(self.image[:,1][None],deform_M,dx_convention=self.dx_convention)
+        image_def = torch.cat([image_defI,image_defM],dim=1)
+        ic(image_def.shape)
+
+        # image_def = tb.imgDeform(self.image.transpose(0,1),deform,dx_convention=self.dx_convention).transpose(0,1)
         # image_def *= torch.sqrt(masks)
 
         # add the residual times the mask to the image
@@ -186,9 +173,23 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
 
         ic(self.momentum.transpose(0,1).shape, deform.shape)
         # # update residual
-        self.momentum = self._compute_div_momentum_semiLagrangian_(
-                            deform,self.momentum.transpose(0,1),torch.sqrt(masks).transpose(0,1)
-        ).transpose(0,1)
+        momentum_I = self._compute_div_momentum_semiLagrangian_(
+            deform_I,
+            self.momentum[:,0][None],
+            torch.sqrt(masks[0,0])[None]
+        )
+        momentum_M = self._compute_div_momentum_semiLagrangian_(
+            deform_M,
+            self.momentum[:,1][None],
+            torch.sqrt(masks[0,1])[None]
+        )
+
+        self.momentum = torch.cat([momentum_I,momentum_M],dim=1)
+        # self.momentum = self._compute_div_momentum_semiLagrangian_(
+        #     deform,
+        #     self.momentum.transpose(0,1),
+        #     torch.sqrt(masks).transpose(0,1)
+        # ).transpose(0,1)
         assert not torch.isnan(self.momentum).any(), "NaN detected in self.momentum"
         assert not torch.isinf(self.momentum).any(), "Inf detected in self.momentum"
 
@@ -284,9 +285,9 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
             ax[i,0].set_title('image')
             ax[i,1].imshow(self.image_stock[t,1].cpu(),**DLT_KW_IMAGE)
             ax[i,1].set_title('mask')
-            ax[i,2].imshow(self.residuals_stock[t,0].cpu(),**DLT_KW_RESIDUALS)
+            ax[i,2].imshow(self.momentum_stock[t,0].cpu(),**DLT_KW_RESIDUALS)
             ax[i,2].set_title('residuals_image')
-            ax[i,3].imshow(self.residuals_stock[t,1].cpu(),**DLT_KW_RESIDUALS)
+            ax[i,3].imshow(self.momentum_stock[t,1].cpu(),**DLT_KW_RESIDUALS)
             ax[i,3].set_title('residuals_image')
             # ax[i,4].imshow(self.residuals_stock[t].cpu(),vmin=-v_abs_max,vmax=v_abs_max,**tb.DLT_KW_IMAGE)
             # ax[i,4].set_title('residual')
@@ -349,7 +350,6 @@ class Weighted_joinedMask_Metamorphosis_Shooting(Optimize_geodesicShooting):
 
     def cost(self, momentum_ini: torch.Tensor) -> torch.Tensor:
         lamb = self.cost_cst
-
         ic(momentum_ini.min().item(),momentum_ini.max().item())
         self.mp.forward(self.source, momentum_ini, save=False, plot=0)
 
@@ -364,13 +364,16 @@ class Weighted_joinedMask_Metamorphosis_Shooting(Optimize_geodesicShooting):
         mI =  momentum_ini[0,0]
         self.norm_zI_2 =  ((1 - mask) * mI * mI).sum() /prod(self.source.shape[2:])
         # Norm L2 on z_M
-        self.total_cost = self.data_loss + lamb * (self.norm_v_2 + self.norm_zI_2)
 
         # if self.mp.rho_M != 0:
             # Norm L2 on z_M
         mM = momentum_ini[0,1]
         self.norm_zM_2 = (1 - self.mp.rho) * (mM  * mM).sum()/prod(self.source.shape[2:])
-        self.total_cost += lamb * self.norm_zM_2
+        self.total_cost = (self.data_loss
+                           + lamb * (self.norm_v_2
+                                     + self.norm_zI_2
+                                     + self.norm_zM_2)
+                           )
 
         return self.total_cost
 
@@ -409,24 +412,26 @@ class Weighted_joinedMask_Metamorphosis_Shooting(Optimize_geodesicShooting):
 
         cost_stock = self.to_analyse[1].detach().numpy()
 
+
         ssd_plot = cost_stock[:, 0]
         ax1[0].plot(ssd_plot, "--", color='blue', label='ssd')
         ax1[1].plot(ssd_plot, "--", color='blue', label='ssd')
 
-        normv_plot = cost_stock[:, 1] / self.cost_cst
-        ax1[0].plot(normv_plot, "--", color='green', label='normv')
-        ax1[1].plot(cost_stock[:, 1], "--", color='green', label='normv')
-        total_cost = ssd_plot + normv_plot
+        if self.cost_cst != 0:
+            normv_plot = cost_stock[:, 1] * self.cost_cst
+            ax1[0].plot(normv_plot, "--", color='green', label='normv')
+            ax1[1].plot(cost_stock[:, 1], "--", color='green', label='normv')
+            total_cost = ssd_plot + normv_plot
 
-        norm_l2_on_zI = cost_stock[:, 2] / self.cost_cst
-        total_cost += norm_l2_on_zI
-        ax1[0].plot(norm_l2_on_zI, "--", color='orange', label='norm L2 on zI')
-        ax1[1].plot(cost_stock[:, 2], "--", color='orange', label='norm L2 on zI')
+            norm_l2_on_zI = cost_stock[:, 2] * self.cost_cst
+            total_cost += norm_l2_on_zI
+            ax1[0].plot(norm_l2_on_zI, "--", color='orange', label='norm L2 on zI')
+            ax1[1].plot(cost_stock[:, 2], "--", color='orange', label='norm L2 on zI')
 
-        norm_l2_on_zM = cost_stock[:, 3] / self.cost_cst
-        total_cost += norm_l2_on_zM
-        ax1[0].plot(norm_l2_on_zM, "--", color="purple", label='norm L2 on zM')
-        ax1[1].plot(cost_stock[:, 3], "--", color='purple', label='norm L2 on zM')
+            norm_l2_on_zM = cost_stock[:, 3] * self.cost_cst
+            total_cost += norm_l2_on_zM
+            ax1[0].plot(norm_l2_on_zM, "--", color="purple", label='norm L2 on zM')
+            ax1[1].plot(cost_stock[:, 3], "--", color='purple', label='norm L2 on zM')
 
         ax1[0].plot(total_cost, color='black', label=r'\Sigma')
         ax1[0].legend()

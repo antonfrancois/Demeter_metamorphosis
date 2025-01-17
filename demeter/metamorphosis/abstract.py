@@ -346,7 +346,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         -------
         tensor array of shape [1,1,H,W] or [1,1,D,H,W]
         """
-        warnings.warn("ANTON ! if you are using this function with constrained add cst")
         div_v_times_z = cst * (
             momentum
             * tb.Field_divergence(dx_convention=self.dx_convention)(self.field)[0, 0]
@@ -897,7 +896,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                 + "You have to specify the optimizer_method used among"
                 "{'grad_descent', 'LBFGS_torch','adadelta'}"
             )
-
+        self._iter = 0  # optimisation iteration counter
         self.data_term = dt.Ssd(self.target) if data_term is None else data_term
         if isinstance(self.data_term, type):
             raise ValueError(
@@ -1097,6 +1096,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         self.parameter = z_0  # optimized variable
         self._initialize_optimizer_(grad_coef, max_iter=n_iter)
+        self.n_iter = n_iter
 
         self.id_grid = tb.make_regular_grid(
             z_0.shape[2:], dx_convention=self.dx_convention, device=z_0.device
@@ -1113,6 +1113,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         loss_stock = self._cost_saving_(0, loss_stock)
 
         for i in range(1, n_iter):
+            self._iter = i
             # print("\n",i,"==========================")
             self._step_optimizer_()
             loss_stock = self._cost_saving_(i, loss_stock)
