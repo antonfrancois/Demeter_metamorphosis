@@ -170,7 +170,7 @@ def get_gaussian_kernel2d( sigma,dx =(1.,1.), kernel_size=None, kernel_reach=6):
     kernel_w: torch.Tensor = get_gaussian_kernel1d(sigma_w, dw, ksize_w, kernel_reach)
     print(f"kernel_h : {kernel_h.shape}, kernel_w : {kernel_w.shape}")
     # kernel_2d: torch.Tensor = torch.matmul(kernel_h[...,None], kernel_w)
-    print(kernel_h.shape)
+    # print(kernel_h.shape)
     kernel_2d = kernel_h[:,:, None] * kernel_w[:,None, :]
     return kernel_2d
 
@@ -459,7 +459,8 @@ class GaussianRKHS(torch.nn.Module):
     # iv3.imshow_3d_slider(blured)
     """
     def __init__(self,sigma : Tuple,
-                 border_type: str = 'constant',
+                 border_type: str = 'replicate',
+                 normalized: bool = True,
                  device = 'cpu'):
         """
 
@@ -480,12 +481,14 @@ class GaussianRKHS(torch.nn.Module):
             self.filter = flt.filter2d
         elif self._dim == 3:
             self.kernel = get_gaussian_kernel3d(sigma)#[None]
-            self.kernel *= prod(sigma)
+            # self.kernel *= prod(sigma)
             # self.filter = flt.filter3d
             self.filter = fft_filter
         else:
             raise ValueError("Sigma is expected to be a tuple of size 2 or 3 same as the input dimension,"
                              +"len(sigma) == {}".format(len(sigma)))
+        if normalized:
+            self.kernel /= self.kernel.sum()
         self.border_type = border_type
 
         # TODO : define better the condition for using the fft filter
@@ -733,7 +736,7 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
         self.list_sigma = list_sigmas
 
         if self._dim == 2:
-            kernel_f = kornia.filters.get_gaussian_kernel2d
+            kernel_f = get_gaussian_kernel2d
             self.filter = fft_filter if max(kernel_size) > 7 else flt.filter2d
         elif self._dim == 3:
             kernel_f = get_gaussian_kernel3d
@@ -743,10 +746,13 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
                              +"len(sigma[0]) == {}".format(len(list_sigmas[0])))
 
         self.kernel = torch.cat(
-            [ prod(sigma)*kernel_f(kernel_size,sigma)[None] for sigma in list_sigmas ]
+            [kernel_f(sigma,kernel_size=kernel_size)[None] for sigma in list_sigmas ]
         ).sum(dim=0)#[None]
-        self.kernel /= len(list_sigmas)
-        self.border_type = 'constant'
+        # self.kernel /= len(list_sigmas)
+        if normalized:
+            self.kernel /= self.kernel.sum()
+
+        self.border_type = 'replicate'
 
     def init_kernel(self,image):
         for sig in self.list_sigma:
