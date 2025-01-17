@@ -1136,6 +1136,33 @@ class RandomGaussianImage:
     Generate a random image made from a sum of N gaussians
     and compute the derivative of the image with respect
      to the parameters of the gaussians.
+
+     self.a[i] * torch.exp(- ((self.X - self.c[i])**2).sum(-1) / (2*self.b[i]**2))
+     $$ I = \sum_{i=1}^{N} a_i \exp(- \frac{||X - c_i||^2}{2b_i^2})$$
+
+    Parameters:
+    -----------
+    size: tuple
+        tuple with the image dimensions to create
+    n_gaussians: int
+        Number of gaussians to sum.
+    dx_convention: str
+        convention for the grid
+    a: list of float
+        list of the a parameters of the gaussians controling the amplitude
+    b: list of float
+        list of the b parameters of the gaussians controling the width
+    c: list of float
+        list of the c parameters of the gaussians controling the position
+
+    Example:
+    --------
+    .. code-block:: python
+
+            RGI = RandomGaussianImage((100,100),5,'pixel')
+            image = RGI.image()
+            derivative = RGI.der
+
     """
 
 
