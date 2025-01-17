@@ -111,6 +111,60 @@ class TestGetGaussianKernel1D(unittest.TestCase):
                 self.assertGreater(kernel[0, x < sigma][-1].item(), 0.6,
                                    f"for sigma={sigma} value at position sigma was not > 0.6, kernel[0, x < sigma][-1]={kernel[0, x < sigma][-1].item()}")
 
+class TestGaussianRKHS(unittest.TestCase):
+
+    def setUp(self):
+        self.sigma = (5, 5)
+        self.kernel = rk.GaussianRKHS(self.sigma)
+
+    def test_initialization(self):
+        self.assertEqual(self.kernel.sigma, self.sigma)
+        self.assertEqual(self.kernel._dim, len(self.sigma))
+
+    def test_kernel_shape(self):
+        self.assertEqual(len(self.kernel.kernel.shape), 3)
+        # expected_shape = (2 * int(3 * self.sigma[0]) + 1, 2 * int(3 * self.sigma[1]) + 1)
+        # self.assertEqual(self.kernel.kernel.shape, expected_shape)
+
+    def test_kernel_values(self):
+        self.assertAlmostEqual(self.kernel.kernel.max().item(), 1.0, places=6)
+        self.assertLess(self.kernel.kernel.min().item(), 0.1)
+
+    def test_call(self):
+        input_tensor = torch.rand(1, 1, 100, 100)
+        output_tensor = self.kernel(input_tensor)
+        self.assertEqual(input_tensor.shape, output_tensor.shape)
+
+class TestMultiScaleGaussianRKHS_2d(unittest.TestCase):
+
+    def setUp(self):
+        self.sigma = [(5, 5), (10, 10), (20, 20)]
+        self.kernelOp = rk.Multi_scale_GaussianRKHS(self.sigma)
+
+    def test_initialization(self):
+        self.assertEqual(len(self.kernelOp.gauss_list), len(self.sigma))
+        self.assertEqual(len(self.kernelOp.kernel.shape), 3)
+
+    def test_call(self):
+        input_tensor = torch.rand(1, 1, 100, 100)
+        output_tensor = self.kernelOp(input_tensor)
+        self.assertEqual(input_tensor.shape, output_tensor.shape)
+        self.assertTrue(torch.all(output_tensor >= 0))
+
+class TestMultiScaleGaussianRKHS_3d(unittest.TestCase):
+
+    def setUp(self):
+        self.sigma = [(3, 3), (5, 5), (10, 10)]
+        self.kernelOp = rk.Multi_scale_GaussianRKHS(self.sigma)
+
+    def test_initialization(self):
+        self.assertEqual(len(self.kernelOp.gauss_list), len(self.sigma))
+        self.assertEqual(len(self.kernelOp.kernel.shape), 4)
+
+    def test_call(self):
+        input_tensor = torch.rand(1, 1, 100, 100, 100)
+        output_tensor = self.kernelOp(input_tensor)
+        self.assertEqual(input_tensor.shape, output_tensor.shape)
 
 
 if __name__ == '__main__':
@@ -163,12 +217,12 @@ rk.get_sigma_from_img_ratio()
 
 #%%
 import torch
-%load_ext autoreload
-%autoreload 3
+# %load_ext autoreload
+# %autoreload 3
 import demeter.utils.reproducing_kernels as rk
 import matplotlib.pyplot as plt
 #%%
-%reload_ext autoreload
+# %reload_ext autoreload
 #%%
 sigma = (5,15)
 dx_convention = (1./100,1./100)
