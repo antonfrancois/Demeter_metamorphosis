@@ -1,3 +1,35 @@
+r"""
+The implementation of Metamorphoses in **Demeter** is based on the minimization of a Hamiltonian:
+$$H(q,p,v,z) =  (p|\dot q) - R(v,z)$$
+
+where $q : (\Omega, [0,1]) \mapsto \mathcal M$ is the temporal image valued in $\mathcal M$, $R$ is a regularization function, $v$ is a vector field, and $z$ is a control on the photometric part.
+
+In the case of LDDMM and considering $\mathcal M = \mathbb R$, the Hamiltonian is:
+$$H(q,p,v,z) =  (p|\dot q) - \frac 12\|v\|_V^2 - \frac 12\|z\|_Z^2$$
+
+An optimal trajectory or geodesic under the conditions given by $H$ is:
+
+$$\left\{\begin{array}{rl} \dot q_t &= - \nabla q_t \cdot v_t + z_t\\ \dot z_t &= - \mathrm{div}(z_t  v_t) \\
+p_t &= z_t\\
+v_t &= -K_V\left( z_t\nabla q_t \right)  \end{array}\right.$$
+
+These equations are written in the continuous case. In this document, all discretization choices made during the implementation are detailed.
+
+To solve the registration problem, a geodesic shooting strategy is used. For this, a relaxed version of $H$ is minimized:
+$$E(p_0) = D_T(I_1) + \frac{\lambda}{2} \left( \|v_0\|_V^2 +\|z_0\|_Z^2  \right)$$
+
+Where $D_T$ is a data attachment term and $T$ is a target image, $I_1$ is the image at the end of the geodesic integration, and $p_0$ is the initial momentum. Note that in the case of Metamorphoses valued in images, $p = z$.
+
+You may have noticed that in the above equation $E(p_{0})$ depends only on the initial momentum. Indeed, thanks to a conservation property of norms during the calculation of optimal trajectories in a Hamiltonian which states: Let $v$ and $z$ follow a geodesic given by $H$, then
+$$\forall t \in [0,1], \|v_{0}\|^2_{V} = \|v_{t}\|^2_{V}; \|v_{0}\|^2_{2} = \|z_{t}\|^2_{2}. $$
+
+This property is used to save computation time. In practice, due to numerical scheme choices, norm conservation may not be achieved. In this case, it is possible to optimize over the set of norms and $E$ becomes:
+$$E(p_0) = D_T(I_1) + \frac \lambda2 \int_{0}^1 \left( \|v_t\|_V^2 +\|z_t\|_Z^2  \right) dt.$$
+
+The $I_{t},v_t,z_{t}$ are still deduced from $p_0$. It is possible to switch between the two in the code using the `hamiltonian_integration` option in the children of `Optimize_geodesicShooting`.
+"""
+
+
 import torch
 import matplotlib.pyplot as plt
 import warnings
@@ -93,21 +125,19 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     def step(self):
         pass
 
-
-
-    def forward(self,
-                image,
-                momentum_ini,
-                field_ini=None,
-                save=True,
-                plot=0,
-                t_max=1,
-                verbose=False,
-                sharp=None,
-                debug= False,
-                hamiltonian_integration = False,
-                ):
-        r""" This method is doing the temporal loop using the good method `_step_`
+    def forward(
+        self,
+        image,
+        momentum_ini,
+        field_ini=None,
+        save=True,
+        plot=0,
+        t_max=1,
+        verbose=False,
+        sharp=None,
+        debug=False,
+    ):
+        r"""This method is doing the temporal loop using the good method `_step_`
 
         :param image: (tensor array) of shape [1,1,H,W]. Source image ($I_0$)
         :param field_ini: to be deprecated, field_ini is id_grid
@@ -129,7 +159,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self.image = image.clone().to(device)
         self.momentum = momentum_ini
         self.debug = debug
-        self.flag_hamilt_integration = hamiltonian_integration
         try:
             self.save = True if self._force_save else save
         except AttributeError:
@@ -298,12 +327,24 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         r"""
         Compute the divergence of the momentum in the semiLagrangian scheme
         meaning
-        $$ \nabla \cdot (a v) = v \cdot \nabla a + a \nabla \cdot v$$
+        $$ c \times \nabla \cdot (a v) = cv \cdot \nabla a + c a \nabla \cdot v$$
+        with $cv \cdot \nabla a$ being the transport of a by the deformation $x + cv$
         with $a : \Omega \to \mathbb{R}$ and $v : \Omega \to \mathbb{R}^d$
 
-        :param deformation: (tensor array) of shape [1,H,W,2] or [1,D,H,W,3]
-        :param momentum: (tensor array) of shape [1,1,H,W] or [1,1,D,H,W]
-        :return: (tensor array) of shape [1,1,H,W] or [1,1,D,H,W]
+        Parameters
+        ----------
+
+        deformation (tensor array)
+            tensor of shape [1,H,W,2] or [1,D,H,W,3]
+        momentum (tensor array)
+            tensor of shape [1,1,H,W] or [1,1,D,H,W]
+        cst (float | tensor array)
+            the constant $c$ in the equation, if tensor array,
+             it must have the same shape as momentum
+
+        Returns
+        -------
+        tensor array of shape [1,1,H,W] or [1,1,D,H,W]
         """
         warnings.warn("ANTON ! if you are using this function with constrained add cst")
         div_v_times_z = cst * (
@@ -418,18 +459,11 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         free_field = tb.im2grid(
             (self.momentum * grad_image[0]) * torch.sqrt(self.residual_mask[self._i])
         )
-        print(f"\n {self._i}")
-        print("free_field min max", free_field.min().item(), free_field.max().item())
         oriented_field = 0
         if self.flag_O:
 
             oriented_field = self.orienting_field[self._i][None]
             oriented_field *= self.orienting_mask[self._i][..., None]
-            print(
-                "oriented_field min max",
-                oriented_field.min().item(),
-                oriented_field.max().item(),
-            )
         self.field = -tb.im2grid(
             self.kernelOperator(tb.grid2im(free_field - oriented_field))
         )
@@ -551,7 +585,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         )
         size_fig = 5
         C = self.momentum_stock.shape[1]
-        # plt.rcParams['figure.figsize'] = [size_fig*3,n_figs*size_fig]
         fig, ax = plt.subplots(
             n_figs,
             2 + C,
@@ -896,12 +929,11 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         grad_source = tb.spatialGradient(image, dx_convention=self.dx_convention)
         field_momentum = (grad_source * momentum.unsqueeze(2)).sum(dim=1)  # / C
         field = self.mp.kernelOperator(field_momentum)
-        norm_V = (field_momentum * field).sum()
 
-        if norm_V < 0:
-            warnings.warn(f"We computed norm_V = {norm_V} < 0 ! Increasing the"
-                          f"parameter `kernel_reach` in kernelOperator might help.")
-        return norm_V
+        norm_v = (field_momentum * field).sum()
+        if norm_v < 0:
+            warnings.warn(f"norm_v is negative : {norm_v}")
+        return norm_v
 
     @abstractmethod
     def cost(self, residual_ini):
@@ -977,7 +1009,6 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             # if(self._it_count >1 and L < self._loss_stock[:self._it_count].min()):
             #     cms_tosave.data = self.cms_ini.detach().data
             L.backward()
-            ic("LBFGS", L, self.parameter.grad)
             return L
 
         self.closure = closure
@@ -993,11 +1024,16 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         def closure():
             self.optimizer.zero_grad()
             L = self.cost(self.parameter)
-            #save best cms
+            assert not torch.isnan(
+                L
+            ).any(), f"Loss is NaN at iteration {self._it_count}"
+            # save best cms
             # if(self._it_count >1 and L < self._loss_stock[:self._it_count].min()):
             #     cms_tosave.data = self.cms_ini.detach().data
             L.backward()
-            ic("adadelta",L,self.parameter.grad)
+            ic("adadelta", L, self.parameter.grad)
+            # dot = make_dot(L, params=dict(x=self.parameter))
+            # dot.render("torch_backward_graph", format="png")
             return L
 
         self.closure = closure
@@ -1078,7 +1114,6 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         for i in range(1, n_iter):
             # print("\n",i,"==========================")
-
             self._step_optimizer_()
             loss_stock = self._cost_saving_(i, loss_stock)
 
