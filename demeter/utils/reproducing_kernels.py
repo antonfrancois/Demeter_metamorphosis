@@ -22,17 +22,22 @@ def fft_filter(input: torch.Tensor, kernel: torch.Tensor,
     kernel, the function applies padding according to the specified mode so
     that the output remains in the same shape.
 
-    Args:
-        input (torch.Tensor): the input tensor with shape of
-          :math:`(B, C, H, W)` or :math:`(B, C, D, H, W)`
-        kernel (torch.Tensor): the kernel to be convolved with the input
-          tensor. The kernel shape must be :math:`(1, kH, kW)` or :math:`(1, kD, kH, kW)`.
-        border_type (str): the padding mode to be applied before convolving.
-          The expected modes are: ``'constant'``, ``'reflect'``,
-          ``'replicate'`` or ``'circular'``. Default: ``'reflect'``.
-        normalized (bool): If True, kernel will be L1 normalized.
+    Parameters:
+    ----------
+    input (torch.Tensor):
+        the input tensor with shape of :math:`(B, C, H, W)` or :math:`(B, C, D, H, W)`
+    kernel (torch.Tensor):
+        the kernel to be convolved with the input tensor.
+        The kernel shape must be :math:`(1, kH, kW)` or :math:`(1, kD, kH, kW)`.
+    border_type (str):
+        the padding mode to be applied before convolving. The expected modes
+        are: ``'constant'``, ``'reflect'``,``'replicate'``
+        or ``'circular'``. Default: ``'reflect'``.
+    normalized (bool):
+        If True, kernel will be L1 normalized.
 
     Return:
+    -------
         torch.Tensor: the convolved tensor of same size and numbers of channels
         as the input.
     """
@@ -88,22 +93,27 @@ def fft_filter(input: torch.Tensor, kernel: torch.Tensor,
                     groups=c, padding=0, stride=1)
 
 
-def get_gaussian_kernel1d(sigma,dx = 1, kernel_size = None,kernel_reach=6, device='cpu', dtype=torch.float):
+def get_gaussian_kernel1d(sigma,
+                          dx = 1,
+                          kernel_size = None,
+                          kernel_reach=6,
+                          device='cpu',
+                          dtype=torch.float):
     r"""Function that returns Gaussian filter coefficients.
 
-    Args:
-        : kernel_size (int): the size of the kernel.
-        : kernel_reach (int | float): the reach of the kernel assuming sigma = 1.
-        For a given value of kernel reach, the kernel size is calculated as
-        kernel_size = max(kernel_reach,int(sigma*kernel_reach/dx)) + (1 - max(kernel_reach,int(sigma*kernel_reach/dx)) %2)
-        meaning that the kernel size is always odd and have 6 * sigma pixel between the
-        center and the kernel border. The default value is 6, should be
-        enough for most of the applications, but if you notice negative V_norms,
-        increasing this value might help.
-        : dx (float): the spacing between the kernel points.
-        : sigma (float, Tensor): the standard deviation of the kernel.
-        : device (torch.device): the desired device of the kernel.
-        : dtype (torch.dtype): the desired data type of the kernel.
+    $$ g(x) = \exp\left(\frac{-x^2}{2 \sigma^2}\right) $$
+    Parameters:
+    -----------
+    kernel_size (int)
+        the size of the kernel.
+    dx (float)
+        the spacing between the kernel points.
+    sigma (float, Tensor)
+         standard deviation of the kernel.
+    device (torch.device)
+        the desired device of the kernel.
+    dtype (torch.dtype)
+        the desired data type of the kernel.
 
     Returns:
         torch.Tensor: 1D tensor with the filter coefficients.
@@ -138,17 +148,14 @@ def get_gaussian_kernel1d(sigma,dx = 1, kernel_size = None,kernel_reach=6, devic
 def get_gaussian_kernel2d( sigma,dx =(1.,1.), kernel_size=None, kernel_reach=6):
     r"""Function that returns Gaussian filter coefficients.
 
-    Args:
-        kernel_size (Tuple[int, int]): the size of the kernel.
-        kernel_reach (int | float): the reach of the kernel assuming sigma = 1.
-        For a given value of kernel reach, the kernel size is calculated as
-        kernel_size = max(kernel_reach,int(sigma*kernel_reach/dx)) + (1 - max(kernel_reach,int(sigma*kernel_reach/dx)) %2)
-        meaning that the kernel size is always odd and have 6 * sigma pixel between the
-        center and the kernel border. The default value is 6, should be
-        enough for most of the applications, but if you notice negative V_norms,
-        increasing this value might help.
-        dx (Tuple[float, float]): the spacing between the kernel points.
-        sigma (Tuple[float, float]|torch.Tensor): the standard deviation of the kernel.
+    Parameters:
+    -----------
+    sigma (Tuple[float, float] or torch.Tensor):
+        the standard deviation of the kernel.
+    dx (Tuple[float, float]):
+        length of pixels in each direction.
+    kernel_size (Tuple[int, int] | None):
+        the size of the kernel, if None, it will be automatically calculated.
 
     Returns:
         torch.Tensor: 2D tensor with the filter coefficients.
@@ -168,8 +175,27 @@ def get_gaussian_kernel2d( sigma,dx =(1.,1.), kernel_size=None, kernel_reach=6):
     return kernel_2d
 
 def get_gaussian_kernel3d(sigma, dx=(1.,)*3 , kernel_size =None, kernel_reach=6):
-    print(f"kernel_size : {kernel_size}")
-    print(f"sigma : {sigma}")
+    r"""Function that returns Gaussian filter coefficients.
+
+    Parameters:
+    -----------
+    sigma (Tuple[float, float, float] or torch.Tensor):
+        the standard deviation of the kernel.
+    dx (Tuple[float, float, float]):
+        length of pixels in each direction.
+    kernel_size (Tuple[int, int, int] | None):
+        the size of the kernel, if None, it will be automatically calculated.
+    kernel_reach (int):
+        value times sigma that controls the distance in pixels between
+        the center and the edge of the kernel. The greater it is
+        the closer we are to an actual gaussian kernel. (default = 6)
+
+
+    Returns:
+    --------
+    torch.Tensor: 3D tensor with the filter coefficients.
+
+    """
     if kernel_size is None:
         kernel_size = (None,)*3
     if not isinstance(kernel_size, tuple) or len(kernel_size) != 3:
@@ -177,19 +203,12 @@ def get_gaussian_kernel3d(sigma, dx=(1.,)*3 , kernel_size =None, kernel_reach=6)
     if not ( isinstance(sigma, tuple) or isinstance(sigma,torch.Tensor)) or len(sigma) != 3:
         raise TypeError(f"sigma must be a tuple of length three. Got {sigma}")
     ksize_d, ksize_h, ksize_w= kernel_size
-    #print(f"ksize_d : {ksize_d}, ksize_h : {ksize_h}, ksize_w : {ksize_w}")
-    #print(f"sigma : {sigma}, {torch.tensor(sigma)}")
     sigma_d, sigma_h, sigma_w = [ float(s) for s in sigma]
     dd, dh, dw = [float(d) for d in dx]
-    #print(f"sigma_d : {sigma_d}, sigma_h : {sigma_h}, sigma_w : {sigma_w}")
     kernel_d: torch.Tensor = get_gaussian_kernel1d(sigma_d, dd, ksize_d, kernel_reach)
     kernel_h: torch.Tensor = get_gaussian_kernel1d(sigma_h, dh,ksize_h, kernel_reach)
     kernel_w: torch.Tensor = get_gaussian_kernel1d(sigma_w, dw, ksize_w, kernel_reach)
-    # kernel_2d: torch.Tensor = kernel_d[:,None] * kernel_h[None]
-    # kernel_3d: torch.Tensor = kernel_2d[:,:,None] * kernel_w[None,None]
     print(f"kernel_d : {kernel_d.shape},\n kernel_h : {kernel_h.shape},\n kernel_w : {kernel_w.shape}")
-    # kerned_2d = torch.matmul(kernel_d.T,kernel_h)[...,None]
-    # kernel_3d = torch.matmul(kerned_2d,kernel_w)[None]
 
     kernel_3d = (kernel_d[:,:, None, None]
                  * kernel_h[:,None, :, None]
@@ -198,6 +217,25 @@ def get_gaussian_kernel3d(sigma, dx=(1.,)*3 , kernel_size =None, kernel_reach=6)
     return kernel_3d
 
 def plot_gaussian_kernel_1d(kernel: torch.Tensor,sigma,ax =None,rotated = False):
+    r"""
+    Function that plots a 1D Gaussian kernel.
+
+    Parameters:
+    -----------
+    kernel (torch.Tensor):
+        the kernel to be plotted.
+    sigma (float):
+        the standard deviation of the kernel.
+    ax (matplotlib.axes.Axes | None):
+        the axes to plot the kernel. If None, a new figure will be created.
+    rotated (bool):
+        if True, the kernel will be plotted horizontally.
+
+    Returns:
+    --------
+    matplotlib.axes.Axes: the axes where the kernel was plotted.
+
+    """
     kernel_size = kernel.shape[1]
     dist_from_center = float(kernel_size)/2
     x = torch.linspace(-dist_from_center,dist_from_center,kernel_size)
@@ -234,6 +272,22 @@ def plot_gaussian_kernel_1d(kernel: torch.Tensor,sigma,ax =None,rotated = False)
     return ax
 
 def plot_gaussian_kernel_2d(kernel: torch.Tensor, sigma, axes=None):
+    r"""
+    Function that plots a 2D Gaussian kernel.
+
+    Parameters:
+    -----------
+    kernel (torch.Tensor):
+        the kernel to be plotted.
+    sigma (Tuple[float, float]):
+        the standard deviation of the kernel.
+    axes (matplotlib.axes.Axes | None):
+        the axes to plot the kernel. If None, a new figure will be created.
+
+    Returns:
+    --------
+    matplotlib.axes.Axes: the axes where the kernel was plotted.
+    """
 
     if axes is None:
         fig, axes = plt.subplots(2, 2, figsize=(10, 5),constrained_layout=True)
@@ -251,7 +305,18 @@ def plot_gaussian_kernel_2d(kernel: torch.Tensor, sigma, axes=None):
 
     return axes
 
-def plot_gaussian_kernel_3d(kernel: torch.Tensor, sigma, ):
+def plot_gaussian_kernel_3d(kernel: torch.Tensor, sigma ):
+    r"""
+    Function that plots a 3D Gaussian kernel.
+
+    Parameters:
+    -----------
+    kernel (torch.Tensor):
+        the kernel to be plotted.
+    sigma (Tuple[float, float, float]):
+        the standard deviation of the kernel.
+
+    """
     fig = plt.figure(constrained_layout= True,figsize=(15,5))
     subfigs = fig.subfigures(1, 3)
 
@@ -355,13 +420,15 @@ class GaussianRKHS(torch.nn.Module):
     """ Is equivalent to a gaussian blur. This function support 2d and 3d images in the
     PyTorch convention
 
-    Args :
-
-
-        border_type (str): the padding mode to be applied before convolving.
-          The expected modes are: ``'constant'``, ``'reflect'``,
-          ``'replicate'`` or ``'circular'``. Default: ``'reflect'``.
-        normalized (bool): If True, kernel will be L1 normalized.
+    Parameters:
+    -----------
+    sigma: (Tuple[float,float] or [float,float,float])
+        the standard deviation of the kernel.
+    border_type (str):
+        the padding mode to be applied before convolving.
+      The expected modes are: ``'constant'``, ``'reflect'``,
+      ``'replicate'`` or ``'circular'``. Default: ``'reflect'``.
+    normalized (bool): If True, kernel will be L1 normalized.
 
     Return:
         torch.Tensor: the convolved tensor of same size and numbers of channels
@@ -607,18 +674,47 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
             plot_gaussian_kernel_3d(self.kernel, self.sigma_continuous)
 
 
-@deprecated("Please use GaussianRKHS instead.")
-class GaussianRKHS2d(VolNormalizedGaussianRKHS):
-
-    def __init__(self,
-                 sigma: Tuple[float, float],
-                 border_type: str = 'reflect') -> None:
-
-        super(GaussianRKHS2d, self).__init__(sigma,border_type)
 
 class Multi_scale_GaussianRKHS(torch.nn.Module):
+    r"""
+    This class is a multi-scale Gaussian RKHS. It is equivalent to a
+    multi-scale Gaussian blur. This function support 2d and 3d images in the
+    PyTorch convention
 
-    def __init__(self, list_sigmas):
+    Parameters:
+    -----------
+    list_sigmas: List[Tuple[float,float] or Tuple[float,float,float]]
+        the standard deviation of the kernel.
+
+    Example:
+    --------
+    .. code-block:: python
+        import __init__
+        import demeter.utils.reproducing_kernels as rk
+        import demeter.utils.torchbox as tb
+        import matplotlib.pyplot as plt
+        import torch
+
+        sigma= [(5,5),(7,7),(10,10)]
+        kernelOp = rk.Multi_scale_GaussianRKHS(sigma)
+
+        image = tb.RandomGaussianImage((100,100),5,'pixel').image()
+        image_b = kernelOp(image)
+
+        fig, ax = plt.subplots(2,2,figsize=(10,5))
+        ax[0,0].imshow(kernelOp.kernel[0])
+        ax[0,0].set_title('kernel 1')
+        ax[0,1].plot(kernelOp.kernel[0][kernelOp.kernel[0].shape[0]//2])
+
+        ax[1,0].imshow(image[0,0])
+        ax[1,0].set_title('image')
+        ax[1,1].imshow(image_b[0,0])
+        ax[1,1].set_title('image_b')
+        plt.show()
+    """
+
+    def __init__(self, list_sigmas,
+                 normalized: bool = True):
         if isinstance(list_sigmas,tuple):
             raise ValueError("List sigma must be a list of tuple, if you want to use "
                              "a single scale Gaussian RKHS please use the class "
@@ -626,7 +722,6 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
         super(Multi_scale_GaussianRKHS, self).__init__()
         _ks = []
         for sigma in list_sigmas:
-            print("sigma : ",sigma)
             big_odd = lambda val : max(6,int(val*6)) + (1 - max(6,int(val*6)) %2)
             kernel_size = tuple([big_odd(s) for s in sigma])
             _ks.append(kernel_size)
@@ -665,7 +760,8 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
     def __repr__(self) -> str:
         # the if is there for compatibilities with older versions
         return self.__class__.__name__+\
-                f'(sigma :{self.list_sigma})'
+                (f'(\n\tsigma :{self.list_sigma},'
+                 f'\n\tkernel size :{tuple(self.kernel.shape)}\n)')
         # f'filter :{self.filter.__name__}, '+sig_str
         # ','+str(self._dim)+'D '+\
 
