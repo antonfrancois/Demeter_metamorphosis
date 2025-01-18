@@ -69,9 +69,8 @@ from ..metamorphosis import data_cost as dt
 # =========================================================================
 # See them as a toolkit
 
-
-class Geodesic_integrator(torch.nn.Module, ABC):
-    """Abstract class for defining the way of integrating over geodesics"""
+class Geodesic_integrator(torch.nn.Module,ABC):
+    """ Abstract class for defining the way of integrating over geodesics"""
 
     @abstractmethod
     def __init__(self, kernelOperator, n_step, dx_convention="pixel"):
@@ -126,18 +125,19 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         pass
 
     def forward(
-        self,
-        image,
-        momentum_ini,
-        field_ini=None,
-        save=True,
-        plot=0,
-        t_max=1,
-        verbose=False,
-        sharp=None,
-        debug=False,
-    ):
-        r"""This method is doing the temporal loop using the good method `_step_`
+            self,
+                image,
+                momentum_ini,
+                field_ini=None,
+                save=True,
+                plot =0,
+                t_max = 1,
+                verbose=False,
+                sharp=None,
+                debug= False,
+                hamiltonian_integration = False,
+                ):
+        r""" This method is doing the temporal loop using the good method `_step_`
 
         :param image: (tensor array) of shape [1,1,H,W]. Source image ($I_0$)
         :param field_ini: to be deprecated, field_ini is id_grid
@@ -1119,8 +1119,11 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             loss_stock = self._cost_saving_(i, loss_stock)
 
             if verbose:
-                update_progress((i + 1) / n_iter, message=("ssd : ", loss_stock[i, 0]))
-            if plot and i in [n_iter // 4, n_iter // 2, 3 * n_iter // 4]:
+                update_progress(
+                    (i+1)/n_iter,
+                    message=(f"{self.data_term.__class__.__name__} :", loss_stock[i,0])
+                )
+            if plot and i in [n_iter//4,n_iter//2,3*n_iter//4]:
                 self._plot_forward_()
 
         # for future plots compute shooting with save = True
@@ -1135,7 +1138,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         # self.mp.kernelOperator.kernel = self.mp.kernelOperator.kernel.to(device)
         self.mp.to_device(device)
         self.source = self.source.to(device)
-        self.target = self.target.to(device)
+        self.data_term.to_device(device)
+        # self.target = self.target.to(device)
         self.parameter = self.parameter.to(device)
         self.id_grid = self.id_grid.to(device)
         self.data_term.to_device(device)

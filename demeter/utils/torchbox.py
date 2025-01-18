@@ -1,5 +1,6 @@
 
 import warnings
+from collections.abc import Iterable
 
 import matplotlib.pyplot as plt
 import nrrd
@@ -361,13 +362,29 @@ def nib_normalize(img,method='mean'):
         raise ValueError(f"method must be 'mean' or 'min_max' got {method}")
     return img
 
-def resize_image(image,scale_factor):
+def resize_image(image : torch.Tensor,
+                 scale_factor: float | int | Iterable
+                 ):
+    """
+    Resize an image by a scale factor $s = (s1,s2,s3)$
+
+
+    :param image: list of tensors [B,C,H,W] or [B,C,D,H,W] torch tensor
+    :param scale_factor: float or list or tuple of image dimention size
+
+    : return: tensor of size [B,C,s1*H,s2*W] or [B,C,s1*D, s2*H, s3*W] or list
+    containing tensors.
+    """
     Ishape = image[0].shape[2:]
-    Ishape_D = tuple([int(s * scale_factor) for s in Ishape])
+    if isinstance(scale_factor,float | int):
+        scale_factor = (scale_factor,)*len(Ishape)
+    Ishape_D = tuple([int(s * f) for s,f in zip(Ishape,scale_factor)])
     id_grid = make_regular_grid(Ishape_D,dx_convention='2square').to(image[0].device)
     i_s = []
     for i in image:
         i_s.append(torch.nn.functional.grid_sample(i.to(image[0].device),id_grid,**DLT_KW_GRIDSAMPLE))
+    if len(i_s) == 1:
+        return i_s[0]
     return i_s
 
 def image_slice(I,coord,dim):
@@ -428,7 +445,7 @@ def pad_to_same_size(img_1,img_2):
     return (img_1_padded,img_2_padded)
 
 def addGrid2im(img, n_line,cst=0.1,method='dots'):
-    """
+    """ draw a grid to the image
 
     :param img:
     :param n_line:
@@ -500,12 +517,40 @@ def thresholding(image,bounds = (0,1)):
                          )
 
 def spatialGradient(image, dx_convention ='pixel'):
-    """ Compute the spatial gradient on 2d or 3d images by applying a sobel kernel
+    """ Compute the spatial gradient on 2d and 3d images by applying
+    a sobel kernel. Perform the normalisation of the gradient according
+    to the spatial convention (`dx_convention`) and make it the closer possible
+    to the theoretical gradient.
 
-    :param image: Tensor [B,C,H,W] or [B,C,D,H,W]
-    :param dx_convention: str in {'pixel','square','2square'} or tensor of shape [B,3]
-    containing the pixel size in each dimension direction.
-    :return: Tensor [B,C,2,H,W] or [B,C,3,D,H,W]
+    Parameters
+    ----------
+    image : Tensor
+        [B,C,H,W] or [B,C,D,H,W] tensor.
+    dx_convention : str or tensor
+        If str, it must be in {'pixel','square','2square'}.
+        If tensor, it must be of shape [B,2] or [B,3], where B is the batch size and
+        the second dimension is the spatial resolution of the image giving the pixel size.
+        Attention : this last values must be in reverse order of the image shape.
+
+    Returns
+    -------
+    grad_image : Tensor
+        [B,C,2,H,W] or [B,C,3,D,H,W] tensor.
+
+    Examples
+    --------
+    .. code-block:: python
+        H,W = (300,400)
+        rgi = tb.RandomGaussianImage((H, W), 2, 'square',
+                                     a=[-1, 1],
+                                     b=[15, 25],
+                                     c=[[.3*400 , .3*300], [.7*400, .7*300]])
+        image =  rgi.image()
+        theoretical_derivative = rgi.derivative()
+        print(f"image shape : {image.shape}")
+        derivative = tb.spatialGradient(image, dx_convention="square")
+        dx = torch.tensor([[1. / (W - 1), 1. / (H - 1)]], dtype=torch.float64)
+        derivative_2 = tb.spatialGradient(mage, dx_convention=dx)
 
     """
     if isinstance(dx_convention,str):

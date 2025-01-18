@@ -29,12 +29,12 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
                 f"\n\tn_step={self.n_step}\n)")
 
     def step(self):
-        
+
         ## 1. Compute the vector field
         ## 1.1 Compute the gradient of the image by finite differences
-        
+
         grad_simplex = tb.spatialGradient(self.image,dx_convention='pixel')
-        
+
         field_momentum = (grad_simplex * self.momentum.unsqueeze(2)).sum(dim=1) #/ C
         field = self.kernelOperator(field_momentum)
         self.field = - sqrt(self.rho) * tb.im2grid(field)
@@ -54,7 +54,7 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
             norm_v_2 = .5 * self.rho  * (field_momentum * field).sum()
             norm_l2_on_z = .5 * (self.residuals ** 2).sum() * volDelta
             self.ham_value = norm_l2_on_z + norm_v_2
-            
+
         # self.residuals = (self.momentum - pi_q * self.image) / self.rho
 
         # ic(self.residuals.min(),self.residuals.max(),self.residuals[0,:,15,80])
@@ -79,12 +79,12 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
                                sqrt(1 - self.rho) * self.residuals * pi_q  #* volDelta
                                 - sqrt(self.rho) * div_v_times_p
                          ) / self.n_step)
-        
+
 
 
         #return self.image, self.field,self.momentum, self.residuals
         return self.image, sqrt(self.rho)*self.field,self.momentum, sqrt(1-self.rho)*self.residuals
-    
+
     # def hamiltonian(self):
     #     # compute the hamiltonian from the current values of image, and momentum
     #     rho = self.rho
@@ -103,7 +103,7 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
     #     self.norm_l2_on_z = .5 * (z ** 2).sum() * volDelta
     #     # ic(float(self.norm_v_2),float(self.norm_l2_on_z))
     #     return (self.norm_v_2 + self.norm_l2_on_z)
-        
+
 
     # TODO : create a default parameter saving update to match
     # with classical metamorphosis methods,
@@ -164,7 +164,7 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
             self.field_stock = torch.zeros((t_max*self.n_step,)+self.field.shape[1:])
             self.residuals_stock = torch.zeros((t_max*self.n_step,) + momentum_ini.shape[1:])
             self.momentum_stock = torch.zeros((t_max*self.n_step,) + momentum_ini.shape[1:])
-            
+
         if self.flag_hamilt_integration:
             self.ham_integration = 0.
 
@@ -172,7 +172,7 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
             self._i = i
 
             _,field_to_stock,momentum_dt,residuals_dt = self.step()
-            
+
             if self.flag_hamilt_integration:
                 self.ham_integration += self.ham_value / self.n_step
 
@@ -188,12 +188,12 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
             # elif self.save is False and i == 0:
             #     self.momentum_ini = residuals_dt.detach().to('cpu')
 
-            
+
             if verbose:
                 update_progress(i/(t_max*self.n_step))
                 if self.flag_hamilt_integration:
-                    print('ham :', self.ham_value.detach().cpu().item(), 
-                      self.norm_v_2.detach().cpu().item(), 
+                    print('ham :', self.ham_value.detach().cpu().item(),
+                      self.norm_v_2.detach().cpu().item(),
                       self.norm_l2_on_z.detach().cpu().item())
 
         # print(f"image max : {self.image.max()}")
@@ -233,10 +233,10 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
                         save=False,
                         plot=0,
                         hamiltonian_integration=self.flag_hamiltonian_integration)
-        
+
         #if self.mp.ham:
         #    print('ham_int :', self.mp.ham_int)
-            
+
         # Compute the data_term. Default is the Ssd
         self.data_loss = self.data_term()
 
