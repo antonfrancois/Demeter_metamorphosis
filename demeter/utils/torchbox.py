@@ -445,7 +445,7 @@ def pad_to_same_size(img_1,img_2):
     return (img_1_padded,img_2_padded)
 
 def addGrid2im(img, n_line,cst=0.1,method='dots'):
-    """
+    """ draw a grid to the image
 
     :param img:
     :param n_line:
@@ -517,6 +517,42 @@ def thresholding(image,bounds = (0,1)):
                          )
 
 def spatialGradient(image, dx_convention ='pixel'):
+    """ Compute the spatial gradient on 2d and 3d images by applying
+    a sobel kernel. Perform the normalisation of the gradient according
+    to the spatial convention (`dx_convention`) and make it the closer possible
+    to the theoretical gradient.
+
+    Parameters
+    ----------
+    image : Tensor
+        [B,C,H,W] or [B,C,D,H,W] tensor.
+    dx_convention : str or tensor
+        If str, it must be in {'pixel','square','2square'}.
+        If tensor, it must be of shape [B,2] or [B,3], where B is the batch size and
+        the second dimension is the spatial resolution of the image giving the pixel size.
+        Attention : this last values must be in reverse order of the image shape.
+
+    Returns
+    -------
+    grad_image : Tensor
+        [B,C,2,H,W] or [B,C,3,D,H,W] tensor.
+
+    Examples
+    --------
+    .. code-block:: python
+        H,W = (300,400)
+        rgi = tb.RandomGaussianImage((H, W), 2, 'square',
+                                     a=[-1, 1],
+                                     b=[15, 25],
+                                     c=[[.3*400 , .3*300], [.7*400, .7*300]])
+        image =  rgi.image()
+        theoretical_derivative = rgi.derivative()
+        print(f"image shape : {image.shape}")
+        derivative = tb.spatialGradient(image, dx_convention="square")
+        dx = torch.tensor([[1. / (W - 1), 1. / (H - 1)]], dtype=torch.float64)
+        derivative_2 = tb.spatialGradient(mage, dx_convention=dx)
+
+    """
     if isinstance(dx_convention,str):
         dx_convention_list = ["pixel", "square", "2square"]
 
