@@ -1,7 +1,6 @@
 
 # TODO : faire une fonction de composition 'simple'
 # TODO : rendre les fonctions compatibles pour des images en 3D
-# TODO : gerer le cpu/gpu
 
 import torch
 from torch.nn.functional import grid_sample
@@ -10,8 +9,8 @@ from math import log,ceil
 from . import torchbox as tb
 
 
+ # TODO : Faire docstring
 class FieldIntegrator:
-
     def __init__(self,method,save=False,N=None,dx_convention = 'pixel'):
         """
 
