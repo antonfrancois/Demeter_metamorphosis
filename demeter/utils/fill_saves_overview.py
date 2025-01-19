@@ -3,10 +3,15 @@
 # from datetime import datetime
 import re
 import csv
+
 from .. import metamorphosis as mt
 from .constants import *
 
 DEFAULT_CSV_FILE,DEFAULT_PATH = 'saves_overview.csv', ROOT_DIRECTORY+'/saved_optim/'
+
+def rec(s):
+    """remove_escape_characters"""
+    return re.sub(r'[\n\t\r]', '', s)
 
 def _optim_to_state_dict_(optim,file_name,write_dict=None,message=None):
     """ load and store needed variables from object inherited from Optimize_GeodesicShooting
@@ -27,26 +32,28 @@ def _optim_to_state_dict_(optim,file_name,write_dict=None,message=None):
     else: write_dict['saved_file_name'] = file_name
 
     # flag for discriminating against different kinds of Optimizers
-    try:
-        isinstance(optim.mp.rf,mt.Residual_norm_function)
-        modifier_str = optim.mp.rf.__repr__()
-    except AttributeError:
-        modifier_str = 'None'
+    # try:
+    #     isinstance(optim.mp.rf,mt.Residual_norm_function)
+    #     modifier_str = optim.mp.rf.__repr__()
+    # except AttributeError:
+    #     modifier_str = 'None'
 
-    state_dict = dict(
-            shape=optim.source.shape.__str__()[10:],
-            modifier=modifier_str,
-            method=optim.optimizer_method_name,
-            final_loss=float(optim.total_cost.detach()),
-            DICE = optim.get_DICE(),
-            mu=optim._get_mu_(),
-            rho=optim._get_rho_(),
-            lamb=optim.cost_cst,
-            sigma_v=optim.mp.sigma_v.__str__(),
-            n_step=optim.mp.n_step,
-            n_iter=len(optim.to_analyse[1]),
-            message= '' if message is None else message
-        )
+    state_dict = {
+        "shape": tuple(optim.source.shape),
+        # "modifier": modifier_str,
+        "meta_type": optim.__class__.__name__,
+        "data_cost": optim.data_term.__class__.__name__,
+        "kernelOperator": rec(optim.mp.kernelOperator.__repr__()),
+        "optimizer_method": optim.optimizer_method_name,
+        "final_loss": float(optim.total_cost.detach()),
+        "DICE": optim.get_DICE(),
+        "landmarks": optim.get_landmark_dist(),
+        "rho": optim._get_rho_(),
+        "lamb": optim.cost_cst,
+        "n_step": optim.mp.n_step,
+        "n_iter": len(optim.to_analyse[1]),
+        "message": '' if message is None else message
+    }
     return  {**write_dict , **state_dict}
 
 def _write_dict_to_csv(dict,csv_file = None,path=None):

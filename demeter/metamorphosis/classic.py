@@ -171,13 +171,12 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
         return float(self.mp.rho)
 
     def get_all_parameters(self):
-        return {
+        params_all  = super().get_all_parameters()
+        params_spe = {
             'rho':self._get_rho_(),
-            'lambda':self.cost_cst,
-            'sigma_v':self.mp.sigma_v,
-            'n_step':self.mp.n_step,
             'method':self.mp.method,
         }
+        return {**params_all,**params_spe}
 
     # def _compute_V_norm_(self,*args):
     #     """
