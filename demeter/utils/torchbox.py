@@ -8,7 +8,6 @@ import torch
 import torch.nn.functional as F
 from kornia.filters import SpatialGradient,SpatialGradient3d,filter2d,filter3d
 from kornia.geometry.transform import resize
-import kornia.utils.grid as kg
 from numpy import newaxis
 from matplotlib.widgets import Slider
 from nibabel import load as nib_load
@@ -930,15 +929,38 @@ def quiver_plot(field,
                 check_diffeo=False,
                 color=None,
                 dx_convention='pixel',
-                real_scale=True):
-    """
+                real_scale=True,
+                remove_grid=False
+                ):
+    """ Plot the deformation field as a quiver plot.
 
-    :param field: field to represent
-    :param grid:
-    :param saxes[1]:
-    :param title:
-    :return:axes
+    Parameters
+    ----------
+    field : torch.Tensor
+        2D tensor of shape (1,H,W,2)
+    ax : matplotlib axis object, optional
+        If None, the plot makes one new (default None)
+    step : int, optional
+        Step of the grid (default 2)
+    title : str, optional
+        Title of the plot
+    check_diffeo : bool, optional
+        Check if the deformation is a diffeomorphism (default False) by
+        displaying the sign of the determinant of the Jacobian matrix at each point.
+    color : str, optional
+        Color of the grid (default None = black)
+    dx_convention : str, optional
+        Convention of the deformation field (default 'pixel')
+    real_scale : bool, optional
+        If True, plot quiver arrow with axis scale (default True)
+    remove_grid : bool, optional
+        If True, `field` is considered as a deformortion and the regular grid
+        is removed  from `field` (default False)
 
+    Returns
+    -------
+    ax : matplotlib
+        Axis object
     """
     if not is_tensor(field):
         raise TypeError("field has to be tensor object")
@@ -955,9 +977,12 @@ def quiver_plot(field,
 
     reg_grid = make_regular_grid(field.size(),dx_convention='pixel')
     if dx_convention == '2square':
-        field = square2_to_pixel_convention(field,is_grid=False)
+        field = square2_to_pixel_convention(field,is_grid=remove_grid)
     elif dx_convention == 'square':
-        field = square_to_pixel_convention(field,is_grid=False)
+        field = square_to_pixel_convention(field,is_grid=remove_grid)
+
+    if remove_grid:
+        field -= reg_grid
 
     if check_diffeo :
          cD = checkDiffeo(reg_grid+field)
@@ -1007,10 +1032,10 @@ def deformation_show(deformation,step=2,
     regular_grid = make_regular_grid(deformation.size())
     gridDef_plot_2d(deformation,step=step,ax = axes[0],
                  check_diffeo=check_diffeo,
-                 color=None)
+                 color=color)
     quiver_plot(deformation - regular_grid,step=step,
                 ax = axes[1],check_diffeo=check_diffeo,
-                color=None)
+                color=color)
     plt.show()
 
 def vectField_show(field,step=2,check_diffeo= False,title="",
