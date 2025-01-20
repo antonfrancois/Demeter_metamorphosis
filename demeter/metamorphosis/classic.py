@@ -170,8 +170,8 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
     def _get_rho_(self):
         return float(self.mp.rho)
 
-    def get_all_parameters(self):
-        params_all  = super().get_all_parameters()
+    def get_all_arguments(self):
+        params_all  = super().get_all_arguments()
         params_spe = {
             'rho':self._get_rho_(),
             'method':self.mp.method,

@@ -296,7 +296,7 @@ def plot_gaussian_kernel_2d(kernel: torch.Tensor, sigma, axes=None):
         axes = axes.ravel()[[True,False,True,True]]
     # plot kernel
     axes[1].imshow(kernel[0], cmap='cividis')
-    axes[1].set_title(f'Gaussian Kernel $\sigma$={sigma}')
+    axes[1].set_title(rf'Gaussian Kernel $\sigma$={sigma}')
     axes[1].axis('off')
 
     # plot kernel profile
@@ -461,7 +461,9 @@ class GaussianRKHS(torch.nn.Module):
     def __init__(self,sigma : Tuple,
                  border_type: str = 'replicate',
                  normalized: bool = True,
-                 device = 'cpu'):
+                 kernel_reach = 6,
+                 **kwargs
+                 ):
         """
 
         :param sigma: (Tuple[float,float] or [float,float,float])
@@ -475,18 +477,18 @@ class GaussianRKHS(torch.nn.Module):
         self.sigma = sigma
         super().__init__()
         self._dim = len(sigma)
+        self.kernel_reach = kernel_reach
         if self._dim == 2:
-            self.kernel = get_gaussian_kernel2d(sigma)#[None]
-            # self.kernel *= prod(sigma)
+            self.kernel = get_gaussian_kernel2d(sigma, kernel_reach=kernel_reach)#[None]
             self.filter = flt.filter2d
         elif self._dim == 3:
-            self.kernel = get_gaussian_kernel3d(sigma)#[None]
-            # self.kernel *= prod(sigma)
+            self.kernel = get_gaussian_kernel3d(sigma, kernel_reach=kernel_reach)#[None]
             # self.filter = flt.filter3d
             self.filter = fft_filter
         else:
             raise ValueError("Sigma is expected to be a tuple of size 2 or 3 same as the input dimension,"
                              +"len(sigma) == {}".format(len(sigma)))
+        self.normalized = normalized
         if normalized:
             self.kernel /= self.kernel.sum()
         self.border_type = border_type
@@ -497,6 +499,16 @@ class GaussianRKHS(torch.nn.Module):
         if max(self.kernel.shape) > 7:
             self.filter = fft_filter
         # print(f"filter used : {self.filter}")
+
+    def get_all_arguments(self):
+        args = {
+            "name": self.__class__.__name__,
+            "sigma": self.sigma,
+            "border_type": self.border_type,
+            "normalized": self.normalized,
+            "kernel_reach": self.kernel_reach
+        }
+        return args
 
     def init_kernel(self,image):
         if isinstance(self.sigma, tuple) and len(self.sigma) != len(image.shape[2:]) :
@@ -513,14 +525,6 @@ class GaussianRKHS(torch.nn.Module):
         ','+str(self._dim)+'D '+\
         f'\n\tfilter :{self.filter.__name__}, '+sig_str+\
         f'\n\tkernel_size :{tuple(self.kernel.shape)}'
-
-    def init_kernel(self,image):
-        if isinstance(self.sigma, tuple) and len(self.sigma) != len(image.shape[2:]) :
-            raise ValueError(f"kernelOperator :{self.__class__.__name__}"
-                             f"was initialised to be {len(self.sigma)}D"
-                             f" with sigma = {self.sigma} and got image "
-                             f"source.size() = {image.shape}"
-                             )
 
     def forward(self, input: torch.Tensor):
         """
@@ -557,8 +561,9 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
                  sigma_convention= 'pixel',
                  dx = (1,),
                  border_type: str = 'constant',
-                 device = 'cpu',
-                 kernel_reach = 6):
+                 kernel_reach = 6,
+                 **kwargs
+                 ):
         """
 
         :param sigma: (Tuple[float,float] or [float,float,float]) : the standard
@@ -584,6 +589,7 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
         # kernel_size = tuple([big_odd(s) for s in sigma])
         self._dim = len(sigma)
         self.dx = dx_convention_handler(dx,self._dim)
+        self.sigma_convention = sigma_convention
         if sigma_convention == 'pixel':
             self.sigma = torch.tensor(sigma)
             self.sigma_continuous = torch.tensor(
@@ -641,6 +647,16 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
         self.sigma_continuous = self.sigma_continuous.to(image.device)
         self.sigma = self.sigma.to(image.device)
 
+    def get_all_arguments(self):
+        args = {
+            "name": self.__class__.__name__,
+            "sigma_convention": self.sigma_convention,
+            "sigma": self.sigma if self.sigma_convention == 'pixel' else self.sigma_continuous,
+            "border_type": self.border_type,
+            "kernel_reach": self.kernel_reach,
+            "dx": self.dx
+        }
+        return args
 
     def __repr__(self) -> str:
         # the if is there for compatibilities with older versions
@@ -717,7 +733,8 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
     """
 
     def __init__(self, list_sigmas,
-                 normalized: bool = True):
+                 normalized: bool = True,
+                 **kwargs):
         if isinstance(list_sigmas,tuple):
             raise ValueError("List sigma must be a list of tuple, if you want to use "
                              "a single scale Gaussian RKHS please use the class "
@@ -763,14 +780,13 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
                                  f"source.size() = {image.shape}"
                                  )
 
-    def init_kernel(self,image):
-        for sig in self.list_sigma:
-            if isinstance(sig, tuple) and len(sig) != len(image.shape[2:]) :
-                raise ValueError(f"kernelOperator :{self.__class__.__name__}"
-                                 f"was initialised to be {len(sig)}D"
-                                 f" with list sigma = {self.list_sigma} and got image "
-                                 f"source.size() = {image.shape}"
-                                 )
+    def get_all_arguments(self):
+        args = {
+            "name": self.__class__.__name__,
+            "list_sigmas": self.list_sigma,
+            "border_type": self.border_type,
+        }
+        return args
 
     def __repr__(self) -> str:
         # the if is there for compatibilities with older versions

@@ -68,11 +68,12 @@ from ..metamorphosis import data_cost as dt
 # =========================================================================
 # See them as a toolkit
 
-class Geodesic_integrator(torch.nn.Module,ABC):
-    """ Abstract class for defining the way of integrating over geodesics"""
+
+class Geodesic_integrator(torch.nn.Module, ABC):
+    """Abstract class for defining the way of integrating over geodesics"""
 
     @abstractmethod
-    def __init__(self, kernelOperator, n_step, dx_convention="pixel"):
+    def __init__(self, kernelOperator, n_step, dx_convention="pixel",**kwargs):
         super().__init__()
         self._force_save = False
         self._detach_image = True
@@ -124,19 +125,19 @@ class Geodesic_integrator(torch.nn.Module,ABC):
         pass
 
     def forward(
-            self,
-                image,
-                momentum_ini,
-                field_ini=None,
-                save=True,
-                plot =0,
-                t_max = 1,
-                verbose=False,
-                sharp=None,
-                debug= False,
-                hamiltonian_integration = False,
-                ):
-        r""" This method is doing the temporal loop using the good method `_step_`
+        self,
+        image,
+        momentum_ini,
+        field_ini=None,
+        save=True,
+        plot=0,
+        t_max=1,
+        verbose=False,
+        sharp=None,
+        debug=False,
+        hamiltonian_integration=False,
+    ):
+        r"""This method is doing the temporal loop using the good method `_step_`
 
         :param image: (tensor array) of shape [1,1,H,W]. Source image ($I_0$)
         :param field_ini: to be deprecated, field_ini is id_grid
@@ -942,11 +943,12 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
     #     pass
 
     @abstractmethod
-    def get_all_parameters(self):
+    def get_all_arguments(self):
         return {
             "n_step": self.mp.n_step,
             "lambda": self.cost_cst,
-            "kernelOperator": self.mp.kernelOperator,
+            "kernelOperator": self.mp.kernelOperator.get_all_arguments(),
+            # "kernelOperator_args": self.mp.kernelOperator_args,
         }
 
     def get_geodesic_distance(self, only_zero=False):
@@ -1123,10 +1125,13 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
             if verbose:
                 update_progress(
-                    (i+1)/n_iter,
-                    message=(f"{self.data_term.__class__.__name__} :", loss_stock[i,0])
+                    (i + 1) / n_iter,
+                    message=(
+                        f"{self.data_term.__class__.__name__} :",
+                        loss_stock[i, 0],
+                    ),
                 )
-            if plot and i in [n_iter//4,n_iter//2,3*n_iter//4]:
+            if plot and i in [n_iter // 4, n_iter // 2, 3 * n_iter // 4]:
                 self._plot_forward_()
 
         # for future plots compute shooting with save = True
@@ -1183,11 +1188,13 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                 self.forward_safe_mode(z_0, n_iter, grad_coef * 0.1, verbose, mode=mode)
 
     def compute_landmark_dist(
-        self, source_landmark, target_landmark=None, forward=True, verbose=True
+        self,
+            source_landmark,
+            target_landmark=None,
+            forward=True,
+            verbose=True,
+            round = False
     ):
-        # from scipy.interpolate import interpn
-        # import numpy as np
-        # compute deformed landmarks
         if forward:
             deformation = self.mp.get_deformation()
         else:
@@ -1198,13 +1205,12 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             deform_landmark.append(deformation[idx].tolist())
 
         def land_dist(land_1, land_2):
-            print(f"land type : {land_1.dtype}, {land_2.dtype}")
-            try:  # caused by applying .round() on an int tensor
-                return ((land_1 - land_2.round()).abs()).sum() / source_landmark.shape[
-                    0
-                ]
-            except RuntimeError:
-                return ((land_1 - land_2).abs()).sum() / source_landmark.shape[0]
+            # print(f"land type : {land_1.dtype}, {land_2.dtype}")
+            print(f"round {round}")
+            if  not round or land_2.dtype == torch.int :
+                return (land_1 - land_2).abs().mean()
+            else:
+                return (land_1 - land_2.round()).abs().mean()
 
         self.source_landmark = source_landmark
         self.target_landmark = target_landmark
@@ -1213,9 +1219,10 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             return self.deform_landmark
         self.landmark_dist = land_dist(target_landmark, self.deform_landmark)
         dist_source_target = land_dist(target_landmark, source_landmark)
-        print(
-            f"Landmarks:\n\tBefore : {dist_source_target}\n\tAfter : {self.landmark_dist}"
-        )
+        if verbose:
+            print(
+                f"Landmarks:\n\tBefore : {dist_source_target}\n\tAfter : {self.landmark_dist}"
+            )
         return self.deform_landmark, self.landmark_dist, dist_source_target
 
     def get_landmark_dist(self):
@@ -1303,10 +1310,17 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         path = OPTIM_SAVE_DIR
         ic(path)
         date_time = datetime.now()
-        if type(self.mp.sigma_v) is list:
-            n_dim = "2D" if len(self.mp.sigma_v[0]) == 2 else "3D"
+
+        if len(self.mp.image.shape) == 4:
+            n_dim = "2D"
+        elif len(self.mp.image.shape) == 5:
+            n_dim = "3D"
         else:
-            n_dim = "2D" if len(self.mp.sigma_v) == 2 else "3D"
+            raise ValueError(
+                "Image dimension not understood, "
+                "got self.image.shape :{self.image.shape}"
+            )
+
         id_num = 0
 
         # build file name
@@ -1345,7 +1359,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         # =================
         # save the data
-        # copy and clean dictonary containing all values
+        # copy and clean dictionary containing all values
         dict_copy = {}
         dict_copy["light_save"] = light_save
         dict_copy["__repr__"] = self.__repr__()
@@ -1353,9 +1367,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             dict_copy[k] = self.__dict__.get(k)
             if torch.is_tensor(dict_copy[k]):
                 dict_copy[k] = dict_copy[k].cpu().detach()
-        if light_save:
-            dict_copy["parameters"] = self.get_all_parameters()
-        else:
+
+        dict_copy["args"] = self.get_all_arguments()
+        if not light_save:
             dict_copy["mp"] = self.mp  # For some reason 'mp' wasn't showing in __dict__
 
         if type(self.data_term) != dt.Ssd:
@@ -1459,12 +1473,14 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         ax[1, 1].set_title("comparaison deformed image with target", fontsize=25)
         ax[1, 0].imshow(self.mp.image[0, 0].detach().cpu().numpy(), **image_kw)
         ax[1, 0].set_title("Integrated source image", fontsize=25)
+
         tb.quiver_plot(
-            self.mp.get_deformation().detach().cpu() - self.id_grid,
+            self.mp.get_deformation().detach().cpu(),
             ax=ax[1, 1],
             step=15,
             color=GRIDDEF_YELLOW,
             dx_convention=self.dx_convention,
+            remove_grid=True,
         )
 
         try:
@@ -1511,6 +1527,6 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.mp.plot_deform(self.target, temporal_nfigs)
 
     def plot(self, y_log=False):
-        self.plot_cost()
-        self.plot_imgCmp()
-        # self.plot_deform()
+        fig_c, ax_c = self.plot_cost()
+        fig_i, ax_i = self.plot_imgCmp()
+        return (fig_c, ax_c), (fig_i, ax_i)
