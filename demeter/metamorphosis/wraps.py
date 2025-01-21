@@ -135,7 +135,7 @@ def metamorphosis(
     sharp=False,
     safe_mode=True,
     integration_method="semiLagrangian",
-    optimizer_method="adadelta",
+    optimizer_method="LBFGS_torch",
     dx_convention="pixel",
     hamiltonian_integration=False,
 ):
