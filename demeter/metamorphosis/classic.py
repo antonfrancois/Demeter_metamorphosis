@@ -78,7 +78,14 @@ class Metamorphosis_integrator(Geodesic_integrator):
         deformation = self.id_grid - sqrt(self.rho) * self.field/self.n_step
         self._update_image_semiLagrangian_(deformation)
         # self._update_momentum_semiLagrangian_(deformation)
-        self.momentum = self._compute_div_momentum_semiLagrangian_(deformation,self.momentum,sqrt(self.rho))
+
+        self.momentum = self._compute_div_momentum_semiLagrangian_(
+            deformation,
+            self.momentum,sqrt(self.rho)
+        )
+        # self.momentum *= sqrt(self.rho)
+
+        # self.momentum = self._compute_div_momentum_semiLagrangian_(deformation,self.momentum,1)
         # self.momentum *= sqrt(self.rho)
 
         return (self.image,sqrt(self.rho) * self.field,sqrt(1 - self.rho) * self.momentum)
@@ -143,6 +150,12 @@ class Metamorphosis_integrator(Geodesic_integrator):
         return float(self.rho)
 
 class Metamorphosis_Shooting(Optimize_geodesicShooting):
+    r"""
+    Metamorphosis shooting class, implements the shooting algorithm for metamorphosis
+    over the Hamiltonian:
+
+    .. math::
+        H(z_0) =   \frac 12\| I_1 - T \|_{L_2}^2 + \lambda \Big[ \|v_0\|^2_V + \mu ^2 \|z_0\|^2_{L_2} \Big]
 
     Parameters
     ----------
@@ -188,31 +201,6 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
             'method':self.mp.method,
         }
         return {**params_all,**params_spe}
-
-    # def _compute_V_norm_(self,*args):
-    #     """
-    #
-    #     usage 1: _compute_V_norm_(field)
-    #         :field: torch Tensor of shape [1,H,W,2] or [1,D,H,W,3]
-    #     usage 2: _compute_V_norm_(residual, image)
-    #         :residual: torch Tensor of shape [1,C,H,W] or [1,C,D,H,W]
-    #         :image: torch Tensor of shape [1,C,H,W] or [1,C,D,H,W]
-    #     :return: float
-    #     """
-    #     if len(args) == 2 and not args[0].shape[-1] in [2,3] :
-    #         residual, image = args[0],args[1]
-    #         C = residual.shape[1]
-    #         grad_source = tb.spacialGradient(image)
-    #         grad_source_resi = (grad_source * residual.unsqueeze(2)).sum(dim=1) / C
-    #         K_grad_source_resi = self.mp.kernelOperator(grad_source_resi)
-    #
-    #         return (grad_source_resi * K_grad_source_resi).sum()
-    #     elif len(args) == 1 and args[0].shape[-1] in [2,3]:
-    #         field = args[0]
-    #         k_field = self.mp.kernelOperator(field)
-    #         return (k_field * field).sum()
-    #     else:
-    #         raise ValueError(f"Bad arguments, see usage in Doc got args = {args}")
 
 
     def cost(self, momentum_ini : torch.Tensor) -> torch.Tensor:
