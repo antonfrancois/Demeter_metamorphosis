@@ -311,7 +311,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     # Done
     def _update_field_(self):
         grad_image = tb.spatialGradient(self.image, dx_convention=self.dx_convention)
-        self.field = self._compute_vectorField_(self.momentum, grad_image)
+        ic(grad_image.min().item(), grad_image.max().item(),self.dx_convention)
         self.field,self.norm_v_i = self._compute_vectorField_(self.momentum, grad_image)
         # self.field *= self._field_cst_mult()
         self.field *= sqrt(self.rho)
@@ -488,7 +488,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             oriented_field = self.orienting_field[self._i][None]
             oriented_field *= self.orienting_mask[self._i][..., None]
         self.field = -tb.im2grid(
-            self.kernelOperator(tb.grid2im(free_field - oriented_field))
+            self.kernelOperator(tb.grid2im(free_field + oriented_field))
         )
 
     def to_device(self, device):
@@ -526,11 +526,11 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             to_t = self.n_step
         if from_t < 0 and from_t >= to_t:
             raise ValueError(
-                f"from_t must in [0,n_step-1], got from_t ={from_t} and n_step = {self.n_step}"
+                f"from_t must be in [0,n_step-1], got from_t ={from_t} and n_step = {self.n_step}"
             )
-        if to_t > self.n_step:
+        if to_t > self.n_step or to_t <= from_t:
             raise ValueError(
-                f"to_t must in [from_t+1,n_step], got to_t ={to_t} and n_step = {self.n_step}"
+                f"to_t must be in [from_t+1,n_step], got to_t ={to_t} and n_step = {self.n_step}"
             )
         if to_t == 1:
             return (
@@ -562,11 +562,11 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             to_t = self.n_step
         if from_t < 0 and from_t >= to_t:
             raise ValueError(
-                f"from_t must in [0,n_step-1], got from_t ={from_t} and n_step = {self.n_step}"
+                f"from_t must be in [0,n_step-1], got from_t ={from_t} and n_step = {self.n_step}"
             )
-        if to_t > self.n_step:
+        if to_t > self.n_step or to_t <= from_t:
             raise ValueError(
-                f"to_t must in [from_t+1,n_step], got to_t ={to_t} and n_step = {self.n_step}"
+                f"to_t must be in [from_t+1,n_step], got to_t ={to_t} and n_step = {self.n_step}"
             )
         if to_t == 1:
             return (
