@@ -312,6 +312,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     def _update_field_(self):
         grad_image = tb.spatialGradient(self.image, dx_convention=self.dx_convention)
         self.field = self._compute_vectorField_(self.momentum, grad_image)
+        self.field,self.norm_v_i = self._compute_vectorField_(self.momentum, grad_image)
         # self.field *= self._field_cst_mult()
         self.field *= sqrt(self.rho)
 
@@ -415,7 +416,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     def _update_image_semiLagrangian_(self, deformation, residuals=None, sharp=False):
         if residuals is None:
             # z = sqrt(1 - rho) * p and I = v gradI + sqrt(1-rho) * z
-            residuals = sqrt(1 - self.rho) * self.momentum
+            residuals = (1 - self.rho) * self.momentum
         self.norm_z_i = None
         if self.flag_hamiltonian_integration:
             self.norm_z_i = .5 * residuals.pow(2).sum()

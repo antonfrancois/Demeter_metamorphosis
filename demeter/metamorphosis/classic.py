@@ -144,21 +144,29 @@ class Metamorphosis_integrator(Geodesic_integrator):
 
 class Metamorphosis_Shooting(Optimize_geodesicShooting):
 
-    def __init__(self,source : torch.Tensor,
-                     target : torch.Tensor,
-                     geodesic : Metamorphosis_integrator,
-                     cost_cst : float,
-                     data_term=None,
-                     optimizer_method : str = 'LBFGS_torch',
-                     # sharp=False
-                     # mask = None # For cost_function masking
-                    **kwargs
-                 ):
-        super().__init__(source,target,geodesic,cost_cst,data_term,optimizer_method)
-        # self.mask = mask
+    Parameters
+    ----------
+    source : torch.Tensor
+        source image
+    target : torch.Tensor
+        target image
+    geodesic : Metamorphosis_integrator
+        geodesic integrator
+    cost_cst : float
+        cost constant
+    data_term : mt.DataCost, optional
+        data term, by default Ssd
+    optimizer_method : str, optional
+        optimizer method, by default 'LBFGS_torch'
+    hamiltonian_integration : bool, optional
+        choose to integrate over first time step only or whole hamiltonian
+         integration, by default False
+    """
+
     def __init__(self,source,target,geodesic,**kwargs):
         # super().__init__(source,target,geodesic,cost_cst,data_term,optimizer_method,hamiltonian_integration,**kwargs)
         super().__init__(source,target,geodesic,**kwargs)
+
 
     # def __repr__(self) -> str:
     #     return self.__class__.__name__ +\
