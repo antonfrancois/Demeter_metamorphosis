@@ -159,6 +159,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self.image = image.clone().to(device)
         self.momentum = momentum_ini
         self.debug = debug
+        self.flag_hamiltonian_integration = hamiltonian_integration
         try:
             self.save = True if self._force_save else save
         except AttributeError:
@@ -186,11 +187,19 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                 (t_max * self.n_step,) + momentum_ini.shape[1:]
             )
 
+        if self.flag_hamiltonian_integration:
+            self.norm_v = 0
+            self.norm_z = 0
+
         for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step)):
             self._i = i
 
             _, field_to_stock, residuals_dt = self.step()
 
+            if self.flag_hamiltonian_integration:
+                self.norm_v += self.norm_v_i / self.n_step
+                self.norm_z += self.norm_z_i / self.n_step
+                # self.ham_integration += self.ham_value / self.n_step
             # ic(self._i,self.field.min().item(),self.field.max().item(),
             #    self.momentum.min().item(),self.momentum.max().item(),
             #     self.image.min().item(),self.image.max().item())
@@ -215,6 +224,10 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
             if verbose:
                 update_progress(i / (t_max * self.n_step))
+                if self.flag_hamilt_integration:
+                    print('ham :', self.ham_value.detach().cpu().item(),
+                      self.norm_v.detach().cpu().item(),
+                      self.norm_z.detach().cpu().item())
 
         # try:
         #     _d_ = device if self._force_save else 'cpu'
@@ -249,9 +262,16 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         :return: (tensor array) of shape [B,H,W,2]
         """
         # C = residuals.shape[1]
-        return tb.im2grid(
-            self.kernelOperator((-(momentum.unsqueeze(2) * grad_image).sum(dim=1)))
-        )
+        field_momentum = -(momentum.unsqueeze(2) * grad_image).sum(dim=1)
+        field =  self.kernelOperator(field_momentum)
+        ic(field_momentum.abs().max().item(),
+              field.abs().max().item())
+
+        norm_v = None
+        if self.flag_hamiltonian_integration:
+            norm_v = .5 * self.rho * (field_momentum.clone() * field.clone()).sum()
+
+        return tb.im2grid(field), norm_v
 
     def _compute_vectorField_multimodal_(self, momentum, grad_image):
         r"""operate the equation $K \star (z_t \cdot \nabla I_t)$
@@ -396,6 +416,9 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         if residuals is None:
             # z = sqrt(1 - rho) * p and I = v gradI + sqrt(1-rho) * z
             residuals = sqrt(1 - self.rho) * self.momentum
+        self.norm_z_i = None
+        if self.flag_hamiltonian_integration:
+            self.norm_z_i = .5 * residuals.pow(2).sum()
         image = self.source if sharp else self.image
         # if self.rho > 0:
         self.image = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
@@ -844,6 +867,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         cost_cst,
         data_term=None,
         optimizer_method: str = "grad_descent",
+        hamiltonian_integration=False,
     ):
         """
 
@@ -861,6 +885,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.source = source
         self.target = target
 
+        self.flag_hamiltonian_integration = hamiltonian_integration
         self.mp.kernelOperator.init_kernel(source)
         try:
             self.dx = self.mp.kernelOperator.dx
@@ -1058,15 +1083,12 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         """
         # initialise loss_stock
         if loss_stock is None:
-            d = 3 if self._get_rho_() < 1 else 2
+            d = 3
             return torch.zeros((i, d))
-        if self._get_rho_() < 1:  # metamorphosis
-            loss_stock[i, 0] = self.data_loss.detach()
-            loss_stock[i, 1] = self.norm_v_2.detach()
-            loss_stock[i, 2] = self.norm_l2_on_z.detach()
-        else:  # LDDMM
-            loss_stock[i, 0] = self.data_loss.detach()
-            loss_stock[i, 1] = self.norm_v_2.detach()
+
+        loss_stock[i, 0] = self.data_loss.detach()
+        loss_stock[i, 1] = self.norm_v_2.detach()
+        loss_stock[i, 2] = self.norm_l2_on_z.detach()
         return loss_stock
 
     def _plot_forward_dlt_(self):

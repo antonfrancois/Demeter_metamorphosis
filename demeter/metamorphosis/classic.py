@@ -156,6 +156,9 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
                  ):
         super().__init__(source,target,geodesic,cost_cst,data_term,optimizer_method)
         # self.mask = mask
+    def __init__(self,source,target,geodesic,**kwargs):
+        # super().__init__(source,target,geodesic,cost_cst,data_term,optimizer_method,hamiltonian_integration,**kwargs)
+        super().__init__(source,target,geodesic,**kwargs)
 
     # def __repr__(self) -> str:
     #     return self.__class__.__name__ +\
@@ -214,22 +217,30 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
         :return: :math:`H(z_0)` a single valued tensor
         """
         lamb = self.cost_cst
-        self.mp.forward(self.source,momentum_ini,save=False,plot=0)
+        self.mp.forward(self.source,momentum_ini,
+                        save=False,
+                        plot=0,
+                        hamiltonian_integration=self.flag_hamiltonian_integration,
+                        )
 
         # Compute the data_term. Default is the Ssd
         self.data_loss = self.data_term()
 
-        # Norm V
-        self.norm_v_2 = .5 * self._compute_V_norm_(momentum_ini,self.source)
 
 
         # norm_2 on z
-        if self.mp.rho < 1:
+        if self.flag_hamiltonian_integration:
+            self.norm_v_2 = self.mp.norm_v
+            self.norm_l2_on_z = self.mp.norm_z
+            # self.total_cost = self.data_loss + lamb * (self.norm_v_2 + self.norm_l2_on_z)
+        else:
+            # Norm V
+            self.norm_v_2 = .5 * self._compute_V_norm_(momentum_ini,self.source)
+
             # # Norm on the residuals only
             self.norm_l2_on_z = .5 * (momentum_ini**2).sum()/prod(self.source.shape[2:])
-            self.total_cost = self.data_loss + \
+
+        self.total_cost = self.data_loss + \
                               lamb * (self.norm_v_2 + self.norm_l2_on_z)
-        else:
-             self.total_cost = self.data_loss + lamb * self.norm_v_2
         # print('ssd :',self.ssd,' norm_v :',self.norm_v_2)
         return self.total_cost

@@ -46,6 +46,7 @@ def lddmm(
     integration_method="semiLagrangian",
     dx_convention="pixel",
     optimizer_method="LBFGS_torch",
+    hamiltonian_integration=False,
 ):
     """
     Perform a Large Deformation Diffeomorphic Metric Mapping (LDDMM) transformation between a source and a target.
@@ -111,6 +112,7 @@ def lddmm(
         # optimizer_method='LBFGS_torch',
         optimizer_method=optimizer_method,
         data_term=data_term,
+        hamiltonian_integration=hamiltonian_integration,
     )
 
     mr = commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef)
@@ -135,6 +137,7 @@ def metamorphosis(
     integration_method="semiLagrangian",
     optimizer_method="adadelta",
     dx_convention="pixel",
+    hamiltonian_integration=False,
 ):
 
     momentum_ini = commun_before(momentum_ini, source)
@@ -156,6 +159,7 @@ def metamorphosis(
         data_term=data_term,
         # optimizer_method='LBFGS_torch')
         optimizer_method=optimizer_method,
+        hamiltonian_integration=hamiltonian_integration,
     )
 
     mr = commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef)
