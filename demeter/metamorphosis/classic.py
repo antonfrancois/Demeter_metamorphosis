@@ -58,6 +58,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
 
     def _step_fullEulerian(self):
         self._update_field_()
+        self.field *= self.rho
         self._update_image_Eulerian_()
         self._update_residuals_Eulerian_()
 
@@ -66,18 +67,17 @@ class Metamorphosis_integrator(Geodesic_integrator):
     def _step_advection_semiLagrangian(self):
         self._update_field_()
         # Lagrangian scheme on images
-        deformation = self.id_grid - sqrt(self.rho) * self.field/self.n_step
+        deformation = self.id_grid - self.rho * self.field/self.n_step
         self._update_image_semiLagrangian_(deformation)
         self._update_momentum_Eulerian_()
 
-        return (self.image,sqrt(self.rho) * self.field,sqrt(1 - self.rho) * self.momentum)
+        return (self.image,self.rho * self.field,(1 - self.rho) * self.momentum)
 
     def _step_full_semiLagrangian(self):
         self._update_field_()
         # Lagrangian scheme on images and residuals
-        deformation = self.id_grid - sqrt(self.rho) * self.field/self.n_step
+        deformation = self.id_grid - self.rho * self.field/self.n_step
         self._update_image_semiLagrangian_(deformation)
-        # self._update_momentum_semiLagrangian_(deformation)
 
         self.momentum = self._compute_div_momentum_semiLagrangian_(
             deformation,
@@ -85,10 +85,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
         )
         # self.momentum *= sqrt(self.rho)
 
-        # self.momentum = self._compute_div_momentum_semiLagrangian_(deformation,self.momentum,1)
-        # self.momentum *= sqrt(self.rho)
-
-        return (self.image,sqrt(self.rho) * self.field,sqrt(1 - self.rho) * self.momentum)
+        return (self.image,self.rho * self.field,(1 - self.rho) * self.momentum)
 
     def _step_sharp_semiLagrangian(self):
         # device = self.image.device
