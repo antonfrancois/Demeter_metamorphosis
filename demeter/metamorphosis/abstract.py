@@ -264,8 +264,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         # C = residuals.shape[1]
         field_momentum = -(momentum.unsqueeze(2) * grad_image).sum(dim=1)
         field =  self.kernelOperator(field_momentum)
-        ic(field_momentum.abs().max().item(),
-              field.abs().max().item())
 
         norm_v = None
         if self.flag_hamiltonian_integration:
@@ -311,10 +309,11 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     # Done
     def _update_field_(self):
         grad_image = tb.spatialGradient(self.image, dx_convention=self.dx_convention)
-        ic(grad_image.min().item(), grad_image.max().item(),self.dx_convention)
+        # ic(grad_image.min().item(), grad_image.max().item(),self.dx_convention)
         self.field,self.norm_v_i = self._compute_vectorField_(self.momentum, grad_image)
         # self.field *= self._field_cst_mult()
-        self.field *= sqrt(self.rho)
+        # self.field *= sqrt(self.rho)
+
 
     # Done
     def _update_momentum_Eulerian_(self):
@@ -1143,7 +1142,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         for i in range(1, n_iter):
             self._iter = i
-            # print("\n",i,"==========================")
+
             self._step_optimizer_()
             loss_stock = self._cost_saving_(i, loss_stock)
 
@@ -1315,8 +1314,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         """Save an optimisation to be later loaded and write all sort of info
         in a csv file
 
-        :param source_name: (str) will appear in the file name
-        :param target_name: (str) will appear in the file name
+        :param file_name: (str) will appear in the file name
         :param light_save: (bool) if True, only the initial momentum is saved.
         If False all data, integration, source and target are saved. Setting it to True
         save a lot of space on the disk, but you might not be able to get the whole
@@ -1541,7 +1539,6 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             ax[1, 1].legend()
             text_score += f"landmark : {self.get_landmark_dist():.2f},"
         ax[1, 1].text(10, 10, text_score, c="white", size=25)
-
         return fig, ax
 
     def plot_deform(self, temporal_nfigs=0):
