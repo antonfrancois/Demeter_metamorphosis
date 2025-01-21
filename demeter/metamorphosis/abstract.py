@@ -633,7 +633,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             fig.colorbar(r_s, ax=ax[i, -2], fraction=0.046, pad=0.04)
 
             tb.gridDef_plot_2d(
-                self.get_deformation(t),
+                self.get_deformation(to_t = t+1),
                 add_grid=False,
                 ax=ax[i, -1],
                 step=int(min(self.field_stock.shape[2:-1]) / 30),
@@ -957,7 +957,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         norm_v = (field_momentum * field).sum()
         if norm_v < 0:
-            warnings.warn(f"norm_v is negative : {norm_v}")
+            warnings.warn(f"norm_v is negative : {norm_v}, increasing"
+                          f" kernel_reach in kernelOperator might help")
         return norm_v
 
     @abstractmethod
