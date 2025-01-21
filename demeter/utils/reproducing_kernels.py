@@ -352,7 +352,7 @@ def plot_kernel_on_image(kernelOperator,
     if ax is None:
         fig, ax = plt.subplots()
     if flag_image:
-        ax.imshow(image)
+        ax.imshow(image[0,0],cmap='gray')
 
     # Calculate the step size for the grid
     if subdiv is not None:
@@ -361,7 +361,7 @@ def plot_kernel_on_image(kernelOperator,
         else:
             step = tuple((s[0] // s[1] for s in zip(image_shape[-2:], subdiv)))
 
-        gridDef_plot_2d(id_grid, step=step, ax=ax,alpha=.5)
+        gridDef_plot_2d(id_grid, step=step, ax=ax,alpha=.5,color = (.5,.5,.5))
 
     # Calculate the extent to center the kernel on the target image
     kernel_height, kernel_width = kernel[0].shape
@@ -387,12 +387,20 @@ def plot_kernel_on_image(kernelOperator,
     X, Y = torch.meshgrid(x, y)
     print('x, y', X.shape,Y.shape)
     contour = ax.contour(X.T, Y.T, kernel[0], alpha=1,
-                         extent=extent
+                         extent=extent,
+                         cmap= "YlOrRd"
                          )
+    # plot kernel edges
+    ax.plot([extent[0],extent[1],extent[1],extent[0],extent[0]],
+            [extent[2],extent[2],extent[3],extent[3],extent[2]],
+            'r--')
 
     # Add labels to the contour lines
     ax.clabel(contour, inline=True, fontsize=8)
-    sigma = tuple([s for s in kernelOperator.sigma])
+    try:
+        sigma = tuple([s for s in kernelOperator.sigma])
+    except AttributeError:
+        sigma = kernelOperator.list_sigma
     ax.set_title(f"sigma = {sigma}, subdiv = {subdiv}")
     plt.show()
     return ax
