@@ -174,7 +174,7 @@ def metamorphosis(
 def weighted_metamorphosis(
     source,
     target,
-    residual,
+    momentum_ini,
     residual_mask,
     kernelOperator,
     cost_cst,
@@ -188,10 +188,7 @@ def weighted_metamorphosis(
 ):
     print("plop")
     device = source.device
-    #     sigma = tb.format_sigmas(sigma,len(source.shape[2:]))
-    if type(residual) == int:
-        residual = torch.zeros(source.shape, device=device)
-    residual.requires_grad = True
+    momentum_ini = commun_before(momentum_ini, source)
 
     mp_weighted = cn.ConstrainedMetamorphosis_integrator(
         residual_mask=residual_mask,
@@ -207,10 +204,8 @@ def weighted_metamorphosis(
         optimizer_method=optimizer_method,
         data_term=data_term,
     )
-    if not safe_mode:
-        mr_weighted.forward(residual, n_iter=n_iter, grad_coef=grad_coef)
-    else:
-        mr_weighted.forward_safe_mode(residual, n_iter=n_iter, grad_coef=grad_coef)
+
+    mr_weighted = commun_after(mr_weighted, momentum_ini, safe_mode, n_iter, grad_coef)
     return mr_weighted
 
 
@@ -218,22 +213,20 @@ def weighted_metamorphosis(
 def oriented_metamorphosis(
     source,
     target,
-    residual,
+    momentum_ini,
     mp_orienting,
-    mu,
-    rho,
-    gamma,
-    sigma,
+    kernelOperator,
     cost_cst,
     n_iter,
     grad_coef,
     dx_convention="pixel",
+    safe_mode=True,
 ):
     mask = mp_orienting.image_stock.to(source.device)
     orienting_field = mp_orienting.field_stock.to(source.device)
-    if type(residual) == int:
-        residual = torch.zeros(source.shape)
-    residual.requires_grad = True
+    if type(momentum_ini) == int:
+        momentum_ini = torch.zeros(source.shape)
+    momentum_ini.requires_grad = True
 
     # start = time.time()
     mp_orient = cn.ConstrainedMetamorphosis_integrator(
@@ -242,7 +235,7 @@ def oriented_metamorphosis(
         mu=mu,
         rho=rho,
         gamma=gamma,
-        sigma_v=(sigma,) * len(residual.shape),
+        sigma_v=(sigma,) * len(momentum_ini.shape),
         dx_convention=dx_convention,
         # n_step=20 # n_step is defined from mask.shape[0]
     )
@@ -254,7 +247,7 @@ def oriented_metamorphosis(
         # optimizer_method='LBFGS_torch')
         optimizer_method="adadelta",
     )
-    mr_orient.forward(residual, n_iter=n_iter, grad_coef=grad_coef)
+    mr_orient = commun_after(mr_orient, momentum_ini, safe_mode, n_iter, grad_coef)
     return mr_orient
 
 
@@ -262,26 +255,26 @@ def oriented_metamorphosis(
 def constrained_metamorphosis(
     source,
     target,
-    residual,
-    mask_w,
-    field_orienting,
-    mask_o,
+    momentum_ini,
+    orienting_mask,
+    orienting_field,
+    residual_mask,
     kernelOperator,
     cost_cst,
     n_iter,
     grad_coef,
     sharp=False,
     dx_convention="pixel",
+    optimizer_method='LBFGS_torch',
+   safe_mode=True,
 ):
-    if type(residual) == int:
-        residual = torch.zeros(source.shape, device=source.device)
-    residual.requires_grad = True
+    momentum_ini = commun_before(momentum_ini, source)
 
     # start = time.time()
     mp_constr = cn.ConstrainedMetamorphosis_integrator(
-        orienting_mask=mask_o,
-        orienting_field=field_orienting,
-        residual_mask=mask_w,
+        orienting_mask=orienting_mask,
+        orienting_field=orienting_field,
+        residual_mask=residual_mask,
         kernelOperator=kernelOperator,
         sharp=sharp,
         dx_convention=dx_convention,
@@ -291,7 +284,7 @@ def constrained_metamorphosis(
         source, target, mp_constr, cost_cst=cost_cst, optimizer_method="LBFGS_torch"
     )
     # optimizer_method='adadelta')
-    mr_constr.forward(residual, n_iter=n_iter, grad_coef=grad_coef)
+    mr_constr = commun_after(mr_constr, momentum_ini, safe_mode, n_iter, grad_coef)
     return mr_constr
 
 
