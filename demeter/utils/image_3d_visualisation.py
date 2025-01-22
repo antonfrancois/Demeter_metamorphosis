@@ -13,7 +13,7 @@ from math import prod
 from . import torchbox as tb
 from .constants import DLT_KW_RESIDUALS, ROOT_DIRECTORY
 # TODO : Ajouter Residual_norm_function à la liste des imports dans __init__.py
-from ..metamorphosis import Metamorphosis_Shooting,Residual_norm_function
+from ..metamorphosis import Metamorphosis_Shooting
 from .toolbox import save_gif_with_plt
 
 from icecream import ic

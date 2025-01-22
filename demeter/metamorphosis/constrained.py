@@ -194,13 +194,12 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
         self._cost_saving_ = self._oriented_cost_saving_
 
 
-    def get_all_parameters(self):
-        return {
-            'lambda':self.cost_cst,
-            'sigma_v':self.mp.sigma_v,
-            'n_step':self.mp.n_step,
-            'sharp':self.mp.flag_sharp,
+    def get_all_arguments(self):
+        params_all  = super().get_all_arguments()
+        params_const = {
+             'sharp':self.mp.flag_sharp
         }
+        return {**params_all,**params_const}
 
     # TODO : change cost saving to fill a dictionnary
     def _oriented_cost_saving_(self, i, loss_stock):

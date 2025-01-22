@@ -332,7 +332,8 @@ class Weighted_joinedMask_Metamorphosis_Shooting(Optimize_geodesicShooting):
 
         self._plot_forward_ = self._plot_forward_joined_
 
-    def get_all_parameters(self):
+    def get_all_arguments(self):
+        # TODO:  use super for kernelOp, n_step ....
         return {
             'lambda':self.cost_cst,
             'rho':self.rho,
