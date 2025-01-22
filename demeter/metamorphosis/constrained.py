@@ -334,6 +334,8 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
         ax1[1].legend()
         ax1[0].set_title("Lambda = " + str(self.cost_cst))
 
+        return fig1, ax1
+
 
 class Reduce_field_Optim(Optimize_geodesicShooting):
 

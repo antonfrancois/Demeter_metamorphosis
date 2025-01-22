@@ -868,6 +868,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         data_term=None,
         optimizer_method: str = "grad_descent",
         hamiltonian_integration=False,
+        **kwargs
     ):
         """
 
@@ -972,9 +973,10 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
     def get_all_arguments(self):
         return {
             "n_step": self.mp.n_step,
-            "lambda": self.cost_cst,
+            "cost_cst": self.cost_cst,
             "kernelOperator": self.mp.kernelOperator.get_all_arguments(),
-            # "kernelOperator_args": self.mp.kernelOperator_args,
+            "hamiltonian_integration": self.flag_hamiltonian_integration,
+            "dx_convention": self.dx_convention,
         }
 
     def get_geodesic_distance(self, only_zero=False):
@@ -1304,8 +1306,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
     def save(
         self,
-        source_name,
-        target_name,
+        file_name,
         light_save=False,
         message=None,
         destination=None,
@@ -1351,26 +1352,22 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                 n_dim
                 + date_time.strftime("_%d_%m_%Y")
                 + "_"
-                + source_name
-                + "_to_"
-                + target_name
+                + file_name
                 + "_{:03d}".format(id_num)
                 + ".pk1"
             )
 
-        file_name = file_name_maker_(id_num)
-        while file_name in os.listdir(path):
+        file_save = file_name_maker_(id_num)
+        while file_save in os.listdir(path):
             id_num += 1
-            file_name = file_name_maker_(id_num)
+            file_save = file_name_maker_(id_num)
 
         state_dict = fill_saves_overview._optim_to_state_dict_(
             self,
-            file_name,
+            file_save,
             dict(
                 time=date_time.strftime("%d/%m/%Y %H:%M:%S"),
                 saved_file_name="",  # Petit hack pour me simplifier la vie.
-                source=source_name,
-                target=target_name,
                 n_dim=n_dim,
             ),
             message=message,
@@ -1411,11 +1408,11 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             # print('No landmark detected')
             pass
 
-        with open(path + file_name, "wb") as f:
+        with open(path + file_save, "wb") as f:
             pickle.dump(dict_copy, f, pickle.HIGHEST_PROTOCOL)
-        print("Optimisation saved in " + path + file_name + "\n")
+        print("Optimisation saved in " + path + file_save + "\n")
 
-        return file_name, path
+        return file_save, path
 
     # ==================================================================
     #                 PLOTS

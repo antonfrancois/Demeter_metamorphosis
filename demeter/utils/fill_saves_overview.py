@@ -25,8 +25,8 @@ def _optim_to_state_dict_(optim,file_name,write_dict=None,message=None):
         write_dict = dict(
             time = file_name[3:13].replace('_','/'),                                              # All this informations are found in the
             saved_file_name = file_name,
-            source= re.search(r'.+?(?=_to_)',file_name[14:]).group(),                   # file name that is saved with the convention :
-            target = re.search(r'(?<=_to_).*?(?=_(\d\d\d).pk1)',file_name[14:]).group(), # {n_dim}_{time}_{source}_to_{target}_{\d\d\d}.pk1
+            # source= re.search(r'.+?(?=_to_)',file_name[14:]).group(),                   # file name that is saved with the convention :
+            # target = re.search(r'(?<=_to_).*?(?=_(\d\d\d).pk1)',file_name[14:]).group(), # {n_dim}_{time}_{source}_to_{target}_{\d\d\d}.pk1
             n_dim = file_name[:2]
         )
     else: write_dict['saved_file_name'] = file_name
@@ -45,6 +45,8 @@ def _optim_to_state_dict_(optim,file_name,write_dict=None,message=None):
         "data_cost": optim.data_term.__class__.__name__,
         "kernelOperator": rec(optim.mp.kernelOperator.__repr__()),
         "optimizer_method": optim.optimizer_method_name,
+        "hamiltonian_integration": optim.flag_hamiltonian_integration,
+        "dx_convention": optim.dx_convention,
         "final_loss": float(optim.total_cost.detach()),
         "DICE": optim.get_DICE(),
         "landmarks": optim.get_landmark_dist(),

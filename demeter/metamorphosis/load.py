@@ -1,4 +1,3 @@
-import torch
 import pickle
 from icecream import ic
 
@@ -123,7 +122,15 @@ def _load_light_optim(opti_dict, verbose):
     ic(opti_dict["args"])
     ## Re-shoot the integration
     mp = integrator(**opti_dict["args"])
-    mp.forward(opti_dict["source"], opti_dict["parameter"], save=True, plot=0)
+
+    plt.imshow(opti_dict["parameter"][0, 0].detach().cpu())
+    mp.forward(
+        opti_dict["source"],
+        opti_dict["parameter"],
+        save=True,
+        plot=0,
+        hamiltonian_integration = opti_dict["args"]["hamiltonian_integration"]
+    )
     print(mp)
 
     # inject the shooting in the optimizer
@@ -131,7 +138,7 @@ def _load_light_optim(opti_dict, verbose):
     # ic(opti_dict)
 
     # ic(opti_dict['geodesic'].sigma_v)
-
+    opti_dict["hamiltonian_integration"] = opti_dict["args"]["hamiltonian_integration"]
     mr = optimizer(**opti_dict)
     mr.to_analyse = opti_dict["to_analyse"]
 
@@ -162,6 +169,7 @@ def _load_heavy_optim(opti_dict, verbose):
             cost_cst=opti_dict["cost_cst"],
             data_term=opti_dict["data_term"],
             optimizer_method=opti_dict["optimizer_method_name"],
+            hamiltonian_integration=opti_dict["args"]["hamiltonian_integration"],
         )
 
     else:
@@ -171,6 +179,7 @@ def _load_heavy_optim(opti_dict, verbose):
             opti_dict["mp"],
             cost_cst=opti_dict["cost_cst"],
             optimizer_method=opti_dict["optimizer_method_name"],
+            hamiltonian_integration=opti_dict["args"]["hamiltonian_integration"],
         )
 
     for k in FIELD_TO_SAVE[5:]:
