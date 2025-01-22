@@ -1,10 +1,24 @@
+"""
+Il faut retravailler ça
+"""
+
+try:
+    import sys, os
+    # add the parent directory to the path
+    base_path  = os.path.join(os.path.dirname(os.path.abspath(__file__)),'..')
+    sys.path.insert(0,base_path)
+    import __init__
+
+except NameError:
+    pass
+
 import vedo.pyplot
 
-import __init__
+# import __init__
 import torch
-from my_torchbox import make_ball_at_shape_center,reg_open, imCmp
+from demeter.utils.torchbox import make_ball_at_shape_center,reg_open, imCmp
 import matplotlib.pyplot as plt
-import image_3d_visualisation as i3v
+import demeter.utils.image_3d_visualisation as i3v
 
 #%%
 print(f"2D Example :")

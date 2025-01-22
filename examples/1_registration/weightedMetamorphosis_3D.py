@@ -1,6 +1,12 @@
+"""
+This script is an example of how to use the weighted metamorphosis algorithm
+to register two 3D images. The source image is a toy example of a brain
+
+"""
+
 import __init__
 import os, sys, time
-sys.path.append(os.path.abspath('../'))
+sys.path.append(os.path.abspath('../../'))
 import matplotlib.pyplot as plt
 plt.rcParams["figure.figsize"] = (16,10)
 import torch

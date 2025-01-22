@@ -1,16 +1,22 @@
-import __init__
+"""
+In this file we apply the metamorphosis algorithm to 3D images.
 
-import torch
-import time
-import sys
+"""
 
-print(sys.path)
+try:
+    import sys, os
+    # add the parent directory to the path
+    base_path  = os.path.join(os.path.dirname(os.path.abspath(__file__)),'..')
+    sys.path.insert(0,base_path)
+    import __init__
 
-import utils.torchbox as tb
-from utils.toolbox import update_progress,format_time
-import metamorphosis as mt
-import utils.image_3d_visualisation as i3v
-from utils.constants import *
+except NameError:
+    pass
+
+
+import demeter.metamorphosis as mt
+import demeter.utils.image_3d_visualisation as i3v
+from demeter.utils.constants import *
 
 # cuda = torch.cuda.is_available()
 cuda = True

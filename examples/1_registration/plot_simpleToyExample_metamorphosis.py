@@ -98,11 +98,13 @@ mr = mt.metamorphosis(S,T,0,
                     hamiltonian_integration=True
                       )
 
+mr.save('simpleToyExample_test',light_save = True)
+#%%
 mr.plot()
 mr.plot_deform()
 mr.mp.plot()
 plt.show()
-
+#%%
 #####################################################################
 # We will test different values of rho to see how the registration behaves
 # with different values of rho. To save you time I already computed the
@@ -156,3 +158,5 @@ for i,rho in enumerate(rho_list):
 
 
 plt.show()
+
+# sphinx_gallery_thumbnail_number = 6

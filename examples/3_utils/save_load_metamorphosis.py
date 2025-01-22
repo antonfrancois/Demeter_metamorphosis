@@ -1,6 +1,20 @@
+"""
+Il faut retravailler ça
+"""
+
+try:
+    import sys, os
+    # add the parent directory to the path
+    base_path  = os.path.join(os.path.dirname(os.path.abspath(__file__)),'..')
+    sys.path.insert(0,base_path)
+    import __init__
+
+except NameError:
+    pass
+
+
 import torch
 
-import __init__
 # import my_metamorphosis.metamorphosis as mt
 # import my_torchbox as tb
 from utils.constants import *
