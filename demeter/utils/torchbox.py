@@ -1884,20 +1884,42 @@ def find_binary_center(bool_img):
         )
     return centre
 def make_ball_at_shape_center(img,
-                              shape_value=None,
+                              shape_binarization=None,
                               overlap_threshold=0.1,
                               r_min=None,
                               force_r=None,
+
                               force_center = None,
                               verbose=False):
-    """
+    """ Create a ball centered at the center of the shape in the image. The shape
+    is defined by the binarisation of the image for the pixels having the value shape_value.
 
-    :param img:
-    :param shape_value:
-    :param overlap_threshold:
-    :param r_min:
-    :param verbose:
-    :return:
+    Parameters
+    ----------
+    img : torch.Tensor
+        [B,C,H,W] or [B,C,D,H,W] or [H,W] or [D,H,W] The image where
+        the ball will be created.
+    shape_binarization : torch.Tensor, optional
+        a tensor of the same shape as img, being the binarization of the shape
+        to create the ball. If None, the shape is defined by the pixels having the
+         max value in the image.
+    overlap_threshold : float, optional
+        The percentage of overlap between the shape and the ball. The default is 0.1.
+    r_min : int, optional
+        The minimum radius of the ball. The default is None.
+    force_r : int, optional
+        The radius of the ball. The default is None.
+    force_center : tuple, optional
+        The center of the ball. The default is None.
+    verbose : bool, optional
+        Print the center, the radius and the overlap between the shape and the ball.
+
+    Returns
+    -------
+    ball : torch.Tensor
+        The ball as a bool mask of the same shape as img.
+    centre : tuple
+        The center of the ball and the radius. if 2d (c1,c2,r) if 3d (c1,c2,c3,r)
     """
     # TODO : documentation
     if len(img.shape) in [3, 5]: is_2D = False
@@ -1906,11 +1928,12 @@ def make_ball_at_shape_center(img,
 
     img = img.cpu()
     if force_center is None:
-        shape_value = img.max() if shape_value is None else shape_value
-        # On trouve tous indexes ayant la valeur recherchée
-        # print('indexes :',indexes.shape)
-        bool_img = (img == shape_value)
-        centre = find_binary_center(bool_img)
+        if shape_binarization is None:
+            max_val = img.max() if shape_binarization is None else shape_binarization
+            # find all the indexes having the value shape_value
+            # print('indexes :',indexes.shape)
+            shape_binarization = (img == max_val)
+        centre = find_binary_center(shape_binarization.to(torch.bool))
     else:
         centre = force_center
 
