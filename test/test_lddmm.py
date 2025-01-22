@@ -18,6 +18,57 @@ import demeter.metamorphosis as mt
 
 plot = False
 
+#####################
+#  UTILS
+#####################
+
+import string
+import random
+
+
+def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+    return "".join(random.choice(chars) for _ in range(size))
+
+
+csv_file = os.path.join(OPTIM_SAVE_DIR, default_optim_csv)
+
+
+def check_csv(csv_file):
+    with open(csv_file, "r") as file:
+        reader = csv.reader(file, delimiter=";")
+        for i, line in enumerate(reader):
+            if i == 0:
+                first_line = line
+            pass
+        last_line = line
+        n_lines = i + 1
+
+    return first_line, last_line, n_lines
+
+
+def remove_saved_files_and_csv_entry(saved_file):
+    # Lire le fichier CSV et stocker les lignes
+    file_path = os.path.join("saved_optim", saved_file)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        print(f"Fichier supprimé : {file_path}")
+
+    # Supprimer la dernière entrée du fichier CSV
+    with open(csv_file, "r") as file:
+        reader = csv.reader(file, delimiter=";")
+        lines = list(reader)
+    lines = lines[:-1]
+    with open(csv_file, "w", newline="") as file:
+        writer = csv.writer(file, delimiter=";")
+        for line in lines:
+            writer.writerow(line)
+
+
+#####################
+# END  UTILS
+#####################
+
+
 @pytest.fixture()
 def setup_lddmm():
     size = (100, 100)
@@ -55,8 +106,7 @@ def setup_lddmm():
     deformator = vff.FieldIntegrator(method="fast_exp")(field.clone(), forward=False)
 
     # landmarks
-    landmarks_source = torch.tensor([[40, 50], [70, 65], [70, 35], [50,50]])
-
+    landmarks_source = torch.tensor([[40, 50], [70, 65], [70, 35], [50, 50]])
 
     landmarks_target = deformation[0, landmarks_source[:, 1], landmarks_source[:, 0]]
 
@@ -89,11 +139,14 @@ def setup_lddmm():
         n_iter=5 if plot else 2,
         grad_coef=10,
         optimizer_method="LBFGS_torch",
+        hamiltonian_integration=True,
+        dx_convention="square"
     )
     if plot:
         mr.plot()
         plt.show()
     return mr, landmarks_source, landmarks_target
+
 
 # #%% # debug
 # mr, landmarks_source, landmarks_target = setup_lddmm()
@@ -107,18 +160,22 @@ def setup_lddmm():
 # #%%
 # mr_2.plot()
 
+
 # %%
 def test_landmark_computation(setup_lddmm):
     mr, landmarks_source, landmarks_target = setup_lddmm
     mr_def = mr.mp.get_deformation()
     landmarks_reg = mr_def[0, landmarks_source[:, 1], landmarks_source[:, 0]]
-    landmarks_reg_2,land_dist,_ = mr.compute_landmark_dist(landmarks_source, landmarks_target)
+    landmarks_reg_2, land_dist, _ = mr.compute_landmark_dist(
+        landmarks_source, landmarks_target
+    )
 
     my_dist = (landmarks_reg - landmarks_target).abs().mean()
 
-    assert torch.abs(my_dist - land_dist) < 1e-6, \
-        ("There might be a problem with the landmark computation:"
-         f"mr.dit = {land_dist} and dist computed here is {land_dist}")
+    assert torch.abs(my_dist - land_dist) < 1e-6, (
+        "There might be a problem with the landmark computation:"
+        f"mr.dit = {land_dist} and dist computed here is {land_dist}"
+    )
 
     if plot:
         fig, ax = plt.subplots()
@@ -126,7 +183,9 @@ def test_landmark_computation(setup_lddmm):
         ax.imshow(tb.imCmp(mr.mp.image, mr.target, "seg"), cmap="gray", origin="lower")
         ax.plot(landmarks_target[:, 0], landmarks_target[:, 1], "bo", label="target")
         ax.plot(landmarks_reg[:, 0], landmarks_reg[:, 1], "go", label="registered")
-        ax.plot(landmarks_reg_2[:, 0], landmarks_reg_2[:, 1], "yo", label="registered_2")
+        ax.plot(
+            landmarks_reg_2[:, 0], landmarks_reg_2[:, 1], "yo", label="registered_2"
+        )
         ax.plot(landmarks_source[:, 0], landmarks_source[:, 1], "ro", label="source")
         plt.legend()
         plt.show()
@@ -140,47 +199,14 @@ def test_get_all_parameters(setup_lddmm):
     print(params.keys())
 
     assert set(params.keys()) == {
-        "n_step",
-        "lambda",
-        "kernelOperator",
-        "rho",
-        "method",
-    }, "The keys of the params dictionary do not match the expected keys."
-
-
-# %%
-
-csv_file = os.path.join(OPTIM_SAVE_DIR, default_optim_csv)
-
-def check_csv(csv_file):
-    with open(csv_file, "r") as file:
-        reader = csv.reader(file, delimiter=";")
-        for i, line in enumerate(reader):
-            if i == 0:
-                first_line = line
-            pass
-        last_line = line
-        n_lines = i + 1
-
-    return first_line, last_line, n_lines
-
-def remove_saved_files_and_csv_entry(saved_file):
-    # Lire le fichier CSV et stocker les lignes
-    file_path = os.path.join("saved_optim", saved_file)
-    if os.path.exists(file_path):
-        os.remove(file_path)
-        print(f"Fichier supprimé : {file_path}")
-
-
-    # Supprimer la dernière entrée du fichier CSV
-    with open(csv_file, "r") as file:
-        reader = csv.reader(file, delimiter=";")
-        lines = list(reader)
-    lines = lines[:-1]
-    with open(csv_file, "w", newline='') as file:
-        writer = csv.writer(file, delimiter=";")
-        for line in lines:
-            writer.writerow(line)
+        'n_step',
+        'cost_cst',
+        'kernelOperator',
+        'hamiltonian_integration',
+        'dx_convention',
+        'rho',
+        'method'
+    }, f"The keys of the params dictionary do not match the expected keys. got: {params.keys()}"
 
 
 def test_check_csv_before_save():
@@ -188,14 +214,14 @@ def test_check_csv_before_save():
     assert first_line == [
         "time",
         "saved_file_name",
-        "source",
-        "target",
         "n_dim",
         "shape",
         "meta_type",
         "data_cost",
         "kernelOperator",
         "optimizer_method",
+        "hamiltonian_integration",
+        "dx_convention",
         "final_loss",
         "DICE",
         "landmarks",
@@ -206,24 +232,30 @@ def test_check_csv_before_save():
         "message",
     ], f"first line of csv is : {first_line}"
 
+
 def test_check_csv_after_save(setup_lddmm):
     mr, landmarks_source, landmarks_target = setup_lddmm
 
+    rdm_str = id_generator()
+
     first_line, last_line_b, n_lines_b = check_csv(csv_file)
-    file_name, file_path = mr.save("test", "lddmm")
+    file_name, file_path = mr.save("test_lddmm", message=rdm_str)
     first_line, last_line_a, n_lines_a = check_csv(csv_file)
 
+    print("number of columns:", len(last_line_a))
     assert n_lines_a == n_lines_b + 1
-    assert last_line_a[2] == "test"
-    assert last_line_a[6] == "Metamorphosis_Shooting"
+    assert last_line_a[2] == "2D"
+    assert last_line_a[4] == "Metamorphosis_Shooting"
+    assert last_line_a[-1] == rdm_str
 
-    remove_saved_files_and_csv_entry(os.path.join(file_path,file_name))
+    remove_saved_files_and_csv_entry(os.path.join(file_path, file_name))
+
 
 @pytest.mark.parametrize("light_save", [True, False])
-def test_save_load(setup_lddmm,light_save):
+def test_save_load(setup_lddmm, light_save):
     mr, landmarks_source, landmarks_target = setup_lddmm
 
-    file_name, file_path = mr.save("test", "lddmm",light_save=light_save)
+    file_name, file_path = mr.save("test_lddmm", light_save=light_save)
     mr_2 = mt.load_optimize_geodesicShooting(file_name)
     fig_ax_c, fig_ax_i = mr_2.plot()
     fig_c, ax_c = fig_ax_c
@@ -231,14 +263,22 @@ def test_save_load(setup_lddmm,light_save):
     if plot:
         plt.show()
     assert isinstance(fig_c, plt.Figure), f"type fig_c {fig_c}"
-    assert  ax_c is not None, f"type ax_c {ax_c}"
+    assert ax_c is not None, f"type ax_c {ax_c}"
     assert isinstance(fig_i, plt.Figure), f"type fig_i {fig_i}"
     assert ax_i is not None, f"type ax_i {ax_i}"
 
-    assert isinstance(mr_2.mp.kernelOperator, torch.nn.Module), \
-        f"type {type(mr_2.mp.kernelOperator)} should be a torch.nn.Module"
+    assert isinstance(
+        mr_2.mp.kernelOperator, torch.nn.Module
+    ), f"type {type(mr_2.mp.kernelOperator)} should be a torch.nn.Module"
 
-    remove_saved_files_and_csv_entry(os.path.join(file_path,file_name))
+    mr_args = mr.get_all_arguments()
+    mr_2_args = mr_2.get_all_arguments()
+    for key in mr_args.keys():
+        print(f"key: {key}, mr: {mr_args[key]}, mr_2: {mr_2_args[key]}")
+    assert mr_args == mr_2_args
+
+    remove_saved_files_and_csv_entry(os.path.join(file_path, file_name))
+
 
 # def test_save_load_light(setup_lddmm):
 #     mr, landmarks_source, landmarks_target = setup_lddmm
@@ -261,9 +301,7 @@ def test_save_load(setup_lddmm,light_save):
 #     remove_saved_files_and_csv_entry(file_name)
 
 
-
-
-#%%
+# %%
 """
 csv_file = "saved_optim/saves_overview.csv"
 
