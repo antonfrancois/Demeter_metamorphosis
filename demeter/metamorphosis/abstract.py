@@ -343,7 +343,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             - div_v_times_z / self.n_step
         )
 
-    def _compute_div_momentum_semiLagrangian_(self, deformation, momentum, cst):
+    def _compute_div_momentum_semiLagrangian_(self, deformation, momentum, cst, field = None):
         r"""
         Compute the divergence of the momentum in the semiLagrangian scheme
         meaning
@@ -366,9 +366,18 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         -------
         tensor array of shape [1,1,H,W] or [1,1,D,H,W]
         """
+        # ic(deformation.shape
+        #    ,momentum.shape
+        #    )
+        # try:
+        #     ic(cst.shape,field.shape)
+        # except AttributeError:
+        #     pass
+        if field is None:
+            field = self.field
         div_v_times_z = cst * (
             momentum
-            * tb.Field_divergence(dx_convention=self.dx_convention)(self.field)[0, 0]
+            * tb.Field_divergence(dx_convention=self.dx_convention)(field)[0, 0]
         )
         momentum = (
             tb.imgDeform(
@@ -376,6 +385,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             )
             - div_v_times_z / self.n_step
         )
+        # ic(momentum.shape,div_v_times_z.shape)
         return momentum
 
     def _compute_sharp_intermediary_residuals_(self):
@@ -422,7 +432,9 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         image = self.source if sharp else self.image
         # if self.rho > 0:
         self.image = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
-        if self.rho < 1:
+
+        if self._get_rho_() < 1:
+            ic(residuals.max().item(),residuals.min().item())
             self.image += residuals / self.n_step
 
     def _update_sharp_intermediary_field_(self):
@@ -476,19 +488,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         # plt.colorbar(p)
         # plt.show()
 
-    def _update_field_oriented_weighted_(self):
-        grad_image = tb.spatialGradient(self.image, dx_convention=self.dx_convention)
-        free_field = tb.im2grid(
-            (self.momentum * grad_image[0]) * torch.sqrt(self.residual_mask[self._i])
-        )
-        oriented_field = 0
-        if self.flag_O:
 
-            oriented_field = self.orienting_field[self._i][None]
-            oriented_field *= self.orienting_mask[self._i][..., None]
-        self.field = -tb.im2grid(
-            self.kernelOperator(tb.grid2im(free_field + oriented_field))
-        )
 
     def to_device(self, device):
         # TODO: completer ça
@@ -1224,6 +1224,10 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             deformation = self.mp.get_deformation()
         else:
             deformation = self.mp.get_deformator()
+        if self.dx_convention== "square":
+            deformation = tb.square_to_pixel_convention(deformation,is_grid=True)
+        elif self.dx_convention == "2square":
+            deformation = tb.square2_to_pixel_convention(deformation,is_grid=True)
         deform_landmark = []
         for l in source_landmark:
             idx = (0,) + tuple([int(j) for j in l.flip(0)])
