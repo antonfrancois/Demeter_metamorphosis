@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "demeter_metamorphosis"
+version = "0.2"
+description = "Efficient and flexible optimization of metamorphoses in images"
+authors = [
+    { name = "Anton François", email = "anton.francois@ens-paris-saclay.fr" }
+]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "torch>=2.4.1",
+    "numpy>=2.2.0",
+    "matplotlib>=3.3.2",
+    "sphinx>=4.0.2",
+    "sphinx-gallery>=0.9.0",
+    "scikit_image==0.25.0",
+    "kornia==0.7.1",
+    "pytest"
+]
+
+[project.optional-dependencies]
+img_basics = [
+    "scipy",
+    "nibabel",      # for reading nifti files
+    "napari",       # for 3D image visualization
+    "nrrd",         # for reading nrrd files
+    "icecream", # for debugging
+]
+[project.urls]
+Homepage = "https://github.com/antonfrancois/demeter_metamorphosis"
+Documentation = "https://demeter_metamorphosis.readthedocs.io"
+
+[tool.sphinx]
+builder = "html"
+source-dir = "docs/source"
+build-dir = "docs/build"
