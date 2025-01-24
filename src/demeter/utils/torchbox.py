@@ -1302,7 +1302,7 @@ def square_to_pixel_convention(field, is_grid= True):
     consistency with others converters
 
     """
-    for i,s in enumerate(field.shape[1:-1]):
+    for i,s in enumerate(tuple(field.shape[1:-1])[::-1]):
         field[...,i] *= (s-1)
     return field
 
@@ -1315,7 +1315,7 @@ def pixel_to_square_convention(field, is_grid=True):
     consistency with others converters
 
     """
-    for i,s in enumerate(field.shape[1:-1]):
+    for i,s in enumerate(tuple(field.shape[1:-1])[::-1]):
         field[...,i] /= (s-1)
     return field
 
