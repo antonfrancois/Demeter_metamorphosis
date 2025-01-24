@@ -29,26 +29,20 @@ $$E(p_0) = D_T(I_1) + \frac \lambda2 \int_{0}^1 \left( \|v_t\|_V^2 +\|z_t\|_Z^2 
 The $I_{t},v_t,z_{t}$ are still deduced from $p_0$. It is possible to switch between the two in the code using the `hamiltonian_integration` option in the children of `Optimize_geodesicShooting`.
 """
 
-import torch
-import matplotlib.pyplot as plt
 import warnings
 from math import prod, sqrt
 import pickle
-import os, sys, csv  # , time
 from icecream import ic
 
 from datetime import datetime
 from abc import ABC, abstractmethod
 
 from ..utils.optim import GradientDescent
-from ..utils.constants import *
-from ..utils import reproducing_kernels as rk
+from demeter.constants import *
 from ..utils import torchbox as tb
 from ..utils import vector_field_to_flow as vff
 from ..utils.toolbox import (
     update_progress,
-    format_time,
-    get_size,
     fig_to_image,
     save_gif_with_plt,
 )

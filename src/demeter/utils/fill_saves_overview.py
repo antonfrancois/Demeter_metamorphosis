@@ -5,7 +5,7 @@ import re
 import csv
 
 from .. import metamorphosis as mt
-from .constants import *
+from demeter.constants import *
 
 DEFAULT_CSV_FILE,DEFAULT_PATH = 'saves_overview.csv', ROOT_DIRECTORY+'/saved_optim/'
 

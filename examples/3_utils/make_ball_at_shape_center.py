@@ -16,9 +16,9 @@ import vedo.pyplot
 
 # import __init__
 import torch
-from demeter.utils.torchbox import make_ball_at_shape_center,reg_open, imCmp
+from src.demeter.utils import make_ball_at_shape_center,reg_open, imCmp
 import matplotlib.pyplot as plt
-import demeter.utils.image_3d_visualisation as i3v
+import src.demeter.utils.image_3d_visualisation as i3v
 
 #%%
 print(f"2D Example :")

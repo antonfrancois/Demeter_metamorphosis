@@ -1,12 +1,10 @@
 from math import prod, sqrt
 
-from demeter.metamorphosis import Geodesic_integrator, Optimize_geodesicShooting
+from src.demeter.metamorphosis import Geodesic_integrator, Optimize_geodesicShooting
 
-from demeter.utils.constants import *
-import demeter.utils.torchbox as tb
-from functools import reduce
-from operator import add
-from demeter.utils.toolbox import update_progress
+import src.demeter.utils.torchbox as tb
+from src.demeter.utils.toolbox import update_progress
+import torch
 
 
 class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):

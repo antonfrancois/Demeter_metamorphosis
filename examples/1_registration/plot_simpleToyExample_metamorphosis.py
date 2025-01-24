@@ -17,15 +17,14 @@ except NameError:
 #####################################################################
 # Import the necessary packages
 
-from demeter.utils.constants import *
 # import torch
 # import kornia.filters as flt
 import matplotlib.pyplot as plt
 # %load_ext autoreload
 # %autoreload 2
-import demeter.utils.reproducing_kernels as rk
-import demeter.metamorphosis as mt
-import demeter.utils.torchbox as tb
+import src.demeter.utils.reproducing_kernels as rk
+import src.demeter.metamorphosis as mt
+import src.demeter.utils.torchbox as tb
 
 
 
@@ -98,7 +97,7 @@ mr = mt.metamorphosis(S,T,0,
                     hamiltonian_integration=True
                       )
 
-mr.save('simpleToyExample_test',light_save = True)
+# mr.save('simpleToyExample_test',light_save = True)
 #%%
 mr.plot()
 mr.plot_deform()
@@ -111,19 +110,17 @@ plt.show()
 # optimisation for the values of rho in the files listed in list_optim.
 # Feel free to try yourselves If you want to recompute them by setting
 # recompute to True. The number of rho to test is set by n_plot.
-
 list_optim = [
-    "2D_21_01_2025_simpleToyExample_rho_0.00_to__000.pk1",
-    "2D_21_01_2025_simpleToyExample_rho_0.11_to__000.pk1",
-    "2D_21_01_2025_simpleToyExample_rho_0.22_to__000.pk1",
-    "2D_21_01_2025_simpleToyExample_rho_0.33_to__000.pk1",
-    "2D_21_01_2025_simpleToyExample_rho_0.33_to__000.pk1",
-    "2D_21_01_2025_simpleToyExample_rho_0.44_to__000.pk1",
-    "2D_21_01_2025_simpleToyExample_rho_0.56_to__000.pk1",
-    "2D_21_01_2025_simpleToyExample_rho_0.67_to__000.pk1",
-    "2D_21_01_2025_simpleToyExample_rho_0.78_to__000.pk1",
-    "2D_21_01_2025_simpleToyExample_rho_0.89_to__000.pk1",
-    "2D_21_01_2025_simpleToyExample_rho_1.00_to__000.pk1",
+    "2D_23_01_2025_simpleToyExample_rho_0.00_000.pk1",
+    "2D_23_01_2025_simpleToyExample_rho_0.11_000.pk1",
+    "2D_23_01_2025_simpleToyExample_rho_0.22_000.pk1",
+    "2D_23_01_2025_simpleToyExample_rho_0.33_000.pk1",
+    "2D_23_01_2025_simpleToyExample_rho_0.44_000.pk1",
+    "2D_23_01_2025_simpleToyExample_rho_0.56_000.pk1",
+    "2D_23_01_2025_simpleToyExample_rho_0.67_000.pk1",
+    "2D_23_01_2025_simpleToyExample_rho_0.78_000.pk1",
+    "2D_23_01_2025_simpleToyExample_rho_0.89_000.pk1",
+    "2D_23_01_2025_simpleToyExample_rho_1.00_000.pk1",
 ]
 recompute = False
 n_plot = 10
@@ -150,7 +147,7 @@ for i,rho in enumerate(rho_list):
         mr = mt.load_optimize_geodesicShooting(list_optim[i])
 
     # mr.plot_cost()
-    ax[0,i].set_title(f'rho = {rho}')
+    ax[0,i].set_title(f'rho = {rho:.2f}')
     ax[0,i].imshow(mr.mp.image[0,0].detach().cpu(),**DLT_KW_IMAGE)
     deform = mr.mp.get_deformator()
     img_deform = tb.imgDeform(S.cpu(),deform,dx_convention=dx_convention)

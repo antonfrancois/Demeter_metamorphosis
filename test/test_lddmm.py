@@ -5,16 +5,16 @@ import os
 import csv
 import torch
 
-from demeter.utils.constants import OPTIM_SAVE_DIR, default_optim_csv
-import demeter.utils.torchbox as tb
+from src.demeter import OPTIM_SAVE_DIR, default_optim_csv
+import src.demeter.utils.torchbox as tb
 import matplotlib.pyplot as plt
-import demeter.utils.bspline as bs
-import demeter.utils.vector_field_to_flow as vff
-import demeter.utils.reproducing_kernels as rk
+import src.demeter.utils.bspline as bs
+import src.demeter.utils.vector_field_to_flow as vff
+import src.demeter.utils.reproducing_kernels as rk
 
 # %load_ext autoreload
 # %autoreload 2
-import demeter.metamorphosis as mt
+import src.demeter.metamorphosis as mt
 
 plot = False
 

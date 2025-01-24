@@ -1,15 +1,11 @@
 import torch
-import warnings
 import matplotlib.pyplot as plt
 from math import prod,sqrt
 
-from sympy.physics.units import momentum
+from src.demeter.metamorphosis import Geodesic_integrator,Optimize_geodesicShooting
 
-from demeter.metamorphosis import Geodesic_integrator,Optimize_geodesicShooting
-
-from demeter.utils.constants import *
-import demeter.utils.torchbox as tb
-import demeter.utils.cost_functions as cf
+import src.demeter.utils.torchbox as tb
+import src.demeter.utils.cost_functions as cf
 
 
 # class Mask_intensity(ABC):

@@ -1,7 +1,7 @@
 import pickle
 from icecream import ic
 
-from ..utils.constants import *
+from demeter.constants import *
 from .classic import Metamorphosis_integrator, Metamorphosis_Shooting
 from .constrained import (
     ConstrainedMetamorphosis_integrator,

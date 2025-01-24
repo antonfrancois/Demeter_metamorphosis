@@ -14,9 +14,9 @@ except NameError:
     pass
 
 
-import demeter.metamorphosis as mt
-import demeter.utils.image_3d_visualisation as i3v
-from demeter.utils.constants import *
+import src.demeter.metamorphosis as mt
+import src.demeter.utils.image_3d_visualisation as i3v
+from src.demeter.utils import *
 
 # cuda = torch.cuda.is_available()
 cuda = True

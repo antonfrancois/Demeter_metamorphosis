@@ -1,12 +1,8 @@
-import torch
-import warnings
-import matplotlib.pyplot as plt
 from math import prod
 
-from abc import ABC, abstractmethod
 from .abstract import Geodesic_integrator,Optimize_geodesicShooting
 
-from ..utils.constants import *
+from demeter.constants import *
 from ..utils import torchbox as tb
 from ..utils import cost_functions as cf
 

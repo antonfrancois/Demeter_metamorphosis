@@ -1,17 +1,6 @@
 import argparse
 import sys
 
-import __init__
-
-import torch
-import matplotlib.pyplot as plt
-
-import demeter.utils.bspline as mbs
-from demeter.utils.torchbox import Field_divergence, grid2im
-
-
-
-
 #%%
 
 """field = dd.field()
@@ -122,8 +111,8 @@ D,H,W = 50,100,165
 import torch
 import matplotlib.pyplot as plt
 import unittest
-import demeter.utils.bspline as mbs
-import demeter.utils.torchbox as tb
+import src.demeter.utils.bspline as mbs
+import src.demeter.utils.torchbox as tb
 
 def plot_test_div_2d(cls):
     print(cls.name)

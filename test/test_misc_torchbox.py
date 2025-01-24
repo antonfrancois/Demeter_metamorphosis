@@ -1,5 +1,5 @@
 import pytest
-import demeter.utils.torchbox as tb
+import src.demeter.utils.torchbox as tb
 import torch
 #%% Test regular grid
 

@@ -1,11 +1,10 @@
 import numpy as np
 
-import __init__
 import matplotlib.pyplot as plt
 import torch
-import demeter.utils.reproducing_kernels as rk
-import demeter.utils.torchbox as tb
-from demeter.utils.constants import *
+import src.demeter.utils.reproducing_kernels as rk
+import src.demeter.utils.torchbox as tb
+
 plt.rcParams['text.usetex'] = False
 
 def see_kernels_filter_2D(sigma_list,ax=None, force_xticks=None):

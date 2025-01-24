@@ -2,7 +2,7 @@ import pytest
 import torch
 import matplotlib.pyplot as plt
 import napari
-import demeter.utils.torchbox as tb
+import src.demeter.utils.torchbox as tb
 
 
 plot = False
