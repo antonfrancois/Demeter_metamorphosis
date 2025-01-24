@@ -1565,7 +1565,7 @@ def field_divergence(field,dx_convention = 'pixel'):
     return Field_divergence(dx_convention)(field)
 
 def pixel_to_2square_convention(field, is_grid = True):
-    """ Convert a field in spacial pixelic convention in one on as
+    """ Convert a field in spatial pixelic convention in one on as
     [-1,1]^2 square as requested by pytorch's gridSample
 
     :field: (torch tensor) of size [T,H,W,2] or [T,D,H,W,3]
