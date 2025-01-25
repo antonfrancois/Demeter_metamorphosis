@@ -21,10 +21,10 @@ from ..utils.reproducing_kernels import (
 
 
 def find_meta_optimiser_from_repr(repr_str):
-    if "Metamorphosis_Shooting" in repr_str:
-        return Metamorphosis_integrator, Metamorphosis_Shooting
     if "ConstrainedMetamorphosis_Shooting" in repr_str:
         return ConstrainedMetamorphosis_integrator, ConstrainedMetamorphosis_Shooting
+    if "Metamorphosis_Shooting" in repr_str:
+        return Metamorphosis_integrator, Metamorphosis_Shooting
     if "Reduce_field_Optim" in repr_str:
         return ConstrainedMetamorphosis_integrator, Reduce_field_Optim
     if "Optimize_weighted_joinedMask" in repr_str:

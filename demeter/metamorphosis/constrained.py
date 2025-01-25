@@ -235,6 +235,9 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
 
         return total_cost
 
+    def _get_rho_(self):
+        return "Weighted"
+
     def cost(self, momentum_ini: torch.Tensor) -> torch.Tensor:
         lamb = self.cost_cst
 
