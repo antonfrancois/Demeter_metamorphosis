@@ -26,7 +26,8 @@ except NameError:
 from demeter.utils.constants import *
 import torch
 import kornia.filters as flt
-#
+# %reload_ext autoreload
+# %autoreload 2
 import demeter.utils.reproducing_kernels as rk
 import demeter.metamorphosis as mt
 import demeter.utils.torchbox as tb
@@ -155,7 +156,7 @@ ax[2].imshow(tb.imCmp(ini_ball_on,segs,'seg'),origin='lower')
 ax[2].set_title('superposition')
 ax[3].imshow(tb.imCmp(ini_ball_on,S,'seg'),origin='lower')
 plt.show()
-#%%
+# # %%
 #####################################################################
 # Register the prior masks to the source and target images using LDDMM:
 # First we build the kernel operator that will be used for the registration and
@@ -193,7 +194,7 @@ else:
 mr_mask_orienting.compute_landmark_dist(source_landmarks,target_landmarks)
 mr_mask_orienting.plot_imgCmp()
 plt.show()
-#%%
+# #%%
 # mr_mask_orienting.plot_deform()
 mr_mask_orienting.mp.plot()
 plt.show()
@@ -234,7 +235,7 @@ plt.show()
 # mr_mask_necrosis.plot_imgCmp()
 # plt.show()
 
-#%%
+# #%%
 #####################################################################
 # Finally, we extract the masks and the fields from the LDDMM object
 # and tweak them to our linking.
@@ -270,7 +271,7 @@ for i,ll in enumerate(L):
 
 plt.show()
 
-#%%
+# #%%
 fig1,ax1 = plt.subplots(1,1)
 ax1.plot(orienting_mask[-1,0,:,150].cpu(),label="orienting_mask")
 ax1.plot(residuals_mask[-1,0,:,150].cpu(),label="residuals_mask")
@@ -295,6 +296,11 @@ print(kernelOp)
 # We are now ready to perform the registration with the constrained metamorphosis
 # orienting_field =None
 # orienting_mask = None
+# you can also load the optimisation object from a file
+# file = "2D_25_01_2025_TEST_toyExample_grayScott_CM_square_n_step20_000.pk1"
+# mr = mt.load_optimize_geodesicShooting(file)
+
+
 
 print("\n==== Constrained Metamorphosis ====")
 momentum_ini = 0
@@ -314,16 +320,21 @@ mr_cm = mt.constrained_metamorphosis(S,T,momentum_ini,
 
 mr_cm.compute_landmark_dist(source_landmarks,target_landmarks)
 mr_cm.plot_cost()
-plt.show()
+
 #%%
 mr_cm.plot_imgCmp()
-plt.show()
+
 
 #%%
 
 mr_cm.plot_deform()
-plt.show()
+
 
 #%%
 mr_cm.mp.plot()
-plt.show()
+
+#%%
+mr_cm.save(f"TEST_toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}")
+
+#%%
+
