@@ -123,7 +123,6 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
         self,
         image,
         momentum_ini,
-        field_ini=None,
         save=True,
         plot=0,
         t_max=1,
@@ -168,10 +167,8 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
         ).to(torch.double)
         assert self.id_grid != None
 
-        if field_ini is None:
-            self.field = self.id_grid.clone()
-        else:
-            self.field = field_ini  # /self.n_step
+        self.field = self.id_grid.clone()
+
 
         if plot > 0:
             self.save = True

@@ -143,7 +143,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self,
         image,
         momentum_ini,
-        field_ini=None,
         save=True,
         plot=0,
         t_max=1,
@@ -160,8 +159,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             Source image ($I_0$)
         momentum_ini : tensor array of shape [1,1,H,W]
             Momentum ($p_0$) or residual ($z_0$)
-        field_ini : tensor array of shape [1,H,W,2], optional
-            Initial field, by default None to be deprecated
         save : bool, optional
             Option to save the integration intermediary steps, by default True
             it saves the image, field and momentum at each step in the attributes
@@ -180,7 +177,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         hamiltonian_integration : bool, optional
             Choose to integrate over first time step only or whole hamiltonian, in
             practice when True, the Regulation norms of the Hamiltonian are computed
-            and saved in the good attributes (usally `norm_v` and `norm_z`),
+            and saved in the good attributes (usually `norm_v` and `norm_z`),
              by default False
 
         """
@@ -206,10 +203,8 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         )
         assert self.id_grid != None
 
-        if field_ini is None:
-            self.field = self.id_grid.clone()
-        else:
-            self.field = field_ini  # /self.n_step
+        # field initialization to a regular grid
+        self.field = self.id_grid.clone().to(device)
 
         if plot > 0:
             self.save = True
@@ -1207,6 +1202,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         # self.mp.kernelOperator.kernel = self.mp.kernelOperator.kernel.to(device)
         self.mp.to_device(device)
         self.source = self.source.to(device)
+        self.target = self.target.to(device)
         self.data_term.to_device(device)
         # self.target = self.target.to(device)
         self.parameter = self.parameter.to(device)
