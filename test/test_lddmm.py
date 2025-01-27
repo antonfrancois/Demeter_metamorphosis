@@ -31,8 +31,44 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
 
 
 csv_file = os.path.join(OPTIM_SAVE_DIR, default_optim_csv)
+DEFAULT_CSV_HEADER = [
+        "time",
+        "saved_file_name",
+        "n_dim",
+        "shape",
+        "meta_type",
+        "data_cost",
+        "kernelOperator",
+        "optimizer_method",
+        "hamiltonian_integration",
+        "dx_convention",
+        "final_loss",
+        "DICE",
+        "landmarks",
+        "rho",
+        "lamb",
+        "n_step",
+        "n_iter",
+        "message",
+    ]
 
+# make wrapper around check_csv to catch the FileNotFoundError
+def catch_file_not_found_error(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except FileNotFoundError:
+            os.mkdir(OPTIM_SAVE_DIR)
+            with open(csv_file, "w", newline="") as file:
+                writer = csv.writer(file, delimiter=";")
+                writer.writerow(
+                    DEFAULT_CSV_HEADER
+                )
+            return func(*args, **kwargs)
 
+    return wrapper
+
+@catch_file_not_found_error
 def check_csv(csv_file):
     with open(csv_file, "r") as file:
         reader = csv.reader(file, delimiter=";")
@@ -211,26 +247,7 @@ def test_get_all_parameters(setup_lddmm):
 
 def test_check_csv_before_save():
     first_line, last_line_b, n_lines_b = check_csv(csv_file)
-    assert first_line == [
-        "time",
-        "saved_file_name",
-        "n_dim",
-        "shape",
-        "meta_type",
-        "data_cost",
-        "kernelOperator",
-        "optimizer_method",
-        "hamiltonian_integration",
-        "dx_convention",
-        "final_loss",
-        "DICE",
-        "landmarks",
-        "rho",
-        "lamb",
-        "n_step",
-        "n_iter",
-        "message",
-    ], f"first line of csv is : {first_line}"
+    assert first_line == DEFAULT_CSV_HEADER, f"first line of csv is : {first_line}"
 
 
 def test_check_csv_after_save(setup_lddmm):
