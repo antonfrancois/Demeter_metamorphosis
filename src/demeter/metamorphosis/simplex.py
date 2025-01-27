@@ -8,11 +8,38 @@ import torch
 
 
 class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
+    # TODO : Add equations in the docstring
+    """
+    Class integrating over a geodesic shooting for images with values in the simplex.
 
-    def __init__(self, rho, kernelOperator, n_step=None, **kwargs):
-        super().__init__(kernelOperator, **kwargs)
+    ..note::
+        In this class we integrate on the sphere using the square root function and
+        reproject images on the simplex after.
+        Thus, when accessing the image attribute, one should put it to the square
+        to get the image in the simplex.
+        >>> mp = Simplex_sqrt_Metamorphosis_integrator(rho=1, kernelOperator=kernelOperator, n_step=10)
+        >>> mp.forward(image, momentum_ini,)
+        >>> image_on_simplex  = mp.image**2
+        >>> print( image_on_simplex.sum(dim=1) )
+
+    Parameters
+    ----------
+    rho : float
+        Control parameter for geodesic shooting intensities changes vs deformations.
+        rho = 1 is LDDMM (pure deformation), rho = 0 is pure photometric changes.
+        Any value in between is a mix of both.
+    kernelOperator : callable
+        The reproducing kernel operator $K$ that one must define to compute the field.
+    n_step : int
+        Number of time step in the segment [0,1] over the geodesic integration.
+    dx_convention : str
+        Convention for the pixel size. Default is 'pixel'.
+
+
+    """
+    def __init__(self, rho, **kwargs):
+        super().__init__(**kwargs)
         self.rho = rho
-        self.n_step = n_step
 
     def _get_mu_(self):
         return 1
@@ -133,12 +160,33 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
     ):
         r"""This method is doing the temporal loop using the good method `_step_`
 
-        :param image: (tensor array) of shape [1,1,H,W]. Source image ($I_0$)
-        :param field_ini: to be deprecated, field_ini is id_grid
-        :param momentum_ini: (tensor array) of shape [H,W]. initial residual ($z_0$)
-        :param save: (bool) option to save the integration intermediary steps.
-        :param plot: (int) positive int lower than `self.n_step` to plot the indicated
-                         number of intermediary steps. (if plot>0, save is set to True)
+        Parameters
+        ----------
+        image : torch.Tensor of shape [1,C,H,W] or [1,C,D,H,W]
+            Source image ($I_0$) C is the dimension of the simplex
+        momentum_ini : torch.Tensor of shape [1,C,H,W] or [1,C,D,H,W]
+            Initial momentum ($p_0$) set by the user before the optimisation
+        save : bool, optional
+            Option to save the integration intermediary steps, by default True
+            it saves the image, field and momentum at each step in the attributes
+            `image_stock`, `field_stock` and `momentum_stock`.
+        plot : int, optional
+            Positive int lower than `self.n_step` to plot the indicated number of
+            intermediary steps, by default 0
+        t_max : int, optional
+            The integration will be made on [0,t_max], by default 1
+        verbose : bool, optional
+            Option to print the progress of the integration, by default False
+        sharp : bool, optional
+            Option to use the sharp integration, by default None
+        debug : bool, optional
+            Option to print debug information, by default False
+        hamiltonian_integration : bool, optional
+            Choose to integrate over first time step only or whole hamiltonian, in
+            practice when True, the Regulation norms of the Hamiltonian are computed
+            and saved in the good attributes (usually `norm_v` and `norm_z`),
+             by default False
+
 
         """
         if len(momentum_ini.shape) not in [4, 5]:
@@ -226,7 +274,7 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
 
 
 class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
-
+    # TODO: add docstring
     def __init__(
         self,
         source,
