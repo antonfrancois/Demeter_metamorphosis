@@ -302,8 +302,10 @@ def joined_metamorphosis(
     n_iter=1000,
     grad_coef=2,
     cost_cst=0.001,
+    optimizer_method="LBFGS_torch",
     plot=False,
     safe_mode=False,
+    debug=False,
 ):
     # source = torch.stack([source_image,source_mask],dim=1)
     # target = torch.stack([target_image,target_mask],dim=1)
@@ -329,13 +331,12 @@ def joined_metamorphosis(
         mp,
         cost_cst=cost_cst,
         data_term=data_term,
-        optimizer_method="LBFGS_torch",
-        # optimizer_method='adadelta'
+        optimizer_method=optimizer_method
     )
     if safe_mode:
         mr.forward_safe_mode(momentum_ini, n_iter, grad_coef, plot)
     else:
-        mr.forward(momentum_ini, n_iter=n_iter, grad_coef=grad_coef, plot=plot)
+        mr.forward(momentum_ini, n_iter=n_iter, grad_coef=grad_coef, plot=plot,debug=debug)
     return mr
 
 

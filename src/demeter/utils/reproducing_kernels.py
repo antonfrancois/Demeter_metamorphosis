@@ -352,7 +352,7 @@ def plot_kernel_on_image(kernelOperator,
     if ax is None:
         fig, ax = plt.subplots()
     if flag_image:
-        ax.imshow(image[0,0],cmap='gray')
+        ax.imshow(image[0,0].cpu(),cmap='gray')
 
     # Calculate the step size for the grid
     if subdiv is not None:

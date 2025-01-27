@@ -133,9 +133,9 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
         ## prepare deformation
         # sq_msk = torch.sqrt(self.image[0,1])
         deform_I = (self.id_grid
-                    - torch.sqrt(masks[0,0])[...,None] * self.field / self.n_step)
+                    - masks[0,0][...,None] * self.field / self.n_step)
         deform_M = (self.id_grid
-                    - sqrt(self.rho) * self.field / self.n_step)
+                    - self.rho * self.field / self.n_step)
         deform = torch.cat([deform_I,deform_M],dim=0)
         assert not torch.isnan(deform).any(), "NaN detected in deform"
         assert not torch.isinf(deform).any(), "Inf detected in deform"
@@ -160,10 +160,14 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
         # self.residuals = torch.stack([resi_I,resi_M],dim=1)
         self.residuals = (1 - masks) * self.momentum
 
-        # if self._i > 8:
-        #     plt.figure()
-        #     plt.imshow(self.residuals[0,0].detach().cpu(),cmap='gray')
-        #     plt.show()
+        if self.debug:
+            print("i : ",self._i)
+            fig,ax = plt.subplots(1,2)
+            a=  ax[0].imshow(self.momentum[0,0].detach().cpu(),cmap='gray')
+            plt.colorbar(a,ax=ax[0])
+            b = ax[1].imshow(self.momentum[0,1].detach().cpu(),cmap='gray')
+            plt.colorbar(b,ax=ax[1])
+            plt.show()
         self.image = image_def + self.residuals / self.n_step
         assert not torch.isnan(self.momentum).any(), "NaN detected in self.momentum"
         assert not torch.isinf(self.momentum).any(), "Inf detected in self.momentum"
@@ -253,14 +257,16 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
 
     def forward(self,image_mask,
                 # mask,
-                residual =0,
+                momentum_ini =0,
                 **kwargs):
         # concatenate the image and the mask at dim = 2
         # stack_image = torch.cat([image,mask],dim=1)
         if type(residual) == int:
             residual = residual * torch.ones_like(image_mask).to(image_mask.device)
+        if type(momentum_ini) == int:
+            momentum_ini = momentum_ini * torch.ones_like(image_mask).to(image_mask.device)
         self.to_device(image_mask.device)
-        super(Weighted_joinedMask_Metamorphosis_integrator, self).forward(image_mask,residual,**kwargs)
+        super(Weighted_joinedMask_Metamorphosis_integrator, self).forward(image_mask,momentum_ini,**kwargs)
 
 
     def to_device(self,device):

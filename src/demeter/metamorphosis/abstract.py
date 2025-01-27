@@ -390,7 +390,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         momentum (tensor array)
             tensor of shape [1,1,H,W] or [1,1,D,H,W]
         cst (float | tensor array)
-            the constant $c$ in the equation, if tensor array,
+            the constant $c$ in the above equation, if tensor array,
              it must have the same shape as momentum
 
         Returns
@@ -1136,7 +1136,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
     @time_it
     def forward(
-        self, z_0, n_iter=10, grad_coef=1e-3, verbose=True, plot=False, sharp=None
+        self, z_0, n_iter=10, grad_coef=1e-3, verbose=True, plot=False, sharp=None,
+            debug=False
     ):
         r"""The function is and perform the optimisation with the desired method.
         The result is stored in the tuple self.to_analyse with two elements. First element is the optimized
@@ -1192,7 +1193,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         # for future plots compute shooting with save = True
         self.mp.forward(
-            self.source.clone(), self.parameter.detach().clone(), save=True, plot=0
+            self.source.clone(), self.parameter.detach().clone(), save=True, plot=0,debug=debug
         )
 
         self.to_analyse = (self.parameter.detach(), loss_stock)
