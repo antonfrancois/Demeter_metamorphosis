@@ -11,6 +11,7 @@ def test_constant():
     assert isinstance(dm.FIELD_TO_SAVE, list)
 
 def test_at_build():
+    print(f"os.path.abspath(__file__) : {os.path.abspath(__file__)}")
     print(f"ROOT DIRECTORY: {dm.ROOT_DIRECTORY}")
 
     print(f"in ROOT_DIRECTORY: {os.listdir(dm.ROOT_DIRECTORY)}")
