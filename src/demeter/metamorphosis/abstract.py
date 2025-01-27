@@ -64,7 +64,47 @@ from ..metamorphosis import data_cost as dt
 
 
 class Geodesic_integrator(torch.nn.Module, ABC):
-    """Abstract class for defining the way of integrating over geodesics"""
+    """The Geodesic_integrator class is an abstract class that inherits from
+    torch.nn.Module and ABC (Abstract Base Class). It is designed to define
+    the way of integrating geodesics in the context of metamorphosis optimization.
+    If you want to implement a new geodesic integrator, you inherit from this class
+    and implement the abstract methods, with a focus on the step method which
+    contains the code numerical scheme for a step of the geodesic integration.
+
+     Here are the main features of the class:
+    - Initialization: The constructor initializes the basic parameters needed for
+        geodesic integration, such as the kernel operator (kernelOperator),
+         the number of steps (n_step), and the spatial differentiation convention
+          (dx_convention).
+    - Abstract Methods: The class contains abstract methods like step, which
+    must be implemented by derived classes to define the specific steps of the
+     integration.
+    - Temporal Integration: The forward method performs the temporal loop
+        using the appropriate _step_ method to integrate the source image along
+         the geodesic.
+    - Generic functions useful for integration:  Methods _compute_vectorField_,
+        _update_image_semiLagrangian_ ot _compute_vectorField_multimodal_
+        implements updates of the field, the momentum and the image.
+    - Plots and Visualization: The class includes methods for visualizing the
+    integration results, such as plot, plot_deform, and save_to_gif.
+    .. note::
+        The integrated plot and visualization methods are implemented for 2d
+        images only. If you want to use them for 3d images, you need to use
+         others functions like the ones in image_3d_visualization.py.
+    -Device Management: The to_device method allows moving tensors and
+        parameters to the specified device (CPU or GPU).
+
+    Parameters
+    ----------
+    kernelOperator : reproducing_kernel.ReproducingKernel
+        The kernel operator used to compute the vector field.
+    n_step : int
+        The number of steps for the geodesic integration.
+    dx_convention : str, optional
+        The spatial differentiation convention, by default "pixel".
+
+
+    """
 
     @abstractmethod
     def __init__(self, kernelOperator, n_step, dx_convention="pixel",**kwargs):
@@ -76,25 +116,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self.kernelOperator = kernelOperator
         self.n_step = n_step
 
-        # Get sigma from the kernelOperator
-        # self.sigma_v = self.kernelOperator.sigma_v
-
-        # if sigma_v is None:
-        #     raise ValueError("Please specify a value for sigma_v. Got sigma_v = None.")
-        # elif isinstance(sigma_v,tuple):
-        #     self.sigma_v = sigma_v# is used if the optimization is later saved
-        #     self.kernelOperator = rk.VolNormalizedGaussianRKHS(sigma_v,
-        #                                                        border_type='constant')
-        # elif isinstance(sigma_v,list):
-        #     self.sigma_v = sigma_v
-        #     if multiScale_average:
-        #         self.kernelOperator = rk.Multi_scale_GaussianRKHS_notAverage(sigma_v)
-        #     else:
-        #         self.kernelOperator = rk.Multi_scale_GaussianRKHS(sigma_v)
-        # else:
-        #     ValueError("Something went wrong with sigma_v")
-        # self.border_effect = border_effect
-        # self._init_sharp_()
 
     def _init_sharp_(self, sharp):
         # print(f'sharp = {sharp}')
@@ -133,13 +154,34 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     ):
         r"""This method is doing the temporal loop using the good method `_step_`
 
-        :param image: (tensor array) of shape [1,1,H,W]. Source image ($I_0$)
-        :param field_ini: to be deprecated, field_ini is id_grid
-        :param momentum_ini: (tensor array) of shape [H,W]. note that for images
-        the momentum is equal to the residual ($p = z$)
-        :param save: (bool) option to save the integration intermediary steps.
-        :param plot: (int) positive int lower than `self.n_step` to plot the indicated
-                         number of intemediary steps. (if plot>0, save is set to True)
+        Parameters
+        ----------
+        image : tensor array of shape [1,1,H,W]
+            Source image ($I_0$)
+        momentum_ini : tensor array of shape [1,1,H,W]
+            Momentum ($p_0$) or residual ($z_0$)
+        field_ini : tensor array of shape [1,H,W,2], optional
+            Initial field, by default None to be deprecated
+        save : bool, optional
+            Option to save the integration intermediary steps, by default True
+            it saves the image, field and momentum at each step in the attributes
+            `image_stock`, `field_stock` and `momentum_stock`.
+        plot : int, optional
+            Positive int lower than `self.n_step` to plot the indicated number of
+            intermediary steps, by default 0
+        t_max : int, optional
+            The integration will be made on [0,t_max], by default 1
+        verbose : bool, optional
+            Option to print the progress of the integration, by default False
+        sharp : bool, optional
+            Option to use the sharp integration, by default None
+        debug : bool, optional
+            Option to print debug information, by default False
+        hamiltonian_integration : bool, optional
+            Choose to integrate over first time step only or whole hamiltonian, in
+            practice when True, the Regulation norms of the Hamiltonian are computed
+            and saved in the good attributes (usally `norm_v` and `norm_z`),
+             by default False
 
         """
         if len(momentum_ini.shape) not in [4, 5]:
