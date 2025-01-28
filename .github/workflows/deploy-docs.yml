@@ -21,15 +21,15 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install sphinx
+          pip install sphinx sphinx_rtd_theme
 
       - name: Build documentation
         run: |
-          cd docs  # Modifier si vos fichiers Sphinx sont dans un autre dossier
-          make html
+          sphinx-apidoc -o docs/source/ src/demeter
+          sphinx-build -b html docs/source/ docs/build
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: docs/build/html  # Dossier généré par Sphinx
+          publish_dir: docs/build  # Dossier généré par Sphinx
