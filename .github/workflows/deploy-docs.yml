@@ -22,10 +22,13 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install sphinx sphinx_rtd_theme sphinx-gallery sphinx-math-dollar
-          pip install .
+          pip install -e .
 
       - name: check where we are
-        run: pwd & ls
+        run: |
+          pwd & ls
+          pip install pytest
+          pytest tests/test_constants.py
 
       - name: Build documentation
         run: |

@@ -17,6 +17,7 @@ def test_at_build():
     print(f"in ROOT_DIRECTORY: {os.listdir(dm.ROOT_DIRECTORY)}")
     print(f"in .. ROOT_DIRECTORY: {os.listdir(os.path.join(dm.ROOT_DIRECTORY,'..'))}")
     assert os.path.exists(dm.ROOT_DIRECTORY)
-    assert os.path.exists(dm.OPTIM_SAVE_DIR)
+    assert os.path.exists(dm.OPTIM_SAVE_DIR), \
+        f"OPTIM_SAVE_DIR: {dm.OPTIM_SAVE_DIR}"
     assert os.path.exists(dm.ROOT_DIRECTORY+"/examples/")
 

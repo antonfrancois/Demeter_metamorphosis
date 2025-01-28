@@ -4,9 +4,11 @@ import matplotlib.pyplot as plt
 import torch
 import numpy as np
 
-ROOT_DIRECTORY = os.path.dirname(os.path.dirname(
-    os.path.dirname(os.path.abspath(__file__))
-))
+
+# ROOT_DIRECTORY = os.path.dirname(os.path.dirname(
+#     os.path.dirname(os.path.abspath(__file__))
+# ))
+ROOT_DIRECTORY = os.getcwd()
 # used in saving metamorphosis saving
 OPTIM_SAVE_DIR = ROOT_DIRECTORY + '/saved_optim/'
 FIELD_TO_SAVE = [
