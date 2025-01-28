@@ -27,8 +27,8 @@ jobs:
       - name: check where we are
         run: |
           pwd & ls
-          pip install pytest
-          pytest tests/test_constants.py
+          ls test/
+          pytest test/test_constants.py
 
       - name: Build documentation
         run: |
