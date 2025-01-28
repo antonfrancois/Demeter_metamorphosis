@@ -17,14 +17,15 @@ except NameError:
 #####################################################################
 # Import the necessary packages
 
-# import torch
+import torch
 # import kornia.filters as flt
 import matplotlib.pyplot as plt
+from demeter import DLT_KW_IMAGE,GRIDDEF_YELLOW
 # %load_ext autoreload
 # %autoreload 2
-import src.demeter.utils.reproducing_kernels as rk
-import src.demeter.metamorphosis as mt
-import src.demeter.utils.torchbox as tb
+import demeter.utils.reproducing_kernels as rk
+import demeter.metamorphosis as mt
+import demeter.utils.torchbox as tb
 
 
 

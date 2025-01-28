@@ -1,9 +1,9 @@
 from math import prod, sqrt
 
-from src.demeter.metamorphosis import Geodesic_integrator, Optimize_geodesicShooting
+from demeter.metamorphosis import Geodesic_integrator, Optimize_geodesicShooting
 
-import src.demeter.utils.torchbox as tb
-from src.demeter.utils.toolbox import update_progress
+import demeter.utils.torchbox as tb
+from demeter.utils.toolbox import update_progress
 import torch
 
 

@@ -20,7 +20,7 @@ from ..utils.reproducing_kernels import (
 )
 
 
-def find_meta_optimiser_from_repr(repr_str):
+def _find_meta_optimiser_from_repr_(repr_str):
     if "Metamorphosis_Shooting" in repr_str:
         return Metamorphosis_integrator, Metamorphosis_Shooting
     if "ConstrainedMetamorphosis_Shooting" in repr_str:
@@ -38,7 +38,7 @@ def find_meta_optimiser_from_repr(repr_str):
         raise ValueError("No class found for the given repr_str")
 
 
-def find_kernelOp_from_repr(repr_str):
+def _find_kernelOp_from_repr_(repr_str):
     if "GaussianRKHS" in repr_str:
         return GaussianRKHS
     if "VolNormalizedGaussianRKHS" in repr_str:
@@ -50,7 +50,33 @@ def find_kernelOp_from_repr(repr_str):
 
 
 def load_optimize_geodesicShooting(file_name, path=None, verbose=True):
-    """load previously saved optimisation in order to plot it later."""
+    """
+    load previously saved optimisation. Usually the file will be saved in the
+     OPTIM_SAVE_DIR witch is by default `/saved_optim` .
+
+    Parameters
+    -------------
+    file_name : str
+        name of the file to load
+    path : str, optional
+        path to the file, by default OPTIM_SAVE_DIR = `saved_optim`
+    verbose : bool, optional
+        print the loaded optimiser / integrator _repr_, by default True
+
+    Returns
+    -------------
+    new_optim : Metamorphosis_Shooting
+        the loaded optimiser
+
+    Examples
+    -------------
+    .. code-block:: python
+        >>> import demeter.metamorphosis as mt
+        >>> # load the optimiser
+        >>> mr = mt.load_optimize_geodesicShooting('2D_23_01_2025_simpleToyExample_rho_0.00_000.pk1')
+
+
+     """
 
     # import pickle
     import io
@@ -107,10 +133,10 @@ def load_optimize_geodesicShooting(file_name, path=None, verbose=True):
 def _load_light_optim(opti_dict, verbose):
 
     ## Find with which class we are dealing with
-    integrator, optimizer = find_meta_optimiser_from_repr(opti_dict["__repr__"])
+    integrator, optimizer = _find_meta_optimiser_from_repr_(opti_dict["__repr__"])
     # ic(optimizer,integrator)
     # Reinitialize the kernelOperator
-    kernelOp = find_kernelOp_from_repr(
+    kernelOp = _find_kernelOp_from_repr_(
         opti_dict["args"]["kernelOperator"]["name"]
     )
     ic(kernelOp)
@@ -149,7 +175,7 @@ def _load_heavy_optim(opti_dict, verbose):
 
     flag_JM = False
 
-    _, optimizer = find_meta_optimiser_from_repr(opti_dict["__repr__"])
+    _, optimizer = _find_meta_optimiser_from_repr_(opti_dict["__repr__"])
     if isinstance(optimizer, Weighted_joinedMask_Metamorphosis_Shooting):
         flag_JM = True
 
