@@ -22,6 +22,10 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install sphinx sphinx_rtd_theme sphinx-gallery sphinx-math-dollar
+          pip install .
+
+      - name: check where we are
+        run: pwd & ls
 
       - name: Build documentation
         run: |
