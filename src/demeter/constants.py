@@ -9,6 +9,14 @@ import numpy as np
 #     os.path.dirname(os.path.abspath(__file__))
 # ))
 ROOT_DIRECTORY = os.getcwd()
+while not RD.endswith("Demeter_metamorphosis"):
+    RD = os.path.dirname(RD)
+    print(RD)
+    if RD == '/': break
+if not ROOT_DIRECTORY.endswith('Demeter_metamorphosis'):
+    raise ValueError(f'ROOT_DIRECTORY should end with '
+                     f'Demeter_metamorphosis, got {ROOT_DIRECTORY}')
+
 # used in saving metamorphosis saving
 OPTIM_SAVE_DIR = ROOT_DIRECTORY + '/saved_optim/'
 FIELD_TO_SAVE = [
