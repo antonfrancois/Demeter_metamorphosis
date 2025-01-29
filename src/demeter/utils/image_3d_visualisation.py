@@ -22,8 +22,8 @@ from icecream import ic
 # def line2segmentsCollection(x_coord,y_coord):
 
 
-def grid_slice(grid,coord,dim):
-    """ return a line collection
+def grid_slice(grid, coord, dim):
+    """return a line collection
 
     :param grid:
     :param coord:
@@ -31,24 +31,27 @@ def grid_slice(grid,coord,dim):
     :return:
     """
 
-
     coord = int(coord)
     if dim == 0:
-        return grid[0,coord,:,:,:]
+        return grid[0, coord, :, :, :]
     elif dim == 1:
         return grid[0,:,coord,:,:]
     elif dim == 2:
-        return grid[0,:,:,coord,:]
+        return grid[0, :, :, coord, :]
 
 
-def imshow_3d_slider(image,image_cmap = 'gray'):
-    """ Display a 3d image
+def imshow_3d_slider(image, image_cmap="gray", title=""):
+    """Display a 3d image
 
     Parameters
     ----------
-    image : (H,W,D) or (H,W,D,3)  numpy array or tensor of shape [1,1,H,W,D]
+    image :  numpy array or tensor
+        if nupy array (H,W,D) or (H,W,D,3) or (T,H,W,D,3)
+         if tensor of shape [T,1,H,W,D]
     image_cmap : str, optional
         color map for the plot of the image. The default is 'gray'.
+    title : str, optional
+        Title of the plot. The default is "".
 
     :return: a slider. Note :it is important to store the sliders in order to
     # have them updating
@@ -70,92 +73,113 @@ def imshow_3d_slider(image,image_cmap = 'gray'):
     # slider = imshow_3d_slider(image)
     # plt.show()
     """
+
     if len(image.shape) > 5:
-        raise TypeError("The image size is expected to be a [D,H,W] array,",
-                        " [1,1,D,H,W] tensor object are tolerated.")
+        raise TypeError(
+            "The image size is expected to be a [D,H,W] array,",
+            " [1,1,D,H,W] tensor object are tolerated.",
+        )
     if is_tensor(image) and len(image.shape) == 5:
         warnings.warn("Reshape to image[0,0]: Batch and channel are ignored")
-        image = image[0,0].cpu().numpy()
-    image = image.T
-    # Create the figure and the line that we will manipulate
-    fig,ax = plt.subplots(1,3)
+        image = image.permute(0, 4, 3, 2, 1).cpu().numpy()
+        if image.shape[0] == 0:
+            image = image[0, 0]
 
-    H,W,D = image.shape
+    # Create the figure and the line that we will manipulate
+    fig, ax = plt.subplots(1, 3)
+    fig.suptitle(title)
+    ic(image.shape)
+    T = 0
     if len(image.shape) == 3:
         image = image.T
-        H,W,D = image.shape
+        H, W, D = image.shape
     elif len(image.shape) == 4:
-        H,W,D,_ = image.shape
+        H, W, D, _ = image.shape
+    elif len(image.shape) == 5:
+        T, H, W, D, _ = image.shape
+
     # Define initial parameters
-    init_x_coord,init_y_coord,init_z_coord = H //2, W//2, D//2
+    init_x_coord, init_y_coord, init_z_coord = H // 2, W // 2, D // 2
+    t = max(T - 1, 0)
 
     kw_image = dict(
-        vmin=image.min(),vmax=image.max(),cmap=image_cmap
+        # vmin=image.min(),vmax=image.max(),cmap=image_cmap
+        vmin=0,
+        vmax=1,
+        cmap=image_cmap,
     )
-    img_x = ax[0].imshow( tb.image_slice(image,init_x_coord,dim=0), **kw_image)
-    img_y = ax[1].imshow( tb.image_slice(image,init_y_coord,dim=1),origin='lower', **kw_image)
-    img_z = ax[2].imshow( tb.image_slice(image,init_z_coord,dim=2),origin='lower', **kw_image)
-    ax[0].set_xlabel('X')
-    ax[1].set_xlabel('Y')
-    ax[2].set_xlabel('Z')
+    im_ini = image[0] if T > 0 else image
+    img_x = ax[0].imshow(tb.image_slice(im_ini, init_x_coord, dim=0), **kw_image)
+    img_y = ax[1].imshow(
+        tb.image_slice(im_ini, init_y_coord, dim=1), origin="lower", **kw_image
+    )
+    img_z = ax[2].imshow(
+        tb.image_slice(im_ini, init_z_coord, dim=2), origin="lower", **kw_image
+    )
+    ax[0].set_xlabel("X")
+    ax[1].set_xlabel("Y")
+    ax[2].set_xlabel("Z")
 
-    #add init lines
+    # add init lines
 
-    line_color = 'white'
-    l_x_v = ax[0].axvline(x= init_y_coord,color=line_color)
-    l_x_h = ax[0].axhline(y= init_z_coord,color=line_color)
-    l_y_v = ax[1].axvline(x= init_z_coord,color=line_color)
-    l_y_h = ax[1].axhline(y= init_x_coord,color=line_color)
-    l_z_v = ax[2].axvline(x= init_y_coord,color=line_color)
-    l_z_h = ax[2].axhline(y= init_x_coord,color=line_color)
-
+    line_color = "white"
+    l_x_v = ax[0].axvline(x=init_y_coord, color=line_color)
+    l_x_h = ax[0].axhline(y=init_z_coord, color=line_color)
+    l_y_v = ax[1].axvline(x=init_z_coord, color=line_color)
+    l_y_h = ax[1].axhline(y=init_x_coord, color=line_color)
+    l_z_v = ax[2].axvline(x=init_y_coord, color=line_color)
+    l_z_h = ax[2].axhline(y=init_x_coord, color=line_color)
 
     ax[0].margins(x=0)
 
     # adjust the main plot to make room for the sliders
-    plt.subplots_adjust(left=0.1,right=.9, bottom=0.25)
+    plt.subplots_adjust(left=0.1, right=0.9, bottom=0.25)
 
     # Make sliders.
-    axcolor = 'lightgoldenrodyellow'
-    #place them [x_bottom,y_bottom,height,width]
+    axcolor = "lightgoldenrodyellow"
+    # place them [x_bottom,y_bottom,height,width]
     sl_x = plt.axes([0.25, 0.15, 0.5, 0.03], facecolor=axcolor)
     sl_y = plt.axes([0.25, 0.1, 0.5, 0.03], facecolor=axcolor)
     sl_z = plt.axes([0.25, 0.05, 0.5, 0.03], facecolor=axcolor)
+    if T > 0:
+        sl_t = plt.axes([0.25, 0.2, 0.5, 0.03], facecolor=axcolor)
 
-    kw_slider_args = dict(
-        valmin=0,
-        valfmt='%0.0f'
+    kw_slider_args = dict(valmin=0, valfmt="%0.0f", valstep=1)
+    x_slider = Slider(
+        label="x", ax=sl_x, valmax=H - 1, valinit=init_x_coord, **kw_slider_args
     )
-    x_slider = Slider(label='x',ax=sl_x,
-                      valmax=image.shape[0]-1,valinit=init_x_coord,
-                      **kw_slider_args)
-    y_slider = Slider(label='y',ax=sl_y,
-                      valmax=image.shape[1]-1,valinit=init_y_coord,
-                      **kw_slider_args)
-    z_slider = Slider(label='z',ax=sl_z,
-                      valmax=image.shape[2]-1,valinit=init_z_coord,
-                      **kw_slider_args)
-
+    y_slider = Slider(
+        label="y", ax=sl_y, valmax=W - 1, valinit=init_y_coord, **kw_slider_args
+    )
+    z_slider = Slider(
+        label="z", ax=sl_z, valmax=D - 1, valinit=init_z_coord, **kw_slider_args
+    )
+    if T > 0:
+        t_slider = Slider(label="t", ax=sl_t, valmax=T - 1, valinit=t, **kw_slider_args)
 
     # The function to be called anytime a slider's value changes
     def update(val):
-        img_x.set_data(tb.image_slice(image, x_slider.val, 0))
-        img_y.set_data(tb.image_slice(image, y_slider.val, 1))
-        img_z.set_data(tb.image_slice(image, z_slider.val, 2))
+        img = image[t_slider.val] if T > 0 else image
 
-        #update lines
-        l_x_v.set_xdata([z_slider.val,z_slider.val])
-        l_x_h.set_ydata([y_slider.val,y_slider.val])
-        l_y_v.set_xdata([z_slider.val,z_slider.val])
-        l_y_h.set_ydata([x_slider.val,x_slider.val])
-        l_z_v.set_xdata([y_slider.val,y_slider.val])
-        l_z_h.set_ydata([x_slider.val,x_slider.val])
+        img_x.set_data(tb.image_slice(img, x_slider.val, 0))
+        img_y.set_data(tb.image_slice(img, y_slider.val, 1))
+        img_z.set_data(tb.image_slice(img, z_slider.val, 2))
+
+        # update lines
+        l_x_v.set_xdata([z_slider.val, z_slider.val])
+        l_x_h.set_ydata([y_slider.val, y_slider.val])
+        l_y_v.set_xdata([z_slider.val, z_slider.val])
+        l_y_h.set_ydata([x_slider.val, x_slider.val])
+        l_z_v.set_xdata([y_slider.val, y_slider.val])
+        l_z_h.set_ydata([x_slider.val, x_slider.val])
         fig.canvas.draw_idle()
 
     # register the update function with each slider
     x_slider.on_changed(update)
     y_slider.on_changed(update)
     z_slider.on_changed(update)
+    if T > 0:
+        t_slider.on_changed(update)
 
     # it is important to store the sliders in order to
     # have them updating

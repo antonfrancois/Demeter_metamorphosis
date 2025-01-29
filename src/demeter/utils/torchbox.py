@@ -422,14 +422,8 @@ def get_sobel_kernel_3d():
 # =================================================
 def imCmp(I1, I2, method= None):
     from numpy import concatenate,zeros,ones, maximum,exp
-    if len(I1.shape) == 4:
-        _,_,M, N = I1.shape
-        is_2D = True
-        shape_to_fill = (M,N,1)
-    elif len(I1.shape) == 5:
-        _,_,K,M, N = I1.shape
-        is_2D = False
-        shape_to_fill = (K,M,N,1)
+    if len(I1.shape) in [4,5]:
+        shape_to_fill = I1.shape [2:] + (1,)
     else:
         raise ValueError(f"I1 should be [B,C,H,W] or [B,C,K,H,W] got {I1.shape}")
 

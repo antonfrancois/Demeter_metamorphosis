@@ -33,7 +33,6 @@ ignore_files = [
     'visualize_geodesicOptim.py',
     'toyExample_grayScott_JoinedMetamorphosis.py',
     'weightedMetamorphosis_3D.py',
-    'metamorphosis_3D.py',
     'save_load_metamorphosis.py'
 ]
 

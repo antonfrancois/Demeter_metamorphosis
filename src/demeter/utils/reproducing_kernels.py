@@ -168,7 +168,7 @@ def get_gaussian_kernel2d( sigma,dx =(1.,1.), kernel_size=None, kernel_reach=6):
     dh, dw = [float(d) for d in dx]
     kernel_h: torch.Tensor = get_gaussian_kernel1d(sigma_h, dh, ksize_h, kernel_reach)
     kernel_w: torch.Tensor = get_gaussian_kernel1d(sigma_w, dw, ksize_w, kernel_reach)
-    print(f"kernel_h : {kernel_h.shape}, kernel_w : {kernel_w.shape}")
+    # print(f"kernel_h : {kernel_h.shape}, kernel_w : {kernel_w.shape}")
     # kernel_2d: torch.Tensor = torch.matmul(kernel_h[...,None], kernel_w)
     # print(kernel_h.shape)
     kernel_2d = kernel_h[:,:, None] * kernel_w[:,None, :]
@@ -208,7 +208,7 @@ def get_gaussian_kernel3d(sigma, dx=(1.,)*3 , kernel_size =None, kernel_reach=6)
     kernel_d: torch.Tensor = get_gaussian_kernel1d(sigma_d, dd, ksize_d, kernel_reach)
     kernel_h: torch.Tensor = get_gaussian_kernel1d(sigma_h, dh,ksize_h, kernel_reach)
     kernel_w: torch.Tensor = get_gaussian_kernel1d(sigma_w, dw, ksize_w, kernel_reach)
-    print(f"kernel_d : {kernel_d.shape},\n kernel_h : {kernel_h.shape},\n kernel_w : {kernel_w.shape}")
+    # print(f"kernel_d : {kernel_d.shape},\n kernel_h : {kernel_h.shape},\n kernel_w : {kernel_w.shape}")
 
     kernel_3d = (kernel_d[:,:, None, None]
                  * kernel_h[:,None, :, None]
