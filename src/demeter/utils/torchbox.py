@@ -73,9 +73,9 @@ def image_slice(I,coord,dim):
     """
     coord = int(coord)
     if dim == 0:
-        return I[coord,:,:]
+        return I[coord]
     elif dim == 1:
-        return I[:,coord,:]
+        return I[:,coord]
     elif dim == 2:
         return I[:,:,coord]
 
@@ -422,22 +422,32 @@ def get_sobel_kernel_3d():
 # =================================================
 def imCmp(I1, I2, method= None):
     from numpy import concatenate,zeros,ones, maximum,exp
-    _,_,M, N = I1.shape
+    if len(I1.shape) == 4:
+        _,_,M, N = I1.shape
+        is_2D = True
+        shape_to_fill = (M,N,1)
+    elif len(I1.shape) == 5:
+        _,_,K,M, N = I1.shape
+        is_2D = False
+        shape_to_fill = (K,M,N,1)
+    else:
+        raise ValueError(f"I1 should be [B,C,H,W] or [B,C,K,H,W] got {I1.shape}")
+
     if not isinstance(I1,np.ndarray):
         I1 = I1.detach().cpu().numpy()
     if not isinstance(I2,np.ndarray):
         I2 = I2.detach().cpu().numpy()
-    I1 = I1[0,0,:,:]
-    I2 = I2[0,0,:,:]
+    I1 = I1[0,0,...]
+    I2 = I2[0,0,...]
 
     if method is None:
-        return concatenate((I2[:, :, None], I1[:, :, None], zeros((M, N, 1))), axis=2)
+        return concatenate((I2[..., None], I1[..., None], zeros(shape_to_fill)), axis=-1)
     elif 'seg' in method:
-        u = I2[:,:,None] * I1[:, :, None]
+        u = I2[..., None] * I1[..., None]
         if 'w' in method:
-            d = I1[:,:,None] - I2[:, :, None]
+            d = I1[..., None] - I2[..., None]
             # z = np.zeros(d.shape)
-            # z[I1[:,:,None] + I2[:, :, None]] = 1
+            # z[I1[..., None] + I2[...]] = 1
             # print(f'd min = {d.min()},{d.max()}')
             r = maximum(d,0)/np.abs(d).max()
             g = u + .1*exp(-d**2)*u + maximum(-d,0)*.2
@@ -447,12 +457,12 @@ def imCmp(I1, I2, method= None):
             # gg[r + g + b == 0] =1
             # bb[r + g + b == 0] =1
             rgb =concatenate(
-                (r,g,b,ones((M,N,1))), axis=2
+                (r,g,b,ones(shape_to_fill)), axis=-1
             )
             # print(f"r {r.min()};{r.max()}")
             return rgb
         if 'h' in method:
-            d = I1[:,:,None] - I2[:, :, None]
+            d = I1[..., None] - I2[..., None]
             # z = np.ones(d.shape)
             # z[u == 0] =0
             r = maximum(d,0)/np.abs(d).max()
@@ -460,26 +470,26 @@ def imCmp(I1, I2, method= None):
             b = maximum(-d,0)/np.abs(d).max()
 
             rgb =concatenate(
-                (r,g,b,ones((M,N,1))), axis=2
+                (r,g,b,ones(shape_to_fill)), axis=-1
             )
             return rgb
         else:
             return concatenate(
                     (
-                        I1[:, :, None] - u,
+                        I1[..., None] - u,
                         u,
-                        I2[:,:,None] - u,
-                        ones((M,N,1))
-                    ), axis=2
+                        I2[..., None] - u,
+                        ones(shape_to_fill)
+                    ), axis=-1
                 )
     elif 'compose' in method:
         return concatenate(
             (
-                I1[:, :, None],
-                (I1[:, :, None]+ I2[:, :, None])/2,
-                I2[:, :, None],
-                ones((M, N, 1))
-            ), axis=2
+                I1[..., None],
+                (I1[..., None]+ I2[..., None])/2,
+                I2[..., None],
+                ones(shape_to_fill)
+            ), axis=-1
         )
 
 def checkDiffeo(field):

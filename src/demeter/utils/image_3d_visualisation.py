@@ -44,8 +44,12 @@ def grid_slice(grid,coord,dim):
 def imshow_3d_slider(image,image_cmap = 'gray'):
     """ Display a 3d image
 
-    :param image: (H,W,D) numpy array or tensor
-    :param image_cmap: color map for the plot of the image
+    Parameters
+    ----------
+    image : (H,W,D) or (H,W,D,3)  numpy array or tensor of shape [1,1,H,W,D]
+    image_cmap : str, optional
+        color map for the plot of the image. The default is 'gray'.
+
     :return: a slider. Note :it is important to store the sliders in order to
     # have them updating
 
@@ -77,6 +81,11 @@ def imshow_3d_slider(image,image_cmap = 'gray'):
     fig,ax = plt.subplots(1,3)
 
     H,W,D = image.shape
+    if len(image.shape) == 3:
+        image = image.T
+        H,W,D = image.shape
+    elif len(image.shape) == 4:
+        H,W,D,_ = image.shape
     # Define initial parameters
     init_x_coord,init_y_coord,init_z_coord = H //2, W//2, D//2
 
