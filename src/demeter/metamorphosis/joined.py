@@ -129,6 +129,11 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
         # print("masks",masks.shape)
         self.field = tb.im2grid(self.kernelOperator(-(field_momentum)))
 
+        try:
+            volDelta = prod(self.kernelOperator.dx)
+        except AttributeError:
+            volDelta = 1
+
         ## prepare mask for group multiplication
         ## prepare deformation
         # sq_msk = torch.sqrt(self.image[0,1])
@@ -158,7 +163,7 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
         # resi_I = (1 - self.image[:,1]) * self.momentum[:,0]
         # resi_M = (1 - self.rho) * self.momentum[:,1]
         # self.residuals = torch.stack([resi_I,resi_M],dim=1)
-        self.residuals = (1 - masks) * self.momentum
+        self.residuals = (1 - masks) * self.momentum / volDelta
 
         if self.debug:
             print("i : ",self._i)
@@ -261,8 +266,6 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
                 **kwargs):
         # concatenate the image and the mask at dim = 2
         # stack_image = torch.cat([image,mask],dim=1)
-        if type(residual) == int:
-            residual = residual * torch.ones_like(image_mask).to(image_mask.device)
         if type(momentum_ini) == int:
             momentum_ini = momentum_ini * torch.ones_like(image_mask).to(image_mask.device)
         self.to_device(image_mask.device)
