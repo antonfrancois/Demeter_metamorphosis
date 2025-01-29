@@ -75,7 +75,10 @@ plt.show()
 
 #####################################################################
 # Perform a first Metamorphosis registration
-device = 'cuda:0'
+if torch.cuda.is_available():
+    device = 'cuda:0'
+else:
+    device = 'cpu'
 S = S.to(device)
 T = T.to(device)
 dx_convention = 'square'
@@ -143,7 +146,7 @@ for i,rho in enumerate(rho_list):
                           data_term=data_cost,
                           hamiltonian_integration=True
                           )
-        mr.save(f'simpleToyExample_rho_{rho:.2f}','')
+        mr.save(f'simpleToyExample_rho_{rho:.2f}',light_save = True)
     else:
         mr = mt.load_optimize_geodesicShooting(list_optim[i])
 

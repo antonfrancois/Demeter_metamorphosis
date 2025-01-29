@@ -31,6 +31,10 @@ ignore_files = [
     '*.ipynb',
     'brats_utils.py',
     'visualize_geodesicOptim.py',
+    'toyExample_grayScott_JoinedMetamorphosis.py',
+    'weightedMetamorphosis_3D.py',
+    'metamorphosis_3D.py',
+    'save_load_metamorphosis.py'
 ]
 
 # Générer le motif ignore_pattern
