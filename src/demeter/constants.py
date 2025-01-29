@@ -8,10 +8,10 @@ import numpy as np
 # ROOT_DIRECTORY = os.path.dirname(os.path.dirname(
 #     os.path.dirname(os.path.abspath(__file__))
 # ))
+
 ROOT_DIRECTORY = os.getcwd()
 while not ROOT_DIRECTORY.endswith("Demeter_metamorphosis"):
     ROOT_DIRECTORY = os.path.dirname(ROOT_DIRECTORY)
-    print(ROOT_DIRECTORY)
     if ROOT_DIRECTORY == '/': break
 if not ROOT_DIRECTORY.endswith('Demeter_metamorphosis'):
     raise ValueError(f'ROOT_DIRECTORY should end with '

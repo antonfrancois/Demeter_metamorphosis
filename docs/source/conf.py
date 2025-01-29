@@ -46,6 +46,7 @@ sphinx_gallery_conf = {
     'gallery_dirs': 'auto_examples',          # Répertoire où les exemples générés seront stockés
     'within_subsection_order': FileNameSortKey,
      'ignore_pattern': ignore_pattern,
+    "filename_pattern": r".*",  # Ensure it includes all files
 }
 
 extensions = [

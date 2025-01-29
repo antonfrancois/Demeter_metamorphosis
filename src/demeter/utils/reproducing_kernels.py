@@ -430,41 +430,39 @@ class GaussianRKHS(torch.nn.Module):
 
     Parameters:
     -----------
-    sigma: (Tuple[float,float] or [float,float,float])
+    sigma (Tuple[float, float] or [float,float,float]):
         the standard deviation of the kernel.
     border_type (str):
         the padding mode to be applied before convolving.
-      The expected modes are: ``'constant'``, ``'reflect'``,
-      ``'replicate'`` or ``'circular'``. Default: ``'reflect'``.
-    normalized (bool): If True, kernel will be L1 normalized.
+        The expected modes are: ``'constant'``, ``'reflect'``,
+        ``'replicate'`` or ``'circular'``. Default: ``'reflect'``.
+    normalized (bool):
+        If True, kernel will be L1 normalized. (kernle.max wil be 1)
 
-    Return:
-        torch.Tensor: the convolved tensor of same size and numbers of channels
-        as the input.
-
-    Test
-    # #import matplotlib.pyplot as plt
-    # import numpy as np
-    # import nibabel as nib
-    # import image_3d_visualisation as iv3
-    # import reproducing_kernels as rkhs
-    # import torch
-    #
-    # %matplotlib qt
-    # irm_type = 'flair'
-    # folder_name = 'Brats18_CBICA_APY_1'
-    # img = nib.load(ROOT_DIRECTORY+'/../data/brats/'+folder_name+'/'+folder_name+'_'+irm_type+'.nii.gz')
-    # # img.affine
-    # img_data = torch.Tensor(img.get_fdata())[None,None]
-    # sigma = (3,5,5)
-    # # img_data = torch.Tensor(img.get_fdata()[125])[None,None]
-    # # sigma = (5,5)
-    # blured = rkhs.GaussianRKHS(sigma)(img_data)
-    # # fig,ax = plt.subplots(1,2)
-    # # ax[0].imshow(img_data[0,0])
-    # # ax[1].imshow(blured[0,0])
-    # iv3.imshow_3d_slider(img_data)
-    # iv3.imshow_3d_slider(blured)
+    Examples:
+    ---------
+    >>> #import matplotlib.pyplot as plt
+    >>> import numpy as np
+    >>> import nibabel as nib
+    >>> import image_3d_visualisation as iv3
+    >>> import reproducing_kernels as rkhs
+    >>> import torch
+    >>>
+    >>> %matplotlib qt
+    >>> irm_type = 'flair'
+    >>> folder_name = 'Brats18_CBICA_APY_1'
+    >>> img = nib.load(ROOT_DIRECTORY+'/../data/brats/'+folder_name+'/'+folder_name+'_'+irm_type+'.nii.gz')
+    >>> # img.affine
+    >>> img_data = torch.Tensor(img.get_fdata())[None,None]
+    >>> sigma = (3,5,5)
+    >>> # img_data = torch.Tensor(img.get_fdata()[125])[None,None]
+    >>> # sigma = (5,5)
+    >>> blured = rkhs.GaussianRKHS(sigma)(img_data)
+    >>> # fig,ax = plt.subplots(1,2)
+    >>> # ax[0].imshow(img_data[0,0])
+    >>> # ax[1].imshow(blured[0,0])
+    >>> iv3.imshow_3d_slider(img_data)
+    >>> iv3.imshow_3d_slider(blured)
     """
     def __init__(self,sigma : Tuple,
                  border_type: str = 'replicate',
@@ -472,14 +470,6 @@ class GaussianRKHS(torch.nn.Module):
                  kernel_reach = 6,
                  **kwargs
                  ):
-        """
-
-        :param sigma: (Tuple[float,float] or [float,float,float])
-        :border_type: the padding mode to be applied before convolving.
-          The expected modes are: ``'constant'``,
-          ``'replicate'`` or ``'circular'``.
-          the ``'reflect'`` one is not implemented yet by pytorch
-        """
         # big_odd = lambda val : max(6,int(val*6)) + (1 - max(6,int(val*6)) %2)
         # kernel_size = tuple([big_odd(s) for s in sigma])
         self.sigma = sigma
@@ -501,14 +491,18 @@ class GaussianRKHS(torch.nn.Module):
             self.kernel /= self.kernel.sum()
         self.border_type = border_type
 
-        # TODO : define better the condition for using the fft filter
-        # this filter works in 2d and 3d
 
         if max(self.kernel.shape) > 7:
             self.filter = fft_filter
         # print(f"filter used : {self.filter}")
 
     def get_all_arguments(self):
+        """
+        Return all the arguments used to initialize the class
+        is used to save the class.
+
+        :return: dict
+        """
         args = {
             "name": self.__class__.__name__,
             "sigma": self.sigma,
@@ -519,6 +513,16 @@ class GaussianRKHS(torch.nn.Module):
         return args
 
     def init_kernel(self,image):
+        """
+        Run at the integrator initialization. In this case, it checks if the
+        sigma is a tuple of the right dimension according to the given image
+        in the integrator.
+
+        Args:
+        -----
+        image (torch.Tensor):
+            the image to be convolved
+        """
         if isinstance(self.sigma, tuple) and len(self.sigma) != len(image.shape[2:]) :
             raise ValueError(f"kernelOperator :{self.__class__.__name__}"
                              f"was initialised to be {len(self.sigma)}D"
@@ -536,10 +540,16 @@ class GaussianRKHS(torch.nn.Module):
 
     def forward(self, input: torch.Tensor):
         """
+        Convolve the input tensor with the Gaussian kernel.
 
-        :param input: (torch.Tensor): the input tensor with shape of
-          :math:`(B, C, H, W)` or :math:`(B, C, D, H, W)`
-        :return:
+        Args:
+        -----
+        input (torch.Tensor):
+            the input tensor with shape of :math:`(B, C, H, W)` or :math:`(B, C, D, H, W)`
+
+        Returns:
+        --------
+        torch.Tensor: the convolved tensor of same size and numbers of channels as the input.
         """
         if (self._dim == 2 and len(input.shape) == 4) or (self._dim == 3 and len(input.shape) == 5):
             return self.filter(input,self.kernel,self.border_type)
@@ -551,17 +561,31 @@ class GaussianRKHS(torch.nn.Module):
 class VolNormalizedGaussianRKHS(torch.nn.Module):
     """
 
-    Args :
+    Parameters:
+    -------------
+    sigma (Tuple[float,float] or [float,float,float]):
+        the standard deviation of the kernel.
+    sigma_convention (str):
+        default 'pixel'. expected modes are: {'pixel','continuous'}
+        The unit `sigma` input should be considered as pixel or continuous.
+    dx (Tuple[float,float] or [float,float,float]):
+        the length of a pixel in each dimension.
+        if the image is isotropic, dx_convention can be a float.
+        If the image is anisotropic, dx_convention must be a tuple of length equal to the image dimension.
+        The default value is 1. (equivalent to pixel unit)
+    border_type (str):
+        the padding mode to be applied before convolving.
+        The expected modes are: ``'constant'``, ``'reflect'``,
+        ``'replicate'`` or ``'circular'``. Default: ``'reflect'``.
+    kernel_reach (int):
+        the reach of the kernel assuming sigma = 1.
+        For a given value of kernel reach, the kernel size is calculated as
+        kernel_size = max(kernel_reach,int(sigma*kernel_reach/dx)) + (1 - max(kernel_reach,int(sigma*kernel_reach/dx)) %2)
+        meaning that the kernel size is always odd and have (kernel_reach/2) * sigma pixel between the
+        center and the kernel border. The default value is 6, should be
+        enough for most of the applications, but if you notice negative V_norms,
+        increasing this value might help.
 
-
-        border_type (str): the padding mode to be applied before convolving.
-          The expected modes are: ``'constant'``, ``'reflect'``,
-          ``'replicate'`` or ``'circular'``. Default: ``'reflect'``.
-        normalized (bool): If True, kernel will be L1 normalized.
-
-    Return:
-        torch.Tensor: the convolved tensor of same size and numbers of channels
-        as the input.
 
 
     """
@@ -572,27 +596,7 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
                  kernel_reach = 6,
                  **kwargs
                  ):
-        """
 
-        :param sigma: (Tuple[float,float] or [float,float,float]) : the standard
-        deviation of the kernel expressed in pixel unit.
-        :param sigma_convention: default 'pixel'. expected modes are: {'pixel','continuous'}
-        The unit `sigma` input should be considered
-        :param dx: (str or Tuple[float,float] or [float,float,float]) : the length of a pixel in each dimension.
-        if the image is isotropic, dx_convention can be a float. If the image is anisotropic, dx_convention must be a tuple
-        of length equal to the image dimension. The default value is 1.
-        :border_type: the padding mode to be applied before convolving.
-          The expected modes are: ``'constant'``,
-          ``'replicate'`` or ``'circular'``.
-          the ``'reflect'`` one is not implemented yet by pytorch
-        :param kernel_reach: the reach of the kernel assuming sigma = 1.
-        For a given value of kernel reach, the kernel size is calculated as
-        kernel_size = max(kernel_reach,int(sigma*kernel_reach/dx)) + (1 - max(kernel_reach,int(sigma*kernel_reach/dx)) %2)
-        meaning that the kernel size is always odd and have (kernel_reach/2) * sigma pixel between the
-        center and the kernel border. The default value is 6, should be
-        enough for most of the applications, but if you notice negative V_norms,
-        increasing this value might help.
-        """
         # big_odd = lambda val : max(6,int(val*6)) + (1 - max(6,int(val*6)) %2)
         # kernel_size = tuple([big_odd(s) for s in sigma])
         self._dim = len(sigma)
@@ -677,12 +681,18 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
 
     def forward(self, input: torch.Tensor):
         """
+        Convolve the input tensor with the Gaussian kernel.
 
-        :param input: (torch.Tensor): the input tensor with shape of
-          :math:`(B, C, H, W)` or :math:`(B, C, D, H, W)`
-        :return: (torch.Tensor): output tensor with same size than the input tensor with shape of
-          :math:`(B, C, H, W)` or :math:`(B, C, D, H, W)`
+        Args:
+        -----
+        input (torch.Tensor):
+            the input tensor with shape of :math:`(B, C, H, W)` or :math:`(B, C, D, H, W)`
+
+        Returns:
+        --------
+        torch.Tensor: the convolved tensor of same size and numbers of channels as the input.
         """
+
         if (self._dim == 2 and len(input.shape) == 4) or (self._dim == 3 and len(input.shape) == 5):
             view_sig = (1,-1) + (1,)*(len(input.shape)-2)
             # input *= self.sigma_continuous.to(input.device).view(view_sig)**2
@@ -715,29 +725,29 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
 
     Example:
     --------
-    .. code-block:: python
-        import __init__
-        import demeter.utils.reproducing_kernels as rk
-        import demeter.utils.torchbox as tb
-        import matplotlib.pyplot as plt
-        import torch
 
-        sigma= [(5,5),(7,7),(10,10)]
-        kernelOp = rk.Multi_scale_GaussianRKHS(sigma)
-
-        image = tb.RandomGaussianImage((100,100),5,'pixel').image()
-        image_b = kernelOp(image)
-
-        fig, ax = plt.subplots(2,2,figsize=(10,5))
-        ax[0,0].imshow(kernelOp.kernel[0])
-        ax[0,0].set_title('kernel 1')
-        ax[0,1].plot(kernelOp.kernel[0][kernelOp.kernel[0].shape[0]//2])
-
-        ax[1,0].imshow(image[0,0])
-        ax[1,0].set_title('image')
-        ax[1,1].imshow(image_b[0,0])
-        ax[1,1].set_title('image_b')
-        plt.show()
+    >>>import __init__
+    >>>import demeter.utils.reproducing_kernels as rk
+    >>>import demeter.utils.torchbox as tb
+    >>>import matplotlib.pyplot as plt
+    >>>import torch
+    >>>
+    >>>sigma= [(5,5),(7,7),(10,10)]
+    >>>kernelOp = rk.Multi_scale_GaussianRKHS(sigma)
+    >>>
+    >>>image = tb.RandomGaussianImage((100,100),5,'pixel').image()
+    >>>image_b = kernelOp(image)
+    >>>
+    >>>fig, ax = plt.subplots(2,2,figsize=(10,5))
+    >>>ax[0,0].imshow(kernelOp.kernel[0])
+    >>>ax[0,0].set_title('kernel 1')
+    >>>ax[0,1].plot(kernelOp.kernel[0][kernelOp.kernel[0].shape[0]//2])
+    >>>
+    >>>ax[1,0].imshow(image[0,0])
+    >>>ax[1,0].set_title('image')
+    >>>ax[1,1].imshow(image_b[0,0])
+    >>>ax[1,1].set_title('image_b')
+    >>>plt.show()
     """
 
     def __init__(self, list_sigmas,

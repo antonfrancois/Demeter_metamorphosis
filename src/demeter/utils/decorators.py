@@ -5,8 +5,20 @@ from time import time
 from .toolbox import  format_time
 
 def time_it(func):
-    # This function shows the execution time of
-    # the function object passed
+    """
+    This decorator is used to measure the execution time  (in seconds) of a function
+
+    Usage example :
+    .. code-block:: python
+        import time
+        @time_it
+        def my_function():
+            print("I fall alseeep ...)
+            time.sleep(2.5)
+            print("Hello world")
+
+        my_function()
+    """
     def wrap_func(*args, **kwargs):
         t1 = time()
         result = func(*args, **kwargs)
@@ -27,25 +39,24 @@ def deprecated(reason):
     source : https://stackoverflow.com/questions/2536307/decorators-in-the-python-standard-lib-deprecated-specifically
 
     Usage example :
-    @deprecated("use another function")
-    def some_old_function(x, y):
-        return x + y
-
-
-    class SomeClass(object):
-        @deprecated("use another method")
-        def some_old_method(self, x, y):
+    .. code-block:: python
+        @deprecated("use another function")
+        def some_old_function(x, y):
             return x + y
 
+        class SomeClass(object):
+            @deprecated("use another method")
+            def some_old_method(self, x, y):
+                return x + y
 
-    @deprecated("use another class")
-    class SomeOldClass(object):
-        pass
+        @deprecated("use another class")
+        class SomeOldClass(object):
+            pass
 
 
-    some_old_function(5, 3)
-    SomeClass().some_old_method(8, 9)
-    SomeOldClass()
+        some_old_function(5, 3)
+        SomeClass().some_old_method(8, 9)
+        SomeOldClass()
     """
 
     if isinstance(reason, string_types):

@@ -1,5 +1,10 @@
 """
+.. _simpleToyExample_metamorphosis:
+
 This is an informative docstring
+
+MetaMorphosis behaviour with different values of rho
+===================================================
 
 """
 
@@ -20,7 +25,8 @@ except NameError:
 import torch
 # import kornia.filters as flt
 import matplotlib.pyplot as plt
-from demeter import DLT_KW_IMAGE,GRIDDEF_YELLOW
+from demeter import DLT_KW_IMAGE,GRIDDEF_YELLOW, ROOT_DIRECTORY
+# import demeter as dm
 # %load_ext autoreload
 # %autoreload 2
 import demeter.utils.reproducing_kernels as rk
@@ -35,7 +41,7 @@ import demeter.utils.torchbox as tb
 # cut in half changing its topology and a point was added. The goal is to register
 # the source to the target by deforming the 'C' shape and accounting the cut
 # and the point as intensity additions.
-
+print("ROOT_DIRECTORY : ",ROOT_DIRECTORY)
 source_name,target_name = 'm0t', 'm1c'
 # source_name,target_name = '17','20'
 size = (300,300)

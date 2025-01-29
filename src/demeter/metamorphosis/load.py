@@ -70,10 +70,9 @@ def load_optimize_geodesicShooting(file_name, path=None, verbose=True):
 
     Examples
     -------------
-    .. code-block:: python
-        >>> import demeter.metamorphosis as mt
-        >>> # load the optimiser
-        >>> mr = mt.load_optimize_geodesicShooting('2D_23_01_2025_simpleToyExample_rho_0.00_000.pk1')
+    >>> import demeter.metamorphosis as mt
+    >>> # load the optimiser
+    >>> mr = mt.load_optimize_geodesicShooting('2D_23_01_2025_simpleToyExample_rho_0.00_000.pk1')
 
 
      """

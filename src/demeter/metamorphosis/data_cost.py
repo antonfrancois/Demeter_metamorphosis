@@ -96,13 +96,13 @@ class Ssd(DataCost):
     Examples
     --------
 
-    .. code-block:: python
-        target = torch.rand(1,1,100,100)
-        data_term = dt.Ssd(target)
-        mt.lddmm(source,target,geodesic,
-            optimizer_method='adadelta',
-            data_term = data_term
-        )
+
+    >>>target = torch.rand(1,1,100,100)
+    >>>data_term = dt.Ssd(target)
+    >>>mt.lddmm(source,target,geodesic,
+    >>>    optimizer_method='adadelta',
+    >>>    data_term = data_term
+    >>>)
     """
 
     def __init__(self, target, **kwargs):
@@ -309,7 +309,6 @@ class Longitudinal_DataCost(DataCost):
 
     Example
     -------
-    .. code-block:: python
         >>> from demeter.metamorphosis.data_cost import Cfm,Longitudinal_DataCost
         >>> data_cost = Cfm
         >>> target_dict = [

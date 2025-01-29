@@ -72,27 +72,32 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     contains the code numerical scheme for a step of the geodesic integration.
 
      Here are the main features of the class:
-    - Initialization: The constructor initializes the basic parameters needed for
+    - Initialization:
+        The constructor initializes the basic parameters needed for
         geodesic integration, such as the kernel operator (kernelOperator),
          the number of steps (n_step), and the spatial differentiation convention
           (dx_convention).
-    - Abstract Methods: The class contains abstract methods like step, which
-    must be implemented by derived classes to define the specific steps of the
-     integration.
-    - Temporal Integration: The forward method performs the temporal loop
+    - Abstract Methods:
+        The class contains abstract methods like step, which
+        must be implemented by derived classes to define the specific steps of the
+        integration.
+    - Temporal Integration:
+        The forward method performs the temporal loop
         using the appropriate _step_ method to integrate the source image along
-         the geodesic.
-    - Generic functions useful for integration:  Methods _compute_vectorField_,
+        the geodesic.
+    - Generic functions useful for integration:
+        Methods _compute_vectorField_,
         _update_image_semiLagrangian_ ot _compute_vectorField_multimodal_
         implements updates of the field, the momentum and the image.
-    - Plots and Visualization: The class includes methods for visualizing the
-    integration results, such as plot, plot_deform, and save_to_gif.
+    - Plots and Visualization:
+        The class includes methods for visualizing the
+        integration results, such as plot, plot_deform, and save_to_gif.
+
     .. note::
         The integrated plot and visualization methods are implemented for 2d
         images only. If you want to use them for 3d images, you need to use
          others functions like the ones in image_3d_visualization.py.
-    -Device Management: The to_device method allows moving tensors and
-        parameters to the specified device (CPU or GPU).
+
 
     Parameters
     ----------
@@ -1343,21 +1348,36 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         light_save=False,
         message=None,
         destination=None,
-        file=None,
+        file_csv=None,
     ):
         """Save an optimisation to be later loaded and write all sort of info
         in a csv file
 
-        :param file_name: (str) will appear in the file name
-        :param light_save: (bool) if True, only the initial momentum is saved.
-        If False all data, integration, source and target are saved. Setting it to True
-        save a lot of space on the disk, but you might not be able to get the whole
-        registration back if the source image is different or the code used for
-        computing it changed for any reason.
-        :param message: (str) will appear in the csv storing all data
-        :param destination: path of the folder to store the csvfile overview
-        :param file:
+
+        Args:
+        ------
+        file_name  : str
+            will appear in the file name
+        light_save : bool
+            if True, only the initial momentum is saved.
+            If False all data, integration, source and target are saved. Setting it to True
+            save a lot of space on the disk, but you might not be able to get the whole
+            registration back if the source image is different or the code used for
+            computing it changed for any reason.
+        message : str
+            will appear in the csv storing all data
+        destination : str
+            path of the folder to store the csvfile overview
+        file_csv : str
+            name of the csv file to store the overview of the saved optimisation
+            default is 'saved_optim/saves_overview.csv'
+
+
         :return:
+        file_save,
+            name of the file saved
+        path
+            path of the file saved
         """
         if self.to_analyse == "Integration diverged":
             print("Can't save optimisation that didn't converged")
@@ -1406,7 +1426,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             message=message,
         )
         fill_saves_overview._write_dict_to_csv(
-            state_dict, path=destination, csv_file=file
+            state_dict, path=destination, csv_file=file_csv
         )
 
         # =================
