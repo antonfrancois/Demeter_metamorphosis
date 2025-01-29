@@ -28,7 +28,7 @@ jobs:
         run: |
           pwd & ls
           ls test/
-          pytest test/test_constants.py
+          pytest test/test_constant.py
 
       - name: Build documentation
         run: |
