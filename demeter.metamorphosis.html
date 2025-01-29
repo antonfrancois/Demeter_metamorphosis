@@ -1,0 +1,1168 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>demeter.metamorphosis package &mdash; Demeter_metamorphosis 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]]}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="demeter.utils package" href="demeter.utils.html" />
+    <link rel="prev" title="demeter package" href="demeter.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Demeter_metamorphosis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Gallery of examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">Demeter documentation</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="demeter.html">demeter package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="demeter.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4 current"><a class="current reference internal" href="#">demeter.metamorphosis package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html">demeter.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.html#module-demeter.constants">demeter.constants module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.html#module-demeter">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_users.html">For advanced users</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Demeter_metamorphosis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">Demeter documentation</a></li>
+          <li class="breadcrumb-item"><a href="demeter.html">demeter package</a></li>
+      <li class="breadcrumb-item active">demeter.metamorphosis package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/demeter.metamorphosis.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="demeter-metamorphosis-package">
+<h1>demeter.metamorphosis package<a class="headerlink" href="#demeter-metamorphosis-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-demeter.metamorphosis.abstract">
+<span id="demeter-metamorphosis-abstract-module"></span><h2>demeter.metamorphosis.abstract module<a class="headerlink" href="#module-demeter.metamorphosis.abstract" title="Link to this heading"></a></h2>
+<p>The implementation of Metamorphoses in <strong>Demeter</strong> is based on the minimization of a Hamiltonian:
+<div class="math notranslate nohighlight">
+\[H(q,p,v,z) =  (p|\dot q) - R(v,z)\]</div>
+</p>
+<p>where <span class="math notranslate nohighlight">\(q : (\Omega, [0,1]) \mapsto \mathcal M\)</span> is the temporal image valued in <span class="math notranslate nohighlight">\(\mathcal M\)</span>, <span class="math notranslate nohighlight">\(R\)</span> is a regularization function, <span class="math notranslate nohighlight">\(v\)</span> is a vector field, and <span class="math notranslate nohighlight">\(z\)</span> is a control on the photometric part.</p>
+<p>In the case of LDDMM and considering <span class="math notranslate nohighlight">\(\mathcal M = \mathbb R\)</span>, the Hamiltonian is:
+<div class="math notranslate nohighlight">
+\[H(q,p,v,z) =  (p|\dot q) - \frac 12\|v\|_V^2 - \frac 12\|z\|_Z^2\]</div>
+</p>
+<p>An optimal trajectory or geodesic under the conditions given by <span class="math notranslate nohighlight">\(H\)</span> is:</p>
+<p><div class="math notranslate nohighlight">
+\[\begin{split}\left\{\begin{array}{rl} \dot q_t &amp;= - \nabla q_t \cdot v_t + z_t\\ \dot z_t &amp;= - \mathrm{div}(z_t  v_t) \\
+p_t &amp;= z_t\\
+v_t &amp;= -K_V\left( z_t\nabla q_t \right)  \end{array}\right.\end{split}\]</div>
+</p>
+<p>These equations are written in the continuous case. In this document, all discretization choices made during the implementation are detailed.</p>
+<p>To solve the registration problem, a geodesic shooting strategy is used. For this, a relaxed version of <span class="math notranslate nohighlight">\(H\)</span> is minimized:
+<div class="math notranslate nohighlight">
+\[E(p_0) = D_T(I_1) + \frac{\lambda}{2} \left( \|v_0\|_V^2 +\|z_0\|_Z^2  \right)\]</div>
+</p>
+<p>Where <span class="math notranslate nohighlight">\(D_T\)</span> is a data attachment term and <span class="math notranslate nohighlight">\(T\)</span> is a target image, <span class="math notranslate nohighlight">\(I_1\)</span> is the image at the end of the geodesic integration, and <span class="math notranslate nohighlight">\(p_0\)</span> is the initial momentum. Note that in the case of Metamorphoses valued in images, <span class="math notranslate nohighlight">\(p = z\)</span>.</p>
+<p>You may have noticed that in the above equation <span class="math notranslate nohighlight">\(E(p_{0})\)</span> depends only on the initial momentum. Indeed, thanks to a conservation property of norms during the calculation of optimal trajectories in a Hamiltonian which states: Let <span class="math notranslate nohighlight">\(v\)</span> and <span class="math notranslate nohighlight">\(z\)</span> follow a geodesic given by <span class="math notranslate nohighlight">\(H\)</span>, then
+<div class="math notranslate nohighlight">
+\[\forall t \in [0,1], \|v_{0}\|^2_{V} = \|v_{t}\|^2_{V}; \|v_{0}\|^2_{2} = \|z_{t}\|^2_{2}. \]</div>
+</p>
+<p>This property is used to save computation time. In practice, due to numerical scheme choices, norm conservation may not be achieved. In this case, it is possible to optimize over the set of norms and <span class="math notranslate nohighlight">\(E\)</span> becomes:
+<div class="math notranslate nohighlight">
+\[E(p_0) = D_T(I_1) + \frac \lambda2 \int_{0}^1 \left( \|v_t\|_V^2 +\|z_t\|_Z^2  \right) dt.\]</div>
+</p>
+<p>The <span class="math notranslate nohighlight">\(I_{t},v_t,z_{t}\)</span> are still deduced from <span class="math notranslate nohighlight">\(p_0\)</span>. It is possible to switch between the two in the code using the <cite>hamiltonian_integration</cite> option in the children of <cite>Optimize_geodesicShooting</cite>.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Geodesic_integrator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.abstract.</span></span><span class="sig-name descname"><span class="pre">Geodesic_integrator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernelOperator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_step</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Geodesic_integrator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>The Geodesic_integrator class is an abstract class that inherits from
+torch.nn.Module and ABC (Abstract Base Class). It is designed to define
+the way of integrating geodesics in the context of metamorphosis optimization.
+If you want to implement a new geodesic integrator, you inherit from this class
+and implement the abstract methods, with a focus on the step method which
+contains the code numerical scheme for a step of the geodesic integration.</p>
+<blockquote>
+<div><p>Here are the main features of the class:</p>
+</div></blockquote>
+<ul class="simple">
+<li><dl class="simple">
+<dt>Initialization: The constructor initializes the basic parameters needed for</dt><dd><dl class="simple">
+<dt>geodesic integration, such as the kernel operator (kernelOperator),</dt><dd><dl class="simple">
+<dt>the number of steps (n_step), and the spatial differentiation convention</dt><dd><p>(dx_convention).</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><p>Abstract Methods: The class contains abstract methods like step, which</p></li>
+</ul>
+<dl class="simple">
+<dt>must be implemented by derived classes to define the specific steps of the</dt><dd><p>integration.</p>
+</dd>
+</dl>
+<ul class="simple">
+<li><dl class="simple">
+<dt>Temporal Integration: The forward method performs the temporal loop</dt><dd><dl class="simple">
+<dt>using the appropriate _step_ method to integrate the source image along</dt><dd><p>the geodesic.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Generic functions useful for integration:  Methods _compute_vectorField_,</dt><dd><p>_update_image_semiLagrangian_ ot _compute_vectorField_multimodal_
+implements updates of the field, the momentum and the image.</p>
+</dd>
+</dl>
+</li>
+<li><p>Plots and Visualization: The class includes methods for visualizing the</p></li>
+</ul>
+<p>integration results, such as plot, plot_deform, and save_to_gif.
+.. note:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">The</span> <span class="n">integrated</span> <span class="n">plot</span> <span class="ow">and</span> <span class="n">visualization</span> <span class="n">methods</span> <span class="n">are</span> <span class="n">implemented</span> <span class="k">for</span> <span class="mi">2</span><span class="n">d</span>
+<span class="n">images</span> <span class="n">only</span><span class="o">.</span> <span class="n">If</span> <span class="n">you</span> <span class="n">want</span> <span class="n">to</span> <span class="n">use</span> <span class="n">them</span> <span class="k">for</span> <span class="mi">3</span><span class="n">d</span> <span class="n">images</span><span class="p">,</span> <span class="n">you</span> <span class="n">need</span> <span class="n">to</span> <span class="n">use</span>
+ <span class="n">others</span> <span class="n">functions</span> <span class="n">like</span> <span class="n">the</span> <span class="n">ones</span> <span class="ow">in</span> <span class="n">image_3d_visualization</span><span class="o">.</span><span class="n">py</span><span class="o">.</span>
+</pre></div>
+</div>
+<dl class="simple">
+<dt>-Device Management: The to_device method allows moving tensors and</dt><dd><p>parameters to the specified device (CPU or GPU).</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>kernelOperator</strong> (<em>reproducing_kernel.ReproducingKernel</em>) – The kernel operator used to compute the vector field.</p></li>
+<li><p><strong>n_step</strong> (<em>int</em>) – The number of steps for the geodesic integration.</p></li>
+<li><p><strong>dx_convention</strong> (<em>str</em><em>, </em><em>optional</em>) – The spatial differentiation convention, by default “pixel”.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Geodesic_integrator.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">momentum_ini</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sharp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hamiltonian_integration</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Geodesic_integrator.forward" title="Link to this definition"></a></dt>
+<dd><p>This method is doing the temporal loop using the good method <cite>_step_</cite></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<em>tensor array</em><em> of </em><em>shape</em><em> [</em><em>1</em><em>,</em><em>1</em><em>,</em><em>H</em><em>,</em><em>W</em><em>]</em>) – Source image (<span class="math notranslate nohighlight">\(I_0\)</span>)</p></li>
+<li><p><strong>momentum_ini</strong> (<em>tensor array</em><em> of </em><em>shape</em><em> [</em><em>1</em><em>,</em><em>1</em><em>,</em><em>H</em><em>,</em><em>W</em><em>]</em>) – Momentum (<span class="math notranslate nohighlight">\(p_0\)</span>) or residual (<span class="math notranslate nohighlight">\(z_0\)</span>)</p></li>
+<li><p><strong>save</strong> (<em>bool</em><em>, </em><em>optional</em>) – Option to save the integration intermediary steps, by default True
+it saves the image, field and momentum at each step in the attributes
+<cite>image_stock</cite>, <cite>field_stock</cite> and <cite>momentum_stock</cite>.</p></li>
+<li><p><strong>plot</strong> (<em>int</em><em>, </em><em>optional</em>) – Positive int lower than <cite>self.n_step</cite> to plot the indicated number of
+intermediary steps, by default 0</p></li>
+<li><p><strong>t_max</strong> (<em>int</em><em>, </em><em>optional</em>) – The integration will be made on [0,t_max], by default 1</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Option to print the progress of the integration, by default False</p></li>
+<li><p><strong>sharp</strong> (<em>bool</em><em>, </em><em>optional</em>) – Option to use the sharp integration, by default None</p></li>
+<li><p><strong>debug</strong> (<em>bool</em><em>, </em><em>optional</em>) – Option to print debug information, by default False</p></li>
+<li><p><strong>hamiltonian_integration</strong> (<em>bool</em><em>, </em><em>optional</em>) – <p>Choose to integrate over first time step only or whole hamiltonian, in
+practice when True, the Regulation norms of the Hamiltonian are computed
+and saved in the good attributes (usually <cite>norm_v</cite> and <cite>norm_z</cite>),</p>
+<blockquote>
+<div><p>by default False</p>
+</div></blockquote>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Geodesic_integrator.get_deformation">
+<span class="sig-name descname"><span class="pre">get_deformation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">from_t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Geodesic_integrator.get_deformation" title="Link to this definition"></a></dt>
+<dd><p>Returns the deformation use it for showing results
+<span class="math notranslate nohighlight">\(\Phi = \int_s^t v_t dt\)</span> with <span class="math notranslate nohighlight">\(s &lt; t\)</span> and <span class="math notranslate nohighlight">\(t \in [0,n_{step}-1]\)</span></p>
+<dl class="field-list simple">
+<dt class="field-odd">Params<span class="colon">:</span></dt>
+<dd class="field-odd"><p>from_t : (int) the starting time step (default 0)</p>
+</dd>
+<dt class="field-even">Params<span class="colon">:</span></dt>
+<dd class="field-even"><p>to_t : (int) the ending time step (default n_step)</p>
+</dd>
+<dt class="field-odd">Params<span class="colon">:</span></dt>
+<dd class="field-odd"><p>save : (bool) option to save the integration intermediary steps. If true, the return value will have its shape with T&gt;1</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>deformation [T,H,W,2] or [T,H,W,D,3]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Geodesic_integrator.get_deformator">
+<span class="sig-name descname"><span class="pre">get_deformator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">from_t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Geodesic_integrator.get_deformator" title="Link to this definition"></a></dt>
+<dd><p>Returns the inverse deformation use it for deforming images
+<span class="math notranslate nohighlight">\((\Phi_{s,t})^{-1}\)</span> with <span class="math notranslate nohighlight">\(s &lt; t\)</span> and <span class="math notranslate nohighlight">\(t \in [0,n_{step}-1]\)</span></p>
+<dl class="field-list simple">
+<dt class="field-odd">Params<span class="colon">:</span></dt>
+<dd class="field-odd"><p>from_t : (int) the starting time step (default 0)</p>
+</dd>
+<dt class="field-even">Params<span class="colon">:</span></dt>
+<dd class="field-even"><p>to_t : (int) the ending time step (default n_step)</p>
+</dd>
+<dt class="field-odd">Params<span class="colon">:</span></dt>
+<dd class="field-odd"><p>save : (bool) option to save the integration intermediary steps. If true, the return value will have its shape with T&gt;1</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>deformation [T,H,W,2] or [T,H,W,D,3]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Geodesic_integrator.plot">
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_figs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Geodesic_integrator.plot" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Geodesic_integrator.plot_deform">
+<span class="sig-name descname"><span class="pre">plot_deform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temporal_nfig</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Geodesic_integrator.plot_deform" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Geodesic_integrator.save_to_gif">
+<span class="sig-name descname"><span class="pre">save_to_gif</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">folder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delay</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">40</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clean</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Geodesic_integrator.save_to_gif" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Geodesic_integrator.step">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Geodesic_integrator.step" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Geodesic_integrator.to_device">
+<span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Geodesic_integrator.to_device" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.abstract.</span></span><span class="sig-name descname"><span class="pre">Optimize_geodesicShooting</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geodesic</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#demeter.metamorphosis.abstract.Geodesic_integrator" title="demeter.metamorphosis.abstract.Geodesic_integrator"><span class="pre">Geodesic_integrator</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cost_cst</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_term</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'grad_descent'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hamiltonian_integration</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Abstract method for geodesic shooting optimisation. It needs to be provided with an object
+inheriting from Geodesic_integrator</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.compute_DICE">
+<span class="sig-name descname"><span class="pre">compute_DICE</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_segmentation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_segmentation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forward</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.compute_DICE" title="Link to this definition"></a></dt>
+<dd><p>Compute the DICE score of a regristration. Given the segmentations of
+a structure  (ex: ventricules) that should be present in both source and target image.
+it gives a score close to one if the segmentations are well matching after transformation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source_segmentation</strong> – Tensor of source size?</p></li>
+<li><p><strong>target_segmentation</strong></p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(float) DICE score.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.compute_landmark_dist">
+<span class="sig-name descname"><span class="pre">compute_landmark_dist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_landmark</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_landmark</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forward</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">round</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.compute_landmark_dist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.cost">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cost</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">residual_ini</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.cost" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.forward" title="Link to this definition"></a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.forward_safe_mode">
+<span class="sig-name descname"><span class="pre">forward_safe_mode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z_0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad_coef</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.forward_safe_mode" title="Link to this definition"></a></dt>
+<dd><p>Same as Optimize_geodesicShooting.forward(…) but
+does not stop the program when the integration diverges.
+If mode is not None, it tries to change the parameter
+until convergence as described in <code class="docutils literal notranslate"><span class="pre">`mode`</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z_0</strong> – initial residual. It is the variable on which we optimize.</p>
+</dd>
+</dl>
+<p><cite>require_grad</cite> must be set to True.
+:param n_iter: (int) number of optimizer iterations
+:param verbose: (bool) display advancement
+:param mode:</p>
+<blockquote>
+<div><p><cite>‘grad_coef’</cite> this mode will decrease the grad_coef by
+dividing it by 10.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_DICE">
+<span class="sig-name descname"><span class="pre">get_DICE</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_DICE" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_all_arguments">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_all_arguments</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_all_arguments" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_geodesic_distance">
+<span class="sig-name descname"><span class="pre">get_geodesic_distance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">only_zero</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_geodesic_distance" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_landmark_dist">
+<span class="sig-name descname"><span class="pre">get_landmark_dist</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_landmark_dist" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_ssd_def">
+<span class="sig-name descname"><span class="pre">get_ssd_def</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_ssd_def" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_total_cost">
+<span class="sig-name descname"><span class="pre">get_total_cost</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_total_cost" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.plot">
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.plot" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.plot_cost">
+<span class="sig-name descname"><span class="pre">plot_cost</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.plot_cost" title="Link to this definition"></a></dt>
+<dd><p>To display the evolution of cost during the optimisation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.plot_deform">
+<span class="sig-name descname"><span class="pre">plot_deform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temporal_nfigs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.plot_deform" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.plot_imgCmp">
+<span class="sig-name descname"><span class="pre">plot_imgCmp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.plot_imgCmp" title="Link to this definition"></a></dt>
+<dd><p>Display and compare the deformed image <span class="math notranslate nohighlight">\(I_1\)</span> with the target$</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">light_save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.save" title="Link to this definition"></a></dt>
+<dd><p>Save an optimisation to be later loaded and write all sort of info
+in a csv file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file_name</strong> – (str) will appear in the file name</p></li>
+<li><p><strong>light_save</strong> – (bool) if True, only the initial momentum is saved.</p></li>
+</ul>
+</dd>
+</dl>
+<p>If False all data, integration, source and target are saved. Setting it to True
+save a lot of space on the disk, but you might not be able to get the whole
+registration back if the source image is different or the code used for
+computing it changed for any reason.
+:param message: (str) will appear in the csv storing all data
+:param destination: path of the folder to store the csvfile overview
+:param file:
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.to_device">
+<span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.to_device" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-demeter.metamorphosis.classic">
+<span id="demeter-metamorphosis-classic-module"></span><h2>demeter.metamorphosis.classic module<a class="headerlink" href="#module-demeter.metamorphosis.classic" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.classic.Metamorphosis_Shooting">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.classic.</span></span><span class="sig-name descname"><span class="pre">Metamorphosis_Shooting</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geodesic</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.classic.Metamorphosis_Shooting" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting" title="demeter.metamorphosis.abstract.Optimize_geodesicShooting"><code class="xref py py-class docutils literal notranslate"><span class="pre">Optimize_geodesicShooting</span></code></a></p>
+<p>Metamorphosis shooting class, implements the shooting algorithm for metamorphosis
+over the Hamiltonian:</p>
+<div class="math notranslate nohighlight">
+\[H(z_0) =   \frac 12\| I_1 - T \|_{L_2}^2 + \lambda \Big[ \|v_0\|^2_V + \mu ^2 \|z_0\|^2_{L_2} \Big]\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source</strong> (<em>torch.Tensor</em>) – source image</p></li>
+<li><p><strong>target</strong> (<em>torch.Tensor</em>) – target image</p></li>
+<li><p><strong>geodesic</strong> (<a class="reference internal" href="#demeter.metamorphosis.classic.Metamorphosis_integrator" title="demeter.metamorphosis.classic.Metamorphosis_integrator"><em>Metamorphosis_integrator</em></a>) – geodesic integrator</p></li>
+<li><p><strong>cost_cst</strong> (<em>float</em>) – cost constant</p></li>
+<li><p><strong>data_term</strong> (<em>mt.DataCost</em><em>, </em><em>optional</em>) – data term, by default Ssd</p></li>
+<li><p><strong>optimizer_method</strong> (<em>str</em><em>, </em><em>optional</em>) – optimizer method, by default ‘LBFGS_torch’</p></li>
+<li><p><strong>hamiltonian_integration</strong> (<em>bool</em><em>, </em><em>optional</em>) – <dl class="simple">
+<dt>choose to integrate over first time step only or whole hamiltonian</dt><dd><p>integration, by default False</p>
+</dd>
+</dl>
+</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.classic.Metamorphosis_Shooting.cost">
+<span class="sig-name descname"><span class="pre">cost</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">momentum_ini</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#demeter.metamorphosis.classic.Metamorphosis_Shooting.cost" title="Link to this definition"></a></dt>
+<dd><p>cost computation</p>
+<div class="math notranslate nohighlight">
+\[H(z_0) =   \frac 12\| I_1 - T \|_{L_2}^2 + \lambda \Big[ \|v_0\|^2_V + \mu ^2 \|z_0\|^2_{L_2} \Big]\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>momentum_ini</strong> – Moment initial p_0</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="math notranslate nohighlight">\(H(z_0)\)</span> a single valued tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.classic.Metamorphosis_Shooting.get_all_arguments">
+<span class="sig-name descname"><span class="pre">get_all_arguments</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.classic.Metamorphosis_Shooting.get_all_arguments" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.classic.Metamorphosis_integrator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.classic.</span></span><span class="sig-name descname"><span class="pre">Metamorphosis_integrator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.classic.Metamorphosis_integrator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.abstract.Geodesic_integrator" title="demeter.metamorphosis.abstract.Geodesic_integrator"><code class="xref py py-class docutils literal notranslate"><span class="pre">Geodesic_integrator</span></code></a></p>
+<p>Class integrating over a geodesic shooting. The user can choose the method among
+‘Eulerian’, ‘advection_semiLagrangian’ and ‘semiLagrangian.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rho</strong> – (float) <span class="math notranslate nohighlight">\(\rho \in [0,1]\)</span>  Control parameter for geodesic shooting intensities changes
+<span class="math notranslate nohighlight">\(rho = 1\)</span> is LDDMM
+<span class="math notranslate nohighlight">\(mu = 0\)</span> is pure photomeric changes and any value in between is a mix of both.</p></li>
+<li><p><strong>sigma_v</strong> – sigma of the gaussian RKHS in the V norm</p></li>
+<li><p><strong>n_step</strong> – number of time step in the segment [0,1]
+over the geodesic integration</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.classic.Metamorphosis_integrator.step">
+<span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.classic.Metamorphosis_integrator.step" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-demeter.metamorphosis.constrained">
+<span id="demeter-metamorphosis-constrained-module"></span><h2>demeter.metamorphosis.constrained module<a class="headerlink" href="#module-demeter.metamorphosis.constrained" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.constrained.</span></span><span class="sig-name descname"><span class="pre">ConstrainedMetamorphosis_Shooting</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geodesic</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cost_cst</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_term</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'adadelta'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting" title="demeter.metamorphosis.abstract.Optimize_geodesicShooting"><code class="xref py py-class docutils literal notranslate"><span class="pre">Optimize_geodesicShooting</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.cost">
+<span class="sig-name descname"><span class="pre">cost</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">momentum_ini</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.cost" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z_0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad_coef</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sharp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.forward" title="Link to this definition"></a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.get_all_arguments">
+<span class="sig-name descname"><span class="pre">get_all_arguments</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.get_all_arguments" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.get_total_cost">
+<span class="sig-name descname"><span class="pre">get_total_cost</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.get_total_cost" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.plot_cost">
+<span class="sig-name descname"><span class="pre">plot_cost</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_log</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.plot_cost" title="Link to this definition"></a></dt>
+<dd><p>To display the evolution of cost during the optimisation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.to_device">
+<span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.to_device" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.constrained.</span></span><span class="sig-name descname"><span class="pre">ConstrainedMetamorphosis_integrator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">residual_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span> <span class="pre">|</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">orienting_field</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">orienting_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sharp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.abstract.Geodesic_integrator" title="demeter.metamorphosis.abstract.Geodesic_integrator"><code class="xref py py-class docutils literal notranslate"><span class="pre">Geodesic_integrator</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.compute_field_sim">
+<span class="sig-name descname"><span class="pre">compute_field_sim</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.compute_field_sim" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.plot_field_sim">
+<span class="sig-name descname"><span class="pre">plot_field_sim</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.plot_field_sim" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.step">
+<span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.step" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.step_deprecated">
+<span class="sig-name descname"><span class="pre">step_deprecated</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.step_deprecated" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.to_device">
+<span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.to_device" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.Reduce_field_Optim">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.constrained.</span></span><span class="sig-name descname"><span class="pre">Reduce_field_Optim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geodesic</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cost_cst</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer_method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_reduce</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gamma</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.Reduce_field_Optim" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting" title="demeter.metamorphosis.abstract.Optimize_geodesicShooting"><code class="xref py py-class docutils literal notranslate"><span class="pre">Optimize_geodesicShooting</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.Reduce_field_Optim.cost">
+<span class="sig-name descname"><span class="pre">cost</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">residuals_ini</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#demeter.metamorphosis.constrained.Reduce_field_Optim.cost" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.Reduce_field_Optim.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z_0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad_coef</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sharp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.Reduce_field_Optim.forward" title="Link to this definition"></a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.Reduce_field_Optim.get_total_cost">
+<span class="sig-name descname"><span class="pre">get_total_cost</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.Reduce_field_Optim.get_total_cost" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.Reduce_field_Optim.plot_cost">
+<span class="sig-name descname"><span class="pre">plot_cost</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.Reduce_field_Optim.plot_cost" title="Link to this definition"></a></dt>
+<dd><p>To display the evolution of cost during the optimisation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.constrained.Reduce_field_Optim.to_device">
+<span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.Reduce_field_Optim.to_device" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-demeter.metamorphosis.data_cost">
+<span id="demeter-metamorphosis-data-cost-module"></span><h2>demeter.metamorphosis.data_cost module<a class="headerlink" href="#module-demeter.metamorphosis.data_cost" title="Link to this heading"></a></h2>
+<p>This module contains the classes used to compute the data attachment term
+in the metamorphosis optimization. All data attachment terms must herit from
+the abstract class <cite>DataCost</cite>. The module contains the following classes:
+<cite>Ssd</cite>, <cite>Ssd_normalized</cite>, <cite>Cfm</cite>, <cite>SimiliSegs</cite>, <cite>Mutlimodal_ssd_cfm</cite>, <cite>Longitudinal_DataCost</cite>.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.Cfm">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.data_cost.</span></span><span class="sig-name descname"><span class="pre">Cfm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.Cfm" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.data_cost.DataCost" title="demeter.metamorphosis.data_cost.DataCost"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataCost</span></code></a></p>
+<p>This class is used to compute the data attachment term
+as a Cost Function Masking (CFM) term. It takes as a parameter
+the target image and the mask where the sum must be ignored.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target</strong> – torch.Tensor of shape [B,C,H,W] or [B,C,D,H,W], Target image</p></li>
+<li><p><strong>mask</strong> – torch.Tensor of the same shape as target</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.DataCost">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.data_cost.</span></span><span class="sig-name descname"><span class="pre">DataCost</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.DataCost" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Abstract class for the data attachment term in the metamorphosis optimization.
+The class <cite>Optimize_geodesicShooting</cite> requires a data attachment term to be provided
+as a subclass of <cite>DataCost</cite>. All subclasses must implement the __init__ and __call__ methods
+that return the data attachment term.</p>
+<p>This method is used to compute the data attachment term in the optimization process.
+It is meant to be given to a child of <cite>Optimize_geodesicShooting</cite>.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.DataCost.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">\*\*kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.DataCost.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initializes the class with the given target.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.DataCost.__repr__">
+<span class="sig-name descname"><span class="pre">__repr__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.DataCost.__repr__" title="Link to this definition"></a></dt>
+<dd><p>Returns a string representation of the DataCost object.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.DataCost.set_optimizer">
+<span class="sig-name descname"><span class="pre">set_optimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.DataCost.set_optimizer" title="Link to this definition"></a></dt>
+<dd><p>Sets the optimizer object. Used during the initialization of the optimizer.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.DataCost.to_device">
+<span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.DataCost.to_device" title="Link to this definition"></a></dt>
+<dd><p>Moves the target to the specified device.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.DataCost.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">at_step=-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">\*\*kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.DataCost.__call__" title="Link to this definition"></a></dt>
+<dd><p>Abstract method that must be implemented by subclasses to return the data attachment term.</p>
+</dd></dl>
+
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>target</strong> – target image</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">set_optimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">optimizer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd><p>DataCost object are meant to be used along a
+method inherited from <cite>Optimize_geodesicShooting</cite>.
+This method is used to set the optimizer object and is usually
+used at the optimizer initialisation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.Longitudinal_DataCost">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.data_cost.</span></span><span class="sig-name descname"><span class="pre">Longitudinal_DataCost</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_cost:</span> <span class="pre">~demeter.metamorphosis.data_cost.DataCost</span> <span class="pre">=</span> <span class="pre">&lt;class</span> <span class="pre">'demeter.metamorphosis.data_cost.Ssd'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.Longitudinal_DataCost" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.data_cost.DataCost" title="demeter.metamorphosis.data_cost.DataCost"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataCost</span></code></a></p>
+<dl>
+<dt>This class is used to compute the data</dt><dd><dl>
+<dt>attachment term for longitudinal data. It takes</dt><dd><p>as a parameter an object inherited from <a href="#id2"><span class="problematic" id="id3">`</span></a>DataCost’
+and apply the sum of the data attachment term over</p>
+<blockquote>
+<div><p>the list of target images.</p>
+</div></blockquote>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target_dict</strong> – List of dict of target images.  Each dict must contain the key <cite>time</cite> with an integer value corresponding to the time of the data acquisition. The rest of the keys must by the one required by the provided data_cost object. (see example)</p></li>
+<li><p><strong>data_cost</strong> – DataCost object (default : Ssd)</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.Longitudinal_DataCost.set_optimizer">
+<span class="sig-name descname"><span class="pre">set_optimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">optimizer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.Longitudinal_DataCost.set_optimizer" title="Link to this definition"></a></dt>
+<dd><p>DataCost object are meant to be used along a
+method inherited from <cite>Optimize_geodesicShooting</cite>.
+This method is used to set the optimizer object and is usually
+used at the optimizer initialisation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.Longitudinal_DataCost.to_device">
+<span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.Longitudinal_DataCost.to_device" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.Mutlimodal_ssd_cfm">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.data_cost.</span></span><span class="sig-name descname"><span class="pre">Mutlimodal_ssd_cfm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_ssd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_cfm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_cfm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_cfm</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.Mutlimodal_ssd_cfm" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.data_cost.DataCost" title="demeter.metamorphosis.data_cost.DataCost"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataCost</span></code></a></p>
+<p>This class is used to compute the data attachment term
+as a combination of the Sum of Squared Differences (SSD) and
+the Cost Function Masking (CFM) terms on multimodal
+(or multichannel) images. It allows to compute the SSD on
+selected channels of the source image and the CFM on the
+remaining channels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target_ssd</strong> – torch.Tensor of shape [B,C,H,W] or [B,C,D,H,W], Target image for the SSD term</p></li>
+<li><p><strong>target_cfm</strong> – torch.Tensor of the same shape as target_ssd, Target image for the CFM term</p></li>
+<li><p><strong>source_cfm</strong> – torch.Tensor of the same shape as target_ssd, Source image for the CFM term</p></li>
+<li><p><strong>mask_cfm</strong> – torch.Tensor of the same shape as target_ssd, Mask for the CFM term</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.Mutlimodal_ssd_cfm.set_optimizer">
+<span class="sig-name descname"><span class="pre">set_optimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">optimizer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.Mutlimodal_ssd_cfm.set_optimizer" title="Link to this definition"></a></dt>
+<dd><p>DataCost object are meant to be used along a
+method inherited from <cite>Optimize_geodesicShooting</cite>.
+This method is used to set the optimizer object and is usually
+used at the optimizer initialisation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.Mutlimodal_ssd_cfm.to_device">
+<span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.Mutlimodal_ssd_cfm.to_device" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.SimiliSegs">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.data_cost.</span></span><span class="sig-name descname"><span class="pre">SimiliSegs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask_source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_target</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.SimiliSegs" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.data_cost.DataCost" title="demeter.metamorphosis.data_cost.DataCost"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataCost</span></code></a></p>
+<p>Rather than computing the SSD between the source and target images,
+this class computes the SSD between two given masks placed on the
+source and target masks respectively.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mask_source</strong> – torch.Tensor of shape [B,C,H,W] or [B,C,D,H,W], Source mask</p></li>
+<li><p><strong>mask_target</strong> – torch.Tensor of the same shape as mask_source, Target mask</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.SimiliSegs.set_optimizer">
+<span class="sig-name descname"><span class="pre">set_optimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">optimizer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.SimiliSegs.set_optimizer" title="Link to this definition"></a></dt>
+<dd><p>DataCost object are meant to be used along a
+method inherited from <cite>Optimize_geodesicShooting</cite>.
+This method is used to set the optimizer object and is usually
+used at the optimizer initialisation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.SimiliSegs.to_device">
+<span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.SimiliSegs.to_device" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.Ssd">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.data_cost.</span></span><span class="sig-name descname"><span class="pre">Ssd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.Ssd" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.data_cost.DataCost" title="demeter.metamorphosis.data_cost.DataCost"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataCost</span></code></a></p>
+<p>This class is used to compute the data attachment term
+as a Sum of Squared Differences (SSD) term. It takes as a parameter
+the target image.
+<div class="math notranslate nohighlight">
+\[SSD(I,T) = \frac 12 \|I - T\|_2^2 = \frac 12\sum_{x\in \Omega} (I - T)^2\]</div>
+</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>target</strong> – torch.Tensor of shape [B,C,H,W] or [B,C,D,H,W]  Target image</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.Ssd.to_device">
+<span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.Ssd.to_device" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.Ssd_normalized">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.data_cost.</span></span><span class="sig-name descname"><span class="pre">Ssd_normalized</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.Ssd_normalized" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.data_cost.DataCost" title="demeter.metamorphosis.data_cost.DataCost"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataCost</span></code></a></p>
+<p>This class is used to compute the data attachment term
+as a Sum of Squared Differences (SSD) term but normalized by the number of pixels. It takes as a parameter
+the target image.
+<div class="math notranslate nohighlight">
+\[SSD(I,T) = \frac 1{2 \#\Omega} \|I - T\|_2^2 = \frac 1{2 \#\Omega}\sum_{x\in \Omega} (I - T)^2\]</div>
+
+where <span class="math notranslate nohighlight">\(\Omega\)</span> is the set of pixels and <span class="math notranslate nohighlight">\(\# \Omega\)</span> is the number of pixels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>target</strong> – torch.Tensor of shape [B,C,H,W] or [B,C,D,H,W]  Target image</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.Ssd_normalized.to_device">
+<span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.Ssd_normalized.to_device" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-demeter.metamorphosis.joined">
+<span id="demeter-metamorphosis-joined-module"></span><h2>demeter.metamorphosis.joined module<a class="headerlink" href="#module-demeter.metamorphosis.joined" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.joined.</span></span><span class="sig-name descname"><span class="pre">Weighted_joinedMask_Metamorphosis_Shooting</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geodesic</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator" title="demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator"><span class="pre">Weighted_joinedMask_Metamorphosis_integrator</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cost_cst</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_term</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LBFGS_torch'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting" title="demeter.metamorphosis.abstract.Optimize_geodesicShooting"><code class="xref py py-class docutils literal notranslate"><span class="pre">Optimize_geodesicShooting</span></code></a></p>
+<p>Perform the optimization of the weighted joined mask metamorphosis</p>
+<p>Warning: self.source and self.target are a concatenation of the image and the mask
+<code class="docutils literal notranslate"><span class="pre">`</span>
+<span class="pre">source</span> <span class="pre">=</span> <span class="pre">torch.cat([source,mask_source],dim=1)</span>
+<span class="pre">`</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting.cost">
+<span class="sig-name descname"><span class="pre">cost</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">momentum_ini</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting.cost" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting.get_all_arguments">
+<span class="sig-name descname"><span class="pre">get_all_arguments</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting.get_all_arguments" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting.get_ssd_def">
+<span class="sig-name descname"><span class="pre">get_ssd_def</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">only_image</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting.get_ssd_def" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting.plot_cost">
+<span class="sig-name descname"><span class="pre">plot_cost</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting.plot_cost" title="Link to this definition"></a></dt>
+<dd><p>To display the evolution of cost during the optimisation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting.plot_imgCmp">
+<span class="sig-name descname"><span class="pre">plot_imgCmp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting.plot_imgCmp" title="Link to this definition"></a></dt>
+<dd><p>Display and compare the deformed image <span class="math notranslate nohighlight">\(I_1\)</span> with the target$</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.joined.</span></span><span class="sig-name descname"><span class="pre">Weighted_joinedMask_Metamorphosis_integrator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rho</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.abstract.Geodesic_integrator" title="demeter.metamorphosis.abstract.Geodesic_integrator"><code class="xref py py-class docutils literal notranslate"><span class="pre">Geodesic_integrator</span></code></a></p>
+<p>Dans cette version, on considère que l’image intégrée
+est une image à deux canaux, le premier étant l’image
+le second le masque. (i.e.: image.shape[1] == 2)
+avec image[:,0] l’image et image[:,1] le masque.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">momentum_ini</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.forward" title="Link to this definition"></a></dt>
+<dd><p>This method is doing the temporal loop using the good method <cite>_step_</cite></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<em>tensor array</em><em> of </em><em>shape</em><em> [</em><em>1</em><em>,</em><em>1</em><em>,</em><em>H</em><em>,</em><em>W</em><em>]</em>) – Source image (<span class="math notranslate nohighlight">\(I_0\)</span>)</p></li>
+<li><p><strong>momentum_ini</strong> (<em>tensor array</em><em> of </em><em>shape</em><em> [</em><em>1</em><em>,</em><em>1</em><em>,</em><em>H</em><em>,</em><em>W</em><em>]</em>) – Momentum (<span class="math notranslate nohighlight">\(p_0\)</span>) or residual (<span class="math notranslate nohighlight">\(z_0\)</span>)</p></li>
+<li><p><strong>save</strong> (<em>bool</em><em>, </em><em>optional</em>) – Option to save the integration intermediary steps, by default True
+it saves the image, field and momentum at each step in the attributes
+<cite>image_stock</cite>, <cite>field_stock</cite> and <cite>momentum_stock</cite>.</p></li>
+<li><p><strong>plot</strong> (<em>int</em><em>, </em><em>optional</em>) – Positive int lower than <cite>self.n_step</cite> to plot the indicated number of
+intermediary steps, by default 0</p></li>
+<li><p><strong>t_max</strong> (<em>int</em><em>, </em><em>optional</em>) – The integration will be made on [0,t_max], by default 1</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Option to print the progress of the integration, by default False</p></li>
+<li><p><strong>sharp</strong> (<em>bool</em><em>, </em><em>optional</em>) – Option to use the sharp integration, by default None</p></li>
+<li><p><strong>debug</strong> (<em>bool</em><em>, </em><em>optional</em>) – Option to print debug information, by default False</p></li>
+<li><p><strong>hamiltonian_integration</strong> (<em>bool</em><em>, </em><em>optional</em>) – <p>Choose to integrate over first time step only or whole hamiltonian, in
+practice when True, the Regulation norms of the Hamiltonian are computed
+and saved in the good attributes (usually <cite>norm_v</cite> and <cite>norm_z</cite>),</p>
+<blockquote>
+<div><p>by default False</p>
+</div></blockquote>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.plot">
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_figs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.plot" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.step">
+<span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.step" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.step_sharp">
+<span class="sig-name descname"><span class="pre">step_sharp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.step_sharp" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.to_device">
+<span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.to_device" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-demeter.metamorphosis.load">
+<span id="demeter-metamorphosis-load-module"></span><h2>demeter.metamorphosis.load module<a class="headerlink" href="#module-demeter.metamorphosis.load" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.metamorphosis.load.load_optimize_geodesicShooting">
+<span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.load.</span></span><span class="sig-name descname"><span class="pre">load_optimize_geodesicShooting</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.load.load_optimize_geodesicShooting" title="Link to this definition"></a></dt>
+<dd><dl class="simple">
+<dt>load previously saved optimisation. Usually the file will be saved in the</dt><dd><p>OPTIM_SAVE_DIR witch is by default <cite>/saved_optim</cite> .</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>file_name</strong> (<em>str</em>) – name of the file to load</p></li>
+<li><p><strong>path</strong> (<em>str</em><em>, </em><em>optional</em>) – path to the file, by default OPTIM_SAVE_DIR = <cite>saved_optim</cite></p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – print the loaded optimiser / integrator _repr_, by default True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>new_optim</strong> – the loaded optimiser</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#demeter.metamorphosis.classic.Metamorphosis_Shooting" title="demeter.metamorphosis.classic.Metamorphosis_Shooting">Metamorphosis_Shooting</a></p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+</dd></dl>
+
+</section>
+<section id="module-demeter.metamorphosis.simplex">
+<span id="demeter-metamorphosis-simplex-module"></span><h2>demeter.metamorphosis.simplex module<a class="headerlink" href="#module-demeter.metamorphosis.simplex" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.simplex.Simplex_sqrt_Metamorphosis_integrator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.simplex.</span></span><span class="sig-name descname"><span class="pre">Simplex_sqrt_Metamorphosis_integrator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rho</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.simplex.Simplex_sqrt_Metamorphosis_integrator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.abstract.Geodesic_integrator" title="demeter.metamorphosis.abstract.Geodesic_integrator"><code class="xref py py-class docutils literal notranslate"><span class="pre">Geodesic_integrator</span></code></a></p>
+<p>Class integrating over a geodesic shooting for images with values in the simplex.</p>
+<dl class="simple">
+<dt>..note::</dt><dd><p>In this class we integrate on the sphere using the square root function and
+reproject images on the simplex after.
+Thus, when accessing the image attribute, one should put it to the square
+to get the image in the simplex.
+&gt;&gt;&gt; mp = Simplex_sqrt_Metamorphosis_integrator(rho=1, kernelOperator=kernelOperator, n_step=10)
+&gt;&gt;&gt; mp.forward(image, momentum_ini,)
+&gt;&gt;&gt; image_on_simplex  = mp.image**2
+&gt;&gt;&gt; print( image_on_simplex.sum(dim=1) )</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rho</strong> (<em>float</em>) – Control parameter for geodesic shooting intensities changes vs deformations.
+rho = 1 is LDDMM (pure deformation), rho = 0 is pure photometric changes.
+Any value in between is a mix of both.</p></li>
+<li><p><strong>kernelOperator</strong> (<em>callable</em>) – The reproducing kernel operator <span class="math notranslate nohighlight">\(K\)</span> that one must define to compute the field.</p></li>
+<li><p><strong>n_step</strong> (<em>int</em>) – Number of time step in the segment [0,1] over the geodesic integration.</p></li>
+<li><p><strong>dx_convention</strong> (<em>str</em>) – Convention for the pixel size. Default is ‘pixel’.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.simplex.Simplex_sqrt_Metamorphosis_integrator.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">momentum_ini</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sharp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hamiltonian_integration</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.simplex.Simplex_sqrt_Metamorphosis_integrator.forward" title="Link to this definition"></a></dt>
+<dd><p>This method is doing the temporal loop using the good method <cite>_step_</cite></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<em>torch.Tensor</em><em> of </em><em>shape</em><em> [</em><em>1</em><em>,</em><em>C</em><em>,</em><em>H</em><em>,</em><em>W</em><em>] or </em><em>[</em><em>1</em><em>,</em><em>C</em><em>,</em><em>D</em><em>,</em><em>H</em><em>,</em><em>W</em><em>]</em>) – Source image (<span class="math notranslate nohighlight">\(I_0\)</span>) C is the dimension of the simplex</p></li>
+<li><p><strong>momentum_ini</strong> (<em>torch.Tensor</em><em> of </em><em>shape</em><em> [</em><em>1</em><em>,</em><em>C</em><em>,</em><em>H</em><em>,</em><em>W</em><em>] or </em><em>[</em><em>1</em><em>,</em><em>C</em><em>,</em><em>D</em><em>,</em><em>H</em><em>,</em><em>W</em><em>]</em>) – Initial momentum (<span class="math notranslate nohighlight">\(p_0\)</span>) set by the user before the optimisation</p></li>
+<li><p><strong>save</strong> (<em>bool</em><em>, </em><em>optional</em>) – Option to save the integration intermediary steps, by default True
+it saves the image, field and momentum at each step in the attributes
+<cite>image_stock</cite>, <cite>field_stock</cite> and <cite>momentum_stock</cite>.</p></li>
+<li><p><strong>plot</strong> (<em>int</em><em>, </em><em>optional</em>) – Positive int lower than <cite>self.n_step</cite> to plot the indicated number of
+intermediary steps, by default 0</p></li>
+<li><p><strong>t_max</strong> (<em>int</em><em>, </em><em>optional</em>) – The integration will be made on [0,t_max], by default 1</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Option to print the progress of the integration, by default False</p></li>
+<li><p><strong>sharp</strong> (<em>bool</em><em>, </em><em>optional</em>) – Option to use the sharp integration, by default None</p></li>
+<li><p><strong>debug</strong> (<em>bool</em><em>, </em><em>optional</em>) – Option to print debug information, by default False</p></li>
+<li><p><strong>hamiltonian_integration</strong> (<em>bool</em><em>, </em><em>optional</em>) – <p>Choose to integrate over first time step only or whole hamiltonian, in
+practice when True, the Regulation norms of the Hamiltonian are computed
+and saved in the good attributes (usually <cite>norm_v</cite> and <cite>norm_z</cite>),</p>
+<blockquote>
+<div><p>by default False</p>
+</div></blockquote>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.simplex.Simplex_sqrt_Metamorphosis_integrator.step">
+<span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.simplex.Simplex_sqrt_Metamorphosis_integrator.step" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.simplex.Simplex_sqrt_Shooting">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.simplex.</span></span><span class="sig-name descname"><span class="pre">Simplex_sqrt_Shooting</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">integrator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cost_cst</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hamiltonian_integration</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.simplex.Simplex_sqrt_Shooting" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting" title="demeter.metamorphosis.abstract.Optimize_geodesicShooting"><code class="xref py py-class docutils literal notranslate"><span class="pre">Optimize_geodesicShooting</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.simplex.Simplex_sqrt_Shooting.cost">
+<span class="sig-name descname"><span class="pre">cost</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">momentum_ini</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.simplex.Simplex_sqrt_Shooting.cost" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.simplex.Simplex_sqrt_Shooting.get_all_arguments">
+<span class="sig-name descname"><span class="pre">get_all_arguments</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.simplex.Simplex_sqrt_Shooting.get_all_arguments" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-demeter.metamorphosis.wraps">
+<span id="demeter-metamorphosis-wraps-module"></span><h2>demeter.metamorphosis.wraps module<a class="headerlink" href="#module-demeter.metamorphosis.wraps" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.metamorphosis.wraps.commun_after">
+<span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.wraps.</span></span><span class="sig-name descname"><span class="pre">commun_after</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">momentum_ini</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">safe_mode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iter</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad_coef</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.wraps.commun_after" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.metamorphosis.wraps.commun_before">
+<span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.wraps.</span></span><span class="sig-name descname"><span class="pre">commun_before</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">momentum_ini</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.wraps.commun_before" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.metamorphosis.wraps.joined_metamorphosis">
+<span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.wraps.</span></span><span class="sig-name descname"><span class="pre">joined_metamorphosis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">momentum_ini</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernelOperator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_term</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad_coef</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cost_cst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LBFGS_torch'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">safe_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.wraps.joined_metamorphosis" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.metamorphosis.wraps.simplex_metamorphosis">
+<span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.wraps.</span></span><span class="sig-name descname"><span class="pre">simplex_metamorphosis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">momentum_ini</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernelOperator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_term</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad_coef</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cost_cst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">safe_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ham</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.wraps.simplex_metamorphosis" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-demeter.metamorphosis">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-demeter.metamorphosis" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="demeter.html" class="btn btn-neutral float-left" title="demeter package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="demeter.utils.html" class="btn btn-neutral float-right" title="demeter.utils package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Anton François.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

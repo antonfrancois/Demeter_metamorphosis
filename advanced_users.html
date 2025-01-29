@@ -1,0 +1,191 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>For advanced users &mdash; Demeter_metamorphosis 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]]}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="demeter.utils package" href="demeter.utils.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Demeter_metamorphosis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Gallery of examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Demeter documentation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">For advanced users</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#theory-and-implementation-choices-in-metamorphoses-in-demeter">Theory and Implementation choices in Metamorphoses in Demeter</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#minimal-theory-to-understand-before-using-metamorphoses-in-demeter">Minimal theory to understand before using Metamorphoses in Demeter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#more-precise-explanations-the-lddmm-case">More precise explanations : The LDDMM case</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#in-practice">In practice:</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Demeter_metamorphosis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">For advanced users</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/advanced_users.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="for-advanced-users">
+<h1>For advanced users<a class="headerlink" href="#for-advanced-users" title="Link to this heading"></a></h1>
+<p>Welcome, if you are reading this, you have probably already tested the basics
+features of <strong>Demeter</strong>. This document is intended for advanced users who
+want to contribute or design a new metamorphosis model based on the <strong>Demeter</strong> library.
+Do not hesitate to post an issue on the github repository if you have any questions.
+If you are confused about something, other might be too !</p>
+<section id="theory-and-implementation-choices-in-metamorphoses-in-demeter">
+<h2>Theory and Implementation choices in Metamorphoses in Demeter<a class="headerlink" href="#theory-and-implementation-choices-in-metamorphoses-in-demeter" title="Link to this heading"></a></h2>
+<section id="minimal-theory-to-understand-before-using-metamorphoses-in-demeter">
+<h3>Minimal theory to understand before using Metamorphoses in Demeter<a class="headerlink" href="#minimal-theory-to-understand-before-using-metamorphoses-in-demeter" title="Link to this heading"></a></h3>
+<p>Our implementation of the metamorphoses algorithm is based on a geodesic
+shooting method following a Hamiltonian trajectory. Broadly speaking, before
+delving into the details, and taking LDDMM as an example, this means that the
+algorithm is divided into two fundamental components: an <cite>integrator</cite> and an <cite>optimizer</cite>.</p>
+<p>The <cite>integrator</cite> computes a “registered” or transported image via a metamorphic
+flow starting from an initial condition, referred to as the momentum, denoted <span class="math notranslate nohighlight">\(p\)</span>
+(and <span class="math notranslate nohighlight">\(p_0\)</span> at the initial time). In other words, the integrator performs the following action:</p>
+<div class="math notranslate nohighlight">
+\[I_1 = \mathrm{Integrator}(p_0)\]</div>
+<p>The <cite>optimizer</cite>, on the other hand, is tasked with calculating <span class="math notranslate nohighlight">\(p_0\)</span> to produce
+the final image <span class="math notranslate nohighlight">\(I_1\)</span> that is as close as possible to the target image. This is a
+standard optimization problem, which is solved by minimizing a cost function of the form:</p>
+<div class="math notranslate nohighlight">
+\[E(p_{0}) = \mathrm{DataCost}(\mathrm{Integrator}(p_{0}),T) + \lambda\mathrm{Reg}(p_{0})\]</div>
+<p>where DataCost <span class="math notranslate nohighlight">\(\mathrm{DataCost}\)</span> is a data fidelity term, <span class="math notranslate nohighlight">\(T\)</span> is the target
+image, <span class="math notranslate nohighlight">\(\mathrm{Reg}\)</span> is a regularization term, and <span class="math notranslate nohighlight">\(\lambda\)</span> is a constant.</p>
+<p>The <cite>integrator</cite> and <cite>optimizer</cite> are two separate classes in the code. Integrators
+inherit from <cite>Geodesic_integrator</cite> and optimizers inherit from
+<cite>Optimize_geodesicShooting</cite>. As you might have guessed, the <cite>integrator</cite> and
+<cite>optimizer</cite> are tightly coupled. The <cite>optimizer</cite> uses the <cite>integrator</cite> to compute
+the registered image, and therefore the <cite>integrator</cite> is a required input and attribute
+to the <cite>optimizer</cite>. In the <cite>Optimize_geodesicShooting</cite> class one can access
+the <cite>integrator</cite> by calling the attribute <cite>Optimize_geodesicShooting.mp</cite>, mp
+standing for metamorphosis path. This choice was made for conciseness.</p>
+</section>
+<section id="more-precise-explanations-the-lddmm-case">
+<h3>More precise explanations : The LDDMM case<a class="headerlink" href="#more-precise-explanations-the-lddmm-case" title="Link to this heading"></a></h3>
+<p>As you might know, the LDDMM algorithm can be seen as a particular case of the
+metamorphoses one. The implementation of Metamorphoses in <strong>Demeter</strong> is based on the minimization of a Hamiltonian:</p>
+<div class="math notranslate nohighlight">
+\[H(q,p,v,z) =  (p|\dot q) - R(v,z)\]</div>
+<p>where <span class="math notranslate nohighlight">\(q : (\Omega, [0,1]) \mapsto \mathcal M\)</span> is the temporal image valued in <span class="math notranslate nohighlight">\(\mathcal M\)</span>, <span class="math notranslate nohighlight">\(R\)</span> is a regularization function, <span class="math notranslate nohighlight">\(v\)</span> is a vector field, and <span class="math notranslate nohighlight">\(z\)</span> is a control on the photometric part.</p>
+<p>In the case of LDDMM and considering <span class="math notranslate nohighlight">\(\mathcal M = \mathbb R\)</span>, the Hamiltonian is:</p>
+<div class="math notranslate nohighlight">
+\[H(q,p,v,z) =  (p| \dot q) - \frac 12\|v\|_V^2 -\frac 12\|z\|_Z^2\]</div>
+<p>An optimal trajectory or geodesic under the conditions given by <span class="math notranslate nohighlight">\(H\)</span> is:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\left\{\begin{array}{rl} \dot q_t &amp;= - \nabla q_t \cdot v_t + z_t\\ \dot z_t &amp;= - \mathrm{div}(z_t  v_t) \\
+p_t &amp;= z_t\\
+v_t &amp;= -K_V\left( z_t\nabla q_t \right)  \end{array}\right.\end{split}\]</div>
+<p>These equations are written in the continuous case. In this document, all discretization choices made during the implementation are detailed.</p>
+<p>To solve the registration problem, a geodesic shooting strategy is used. For this, a relaxed version of <span class="math notranslate nohighlight">\(H\)</span> is minimized:</p>
+<div class="math notranslate nohighlight">
+\[E(p_0) = D_T(I_1) + \frac \lambda2 \left( \|v_0\|_V^2 +\|z_0\|_Z^2  \right)\]</div>
+<p>Where <span class="math notranslate nohighlight">\(D_T\)</span> is a data attachment term and <span class="math notranslate nohighlight">\(T\)</span> is a target image, <span class="math notranslate nohighlight">\(I_1\)</span> is the image at the end of the geodesic integration, and <span class="math notranslate nohighlight">\(p_0\)</span> is the initial momentum. Note that in the case of Metamorphoses valued in images, <span class="math notranslate nohighlight">\(p = z\)</span>.</p>
+<p>You may have noticed that in the above equation <span class="math notranslate nohighlight">\(E(p_{0})\)</span> depends only on the initial momentum. Indeed, thanks to a conservation property of norms during the calculation of optimal trajectories in a Hamiltonian which states: Let <span class="math notranslate nohighlight">\(v\)</span> and <span class="math notranslate nohighlight">\(z\)</span> follow a geodesic given by <span class="math notranslate nohighlight">\(H\)</span>, then</p>
+<div class="math notranslate nohighlight">
+\[\forall t \in [0,1], \|v_{0}\|^2_{V} = \|v_{t}\|^2_{V}; \|v_{0}\|^2_{2} = \|z_{t}\|^2_{2}.\]</div>
+<p>This property is used to save computation time. In practice, due to numerical scheme choices, norm conservation may not be achieved. In this case, it is possible to optimize over the set of norms and <span class="math notranslate nohighlight">\(E\)</span> becomes:</p>
+<div class="math notranslate nohighlight">
+\[E(p_0) = D_T(I_1) + \frac \lambda2 \int_{0}^1 \left( \|v_t\|_V^2 +\|z_t\|_Z^2  \right) dt.\]</div>
+<p>The <span class="math notranslate nohighlight">\(I_{t},v_t,z_{t}\)</span> are still deduced from <span class="math notranslate nohighlight">\(p_0\)</span>. It is possible to switch between the two in the code using the <cite>hamiltonian_integration</cite> option in the children of <cite>Optimize_geodesicShooting</cite>.</p>
+</section>
+</section>
+<section id="in-practice">
+<h2>In practice:<a class="headerlink" href="#in-practice" title="Link to this heading"></a></h2>
+<p>some more words…</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="demeter.utils.html" class="btn btn-neutral float-left" title="demeter.utils package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Anton François.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

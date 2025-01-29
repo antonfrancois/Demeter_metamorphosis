@@ -1,0 +1,1951 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>demeter.utils package &mdash; Demeter_metamorphosis 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]]}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="For advanced users" href="advanced_users.html" />
+    <link rel="prev" title="demeter.metamorphosis package" href="demeter.metamorphosis.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Demeter_metamorphosis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Gallery of examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">Demeter documentation</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="demeter.html">demeter package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="demeter.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html">demeter.metamorphosis package</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">demeter.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.html#module-demeter.constants">demeter.constants module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.html#module-demeter">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_users.html">For advanced users</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Demeter_metamorphosis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">Demeter documentation</a></li>
+          <li class="breadcrumb-item"><a href="demeter.html">demeter package</a></li>
+      <li class="breadcrumb-item active">demeter.utils package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/demeter.utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="demeter-utils-package">
+<h1>demeter.utils package<a class="headerlink" href="#demeter-utils-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-demeter.utils.bspline">
+<span id="demeter-utils-bspline-module"></span><h2>demeter.utils.bspline module<a class="headerlink" href="#module-demeter.utils.bspline" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.bspline.bspline_basis">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.bspline.</span></span><span class="sig-name descname"><span class="pre">bspline_basis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.bspline.bspline_basis" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.bspline.field2D_bspline">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.bspline.</span></span><span class="sig-name descname"><span class="pre">field2D_bspline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cms</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_pts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degree</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1,</span> <span class="pre">1)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_stack</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.bspline.field2D_bspline" title="Link to this definition"></a></dt>
+<dd><p>Generate 2D fields from a 2D control matix</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cms</strong> – shape = (2,p,q) Control matricies</p></li>
+<li><p><strong>n_pts</strong> – (tuple) grid dimension</p></li>
+<li><p><strong>degree</strong> – (tuple), degree of the spline in each direction</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>vector field of shape (2,n_pts[0],n_pts[1])</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.bspline.field3D_bspline">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.bspline.</span></span><span class="sig-name descname"><span class="pre">field3D_bspline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cms</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_pts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degree</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1,</span> <span class="pre">1,</span> <span class="pre">1)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_stack</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.bspline.field3D_bspline" title="Link to this definition"></a></dt>
+<dd><p>Generate 3D fields from a 3D control matix</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cms</strong> – shape = (3,p,q,r) Control matricies</p></li>
+<li><p><strong>n_pts</strong> – (tuple) grid dimension</p></li>
+<li><p><strong>degree</strong> – (tuple), degree of the spline in each direction</p></li>
+<li><p><strong>dim_stack</strong> – (int) dimension to stack the field</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>vector field of shape (3,n_pts[0],n_pts[1],n_pts[2]) if dim_stack = 0
+vector field of shape (n_pts[0],n_pts[1],n_pts[2],3) if dim_stack = -1</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.bspline.getCMS_allcombinaision">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.bspline.</span></span><span class="sig-name descname"><span class="pre">getCMS_allcombinaision</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.bspline.getCMS_allcombinaision" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.bspline.getCMS_turn">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.bspline.</span></span><span class="sig-name descname"><span class="pre">getCMS_turn</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.bspline.getCMS_turn" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.bspline.memo">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.bspline.</span></span><span class="sig-name descname"><span class="pre">memo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.bspline.memo" title="Link to this definition"></a></dt>
+<dd><p>Memorize the return value for each call to f(args).
+Then when called again with same args, we can just look it up.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.bspline.surf_bspline">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.bspline.</span></span><span class="sig-name descname"><span class="pre">surf_bspline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_pts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degree</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1,</span> <span class="pre">1)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.bspline.surf_bspline" title="Link to this definition"></a></dt>
+<dd><p>Generate a 2D surface from a control matrix</p>
+<p>:param cm     = 2D matrix Control point Matrix
+:param n_pts  = (tuple), number of points on the curve.
+:param degree = (tuple), degree of the spline in each direction
+:return:</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.bspline.surf_bspline_3D">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.bspline.</span></span><span class="sig-name descname"><span class="pre">surf_bspline_3D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_pts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degree</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1,</span> <span class="pre">1,</span> <span class="pre">1)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.bspline.surf_bspline_3D" title="Link to this definition"></a></dt>
+<dd><p>Generate a 3D surface from a control matrix</p>
+<p>:param cm     = 3D matrix Control point Matrix
+:param n_pts  = (tuple), number of points on the curve.
+:param degree = (tuple), degree of the spline in each direction
+:return: 3D surface of shape (n_pts[0],n_pts[1],n_pts[2])</p>
+<p>test:
+<code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">P_im</span> <span class="pre">=</span> <span class="pre">torch.rand((5,6,7),dtype=torch.float)</span>
+<span class="pre">img</span> <span class="pre">=</span> <span class="pre">surf_bspline_3D(P_im,(100,200,300))</span>
+<span class="pre">`</span></code></p>
+</dd></dl>
+
+</section>
+<section id="module-demeter.utils.cost_functions">
+<span id="demeter-utils-cost-functions-module"></span><h2>demeter.utils.cost_functions module<a class="headerlink" href="#module-demeter.utils.cost_functions" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.cost_functions.Combine_ssd_CFM">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.cost_functions.</span></span><span class="sig-name descname"><span class="pre">Combine_ssd_CFM</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ssd_target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cfm_target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cancer_on_target</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.cost_functions.Combine_ssd_CFM" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.cost_functions.SumSquaredDifference">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.cost_functions.</span></span><span class="sig-name descname"><span class="pre">SumSquaredDifference</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cancer_seg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cancer_on_target</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.cost_functions.SumSquaredDifference" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Compute the sum squared difference of two images</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.cost_functions.SumSquaredDifference.function">
+<span class="sig-name descname"><span class="pre">function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_deform</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.cost_functions.SumSquaredDifference.function" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>field_diff</strong> – tensor (H,W,2)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.cost_functions.SumSquaredDifference.imgShow">
+<span class="sig-name descname"><span class="pre">imgShow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.cost_functions.SumSquaredDifference.imgShow" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-demeter.utils.decorators">
+<span id="demeter-utils-decorators-module"></span><h2>demeter.utils.decorators module<a class="headerlink" href="#module-demeter.utils.decorators" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.decorators.deprecated">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.decorators.</span></span><span class="sig-name descname"><span class="pre">deprecated</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reason</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.decorators.deprecated" title="Link to this definition"></a></dt>
+<dd><p>This is a decorator which can be used to mark functions
+as deprecated. It will result in a warning being emitted
+when the function is used.</p>
+<p>source : <a class="reference external" href="https://stackoverflow.com/questions/2536307/decorators-in-the-python-standard-lib-deprecated-specifically">https://stackoverflow.com/questions/2536307/decorators-in-the-python-standard-lib-deprecated-specifically</a></p>
+<p>Usage example :
+&#64;deprecated(“use another function”)
+def some_old_function(x, y):</p>
+<blockquote>
+<div><p>return x + y</p>
+</div></blockquote>
+<dl>
+<dt>class SomeClass(object):</dt><dd><p>&#64;deprecated(“use another method”)
+def some_old_method(self, x, y):</p>
+<blockquote>
+<div><p>return x + y</p>
+</div></blockquote>
+</dd>
+</dl>
+<p>&#64;deprecated(“use another class”)
+class SomeOldClass(object):</p>
+<blockquote>
+<div><p>pass</p>
+</div></blockquote>
+<p>some_old_function(5, 3)
+SomeClass().some_old_method(8, 9)
+SomeOldClass()</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.decorators.time_it">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.decorators.</span></span><span class="sig-name descname"><span class="pre">time_it</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.decorators.time_it" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-demeter.utils.fft_conv">
+<span id="demeter-utils-fft-conv-module"></span><h2>demeter.utils.fft_conv module<a class="headerlink" href="#module-demeter.utils.fft_conv" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.fft_conv.complex_matmul">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.fft_conv.</span></span><span class="sig-name descname"><span class="pre">complex_matmul</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groups</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#demeter.utils.fft_conv.complex_matmul" title="Link to this definition"></a></dt>
+<dd><p>Multiplies two complex-valued tensors.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.fft_conv.fft_conv">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.fft_conv.</span></span><span class="sig-name descname"><span class="pre">fft_conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stride</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groups</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#demeter.utils.fft_conv.fft_conv" title="Link to this definition"></a></dt>
+<dd><p>Performs N-d convolution of Tensors using a fast fourier transform, which
+is very fast for large kernel sizes. Also, optionally adds a bias Tensor after
+the convolution (in order ot mimic the PyTorch direct convolution).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>signal</strong> – (Tensor) Input tensor to be convolved with the kernel.</p></li>
+<li><p><strong>kernel</strong> – (Tensor) Convolution kernel.</p></li>
+<li><p><strong>bias</strong> – (Tensor) Bias tensor to add to the output.</p></li>
+<li><p><strong>padding</strong> – (Union[int, Iterable[int]) Number of zero samples to pad the
+input on the last dimension.</p></li>
+<li><p><strong>stride</strong> – (Union[int, Iterable[int]) Stride size for computing output values.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(Tensor) Convolved tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.fft_conv.to_ntuple">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.fft_conv.</span></span><span class="sig-name descname"><span class="pre">to_ntuple</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">val</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#demeter.utils.fft_conv.to_ntuple" title="Link to this definition"></a></dt>
+<dd><p>Casts to a tuple with length ‘n’.  Useful for automatically computing the
+padding and stride for convolutions, where users may only provide an integer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>val</strong> – (Union[int, Iterable[int]]) Value to cast into a tuple.</p></li>
+<li><p><strong>n</strong> – (int) Desired length of the tuple</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(Tuple[int, …]) Tuple of length ‘n’</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-demeter.utils.fill_saves_overview">
+<span id="demeter-utils-fill-saves-overview-module"></span><h2>demeter.utils.fill_saves_overview module<a class="headerlink" href="#module-demeter.utils.fill_saves_overview" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.fill_saves_overview.append_to_csv_new">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.fill_saves_overview.</span></span><span class="sig-name descname"><span class="pre">append_to_csv_new</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.fill_saves_overview.append_to_csv_new" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.fill_saves_overview.rec">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.fill_saves_overview.</span></span><span class="sig-name descname"><span class="pre">rec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.fill_saves_overview.rec" title="Link to this definition"></a></dt>
+<dd><p>remove_escape_characters</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.fill_saves_overview.update_csv">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.fill_saves_overview.</span></span><span class="sig-name descname"><span class="pre">update_csv</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.fill_saves_overview.update_csv" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-demeter.utils.image_3d_visualisation">
+<span id="demeter-utils-image-3d-visualisation-module"></span><h2>demeter.utils.image_3d_visualisation module<a class="headerlink" href="#module-demeter.utils.image_3d_visualisation" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.Visualize_geodesicOptim">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">Visualize_geodesicOptim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geoShoot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">close</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.Visualize_geodesicOptim" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.compare_3D_images_vedo">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">compare_3D_images_vedo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">close</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.compare_3D_images_vedo" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.compare_3D_images_vedo.add_landmarks_left">
+<span class="sig-name descname"><span class="pre">add_landmarks_left</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">landmarks</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.compare_3D_images_vedo.add_landmarks_left" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.compare_3D_images_vedo.add_landmarks_right">
+<span class="sig-name descname"><span class="pre">add_landmarks_right</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">landmarks</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.compare_3D_images_vedo.add_landmarks_right" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.compare_3D_images_vedo.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.compare_3D_images_vedo.close" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.compare_3D_images_vedo.show_deformation_flow">
+<span class="sig-name descname"><span class="pre">show_deformation_flow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deformation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">at</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.compare_3D_images_vedo.show_deformation_flow" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>deformation</strong> – grid like numpy array</p></li>
+<li><p><strong>step</strong></p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.deformation_grid3D_surfaces">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">deformation_grid3D_surfaces</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deformation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_surf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.deformation_grid3D_surfaces" title="Link to this definition"></a></dt>
+<dd><p>function API for <cite>deformation_grid3D_vedo</cite> class</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>deformation</strong> – [1,D,H,W,3] numpy array</p></li>
+<li><p><strong>dim</strong> – Dimension you want to show the surfaces along.</p></li>
+<li><p><strong>n_surf</strong> – Numbers of surfaces you want to plot.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.deformation_grid3D_vedo">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">deformation_grid3D_vedo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_resolution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'yellow'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_all_surf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">addCutterTool</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.deformation_grid3D_vedo" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.deformation_grid3D_vedo.buttonfunc">
+<span class="sig-name descname"><span class="pre">buttonfunc</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.deformation_grid3D_vedo.buttonfunc" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.deformation_grid3D_vedo.make_surface_mesh">
+<span class="sig-name descname"><span class="pre">make_surface_mesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deformation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_surf</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.deformation_grid3D_vedo.make_surface_mesh" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.deformation_grid3D_vedo.time_slider">
+<span class="sig-name descname"><span class="pre">time_slider</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">widget</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">event</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.deformation_grid3D_vedo.time_slider" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.gridDef_3d_slider">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">gridDef_3d_slider</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deformation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_grid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_line</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.gridDef_3d_slider" title="Link to this definition"></a></dt>
+<dd><p>Display a 3d grid with sliders</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> – (H,W,D) numpy array or tensor</p></li>
+<li><p><strong>image_cmap</strong> – color map for the plot of the image</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>a slider. Note :it is important to store the sliders in order to</p>
+</dd>
+</dl>
+<p># have them updating</p>
+<p>Exemple :
+# H,W,D = (100,75,50)
+# image = np.zeros((H,W,D))
+# mX,mY,mZ = np.meshgrid(np.arange(H),
+#                           np.arange(W),
+#                           np.arange(D))
+#
+# mask_rond = ((mX - H//2)**2 + (mY - W//2)**2).sqrt() &lt; H//6
+# mask_carre = (mX &gt; H//6) &amp; (mX &lt; 5*H//6) &amp; (mZ &gt; D//6) &amp; (mZ &lt; 5*D//6)
+# mask_diamand = ((mY - W//2).abs() + (mZ - D//2).abs()) &lt; W//6
+# mask = mask_rond &amp; mask_carre &amp; mask_diamand
+# image[mask] = 1
+# # it is important to store the sliders in order to
+# # have them updating
+# slider = imshow_3d_slider(image)
+# plt.show()</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.grid_slice">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">grid_slice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coord</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.grid_slice" title="Link to this definition"></a></dt>
+<dd><p>return a line collection</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>grid</strong></p></li>
+<li><p><strong>coord</strong></p></li>
+<li><p><strong>dim</strong></p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.image_slice_vedo">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">image_slice_vedo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bg_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('white',</span> <span class="pre">'lightblue')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">close</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.image_slice_vedo" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.imshow_3d_slider">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">imshow_3d_slider</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_cmap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gray'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.imshow_3d_slider" title="Link to this definition"></a></dt>
+<dd><p>Display a 3d image</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> – (H,W,D) numpy array or tensor</p></li>
+<li><p><strong>image_cmap</strong> – color map for the plot of the image</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>a slider. Note :it is important to store the sliders in order to</p>
+</dd>
+</dl>
+<p># have them updating</p>
+<p>Exemple :
+# H,W,D = (100,75,50)
+# image = np.zeros((H,W,D))
+# mX,mY,mZ = np.meshgrid(np.arange(H),
+#                           np.arange(W),
+#                           np.arange(D))
+#
+# mask_rond = ((mX - H//2)**2 + (mY - W//2)**2).sqrt() &lt; H//6
+# mask_carre = (mX &gt; H//6) &amp; (mX &lt; 5*H//6) &amp; (mZ &gt; D//6) &amp; (mZ &lt; 5*D//6)
+# mask_diamand = ((mY - W//2).abs() + (mZ - D//2).abs()) &lt; W//6
+# mask = mask_rond &amp; mask_carre &amp; mask_diamand
+# image[mask] = 1
+# # it is important to store the sliders in order to
+# # have them updating
+# slider = imshow_3d_slider(image)
+# plt.show()</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.landmark_to_points">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">landmark_to_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">landmarks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.landmark_to_points" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.make_cmp_image">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">make_cmp_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img_2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.make_cmp_image" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-demeter.utils.optim">
+<span id="demeter-utils-optim-module"></span><h2>demeter.utils.optim module<a class="headerlink" href="#module-demeter.utils.optim" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.optim.GradientDescent">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.optim.</span></span><span class="sig-name descname"><span class="pre">GradientDescent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">loss</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-06</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gamma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.optim.GradientDescent" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Optimizer</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.optim.GradientDescent.backtracking_search">
+<span class="sig-name descname"><span class="pre">backtracking_search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">loss_val</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.optim.GradientDescent.backtracking_search" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.optim.GradientDescent.step">
+<span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.optim.GradientDescent.step" title="Link to this definition"></a></dt>
+<dd><p>One gradient descent step,</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the loss value at this step.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-demeter.utils.reproducing_kernels">
+<span id="demeter-utils-reproducing-kernels-module"></span><h2>demeter.utils.reproducing_kernels module<a class="headerlink" href="#module-demeter.utils.reproducing_kernels" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.GaussianRKHS">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">GaussianRKHS</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">border_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'replicate'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_reach</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.GaussianRKHS" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Is equivalent to a gaussian blur. This function support 2d and 3d images in the
+PyTorch convention</p>
+<section id="parameters">
+<h3>Parameters:<a class="headerlink" href="#parameters" title="Link to this heading"></a></h3>
+<dl>
+<dt>sigma: (Tuple[float,float] or [float,float,float])</dt><dd><p>the standard deviation of the kernel.</p>
+</dd>
+<dt>border_type (str):</dt><dd><blockquote>
+<div><p>the padding mode to be applied before convolving.</p>
+</div></blockquote>
+<p>The expected modes are: <code class="docutils literal notranslate"><span class="pre">'constant'</span></code>, <code class="docutils literal notranslate"><span class="pre">'reflect'</span></code>,
+<code class="docutils literal notranslate"><span class="pre">'replicate'</span></code> or <code class="docutils literal notranslate"><span class="pre">'circular'</span></code>. Default: <code class="docutils literal notranslate"><span class="pre">'reflect'</span></code>.</p>
+</dd>
+</dl>
+<p>normalized (bool): If True, kernel will be L1 normalized.</p>
+<dl class="field-list simple">
+<dt class="field-odd">returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the convolved tensor of same size and numbers of channels
+as the input.</p>
+</dd>
+<dt class="field-even">rtype<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+<p>Test
+# #import matplotlib.pyplot as plt
+# import numpy as np
+# import nibabel as nib
+# import image_3d_visualisation as iv3
+# import reproducing_kernels as rkhs
+# import torch
+#
+# %matplotlib qt
+# irm_type = ‘flair’
+# folder_name = ‘Brats18_CBICA_APY_1’
+# img = nib.load(ROOT_DIRECTORY+’/../data/brats/’+folder_name+’/’+folder_name+’_’+irm_type+’.nii.gz’)
+# # img.affine
+# img_data = torch.Tensor(img.get_fdata())[None,None]
+# sigma = (3,5,5)
+# # img_data = torch.Tensor(img.get_fdata()[125])[None,None]
+# # sigma = (5,5)
+# blured = rkhs.GaussianRKHS(sigma)(img_data)
+# # fig,ax = plt.subplots(1,2)
+# # ax[0].imshow(img_data[0,0])
+# # ax[1].imshow(blured[0,0])
+# iv3.imshow_3d_slider(img_data)
+# iv3.imshow_3d_slider(blured)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.GaussianRKHS.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.GaussianRKHS.forward" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>input</strong> – (torch.Tensor): the input tensor with shape of
+<span class="math notranslate nohighlight">\((B, C, H, W)\)</span> or <span class="math notranslate nohighlight">\((B, C, D, H, W)\)</span></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.GaussianRKHS.get_all_arguments">
+<span class="sig-name descname"><span class="pre">get_all_arguments</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.GaussianRKHS.get_all_arguments" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.GaussianRKHS.init_kernel">
+<span class="sig-name descname"><span class="pre">init_kernel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.GaussianRKHS.init_kernel" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">Multi_scale_GaussianRKHS</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">list_sigmas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>This class is a multi-scale Gaussian RKHS. It is equivalent to a
+multi-scale Gaussian blur. This function support 2d and 3d images in the
+PyTorch convention</p>
+<section id="id1">
+<h3>Parameters:<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>list_sigmas: List[Tuple[float,float] or Tuple[float,float,float]]</dt><dd><p>the standard deviation of the kernel.</p>
+</dd>
+</dl>
+</section>
+<section id="example">
+<h3>Example:<a class="headerlink" href="#example" title="Link to this heading"></a></h3>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS.get_all_arguments">
+<span class="sig-name descname"><span class="pre">get_all_arguments</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS.get_all_arguments" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS.init_kernel">
+<span class="sig-name descname"><span class="pre">init_kernel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS.init_kernel" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS.plot">
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS.plot" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS_notAverage">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">Multi_scale_GaussianRKHS_notAverage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">list_sigmas</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS_notAverage" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">VolNormalizedGaussianRKHS</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1,)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">border_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'constant'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_reach</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Args :</p>
+<blockquote>
+<div><dl class="simple">
+<dt>border_type (str): the padding mode to be applied before convolving.</dt><dd><p>The expected modes are: <code class="docutils literal notranslate"><span class="pre">'constant'</span></code>, <code class="docutils literal notranslate"><span class="pre">'reflect'</span></code>,
+<code class="docutils literal notranslate"><span class="pre">'replicate'</span></code> or <code class="docutils literal notranslate"><span class="pre">'circular'</span></code>. Default: <code class="docutils literal notranslate"><span class="pre">'reflect'</span></code>.</p>
+</dd>
+</dl>
+<p>normalized (bool): If True, kernel will be L1 normalized.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>the convolved tensor of same size and numbers of channels
+as the input.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS.forward" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>input</strong> – (torch.Tensor): the input tensor with shape of
+<span class="math notranslate nohighlight">\((B, C, H, W)\)</span> or <span class="math notranslate nohighlight">\((B, C, D, H, W)\)</span></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(torch.Tensor): output tensor with same size than the input tensor with shape of
+<span class="math notranslate nohighlight">\((B, C, H, W)\)</span> or <span class="math notranslate nohighlight">\((B, C, D, H, W)\)</span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS.get_all_arguments">
+<span class="sig-name descname"><span class="pre">get_all_arguments</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS.get_all_arguments" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS.init_kernel">
+<span class="sig-name descname"><span class="pre">init_kernel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS.init_kernel" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS.plot">
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS.plot" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.dx_convention_handler">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">dx_convention_handler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.dx_convention_handler" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.fft_filter">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">fft_filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">border_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'constant'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#demeter.utils.reproducing_kernels.fft_filter" title="Link to this definition"></a></dt>
+<dd><p>Function that convolves a tensor with a kernel. This function is almost
+the function filter2d from kornia, adapted to work with 2d and 3d tensors.</p>
+<p>The function applies a given kernel to a tensor. The kernel is applied
+independently at each depth channel of the tensor. Before applying the
+kernel, the function applies padding according to the specified mode so
+that the output remains in the same shape.</p>
+<section id="id2">
+<h3>Parameters:<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>input (torch.Tensor):</dt><dd><p>the input tensor with shape of <span class="math notranslate nohighlight">\((B, C, H, W)\)</span> or <span class="math notranslate nohighlight">\((B, C, D, H, W)\)</span></p>
+</dd>
+<dt>kernel (torch.Tensor):</dt><dd><p>the kernel to be convolved with the input tensor.
+The kernel shape must be <span class="math notranslate nohighlight">\((1, kH, kW)\)</span> or <span class="math notranslate nohighlight">\((1, kD, kH, kW)\)</span>.</p>
+</dd>
+<dt>border_type (str):</dt><dd><p>the padding mode to be applied before convolving. The expected modes
+are: <code class="docutils literal notranslate"><span class="pre">'constant'</span></code>, <code class="docutils literal notranslate"><span class="pre">'reflect'</span></code>,``’replicate’``
+or <code class="docutils literal notranslate"><span class="pre">'circular'</span></code>. Default: <code class="docutils literal notranslate"><span class="pre">'reflect'</span></code>.</p>
+</dd>
+<dt>normalized (bool):</dt><dd><p>If True, kernel will be L1 normalized.</p>
+</dd>
+</dl>
+</section>
+<section id="return">
+<h3>Return:<a class="headerlink" href="#return" title="Link to this heading"></a></h3>
+<blockquote>
+<div><p>torch.Tensor: the convolved tensor of same size and numbers of channels
+as the input.</p>
+</div></blockquote>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.get_gaussian_kernel1d">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">get_gaussian_kernel1d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_reach</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.get_gaussian_kernel1d" title="Link to this definition"></a></dt>
+<dd><p>Function that returns Gaussian filter coefficients.</p>
+<p>$$ g(x) = expleft(frac{-x^2}{2 sigma^2}right) $$
+Parameters:
+———–
+kernel_size (int)</p>
+<blockquote>
+<div><p>the size of the kernel.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>dx (float)</dt><dd><p>the spacing between the kernel points.</p>
+</dd>
+<dt>sigma (float, Tensor)</dt><dd><p>standard deviation of the kernel.</p>
+</dd>
+<dt>device (torch.device)</dt><dd><p>the desired device of the kernel.</p>
+</dd>
+<dt>dtype (torch.dtype)</dt><dd><p>the desired data type of the kernel.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>1D tensor with the filter coefficients.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Shape:</dt><dd><ul class="simple">
+<li><p>Output: <span class="math notranslate nohighlight">\((K,)\)</span></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.get_gaussian_kernel2d">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">get_gaussian_kernel2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_reach</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.get_gaussian_kernel2d" title="Link to this definition"></a></dt>
+<dd><p>Function that returns Gaussian filter coefficients.</p>
+<section id="id3">
+<h3>Parameters:<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>sigma (Tuple[float, float] or torch.Tensor):</dt><dd><p>the standard deviation of the kernel.</p>
+</dd>
+<dt>dx (Tuple[float, float]):</dt><dd><p>length of pixels in each direction.</p>
+</dd>
+<dt>kernel_size (Tuple[int, int] | None):</dt><dd><p>the size of the kernel, if None, it will be automatically calculated.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>2D tensor with the filter coefficients.</p>
+</dd>
+<dt class="field-even">rtype<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.Tensor</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Shape:</dt><dd><ul class="simple">
+<li><p>Output: <span class="math notranslate nohighlight">\((H, W)\)</span></p></li>
+</ul>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.get_gaussian_kernel3d">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">get_gaussian_kernel3d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1.0,</span> <span class="pre">1.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_reach</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.get_gaussian_kernel3d" title="Link to this definition"></a></dt>
+<dd><p>Function that returns Gaussian filter coefficients.</p>
+<section id="id4">
+<h3>Parameters:<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>sigma (Tuple[float, float, float] or torch.Tensor):</dt><dd><p>the standard deviation of the kernel.</p>
+</dd>
+<dt>dx (Tuple[float, float, float]):</dt><dd><p>length of pixels in each direction.</p>
+</dd>
+<dt>kernel_size (Tuple[int, int, int] | None):</dt><dd><p>the size of the kernel, if None, it will be automatically calculated.</p>
+</dd>
+<dt>kernel_reach (int):</dt><dd><p>value times sigma that controls the distance in pixels between
+the center and the edge of the kernel. The greater it is
+the closer we are to an actual gaussian kernel. (default = 6)</p>
+</dd>
+</dl>
+</section>
+<section id="returns">
+<h3>Returns:<a class="headerlink" href="#returns" title="Link to this heading"></a></h3>
+<p>torch.Tensor: 3D tensor with the filter coefficients.</p>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.get_sigma_from_img_ratio">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">get_sigma_from_img_ratio</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subdiv</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.get_sigma_from_img_ratio" title="Link to this definition"></a></dt>
+<dd><p>The function get_sigma_from_img_ratio calculates the ideal
+<span class="math notranslate nohighlight">\(sigma\)</span> values for a Gaussian kernel based on the desired grid</p>
+<blockquote>
+<div><p>granularity. Given an image <span class="math notranslate nohighlight">\(I\)</span> of size <span class="math notranslate nohighlight">\((H, W)\)</span>, the goal is to</p>
+</div></blockquote>
+<dl class="simple">
+<dt>divide the image into a grid of <span class="math notranslate nohighlight">\(n_h\)</span> (in the H direction) and</dt><dd><p><span class="math notranslate nohighlight">\(n_w\)</span> (in the W direction). Suppose <span class="math notranslate nohighlight">\(x\)</span> is at the center of a</p>
+</dd>
+</dl>
+<p>square in this <span class="math notranslate nohighlight">\(n_h \times n_w\)</span> grid. We want to choose
+<span class="math notranslate nohighlight">\(\sigma = (\sigma_h, \sigma_w)\)</span></p>
+<blockquote>
+<div><dl class="simple">
+<dt>such that the Gaussian centered at <span class="math notranslate nohighlight">\(x\)</span> is negligible outside</dt><dd><p>the grid square.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>In other words, we want to find <span class="math notranslate nohighlight">\(\sigma\)</span> such that:</p>
+<p>$$ e^{frac{ -left(frac{H}{n_h}right)^2}{2 sigma^2}} &lt; c; qquad c in mathbb{R} $$</p>
+<blockquote>
+<div><p>where <span class="math notranslate nohighlight">\(c\)</span> is the negligibility constant.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img_shape</strong> – torch.Tensor or Tuple[int] : shape of the image</p></li>
+<li><p><strong>subdiv</strong> – <p>int or Tuple[int] or List[Tuple[float]] or List[List[int]] :
+meant to encode the number of subdivisions of the grid, lets details
+the different cases:</p>
+<blockquote>
+<div><ul>
+<li><p>int : the grid is divided in the same number of subdivisions in each direction</p></li>
+<li><dl class="simple">
+<dt>Tuple[int]<span class="classifier">the grid is divided in the number of subdivisions given in the tuple</span></dt><dd><p>according to the dimensions of the image</p>
+</dd>
+</dl>
+</li>
+<li><p>List[Tuple[float]] : If a tuple is given, we consider that it contains values of sigmas</p></li>
+<li><dl class="simple">
+<dt>List[List[int]]<span class="classifier">If a list of list is given, we consider that each element of the list</span></dt><dd><p>is a list of integers that represent the number of subdivisions in each direction
+we simply apply the ‘int case’ to each element of the list.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+</p></li>
+<li><p><strong>c</strong> – float : value considered as negligible in the gaussian kernel</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.plot_gaussian_kernel_1d">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">plot_gaussian_kernel_1d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rotated</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.plot_gaussian_kernel_1d" title="Link to this definition"></a></dt>
+<dd><p>Function that plots a 1D Gaussian kernel.</p>
+<section id="id5">
+<h3>Parameters:<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>kernel (torch.Tensor):</dt><dd><p>the kernel to be plotted.</p>
+</dd>
+<dt>sigma (float):</dt><dd><p>the standard deviation of the kernel.</p>
+</dd>
+<dt>ax (matplotlib.axes.Axes | None):</dt><dd><p>the axes to plot the kernel. If None, a new figure will be created.</p>
+</dd>
+<dt>rotated (bool):</dt><dd><p>if True, the kernel will be plotted horizontally.</p>
+</dd>
+</dl>
+</section>
+<section id="id6">
+<h3>Returns:<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<p>matplotlib.axes.Axes: the axes where the kernel was plotted.</p>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.plot_gaussian_kernel_2d">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">plot_gaussian_kernel_2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.plot_gaussian_kernel_2d" title="Link to this definition"></a></dt>
+<dd><p>Function that plots a 2D Gaussian kernel.</p>
+<section id="id7">
+<h3>Parameters:<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>kernel (torch.Tensor):</dt><dd><p>the kernel to be plotted.</p>
+</dd>
+<dt>sigma (Tuple[float, float]):</dt><dd><p>the standard deviation of the kernel.</p>
+</dd>
+<dt>axes (matplotlib.axes.Axes | None):</dt><dd><p>the axes to plot the kernel. If None, a new figure will be created.</p>
+</dd>
+</dl>
+</section>
+<section id="id8">
+<h3>Returns:<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<p>matplotlib.axes.Axes: the axes where the kernel was plotted.</p>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.plot_gaussian_kernel_3d">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">plot_gaussian_kernel_3d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.plot_gaussian_kernel_3d" title="Link to this definition"></a></dt>
+<dd><p>Function that plots a 3D Gaussian kernel.</p>
+<section id="id9">
+<h3>Parameters:<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>kernel (torch.Tensor):</dt><dd><p>the kernel to be plotted.</p>
+</dd>
+<dt>sigma (Tuple[float, float, float]):</dt><dd><p>the standard deviation of the kernel.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.plot_kernel_on_image">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">plot_kernel_on_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernelOperator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subdiv</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.plot_kernel_on_image" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-demeter.utils.toolbox">
+<span id="demeter-utils-toolbox-module"></span><h2>demeter.utils.toolbox module<a class="headerlink" href="#module-demeter.utils.toolbox" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.toolbox.TestCuda">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.toolbox.</span></span><span class="sig-name descname"><span class="pre">TestCuda</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.toolbox.TestCuda" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.toolbox.annotate_heatmap">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.toolbox.</span></span><span class="sig-name descname"><span class="pre">annotate_heatmap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">im</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">valfmt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'{x:.2f}'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">textcolors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['black',</span> <span class="pre">'white']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">textkw</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.toolbox.annotate_heatmap" title="Link to this definition"></a></dt>
+<dd><p>A function to annotate a heatmap.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>im</strong> – The AxesImage to be labeled.</p></li>
+<li><p><strong>data</strong> – Data used to annotate.  If None, the image’s data is used.  Optional.</p></li>
+<li><p><strong>valfmt</strong> – The format of the annotations inside the heatmap.  This should either
+use the string format method, e.g. “$ {x:.2f}”, or be a
+<cite>matplotlib.ticker.Formatter</cite>.  Optional.</p></li>
+<li><p><strong>textcolors</strong> – A list or array of two color specifications.  The first is used for
+values below a threshold, the second for those above.  Optional.</p></li>
+<li><p><strong>threshold</strong> – Value in data units according to which the colors from textcolors are
+applied.  If None (the default) uses the middle of the colormap as
+separation.  Optional.</p></li>
+<li><p><strong>**kwargs</strong> – All other arguments are forwarded to each call to <cite>text</cite> used to create
+the text labels.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.toolbox.fig_to_image">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.toolbox.</span></span><span class="sig-name descname"><span class="pre">fig_to_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.toolbox.fig_to_image" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.toolbox.format_time">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.toolbox.</span></span><span class="sig-name descname"><span class="pre">format_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seconds</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.toolbox.format_time" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.toolbox.full_ellipse">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.toolbox.</span></span><span class="sig-name descname"><span class="pre">full_ellipse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.toolbox.full_ellipse" title="Link to this definition"></a></dt>
+<dd><p>Return a boolean matrix of the size given by x,y</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>y</strong> (<em>x</em><em>,</em>) – grid from meshgrid</p></li>
+<li><p><strong>a</strong> – constant, control of the wideness of the ellipse</p></li>
+<li><p><strong>b</strong> – constant, control of the wideness of the ellipse</p></li>
+<li><p><strong>center</strong> – has to have a length of two, center coordinates of the ellispe</p></li>
+<li><p><strong>theta</strong> – inclinaison de l’ellispe</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.toolbox.get_freer_gpu">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.toolbox.</span></span><span class="sig-name descname"><span class="pre">get_freer_gpu</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.toolbox.get_freer_gpu" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.toolbox.get_size">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.toolbox.</span></span><span class="sig-name descname"><span class="pre">get_size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seen</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.toolbox.get_size" title="Link to this definition"></a></dt>
+<dd><p>Recursively finds size of objects</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.toolbox.heatmap">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.toolbox.</span></span><span class="sig-name descname"><span class="pre">heatmap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">col_labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cbar_kw</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cbarlabel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.toolbox.heatmap" title="Link to this definition"></a></dt>
+<dd><p>Create a heatmap from a numpy array and two lists of labels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – A 2D numpy array of shape (N, M).</p></li>
+<li><p><strong>row_labels</strong> – A list or array of length N with the labels for the rows.</p></li>
+<li><p><strong>col_labels</strong> – A list or array of length M with the labels for the columns.</p></li>
+<li><p><strong>ax</strong> – A <cite>matplotlib.axes.Axes</cite> instance to which the heatmap is plotted.  If
+not provided, use current axes or create a new one.  Optional.</p></li>
+<li><p><strong>cbar_kw</strong> – A dictionary with arguments to <cite>matplotlib.Figure.colorbar</cite>.  Optional.</p></li>
+<li><p><strong>cbarlabel</strong> – The label for the colorbar.  Optional.</p></li>
+<li><p><strong>**kwargs</strong> – All other arguments are forwarded to <cite>imshow</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.toolbox.imCmp">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.toolbox.</span></span><span class="sig-name descname"><span class="pre">imCmp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">I1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">I2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.toolbox.imCmp" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.toolbox.rgb2gray">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.toolbox.</span></span><span class="sig-name descname"><span class="pre">rgb2gray</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rgb</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.toolbox.rgb2gray" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.toolbox.save_gif_with_plt">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.toolbox.</span></span><span class="sig-name descname"><span class="pre">save_gif_with_plt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">folder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delay</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">duplicate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clean</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.toolbox.save_gif_with_plt" title="Link to this definition"></a></dt>
+<dd><p>Convert a list og images to a gif</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_list</strong></p></li>
+<li><p><strong>file_name</strong> – (str) file name withour ‘.gif’ specified</p></li>
+<li><p><strong>folder</strong> – (str) the folder to save the gif, (default: will be saved in</p></li>
+</ul>
+</dd>
+</dl>
+<p>‘gliomorph/figs/gif_box/<cite>file_name</cite>’
+:param delay: (int) millisecond of image duration
+:param duplicate: (bool) duplicate the first and last frame for longer duration.
+:return:</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.toolbox.update_progress">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.toolbox.</span></span><span class="sig-name descname"><span class="pre">update_progress</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">progress</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.toolbox.update_progress" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-demeter.utils.torchbox">
+<span id="demeter-utils-torchbox-module"></span><h2>demeter.utils.torchbox module<a class="headerlink" href="#module-demeter.utils.torchbox" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.BCH">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">BCH</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.BCH" title="Link to this definition"></a></dt>
+<dd><p>Evaluate the Backer-Campbell-Hausdorff formula</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.Field_divergence">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">Field_divergence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.Field_divergence" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.Field_divergence.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.Field_divergence.forward" title="Link to this definition"></a></dt>
+<dd><p>Note: we don’t use the sobel implementation in SpatialGradient to save computation</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.RandomGaussianField">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">RandomGaussianField</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_gaussian</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.RandomGaussianField" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.RandomGaussianField.divergence">
+<span class="sig-name descname"><span class="pre">divergence</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.RandomGaussianField.divergence" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.RandomGaussianField.field">
+<span class="sig-name descname"><span class="pre">field</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.RandomGaussianField.field" title="Link to this definition"></a></dt>
+<dd><p>return the field made from the sum of the gaussians
+: return: torch.Tensor of shape [1,H,W,2] or [1,D,H,W,3]</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.RandomGaussianImage">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">RandomGaussianImage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_gaussians</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.RandomGaussianImage" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<blockquote>
+<div><p>Generate a random image made from a sum of N gaussians
+and compute the derivative of the image with respect</p>
+<blockquote>
+<div><p>to the parameters of the gaussians.</p>
+<p>self.a[i] * torch.exp(- ((self.X - self.c[i])**2).sum(-1) / (2*self.b[i]**2))
+$$ I = sum_{i=1}^{N} a_i exp(-</p>
+</div></blockquote>
+</div></blockquote>
+<p>rac{||X - c_i||^2}{2b_i^2})$$</p>
+<blockquote>
+<div><dl class="simple">
+<dt>size: tuple</dt><dd><p>tuple with the image dimensions to create</p>
+</dd>
+<dt>n_gaussians: int</dt><dd><p>Number of gaussians to sum.</p>
+</dd>
+<dt>dx_convention: str</dt><dd><p>convention for the grid</p>
+</dd>
+<dt>a: list of float</dt><dd><p>list of the a parameters of the gaussians controling the amplitude</p>
+</dd>
+<dt>b: list of float</dt><dd><p>list of the b parameters of the gaussians controling the width</p>
+</dd>
+<dt>c: list of float</dt><dd><p>list of the c parameters of the gaussians controling the position</p>
+</dd>
+</dl>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">RGI</span> <span class="o">=</span> <span class="n">RandomGaussianImage</span><span class="p">((</span><span class="mi">100</span><span class="p">,</span><span class="mi">100</span><span class="p">),</span><span class="mi">5</span><span class="p">,</span><span class="s1">&#39;pixel&#39;</span><span class="p">)</span>
+<span class="n">image</span> <span class="o">=</span> <span class="n">RGI</span><span class="o">.</span><span class="n">image</span><span class="p">()</span>
+<span class="n">derivative</span> <span class="o">=</span> <span class="n">RGI</span><span class="o">.</span><span class="n">der</span>
+</pre></div>
+</div>
+</div></blockquote>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.RandomGaussianImage.derivative">
+<span class="sig-name descname"><span class="pre">derivative</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.RandomGaussianImage.derivative" title="Link to this definition"></a></dt>
+<dd><p>Compute the derivative of the image with respect to the position of the gaussians
+: return: torch.Tensor of shape [1,2,H,W] of [1,3,D,H,W]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.RandomGaussianImage.gaussian">
+<span class="sig-name descname"><span class="pre">gaussian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.RandomGaussianImage.gaussian" title="Link to this definition"></a></dt>
+<dd><p>return the gaussian with the parameters a,b,c at pos i
+:param i: (int) position of the gaussian</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.RandomGaussianImage.image">
+<span class="sig-name descname"><span class="pre">image</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.RandomGaussianImage.image" title="Link to this definition"></a></dt>
+<dd><p>return the image made from the sum of the gaussians
+: return: torch.Tensor of shape [1,1,H,W] or [1,1,D,H,W]</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.addGrid2im">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">addGrid2im</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_line</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dots'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.addGrid2im" title="Link to this definition"></a></dt>
+<dd><p>draw a grid to the image</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong></p></li>
+<li><p><strong>n_line</strong></p></li>
+<li><p><strong>cst</strong></p></li>
+<li><p><strong>method</strong></p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.checkDiffeo">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">checkDiffeo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.checkDiffeo" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.compose_fields">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">compose_fields</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_on</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'2square'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.compose_fields" title="Link to this definition"></a></dt>
+<dd><p>compose a field on a deformed grid</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.deformation_show">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">deformation_show</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deformation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_diffeo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.deformation_show" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>deformation</strong></p></li>
+<li><p><strong>step</strong></p></li>
+<li><p><strong>check_diffeo</strong></p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+<p>Example :
+cms = mbs.getCMS_allcombinaision()</p>
+<p>H,W = 100,150
+# vector defomation generation
+v = mbs.field2D_bspline(cms,(H,W),dim_stack=2).unsqueeze(0)
+v <a href="#id10"><span class="problematic" id="id11">*</span></a>= 0.5</p>
+<p>deform_diff = vff.FieldIntegrator(method=’fast_exp’)(v.clone(),forward= True)</p>
+<p>deformation_show(deform_diff,step=4,check_diffeo=True)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.detOfJacobian">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">detOfJacobian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jaco</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.detOfJacobian" title="Link to this definition"></a></dt>
+<dd><p>compute the determinant of the jacobian from field_2d_jacobian</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>jaco</strong> – B,2,2,H,W tensor
+B,3,3,D,H,W tensor</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>B,H,W tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.field2diffeo">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">field2diffeo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_vectField</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forward</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.field2diffeo" title="Link to this definition"></a></dt>
+<dd><p>function deprecated; see vector_field_to_flow</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.fieldNorm2">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">fieldNorm2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.fieldNorm2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.field_2d_hessian">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">field_2d_hessian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field_grad</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.field_2d_hessian" title="Link to this definition"></a></dt>
+<dd><p>compute the hessian of a field from the jacobian</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>field_grad</strong> – BxnxpxHxW tensor n = p = 2</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Bx8x2xHxW tensor</p>
+</dd>
+</dl>
+<p>:example :</p>
+<p>hess = field_2d_hessian(I_g)
+print(‘hess.shape = ‘+str(hess.shape))
+fig, axes = plt.subplots(2,4)
+for x in range(2):</p>
+<blockquote>
+<div><dl class="simple">
+<dt>for d in range(4):</dt><dd><p>axes[x][d].imshow(hess[0,d,x,:,:].detach().numpy(),cmap=’gray’)
+axes[x][d].set_title(str((x,d)))</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>plt.show()</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.field_2d_jacobian">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">field_2d_jacobian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.field_2d_jacobian" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>field</strong> – field.size (B,H,W,2)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>output.size = (B,2,2,H,W)</p>
+</dd>
+<dt class="field-odd">Example<span class="colon">:</span></dt>
+<dd class="field-odd"><p></p></dd>
+</dl>
+<p>field = torch.zeros((100,100,2))
+field[::2,:,0] = 1
+field[:,::2,1] = 1</p>
+<p>jaco =  field_2d_jacobian(field)</p>
+<p>plt.rc(‘text’,usetex=True)
+fig, axes = plt.subplots(2,2)
+axes[0,0].imshow(jaco[0,0,0,:,:].detach().numpy(),cmap=’gray’)
+axes[0,0].set_title(r”<span class="math notranslate nohighlight">\(\frac{\partial f_1}{\partial x}\)</span>”)
+axes[0,1].imshow(jaco[0,0,1,:,:].detach().numpy(),cmap=’gray’)
+axes[0,1].set_title(r”<span class="math notranslate nohighlight">\(\frac{\partial f_1}{\partial y}\)</span>”)
+axes[1,0].imshow(jaco[0,1,0,:,:].detach().numpy(),cmap=’gray’)
+axes[1,0].set_title(r”<span class="math notranslate nohighlight">\(\frac{\partial f_2}{\partial x}\)</span>”)
+axes[1,1].imshow(jaco[0,1,1,:,:].detach().numpy(),cmap=’gray’)
+axes[1,1].set_title(r”<span class="math notranslate nohighlight">\(\frac{\partial f_2}{\partial y}\)</span>”)</p>
+<p>plt.show()</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.field_divergence">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">field_divergence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.field_divergence" title="Link to this definition"></a></dt>
+<dd><p>make the divergence of a field, for each pixel <span class="math notranslate nohighlight">\(p\)</span> in I
+<div class="math notranslate nohighlight">
+\[div(I(p)) = \sum_{i=1}^C \frac{\partial I(p)_i}{\partial x_i}\]</div>
+
+:param field: (B,H,W,2) tensor
+:return:</p>
+<p>cms = torch.tensor([  # control matrices
+[[0, 0, 0, 0, 0, 0, 0, 0, 0],</p>
+<blockquote>
+<div><p>[0, +1, 0, -1, 0, -1, 0, -1, 0],
+[0, 0, 0, 0, 0, 0, 0, 0, 0],
+[0, +1, 0, -1, 0, +1, 0, +1, 0],
+[0, 0, 0, 0, 0, 0, 0, 0, 0],
+[0, +1, 0, +1, 0, -1, 0, +1, 0],
+[0, 0, 0, 0, 0, 0, 0, 0, 0],
+[0, -1, 0, -1, 0, -1, 0, +1, 0],
+[0, 0, 0, 0, 0, 0, 0, 0, 0],
+],</p>
+</div></blockquote>
+<dl class="simple">
+<dt>[[0, 0, 0, 0, 0, 0, 0, 0, 0],</dt><dd><p>[0, +1, 0, +1, 0, -1, 0, +1, 0],
+[0, 0, 0, 0, 0, 0, 0, 0, 0],#[0, .2, .75, 1, 0],
+[0, -1, 0, -1, 0, -1, 0, +1, 0],
+[0, 0, 0, 0, 0, 0, 0, 0, 0],
+[0, +1, 0, -1, 0, -1, 0, -1, 0],
+[0, 0, 0, 0, 0, 0, 0, 0, 0],
+[0, +1, 0, -1, 0, +1, 0, +1, 0],
+[0, 0, 0, 0, 0, 0, 0, 0, 0]]</p>
+</dd>
+</dl>
+<p>],requires_grad=False,dtype=torch.float)</p>
+<p>field_size = (20,20)
+field = mbs.field2D_bspline(cms,field_size,</p>
+<blockquote>
+<div><p>degree=(3,3),dim_stack=2).unsqueeze(0)</p>
+</div></blockquote>
+<p># field_diff = vect_spline_diffeo(cms,field_size)
+H,W = field_size
+xx, yy = torch.meshgrid(torch.linspace(-1, 1, H), torch.linspace(-1, 1, W))</p>
+<p>div = field_2d_divergence(field)</p>
+<p># _,d_ax = plt.subplots()
+fig,ax = plt.subplots()</p>
+<p>div_plot = ax.imshow(div[0,0,:,:],origin=’lower’)
+ax.quiver(field[0,:,:,0],field[0,:,:,1])
+fig.colorbar(div_plot)
+plt.show()</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.find_binary_center">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">find_binary_center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bool_img</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.find_binary_center" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.format_sigmas">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">format_sigmas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigmas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.format_sigmas" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.geodesic_3d_slider">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">geodesic_3d_slider</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mr</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.geodesic_3d_slider" title="Link to this definition"></a></dt>
+<dd><p>Display a 3d image</p>
+<p>exemple:
+mr = mt.load_optimize_geodesicShooting(‘2D_13_10_2021_m0t_m1_001.pk1’)
+geodesic_3d_slider(mr)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.get_sobel_kernel_2d">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">get_sobel_kernel_2d</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.get_sobel_kernel_2d" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.get_sobel_kernel_3d">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">get_sobel_kernel_3d</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.get_sobel_kernel_3d" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.grid2im">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">grid2im</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.grid2im" title="Link to this definition"></a></dt>
+<dd><dl>
+<dt>Reshape a grid tensor into an image tensor</dt><dd><blockquote>
+<div><blockquote>
+<div><p>2D  [T,H,W,2] -&gt; [T,2,H,W]
+3D  [T,D,H,W,3] -&gt; [T,3,D,H,W]</p>
+</div></blockquote>
+<p># grid to image
+T,D,H,W = (4,5,6,7)</p>
+<p>grid_2D = torch.rand((T,H,W,2))
+grid_3D = torch.rand((T,D,H,W,3))</p>
+<p>image_2D = torch.rand((T,2,H,W))
+image_3D = torch.rand((T,3,D,H,W))</p>
+<p>grid_2D_as_image = grid2im(grid_2D)
+grid_3D_as_image = grid2im(grid_3D)</p>
+<p># check if the method works
+print(’</p>
+</div></blockquote>
+<dl class="simple">
+<dt>GRID TO IMAGE’)</dt><dd><p>print(’ ==== 2D ====</p>
+</dd>
+</dl>
+</dd>
+<dt>‘)</dt><dd><p>print(‘grid_2D.shape =’,grid_2D.shape)
+print(‘grid_2D_as_image.shape =’,grid_2D_as_image.shape)
+print(‘we have indeed the good shape’)
+count = 0
+for i in range(T):</p>
+<blockquote>
+<div><p>count += (grid_2D[i,…,0] == grid_2D_as_image[i,0,…]).sum()
+count += (grid_2D[i,…,1] == grid_2D_as_image[i,1,…]).sum()</p>
+</div></blockquote>
+<p>print(‘count is equal to ‘,count/(T*H*W*2),’and should be equal to 1’)</p>
+<p>print(’</p>
+</dd>
+</dl>
+<p>==== 3D ====
+‘)</p>
+<blockquote>
+<div><p>print(‘grid_3D.shape =’,grid_3D.shape)
+print(‘grid_3D_as_image.shape =’,grid_3D_as_image.shape)
+print(‘we have indeed the good shape’)
+count = 0
+for i in range(T):</p>
+<blockquote>
+<div><p>count += (grid_3D[i,…,0] == grid_3D_as_image[i,0,…]).sum()
+count += (grid_3D[i,…,1] == grid_3D_as_image[i,1,…]).sum()
+count += (grid_3D[i,…,2] == grid_3D_as_image[i,2,…]).sum()</p>
+</div></blockquote>
+<p>print(‘count is equal to ‘,count/(T*H*W*D*3),’and should be equal to 1’)</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.gridDef_plot">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">gridDef_plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">defomation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_diffeo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.gridDef_plot" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.gridDef_plot_2d">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">gridDef_plot_2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deformation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_grid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_diffeo</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'pixel'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.gridDef_plot_2d" title="Link to this definition"></a></dt>
+<dd><p>Plot the deformation field as a grid.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>deformation</strong> – torch.Tensor of shape (1,H,W,2)</p></li>
+<li><p><strong>ax</strong> – matplotlib axis object, if None, the plot makes one new (default None)</p></li>
+<li><p><strong>step</strong> – int | Tuple[int], step of the grid (default 2)</p></li>
+<li><p><strong>add_grid</strong> – (bool), to use if  ̀defomation` is a field (default False).</p></li>
+</ul>
+</dd>
+</dl>
+<p>If True, add a regular grid to the field.
+:param check_diffeo: (bool), check if the deformation is a diffeomorphism (default False)
+:param dx_convention: (str) convention of the deformation field (default ‘pixel’)
+:param title: (str) title of the plot
+:param color: (str) color of the grid (default None = black)
+:param linewidth: (int) width of the grid lines (default None = 2)
+:param origin: (str) origin of the plot (default ‘lower’)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>matplotlib axis object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.im2grid">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">im2grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.im2grid" title="Link to this definition"></a></dt>
+<dd><dl>
+<dt>Reshape an image tensor into a grid tensor</dt><dd><blockquote>
+<div><blockquote>
+<div><p>2D case [T,2,H,W]   -&gt;  [T,H,W,2]
+3D case [T,3,D,H,W] -&gt;  [T,D,H,W,3]</p>
+</div></blockquote>
+<p>T,D,H,W = (4,5,6,7)</p>
+<p>grid_2D = torch.rand((T,H,W,2))
+grid_3D = torch.rand((T,D,H,W,3))</p>
+<p>image_2D = torch.rand((T,2,H,W))
+image_3D = torch.rand((T,3,D,H,W))</p>
+<p># image to grid
+image_2D_as_grid = im2grid(image_2D)
+image_3D_as_grid = im2grid(image_3D)</p>
+<p>print(’</p>
+</div></blockquote>
+<dl class="simple">
+<dt>IMAGE TO GRID’)</dt><dd><p>print(’ ==== 2D ====</p>
+</dd>
+</dl>
+</dd>
+<dt>‘)</dt><dd><p>print(‘image_2D.shape = ‘,image_2D.shape)
+print(‘image_2D_as_grid.shape = ‘,image_2D_as_grid.shape)</p>
+<p>count = 0
+for i in range(T):</p>
+<blockquote>
+<div><p>count += (image_2D[i,0,…] == image_2D_as_grid[i,…,0]).sum()
+count += (image_2D[i,1,…] == image_2D_as_grid[i,…,1]).sum()</p>
+</div></blockquote>
+<p>print(‘count is equal to ‘,count/(T*H*W*2),’and should be equal to 1’)</p>
+<p>print(’ ==== 3D ====</p>
+</dd>
+<dt>‘)</dt><dd><p>print(‘image_3D.shape = ‘,image_3D.shape)
+print(‘image_3D_as_grid.shape = ‘,image_3D_as_grid.shape)</p>
+<p>count = 0
+for i in range(T):</p>
+<blockquote>
+<div><p>count += (image_3D[i,0,…] == image_3D_as_grid[i,…,0]).sum()
+count += (image_3D[i,1,…] == image_3D_as_grid[i,…,1]).sum()
+count += (image_3D[i,2,…] == image_3D_as_grid[i,…,2]).sum()</p>
+</div></blockquote>
+<p>print(‘count is equal to ‘,count/(T*H*W*D*3.0),’and should be equal to 1’)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.imCmp">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">imCmp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">I1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">I2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.imCmp" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.image_slice">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">image_slice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">I</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coord</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.image_slice" title="Link to this definition"></a></dt>
+<dd><p>Return a slice of the image I at the given coordinate and dimension</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>I</strong> – [H,W,D] numpy array or tensor</p></li>
+<li><p><strong>coord</strong> – int coordinate of the slice, if float it will be casted to int</p></li>
+<li><p><strong>dim</strong> – int in {0,1,2} dimension of the slice</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.imgDeform">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">imgDeform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">I</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deform_grid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'2square'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clamp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.imgDeform" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.is_tensor">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">is_tensor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.is_tensor" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.leviCivita_2Dderivative">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">leviCivita_2Dderivative</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.leviCivita_2Dderivative" title="Link to this definition"></a></dt>
+<dd><p>Perform the operation <span class="math notranslate nohighlight">\(
+abla_w v\)</span></p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.lieBracket">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">lieBracket</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.lieBracket" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.make_3d_flat">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">make_3d_flat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_3D</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slice</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.make_3d_flat" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.make_ball_at_shape_center">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">make_ball_at_shape_center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape_binarization</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlap_threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">r_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_r</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_center</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.make_ball_at_shape_center" title="Link to this definition"></a></dt>
+<dd><p>Create a ball centered at the center of the shape in the image. The shape
+is defined by the binarisation of the image for the pixels having the value shape_value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>torch.Tensor</em>) – [B,C,H,W] or [B,C,D,H,W] or [H,W] or [D,H,W] The image where
+the ball will be created.</p></li>
+<li><p><strong>shape_binarization</strong> (<em>torch.Tensor</em><em>, </em><em>optional</em>) – <p>a tensor of the same shape as img, being the binarization of the shape
+to create the ball. If None, the shape is defined by the pixels having the</p>
+<blockquote>
+<div><p>max value in the image.</p>
+</div></blockquote>
+</p></li>
+<li><p><strong>overlap_threshold</strong> (<em>float</em><em>, </em><em>optional</em>) – The percentage of overlap between the shape and the ball. The default is 0.1.</p></li>
+<li><p><strong>r_min</strong> (<em>int</em><em>, </em><em>optional</em>) – The minimum radius of the ball. The default is None.</p></li>
+<li><p><strong>force_r</strong> (<em>int</em><em>, </em><em>optional</em>) – The radius of the ball. The default is None.</p></li>
+<li><p><strong>force_center</strong> (<em>tuple</em><em>, </em><em>optional</em>) – The center of the ball. The default is None.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – Print the center, the radius and the overlap between the shape and the ball.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>ball</strong> (<em>torch.Tensor</em>) – The ball as a bool mask of the same shape as img.</p></li>
+<li><p><strong>centre</strong> (<em>tuple</em>) – The center of the ball and the radius. if 2d (c1,c2,r) if 3d (c1,c2,c3,r)</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.make_regular_grid">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">make_regular_grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deformation_shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">device(type='cpu')</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.make_regular_grid" title="Link to this definition"></a></dt>
+<dd><p>API for create_meshgrid, it is the identity deformation</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>deformation_shape</strong> – tuple such as</p>
+</dd>
+</dl>
+<p>(H,W) or (n,H,W,2) for 2D grid
+(D,H,W) or (n,D,H,W,3) for 3D grid
+:param device: device for selecting cpu or cuda usage
+:return: will return 2D identity deformation with size (1,H,W,2) or
+3D identity deformation with size (1,D,H,W,3)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.pad_to_same_size">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">pad_to_same_size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img_2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.pad_to_same_size" title="Link to this definition"></a></dt>
+<dd><p>Pad the two images in order to make images of the same size
+takes</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img_1</strong> – [T_1,C,D_1,H_1,W_1] or [D_1,H_1,W_1]  torch tensor</p></li>
+<li><p><strong>img_2</strong> – [T_2,C,D_2,H_2,W_2] or [D_2,H_2,W_2]  torch tensor</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>will return both images with of shape</p>
+</dd>
+</dl>
+<p>[…,max(D_1,D_2),max(H_1,H_2),max(W_1,W_2)] in a tuple.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.pixel_to_2square_convention">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">pixel_to_2square_convention</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.pixel_to_2square_convention" title="Link to this definition"></a></dt>
+<dd><p>Convert a field in spacial pixelic convention in one on as
+[-1,1]^2 square as requested by pytorch’s gridSample</p>
+<dl class="field-list simple">
+<dt class="field-odd">Field<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(torch tensor) of size [T,H,W,2] or [T,D,H,W,3]</p>
+</dd>
+<dt class="field-even">Grid<span class="colon">:</span></dt>
+<dd class="field-even"><p>(bool, default = True) if true field is considered as a deformation (i.e.: field = (id + v))</p>
+</dd>
+</dl>
+<p>else field is a vector field (i.e.: field = v)
+:return:</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.pixel_to_square_convention">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">pixel_to_square_convention</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.pixel_to_square_convention" title="Link to this definition"></a></dt>
+<dd><p>convert from the pixel convention to the square one,
+meaning: <span class="math notranslate nohighlight">\([0,W-1]\times[0,H-1] \mapsto [-1,1]^d\)</span></p>
+<p>: param field: torch.Tensor of shape (n,H,W,2) or (n,D,H,W,3)
+:parma is_grid: (bool) useless in this function, kept for
+consistency with others converters</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.quiver_plot">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">quiver_plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_diffeo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">real_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.quiver_plot" title="Link to this definition"></a></dt>
+<dd><p>Plot the deformation field as a quiver plot.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>field</strong> (<em>torch.Tensor</em>) – 2D tensor of shape (1,H,W,2)</p></li>
+<li><p><strong>ax</strong> (<em>matplotlib axis object</em><em>, </em><em>optional</em>) – If None, the plot makes one new (default None)</p></li>
+<li><p><strong>step</strong> (<em>int</em><em>, </em><em>optional</em>) – Step of the grid (default 2)</p></li>
+<li><p><strong>title</strong> (<em>str</em><em>, </em><em>optional</em>) – Title of the plot</p></li>
+<li><p><strong>check_diffeo</strong> (<em>bool</em><em>, </em><em>optional</em>) – Check if the deformation is a diffeomorphism (default False) by
+displaying the sign of the determinant of the Jacobian matrix at each point.</p></li>
+<li><p><strong>color</strong> (<em>str</em><em>, </em><em>optional</em>) – Color of the grid (default None = black)</p></li>
+<li><p><strong>dx_convention</strong> (<em>str</em><em>, </em><em>optional</em>) – Convention of the deformation field (default ‘pixel’)</p></li>
+<li><p><strong>real_scale</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, plot quiver arrow with axis scale (default True)</p></li>
+<li><p><strong>remove_grid</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, <cite>field</cite> is considered as a deformortion and the regular grid
+is removed  from <cite>field</cite> (default False)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ax</strong> – Axis object</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>matplotlib</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.reg_open">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">reg_open</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">number</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.reg_open" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.resize_image">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">resize_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Iterable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.resize_image" title="Link to this definition"></a></dt>
+<dd><p>Resize an image by a scale factor <span class="math notranslate nohighlight">\(s = (s1,s2,s3)\)</span></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> – list of tensors [B,C,H,W] or [B,C,D,H,W] torch tensor</p></li>
+<li><p><strong>scale_factor</strong> – float or list or tuple of image dimention size</p></li>
+</ul>
+</dd>
+</dl>
+<p>: return: tensor of size [B,C,s1*H,s2*W] or [B,C,s1*D, s2*H, s3*W] or list
+containing tensors.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.showDef">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">showDef</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_diffeo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.showDef" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.spatialGradient">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">spatialGradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.spatialGradient" title="Link to this definition"></a></dt>
+<dd><p>Compute the spatial gradient on 2d and 3d images by applying
+a sobel kernel. Perform the normalisation of the gradient according
+to the spatial convention (<cite>dx_convention</cite>) and make it the closer possible
+to the theoretical gradient.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<em>Tensor</em>) – [B,C,H,W] or [B,C,D,H,W] tensor.</p></li>
+<li><p><strong>dx_convention</strong> (<em>str</em><em> or </em><em>tensor</em>) – If str, it must be in {‘pixel’,’square’,’2square’}.
+If tensor, it must be of shape [B,2] or [B,3], where B is the batch size and
+the second dimension is the spatial resolution of the image giving the pixel size.
+Attention : this last values must be in reverse order of the image shape.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>grad_image</strong> – [B,C,2,H,W] or [B,C,3,D,H,W] tensor.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.spatialGradient_2d">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">spatialGradient_2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.spatialGradient_2d" title="Link to this definition"></a></dt>
+<dd><p>Compute the spatial gradient on 2d images by applying
+a sobel kernel</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> – Tensor [B,C,H,W]</p></li>
+<li><p><strong>dx_convention</strong></p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>[B,C,2,H,W]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.spatialGradient_3d">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">spatialGradient_3d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.spatialGradient_3d" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> – Tensor [B,1,D,H,W] or [1,C,D,H,W]</p></li>
+<li><p><strong>dx_convention</strong> – str in {‘pixel’,’square’,’2square’} or tensor of shape [B,3]</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tensor [1,C,3,D,H,W] or [B,1,3,D,H,W]</p>
+</dd>
+<dt class="field-odd">Example<span class="colon">:</span></dt>
+<dd class="field-odd"><p></p></dd>
+</dl>
+<p>H,W,D = (50,75,100)
+image = torch.zeros((H,W,D))
+mX,mY,mZ = torch.meshgrid(torch.arange(H),</p>
+<blockquote>
+<div><p>torch.arange(W),
+torch.arange(D))</p>
+</div></blockquote>
+<p>mask_rond = ((mX - H//2)**2 + (mY - W//2)**2).sqrt() &lt; H//4
+mask_carre = (mX &gt; H//4) &amp; (mX &lt; 3*H//4) &amp; (mZ &gt; D//4) &amp; (mZ &lt; 3*D//4)
+mask_diamand = ((mY - W//2).abs() + (mZ - D//2).abs()) &lt; W//4
+mask = mask_rond &amp; mask_carre &amp; mask_diamand
+image[mask] = 1</p>
+<p>grad_image = spacialGradient_3d(image[None,None])
+# grad_image_sum = grad_image.abs().sum(dim=1)
+# iv3d.imshow_3d_slider(grad_image_sum[0])</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.square2_to_pixel_convention">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">square2_to_pixel_convention</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.square2_to_pixel_convention" title="Link to this definition"></a></dt>
+<dd><p>Convert a field on a square centred and from -1 to 1 convention
+as requested by pytorch’s gridSample to one in pixelic convention</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.square2_to_square_convention">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">square2_to_square_convention</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.square2_to_square_convention" title="Link to this definition"></a></dt>
+<dd><p>convert from the 2square convention to the square one,
+meaning: <span class="math notranslate nohighlight">\([-1,1]^d \mapsto [0,1]^d\)</span></p>
+<p>: param field: torch.Tensor of shape (n,H,W,2) or (n,D,H,W,3)
+:parma is_grid: (bool) Must be True if field is a grid+vector field and</p>
+<blockquote>
+<div><p>False if a vector field only</p>
+</div></blockquote>
+<p>: return: Tensor of same shape as input</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.square_to_2square_convention">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">square_to_2square_convention</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.square_to_2square_convention" title="Link to this definition"></a></dt>
+<dd><p>convert from the square convention to the 2square one,
+meaning: <span class="math notranslate nohighlight">\([0,1]^d \mapsto [-1,1]^d\)</span></p>
+<p>: param field: torch.Tensor of shape (n,H,W,2) or (n,D,H,W,3)
+:parma is_grid: (bool) Must be True if field is a grid+vector field and</p>
+<blockquote>
+<div><p>False if a vector field only</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.square_to_pixel_convention">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">square_to_pixel_convention</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.square_to_pixel_convention" title="Link to this definition"></a></dt>
+<dd><p>convert from the square convention to the pixel one,
+meaning: <span class="math notranslate nohighlight">\([-1,1]^d \mapsto [0,W-1]\times[0,H-1]\)</span></p>
+<p>: param field: torch.Tensor of shape (n,H,W,2) or (n,D,H,W,3)
+:parma is_grid: (bool) useless in this function, kept for
+consistency with others converters</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.thresholding">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">thresholding</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0,</span> <span class="pre">1)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.thresholding" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.vectField_show">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">vectField_show</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_diffeo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.vectField_show" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>field</strong> – (1,H,W,2) tensor object</p></li>
+<li><p><strong>step</strong></p></li>
+<li><p><strong>check_diffeo</strong> – (bool)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+<p>Example :
+cms = mbs.getCMS_allcombinaision()</p>
+<p>H,W = 100,150
+# vector defomation generation
+v = mbs.field2D_bspline(cms,(H,W),dim_stack=2).unsqueeze(0)
+v <a href="#id12"><span class="problematic" id="id13">*</span></a>= 0.5</p>
+<p>vectField_show(v,step=4,check_diffeo=True)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.vect_spline_diffeo">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">vect_spline_diffeo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">control_matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forward</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.vect_spline_diffeo" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-demeter.utils.vector_field_to_flow">
+<span id="demeter-utils-vector-field-to-flow-module"></span><h2>demeter.utils.vector_field_to_flow module<a class="headerlink" href="#module-demeter.utils.vector_field_to_flow" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.vector_field_to_flow.FieldIntegrator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.vector_field_to_flow.</span></span><span class="sig-name descname"><span class="pre">FieldIntegrator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.vector_field_to_flow.FieldIntegrator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+</section>
+<section id="module-demeter.utils">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-demeter.utils" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="demeter.metamorphosis.html" class="btn btn-neutral float-left" title="demeter.metamorphosis package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="advanced_users.html" class="btn btn-neutral float-right" title="For advanced users" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Anton François.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

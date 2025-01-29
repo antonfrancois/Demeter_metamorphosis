@@ -1,0 +1,520 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>demeter package &mdash; Demeter_metamorphosis 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]]}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="demeter.metamorphosis package" href="demeter.metamorphosis.html" />
+    <link rel="prev" title="Demeter documentation" href="modules.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Demeter_metamorphosis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Gallery of examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">Demeter documentation</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">demeter package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#subpackages">Subpackages</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html">demeter.metamorphosis package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html">demeter.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-demeter.constants">demeter.constants module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#demeter.constants.find_cuda"><code class="docutils literal notranslate"><span class="pre">find_cuda()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#demeter.constants.get_freer_gpu"><code class="docutils literal notranslate"><span class="pre">get_freer_gpu()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#demeter.constants.set_ticks_off"><code class="docutils literal notranslate"><span class="pre">set_ticks_off()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-demeter">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_users.html">For advanced users</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Demeter_metamorphosis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">Demeter documentation</a></li>
+      <li class="breadcrumb-item active">demeter package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/demeter.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="demeter-package">
+<h1>demeter package<a class="headerlink" href="#demeter-package" title="Link to this heading"></a></h1>
+<section id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Link to this heading"></a></h2>
+<p>Demeter is made of two main subpackages: metamorphosis and utils.
+demeter.metamorphosis contains the main classes and functions to perform the optimization.
+demeter.utils contains utility functions and classes that are used in the optimization process.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="demeter.metamorphosis.html">demeter.metamorphosis package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="demeter.metamorphosis.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.metamorphosis.html#module-demeter.metamorphosis.abstract">demeter.metamorphosis.abstract module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator"><code class="docutils literal notranslate"><span class="pre">Geodesic_integrator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator.forward"><code class="docutils literal notranslate"><span class="pre">Geodesic_integrator.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator.get_deformation"><code class="docutils literal notranslate"><span class="pre">Geodesic_integrator.get_deformation()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator.get_deformator"><code class="docutils literal notranslate"><span class="pre">Geodesic_integrator.get_deformator()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator.plot"><code class="docutils literal notranslate"><span class="pre">Geodesic_integrator.plot()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator.plot_deform"><code class="docutils literal notranslate"><span class="pre">Geodesic_integrator.plot_deform()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator.save_to_gif"><code class="docutils literal notranslate"><span class="pre">Geodesic_integrator.save_to_gif()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator.step"><code class="docutils literal notranslate"><span class="pre">Geodesic_integrator.step()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator.to_device"><code class="docutils literal notranslate"><span class="pre">Geodesic_integrator.to_device()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.compute_DICE"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.compute_DICE()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.compute_landmark_dist"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.compute_landmark_dist()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.cost"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.cost()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.forward"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.forward_safe_mode"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.forward_safe_mode()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_DICE"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.get_DICE()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_all_arguments"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.get_all_arguments()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_geodesic_distance"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.get_geodesic_distance()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_landmark_dist"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.get_landmark_dist()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_ssd_def"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.get_ssd_def()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.get_total_cost"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.get_total_cost()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.plot"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.plot()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.plot_cost"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.plot_cost()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.plot_deform"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.plot_deform()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.plot_imgCmp"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.plot_imgCmp()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.save"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.save()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.to_device"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.to_device()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.metamorphosis.html#module-demeter.metamorphosis.classic">demeter.metamorphosis.classic module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.classic.Metamorphosis_Shooting"><code class="docutils literal notranslate"><span class="pre">Metamorphosis_Shooting</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.classic.Metamorphosis_Shooting.cost"><code class="docutils literal notranslate"><span class="pre">Metamorphosis_Shooting.cost()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.classic.Metamorphosis_Shooting.get_all_arguments"><code class="docutils literal notranslate"><span class="pre">Metamorphosis_Shooting.get_all_arguments()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.classic.Metamorphosis_integrator"><code class="docutils literal notranslate"><span class="pre">Metamorphosis_integrator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.classic.Metamorphosis_integrator.step"><code class="docutils literal notranslate"><span class="pre">Metamorphosis_integrator.step()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.metamorphosis.html#module-demeter.metamorphosis.constrained">demeter.metamorphosis.constrained module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting"><code class="docutils literal notranslate"><span class="pre">ConstrainedMetamorphosis_Shooting</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.cost"><code class="docutils literal notranslate"><span class="pre">ConstrainedMetamorphosis_Shooting.cost()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.forward"><code class="docutils literal notranslate"><span class="pre">ConstrainedMetamorphosis_Shooting.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.get_all_arguments"><code class="docutils literal notranslate"><span class="pre">ConstrainedMetamorphosis_Shooting.get_all_arguments()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.get_total_cost"><code class="docutils literal notranslate"><span class="pre">ConstrainedMetamorphosis_Shooting.get_total_cost()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.plot_cost"><code class="docutils literal notranslate"><span class="pre">ConstrainedMetamorphosis_Shooting.plot_cost()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting.to_device"><code class="docutils literal notranslate"><span class="pre">ConstrainedMetamorphosis_Shooting.to_device()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator"><code class="docutils literal notranslate"><span class="pre">ConstrainedMetamorphosis_integrator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.compute_field_sim"><code class="docutils literal notranslate"><span class="pre">ConstrainedMetamorphosis_integrator.compute_field_sim()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.plot_field_sim"><code class="docutils literal notranslate"><span class="pre">ConstrainedMetamorphosis_integrator.plot_field_sim()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.step"><code class="docutils literal notranslate"><span class="pre">ConstrainedMetamorphosis_integrator.step()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.step_deprecated"><code class="docutils literal notranslate"><span class="pre">ConstrainedMetamorphosis_integrator.step_deprecated()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.to_device"><code class="docutils literal notranslate"><span class="pre">ConstrainedMetamorphosis_integrator.to_device()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.Reduce_field_Optim"><code class="docutils literal notranslate"><span class="pre">Reduce_field_Optim</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.Reduce_field_Optim.cost"><code class="docutils literal notranslate"><span class="pre">Reduce_field_Optim.cost()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.Reduce_field_Optim.forward"><code class="docutils literal notranslate"><span class="pre">Reduce_field_Optim.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.Reduce_field_Optim.get_total_cost"><code class="docutils literal notranslate"><span class="pre">Reduce_field_Optim.get_total_cost()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.Reduce_field_Optim.plot_cost"><code class="docutils literal notranslate"><span class="pre">Reduce_field_Optim.plot_cost()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.Reduce_field_Optim.to_device"><code class="docutils literal notranslate"><span class="pre">Reduce_field_Optim.to_device()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.metamorphosis.html#module-demeter.metamorphosis.data_cost">demeter.metamorphosis.data_cost module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Cfm"><code class="docutils literal notranslate"><span class="pre">Cfm</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.DataCost"><code class="docutils literal notranslate"><span class="pre">DataCost</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.DataCost.__init__"><code class="docutils literal notranslate"><span class="pre">DataCost.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.DataCost.__repr__"><code class="docutils literal notranslate"><span class="pre">DataCost.__repr__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.DataCost.set_optimizer"><code class="docutils literal notranslate"><span class="pre">DataCost.set_optimizer()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.DataCost.to_device"><code class="docutils literal notranslate"><span class="pre">DataCost.to_device()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.DataCost.__call__"><code class="docutils literal notranslate"><span class="pre">DataCost.__call__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#id0"><code class="docutils literal notranslate"><span class="pre">DataCost.set_optimizer()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#id1"><code class="docutils literal notranslate"><span class="pre">DataCost.to_device()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Longitudinal_DataCost"><code class="docutils literal notranslate"><span class="pre">Longitudinal_DataCost</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Longitudinal_DataCost.set_optimizer"><code class="docutils literal notranslate"><span class="pre">Longitudinal_DataCost.set_optimizer()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Longitudinal_DataCost.to_device"><code class="docutils literal notranslate"><span class="pre">Longitudinal_DataCost.to_device()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Mutlimodal_ssd_cfm"><code class="docutils literal notranslate"><span class="pre">Mutlimodal_ssd_cfm</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Mutlimodal_ssd_cfm.set_optimizer"><code class="docutils literal notranslate"><span class="pre">Mutlimodal_ssd_cfm.set_optimizer()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Mutlimodal_ssd_cfm.to_device"><code class="docutils literal notranslate"><span class="pre">Mutlimodal_ssd_cfm.to_device()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.SimiliSegs"><code class="docutils literal notranslate"><span class="pre">SimiliSegs</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.SimiliSegs.set_optimizer"><code class="docutils literal notranslate"><span class="pre">SimiliSegs.set_optimizer()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.SimiliSegs.to_device"><code class="docutils literal notranslate"><span class="pre">SimiliSegs.to_device()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Ssd"><code class="docutils literal notranslate"><span class="pre">Ssd</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Ssd.to_device"><code class="docutils literal notranslate"><span class="pre">Ssd.to_device()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Ssd_normalized"><code class="docutils literal notranslate"><span class="pre">Ssd_normalized</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Ssd_normalized.to_device"><code class="docutils literal notranslate"><span class="pre">Ssd_normalized.to_device()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.metamorphosis.html#module-demeter.metamorphosis.joined">demeter.metamorphosis.joined module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting"><code class="docutils literal notranslate"><span class="pre">Weighted_joinedMask_Metamorphosis_Shooting</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting.cost"><code class="docutils literal notranslate"><span class="pre">Weighted_joinedMask_Metamorphosis_Shooting.cost()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting.get_all_arguments"><code class="docutils literal notranslate"><span class="pre">Weighted_joinedMask_Metamorphosis_Shooting.get_all_arguments()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting.get_ssd_def"><code class="docutils literal notranslate"><span class="pre">Weighted_joinedMask_Metamorphosis_Shooting.get_ssd_def()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting.plot_cost"><code class="docutils literal notranslate"><span class="pre">Weighted_joinedMask_Metamorphosis_Shooting.plot_cost()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_Shooting.plot_imgCmp"><code class="docutils literal notranslate"><span class="pre">Weighted_joinedMask_Metamorphosis_Shooting.plot_imgCmp()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator"><code class="docutils literal notranslate"><span class="pre">Weighted_joinedMask_Metamorphosis_integrator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.forward"><code class="docutils literal notranslate"><span class="pre">Weighted_joinedMask_Metamorphosis_integrator.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.plot"><code class="docutils literal notranslate"><span class="pre">Weighted_joinedMask_Metamorphosis_integrator.plot()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.step"><code class="docutils literal notranslate"><span class="pre">Weighted_joinedMask_Metamorphosis_integrator.step()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.step_sharp"><code class="docutils literal notranslate"><span class="pre">Weighted_joinedMask_Metamorphosis_integrator.step_sharp()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.to_device"><code class="docutils literal notranslate"><span class="pre">Weighted_joinedMask_Metamorphosis_integrator.to_device()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.metamorphosis.html#module-demeter.metamorphosis.load">demeter.metamorphosis.load module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.load.load_optimize_geodesicShooting"><code class="docutils literal notranslate"><span class="pre">load_optimize_geodesicShooting()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.metamorphosis.html#module-demeter.metamorphosis.simplex">demeter.metamorphosis.simplex module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.simplex.Simplex_sqrt_Metamorphosis_integrator"><code class="docutils literal notranslate"><span class="pre">Simplex_sqrt_Metamorphosis_integrator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.simplex.Simplex_sqrt_Metamorphosis_integrator.forward"><code class="docutils literal notranslate"><span class="pre">Simplex_sqrt_Metamorphosis_integrator.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.simplex.Simplex_sqrt_Metamorphosis_integrator.step"><code class="docutils literal notranslate"><span class="pre">Simplex_sqrt_Metamorphosis_integrator.step()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.simplex.Simplex_sqrt_Shooting"><code class="docutils literal notranslate"><span class="pre">Simplex_sqrt_Shooting</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.simplex.Simplex_sqrt_Shooting.cost"><code class="docutils literal notranslate"><span class="pre">Simplex_sqrt_Shooting.cost()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.simplex.Simplex_sqrt_Shooting.get_all_arguments"><code class="docutils literal notranslate"><span class="pre">Simplex_sqrt_Shooting.get_all_arguments()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.metamorphosis.html#module-demeter.metamorphosis.wraps">demeter.metamorphosis.wraps module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.wraps.commun_after"><code class="docutils literal notranslate"><span class="pre">commun_after()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.wraps.commun_before"><code class="docutils literal notranslate"><span class="pre">commun_before()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.wraps.joined_metamorphosis"><code class="docutils literal notranslate"><span class="pre">joined_metamorphosis()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.wraps.simplex_metamorphosis"><code class="docutils literal notranslate"><span class="pre">simplex_metamorphosis()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.metamorphosis.html#module-demeter.metamorphosis">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="demeter.utils.html">demeter.utils package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="demeter.utils.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.utils.html#module-demeter.utils.bspline">demeter.utils.bspline module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.bspline.bspline_basis"><code class="docutils literal notranslate"><span class="pre">bspline_basis()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.bspline.field2D_bspline"><code class="docutils literal notranslate"><span class="pre">field2D_bspline()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.bspline.field3D_bspline"><code class="docutils literal notranslate"><span class="pre">field3D_bspline()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.bspline.getCMS_allcombinaision"><code class="docutils literal notranslate"><span class="pre">getCMS_allcombinaision()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.bspline.getCMS_turn"><code class="docutils literal notranslate"><span class="pre">getCMS_turn()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.bspline.memo"><code class="docutils literal notranslate"><span class="pre">memo()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.bspline.surf_bspline"><code class="docutils literal notranslate"><span class="pre">surf_bspline()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.bspline.surf_bspline_3D"><code class="docutils literal notranslate"><span class="pre">surf_bspline_3D()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.utils.html#module-demeter.utils.cost_functions">demeter.utils.cost_functions module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.cost_functions.Combine_ssd_CFM"><code class="docutils literal notranslate"><span class="pre">Combine_ssd_CFM</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.cost_functions.SumSquaredDifference"><code class="docutils literal notranslate"><span class="pre">SumSquaredDifference</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.cost_functions.SumSquaredDifference.function"><code class="docutils literal notranslate"><span class="pre">SumSquaredDifference.function()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.cost_functions.SumSquaredDifference.imgShow"><code class="docutils literal notranslate"><span class="pre">SumSquaredDifference.imgShow()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.utils.html#module-demeter.utils.decorators">demeter.utils.decorators module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.decorators.deprecated"><code class="docutils literal notranslate"><span class="pre">deprecated()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.decorators.time_it"><code class="docutils literal notranslate"><span class="pre">time_it()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.utils.html#module-demeter.utils.fft_conv">demeter.utils.fft_conv module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.fft_conv.complex_matmul"><code class="docutils literal notranslate"><span class="pre">complex_matmul()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.fft_conv.fft_conv"><code class="docutils literal notranslate"><span class="pre">fft_conv()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.fft_conv.to_ntuple"><code class="docutils literal notranslate"><span class="pre">to_ntuple()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.utils.html#module-demeter.utils.fill_saves_overview">demeter.utils.fill_saves_overview module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.fill_saves_overview.append_to_csv_new"><code class="docutils literal notranslate"><span class="pre">append_to_csv_new()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.fill_saves_overview.rec"><code class="docutils literal notranslate"><span class="pre">rec()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.fill_saves_overview.update_csv"><code class="docutils literal notranslate"><span class="pre">update_csv()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.utils.html#module-demeter.utils.image_3d_visualisation">demeter.utils.image_3d_visualisation module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.Visualize_geodesicOptim"><code class="docutils literal notranslate"><span class="pre">Visualize_geodesicOptim</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.compare_3D_images_vedo"><code class="docutils literal notranslate"><span class="pre">compare_3D_images_vedo</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.compare_3D_images_vedo.add_landmarks_left"><code class="docutils literal notranslate"><span class="pre">compare_3D_images_vedo.add_landmarks_left()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.compare_3D_images_vedo.add_landmarks_right"><code class="docutils literal notranslate"><span class="pre">compare_3D_images_vedo.add_landmarks_right()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.compare_3D_images_vedo.close"><code class="docutils literal notranslate"><span class="pre">compare_3D_images_vedo.close()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.compare_3D_images_vedo.show_deformation_flow"><code class="docutils literal notranslate"><span class="pre">compare_3D_images_vedo.show_deformation_flow()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.deformation_grid3D_surfaces"><code class="docutils literal notranslate"><span class="pre">deformation_grid3D_surfaces()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.deformation_grid3D_vedo"><code class="docutils literal notranslate"><span class="pre">deformation_grid3D_vedo</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.deformation_grid3D_vedo.buttonfunc"><code class="docutils literal notranslate"><span class="pre">deformation_grid3D_vedo.buttonfunc()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.deformation_grid3D_vedo.make_surface_mesh"><code class="docutils literal notranslate"><span class="pre">deformation_grid3D_vedo.make_surface_mesh()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.deformation_grid3D_vedo.time_slider"><code class="docutils literal notranslate"><span class="pre">deformation_grid3D_vedo.time_slider()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.gridDef_3d_slider"><code class="docutils literal notranslate"><span class="pre">gridDef_3d_slider()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.grid_slice"><code class="docutils literal notranslate"><span class="pre">grid_slice()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.image_slice_vedo"><code class="docutils literal notranslate"><span class="pre">image_slice_vedo()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.imshow_3d_slider"><code class="docutils literal notranslate"><span class="pre">imshow_3d_slider()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.landmark_to_points"><code class="docutils literal notranslate"><span class="pre">landmark_to_points()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.image_3d_visualisation.make_cmp_image"><code class="docutils literal notranslate"><span class="pre">make_cmp_image()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.utils.html#module-demeter.utils.optim">demeter.utils.optim module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.optim.GradientDescent"><code class="docutils literal notranslate"><span class="pre">GradientDescent</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.optim.GradientDescent.backtracking_search"><code class="docutils literal notranslate"><span class="pre">GradientDescent.backtracking_search()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.optim.GradientDescent.step"><code class="docutils literal notranslate"><span class="pre">GradientDescent.step()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.utils.html#module-demeter.utils.reproducing_kernels">demeter.utils.reproducing_kernels module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.GaussianRKHS"><code class="docutils literal notranslate"><span class="pre">GaussianRKHS</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.GaussianRKHS.forward"><code class="docutils literal notranslate"><span class="pre">GaussianRKHS.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.GaussianRKHS.get_all_arguments"><code class="docutils literal notranslate"><span class="pre">GaussianRKHS.get_all_arguments()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.GaussianRKHS.init_kernel"><code class="docutils literal notranslate"><span class="pre">GaussianRKHS.init_kernel()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS"><code class="docutils literal notranslate"><span class="pre">Multi_scale_GaussianRKHS</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS.get_all_arguments"><code class="docutils literal notranslate"><span class="pre">Multi_scale_GaussianRKHS.get_all_arguments()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS.init_kernel"><code class="docutils literal notranslate"><span class="pre">Multi_scale_GaussianRKHS.init_kernel()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS.plot"><code class="docutils literal notranslate"><span class="pre">Multi_scale_GaussianRKHS.plot()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS_notAverage"><code class="docutils literal notranslate"><span class="pre">Multi_scale_GaussianRKHS_notAverage</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS"><code class="docutils literal notranslate"><span class="pre">VolNormalizedGaussianRKHS</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS.forward"><code class="docutils literal notranslate"><span class="pre">VolNormalizedGaussianRKHS.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS.get_all_arguments"><code class="docutils literal notranslate"><span class="pre">VolNormalizedGaussianRKHS.get_all_arguments()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS.init_kernel"><code class="docutils literal notranslate"><span class="pre">VolNormalizedGaussianRKHS.init_kernel()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS.plot"><code class="docutils literal notranslate"><span class="pre">VolNormalizedGaussianRKHS.plot()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.dx_convention_handler"><code class="docutils literal notranslate"><span class="pre">dx_convention_handler()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.fft_filter"><code class="docutils literal notranslate"><span class="pre">fft_filter()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.get_gaussian_kernel1d"><code class="docutils literal notranslate"><span class="pre">get_gaussian_kernel1d()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.get_gaussian_kernel2d"><code class="docutils literal notranslate"><span class="pre">get_gaussian_kernel2d()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.get_gaussian_kernel3d"><code class="docutils literal notranslate"><span class="pre">get_gaussian_kernel3d()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.get_sigma_from_img_ratio"><code class="docutils literal notranslate"><span class="pre">get_sigma_from_img_ratio()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.plot_gaussian_kernel_1d"><code class="docutils literal notranslate"><span class="pre">plot_gaussian_kernel_1d()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.plot_gaussian_kernel_2d"><code class="docutils literal notranslate"><span class="pre">plot_gaussian_kernel_2d()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.plot_gaussian_kernel_3d"><code class="docutils literal notranslate"><span class="pre">plot_gaussian_kernel_3d()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.plot_kernel_on_image"><code class="docutils literal notranslate"><span class="pre">plot_kernel_on_image()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.utils.html#module-demeter.utils.toolbox">demeter.utils.toolbox module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.toolbox.TestCuda"><code class="docutils literal notranslate"><span class="pre">TestCuda()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.toolbox.annotate_heatmap"><code class="docutils literal notranslate"><span class="pre">annotate_heatmap()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.toolbox.fig_to_image"><code class="docutils literal notranslate"><span class="pre">fig_to_image()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.toolbox.format_time"><code class="docutils literal notranslate"><span class="pre">format_time()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.toolbox.full_ellipse"><code class="docutils literal notranslate"><span class="pre">full_ellipse()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.toolbox.get_freer_gpu"><code class="docutils literal notranslate"><span class="pre">get_freer_gpu()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.toolbox.get_size"><code class="docutils literal notranslate"><span class="pre">get_size()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.toolbox.heatmap"><code class="docutils literal notranslate"><span class="pre">heatmap()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.toolbox.imCmp"><code class="docutils literal notranslate"><span class="pre">imCmp()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.toolbox.rgb2gray"><code class="docutils literal notranslate"><span class="pre">rgb2gray()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.toolbox.save_gif_with_plt"><code class="docutils literal notranslate"><span class="pre">save_gif_with_plt()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.toolbox.update_progress"><code class="docutils literal notranslate"><span class="pre">update_progress()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.utils.html#module-demeter.utils.torchbox">demeter.utils.torchbox module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.BCH"><code class="docutils literal notranslate"><span class="pre">BCH()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.Field_divergence"><code class="docutils literal notranslate"><span class="pre">Field_divergence</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.Field_divergence.forward"><code class="docutils literal notranslate"><span class="pre">Field_divergence.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.RandomGaussianField"><code class="docutils literal notranslate"><span class="pre">RandomGaussianField</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.RandomGaussianField.divergence"><code class="docutils literal notranslate"><span class="pre">RandomGaussianField.divergence()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.RandomGaussianField.field"><code class="docutils literal notranslate"><span class="pre">RandomGaussianField.field()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.RandomGaussianImage"><code class="docutils literal notranslate"><span class="pre">RandomGaussianImage</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.RandomGaussianImage.derivative"><code class="docutils literal notranslate"><span class="pre">RandomGaussianImage.derivative()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.RandomGaussianImage.gaussian"><code class="docutils literal notranslate"><span class="pre">RandomGaussianImage.gaussian()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.RandomGaussianImage.image"><code class="docutils literal notranslate"><span class="pre">RandomGaussianImage.image()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.addGrid2im"><code class="docutils literal notranslate"><span class="pre">addGrid2im()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.checkDiffeo"><code class="docutils literal notranslate"><span class="pre">checkDiffeo()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.compose_fields"><code class="docutils literal notranslate"><span class="pre">compose_fields()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.deformation_show"><code class="docutils literal notranslate"><span class="pre">deformation_show()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.detOfJacobian"><code class="docutils literal notranslate"><span class="pre">detOfJacobian()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.field2diffeo"><code class="docutils literal notranslate"><span class="pre">field2diffeo()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.fieldNorm2"><code class="docutils literal notranslate"><span class="pre">fieldNorm2()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.field_2d_hessian"><code class="docutils literal notranslate"><span class="pre">field_2d_hessian()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.field_2d_jacobian"><code class="docutils literal notranslate"><span class="pre">field_2d_jacobian()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.field_divergence"><code class="docutils literal notranslate"><span class="pre">field_divergence()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.find_binary_center"><code class="docutils literal notranslate"><span class="pre">find_binary_center()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.format_sigmas"><code class="docutils literal notranslate"><span class="pre">format_sigmas()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.geodesic_3d_slider"><code class="docutils literal notranslate"><span class="pre">geodesic_3d_slider()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.get_sobel_kernel_2d"><code class="docutils literal notranslate"><span class="pre">get_sobel_kernel_2d()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.get_sobel_kernel_3d"><code class="docutils literal notranslate"><span class="pre">get_sobel_kernel_3d()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.grid2im"><code class="docutils literal notranslate"><span class="pre">grid2im()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.gridDef_plot"><code class="docutils literal notranslate"><span class="pre">gridDef_plot()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.gridDef_plot_2d"><code class="docutils literal notranslate"><span class="pre">gridDef_plot_2d()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.im2grid"><code class="docutils literal notranslate"><span class="pre">im2grid()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.imCmp"><code class="docutils literal notranslate"><span class="pre">imCmp()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.image_slice"><code class="docutils literal notranslate"><span class="pre">image_slice()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.imgDeform"><code class="docutils literal notranslate"><span class="pre">imgDeform()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.is_tensor"><code class="docutils literal notranslate"><span class="pre">is_tensor()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.leviCivita_2Dderivative"><code class="docutils literal notranslate"><span class="pre">leviCivita_2Dderivative()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.lieBracket"><code class="docutils literal notranslate"><span class="pre">lieBracket()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.make_3d_flat"><code class="docutils literal notranslate"><span class="pre">make_3d_flat()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.make_ball_at_shape_center"><code class="docutils literal notranslate"><span class="pre">make_ball_at_shape_center()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.make_regular_grid"><code class="docutils literal notranslate"><span class="pre">make_regular_grid()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.pad_to_same_size"><code class="docutils literal notranslate"><span class="pre">pad_to_same_size()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.pixel_to_2square_convention"><code class="docutils literal notranslate"><span class="pre">pixel_to_2square_convention()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.pixel_to_square_convention"><code class="docutils literal notranslate"><span class="pre">pixel_to_square_convention()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.quiver_plot"><code class="docutils literal notranslate"><span class="pre">quiver_plot()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.reg_open"><code class="docutils literal notranslate"><span class="pre">reg_open()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.resize_image"><code class="docutils literal notranslate"><span class="pre">resize_image()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.showDef"><code class="docutils literal notranslate"><span class="pre">showDef()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.spatialGradient"><code class="docutils literal notranslate"><span class="pre">spatialGradient()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.spatialGradient_2d"><code class="docutils literal notranslate"><span class="pre">spatialGradient_2d()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.spatialGradient_3d"><code class="docutils literal notranslate"><span class="pre">spatialGradient_3d()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.square2_to_pixel_convention"><code class="docutils literal notranslate"><span class="pre">square2_to_pixel_convention()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.square2_to_square_convention"><code class="docutils literal notranslate"><span class="pre">square2_to_square_convention()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.square_to_2square_convention"><code class="docutils literal notranslate"><span class="pre">square_to_2square_convention()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.square_to_pixel_convention"><code class="docutils literal notranslate"><span class="pre">square_to_pixel_convention()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.thresholding"><code class="docutils literal notranslate"><span class="pre">thresholding()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.vectField_show"><code class="docutils literal notranslate"><span class="pre">vectField_show()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.vect_spline_diffeo"><code class="docutils literal notranslate"><span class="pre">vect_spline_diffeo()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.utils.html#module-demeter.utils.vector_field_to_flow">demeter.utils.vector_field_to_flow module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.vector_field_to_flow.FieldIntegrator"><code class="docutils literal notranslate"><span class="pre">FieldIntegrator</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demeter.utils.html#module-demeter.utils">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-demeter.constants">
+<span id="demeter-constants-module"></span><h2>demeter.constants module<a class="headerlink" href="#module-demeter.constants" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.constants.find_cuda">
+<span class="sig-prename descclassname"><span class="pre">demeter.constants.</span></span><span class="sig-name descname"><span class="pre">find_cuda</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">foo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.constants.find_cuda" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.constants.get_freer_gpu">
+<span class="sig-prename descclassname"><span class="pre">demeter.constants.</span></span><span class="sig-name descname"><span class="pre">get_freer_gpu</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.constants.get_freer_gpu" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.constants.set_ticks_off">
+<span class="sig-prename descclassname"><span class="pre">demeter.constants.</span></span><span class="sig-name descname"><span class="pre">set_ticks_off</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ax</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.constants.set_ticks_off" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-demeter">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-demeter" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="modules.html" class="btn btn-neutral float-left" title="Demeter documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="demeter.metamorphosis.html" class="btn btn-neutral float-right" title="demeter.metamorphosis package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Anton François.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
