@@ -2,7 +2,7 @@
 ![](demeter_logo_darkLight.png)
 (DiffEoMorphic METamorphic Regristration)
 
-**Warning** : This depot is still in progress.
+**Warning** : This depot is still in progress. see [Documentation](https://antonfrancois.github.io/Demeter_metamorphosis/)
 
 You are seeing the evolution of a new python librairy, intended to solve 
 diffeomoprhic registration problems using metamorphosis, LDDMM and 
