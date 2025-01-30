@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**01:53.620** total execution time for 1 file **from all galleries**:
+**05:13.699** total execution time for 2 files **from all galleries**:
 
 .. container::
 
@@ -32,6 +32,9 @@ Computation times
    * - Example
      - Time
      - Mem (MB)
+   * - :ref:`sphx_glr_auto_examples_1_registration_metamorphosis_3D.py` (``../../examples/1_registration/metamorphosis_3D.py``)
+     - 03:22.391
+     - 0.0
    * - :ref:`sphx_glr_auto_examples_1_registration_plot_simpleToyExample_metamorphosis.py` (``../../examples/1_registration/plot_simpleToyExample_metamorphosis.py``)
-     - 01:53.620
+     - 01:51.308
      - 0.0

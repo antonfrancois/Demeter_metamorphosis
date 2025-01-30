@@ -18,9 +18,14 @@
 .. _sphx_glr_auto_examples_1_registration_plot_simpleToyExample_metamorphosis.py:
 
 
+.. _simpleToyExample_metamorphosis:
+
 This is an informative docstring
 
-.. GENERATED FROM PYTHON SOURCE LINES 5-17
+MetaMorphosis behaviour with different values of rho
+===================================================
+
+.. GENERATED FROM PYTHON SOURCE LINES 10-22
 
 .. code-block:: Python
 
@@ -43,11 +48,11 @@ This is an informative docstring
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 18-19
+.. GENERATED FROM PYTHON SOURCE LINES 23-24
 
 Import the necessary packages
 
-.. GENERATED FROM PYTHON SOURCE LINES 19-32
+.. GENERATED FROM PYTHON SOURCE LINES 24-38
 
 .. code-block:: Python
 
@@ -55,7 +60,8 @@ Import the necessary packages
     import torch
     # import kornia.filters as flt
     import matplotlib.pyplot as plt
-    from demeter import DLT_KW_IMAGE,GRIDDEF_YELLOW
+    from demeter import DLT_KW_IMAGE,GRIDDEF_YELLOW, ROOT_DIRECTORY
+    # import demeter as dm
     # %load_ext autoreload
     # %autoreload 2
     import demeter.utils.reproducing_kernels as rk
@@ -68,27 +74,10 @@ Import the necessary packages
 
 
 
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis
-    /opt/hostedtoolcache/Python/3.12.8/x64/lib/python3.12/site-packages/kornia/feature/lightglue.py:44: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
-      @torch.cuda.amp.custom_fwd(cast_inputs=torch.float32)
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/toolbox.py:270: SyntaxWarning: invalid escape sequence '\d'
-      os.system(f'convert -delay {delay} -loop 0 {folder}/{file_name}_\d{3}.png {folder}/{file_name}.gif')
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/torchbox.py:882: SyntaxWarning: invalid escape sequence '\s'
-      """
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/vector_field_to_flow.py:15: SyntaxWarning: invalid escape sequence '\i'
-      """
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/vector_field_to_flow.py:186: SyntaxWarning: invalid escape sequence '\i'
-      """
 
 
 
-
-.. GENERATED FROM PYTHON SOURCE LINES 33-38
+.. GENERATED FROM PYTHON SOURCE LINES 39-44
 
 Open and visualise images before registration. The source and target are 'C' shapes.
 The source is a 'C' shape that is deformed. The target is a 'C' shape that was
@@ -96,11 +85,11 @@ cut in half changing its topology and a point was added. The goal is to register
 the source to the target by deforming the 'C' shape and accounting the cut
 and the point as intensity additions.
 
-.. GENERATED FROM PYTHON SOURCE LINES 38-55
+.. GENERATED FROM PYTHON SOURCE LINES 44-61
 
 .. code-block:: Python
 
-
+    print("ROOT_DIRECTORY : ",ROOT_DIRECTORY)
     source_name,target_name = 'm0t', 'm1c'
     # source_name,target_name = '17','20'
     size = (300,300)
@@ -126,10 +115,16 @@ and the point as intensity additions.
    :class: sphx-glr-single-img
 
 
+.. rst-class:: sphx-glr-script-out
+
+ .. code-block:: none
+
+    ROOT_DIRECTORY :  /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 56-66
+
+.. GENERATED FROM PYTHON SOURCE LINES 62-72
 
 Before choosing the optimisation method, we need to define a
 reproducing kernel and choose a good sigma. The simpler reproducing
@@ -142,7 +137,7 @@ is basically in how many parts we want to divide the image to get the size
 of wanted details. The second function will plot the kernel on the image to
 help us validate our choice of sigma.
 
-.. GENERATED FROM PYTHON SOURCE LINES 66-76
+.. GENERATED FROM PYTHON SOURCE LINES 72-82
 
 .. code-block:: Python
 
@@ -169,7 +164,6 @@ help us validate our choice of sigma.
 
  .. code-block:: none
 
-    kernel_h : torch.Size([1, 225]), kernel_w : torch.Size([1, 225])
     kernel shape: torch.Size([1, 225, 225])
     kernel shape: 225 225
     /opt/hostedtoolcache/Python/3.12.8/x64/lib/python3.12/site-packages/torch/functional.py:513: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at ../aten/src/ATen/native/TensorShape.cpp:3609.)
@@ -179,11 +173,11 @@ help us validate our choice of sigma.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 77-78
+.. GENERATED FROM PYTHON SOURCE LINES 83-84
 
 Perform a first Metamorphosis registration
 
-.. GENERATED FROM PYTHON SOURCE LINES 78-105
+.. GENERATED FROM PYTHON SOURCE LINES 84-111
 
 .. code-block:: Python
 
@@ -224,14 +218,14 @@ Perform a first Metamorphosis registration
 
     Progress: [#---------]  13.33%  (Ssd : ,1266.3970).    Progress: [##--------]  20.00%  (Ssd : ,394.8731).    Progress: [###-------]  26.67%  (Ssd : ,228.5141).    Progress: [###-------]  33.33%  (Ssd : ,163.6883).    Progress: [####------]  40.00%  (Ssd : ,130.7267).    Progress: [#####-----]  46.67%  (Ssd : ,114.5429).    Progress: [#####-----]  53.33%  (Ssd : ,102.1567).    Progress: [######----]  60.00%  (Ssd : , 95.3597).    Progress: [#######---]  66.67%  (Ssd : , 89.5801).    Progress: [#######---]  73.33%  (Ssd : , 86.4610).    Progress: [########--]  80.00%  (Ssd : , 79.0536).    Progress: [#########-]  86.67%  (Ssd : , 75.5419).    Progress: [#########-]  93.33%  (Ssd : , 72.8030).    Progress: [##########] 100.00% Done...
      (Ssd : , 68.7999).
-    Computation of forward done in  0:01:46s and 0.822cents  s
+    Computation of forward done in  0:01:46s and 0.344cents  s
 
-    Computation of metamorphosis done in  0:01:46s and 0.822cents  s
-
-
+    Computation of metamorphosis done in  0:01:46s and 0.344cents  s
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 106-110
+
+
+.. GENERATED FROM PYTHON SOURCE LINES 112-116
 
 .. code-block:: Python
 
@@ -283,7 +277,7 @@ Perform a first Metamorphosis registration
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 111-117
+.. GENERATED FROM PYTHON SOURCE LINES 117-123
 
 ####################################################################
  We will test different values of rho to see how the registration behaves
@@ -292,7 +286,7 @@ Perform a first Metamorphosis registration
  Feel free to try yourselves If you want to recompute them by setting
  recompute to True. The number of rho to test is set by n_plot.
 
-.. GENERATED FROM PYTHON SOURCE LINES 117-163
+.. GENERATED FROM PYTHON SOURCE LINES 123-169
 
 .. code-block:: Python
 
@@ -532,7 +526,7 @@ Perform a first Metamorphosis registration
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 53.620 seconds)
+   **Total running time of the script:** (1 minutes 51.308 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_plot_simpleToyExample_metamorphosis.py:

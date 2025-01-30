@@ -18,7 +18,24 @@ The examples below shows different types of metamorphosis.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This is an informative docstring">
+    <div class="sphx-glr-thumbcontainer" tooltip="In this file we apply the metamorphosis algorithm to 3D images.">
+
+.. only:: html
+
+  .. image:: /auto_examples/1_registration/images/thumb/sphx_glr_metamorphosis_3D_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_1_registration_metamorphosis_3D.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">In this file we apply the metamorphosis algorithm to 3D images.</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="MetaMorphosis behaviour with different values of rho ===================================================">
 
 .. only:: html
 
@@ -43,5 +60,6 @@ The examples below shows different types of metamorphosis.
 .. toctree::
    :hidden:
 
+   /auto_examples/1_registration/metamorphosis_3D
    /auto_examples/1_registration/plot_simpleToyExample_metamorphosis
 

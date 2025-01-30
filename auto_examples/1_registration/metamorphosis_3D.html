@@ -1,0 +1,375 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Metamorphosis on 3D images &mdash; Demeter_metamorphosis 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="MetaMorphosis behaviour with different values of rho" href="plot_simpleToyExample_metamorphosis.html" />
+    <link rel="prev" title="Registration examples" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Demeter_metamorphosis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Gallery of examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html#registration-examples">Registration examples</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Registration examples</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Metamorphosis on 3D images</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_simpleToyExample_metamorphosis.html">MetaMorphosis behaviour with different values of rho</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Demeter documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../advanced_users.html">For advanced users</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Demeter_metamorphosis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Gallery of examples</a></li>
+          <li class="breadcrumb-item"><a href="index.html">Registration examples</a></li>
+      <li class="breadcrumb-item active">Metamorphosis on 3D images</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/auto_examples/1_registration/metamorphosis_3D.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-auto-examples-1-registration-metamorphosis-3d-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code.</p>
+</div>
+<section class="sphx-glr-example-title" id="metamorphosis-on-3d-images">
+<span id="metamorphosis-3d"></span><span id="sphx-glr-auto-examples-1-registration-metamorphosis-3d-py"></span><h1>Metamorphosis on 3D images<a class="headerlink" href="#metamorphosis-on-3d-images" title="Link to this heading"></a></h1>
+<p>In this file we apply the metamorphosis algorithm to 3D images.</p>
+<ol class="arabic simple">
+<li><p>Import necessary libraries</p></li>
+</ol>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span><span class="o">,</span><span class="w"> </span><span class="nn">os</span>
+    <span class="c1"># add the parent directory to the path</span>
+    <span class="n">base_path</span>  <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)),</span><span class="s1">&#39;..&#39;</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">base_path</span><span class="p">)</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">__init__</span>
+
+<span class="k">except</span> <span class="ne">NameError</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">demeter.constants</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.metamorphosis</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.image_3d_visualisation</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">i3v</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">demeter.utils</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.image_3d_visualisation</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">i3v</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.reproducing_kernels</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">rk</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.torchbox</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tb</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">icecream</span><span class="w"> </span><span class="kn">import</span> <span class="n">ic</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">napari</span>
+
+<span class="n">cuda</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span>
+<span class="c1"># cuda = True</span>
+<span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cpu&#39;</span>
+<span class="k">if</span> <span class="n">cuda</span><span class="p">:</span>
+    <span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cuda:0&#39;</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;device used :&#39;</span><span class="p">,</span><span class="n">device</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">device</span> <span class="o">==</span> <span class="s1">&#39;cpu&#39;</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Warning : the computation will be slow, it is recommended to use a GPU&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/toolbox.py:270: SyntaxWarning: invalid escape sequence &#39;\d&#39;
+  os.system(f&#39;convert -delay {delay} -loop 0 {folder}/{file_name}_\d{3}.png {folder}/{file_name}.gif&#39;)
+/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/torchbox.py:886: SyntaxWarning: invalid escape sequence &#39;\s&#39;
+  &quot;&quot;&quot;
+/opt/hostedtoolcache/Python/3.12.8/x64/lib/python3.12/site-packages/kornia/feature/lightglue.py:44: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type=&#39;cuda&#39;)` instead.
+  @torch.cuda.amp.custom_fwd(cast_inputs=torch.float32)
+/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/vector_field_to_flow.py:15: SyntaxWarning: invalid escape sequence &#39;\i&#39;
+  &quot;&quot;&quot;
+/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/vector_field_to_flow.py:186: SyntaxWarning: invalid escape sequence &#39;\i&#39;
+  &quot;&quot;&quot;
+device used : cpu
+Warning : the computation will be slow, it is recommended to use a GPU
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>Load the images and visualize them</p></li>
+</ol>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">path</span> <span class="o">=</span> <span class="n">ROOT_DIRECTORY</span><span class="o">+</span><span class="s2">&quot;/examples/im3Dbank/&quot;</span>
+<span class="n">source_name</span> <span class="o">=</span> <span class="s2">&quot;ball_for_hanse&quot;</span>
+<span class="n">target_name</span> <span class="o">=</span> <span class="s2">&quot;hanse_w_ball&quot;</span>
+<span class="n">S</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="o">+</span><span class="n">source_name</span><span class="o">+</span><span class="s2">&quot;.pt&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="n">T</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="o">+</span><span class="n">target_name</span><span class="o">+</span><span class="s2">&quot;.pt&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+<span class="c1"># if the image is too big for your GPU, you can downsample it quite barbarically :</span>
+<span class="n">step</span> <span class="o">=</span> <span class="mi">2</span> <span class="k">if</span> <span class="n">device</span> <span class="o">==</span> <span class="s1">&#39;cuda:0&#39;</span> <span class="k">else</span> <span class="mi">3</span>
+<span class="k">if</span> <span class="n">step</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="n">S</span> <span class="o">=</span> <span class="n">S</span><span class="p">[:,:,::</span><span class="n">step</span><span class="p">,::</span><span class="n">step</span><span class="p">,::</span><span class="n">step</span><span class="p">]</span>
+    <span class="n">T</span> <span class="o">=</span> <span class="n">T</span><span class="p">[:,:,::</span><span class="n">step</span><span class="p">,::</span><span class="n">step</span><span class="p">,::</span><span class="n">step</span><span class="p">]</span>
+<span class="n">_</span><span class="p">,</span><span class="n">_</span><span class="p">,</span><span class="n">D</span><span class="p">,</span><span class="n">H</span><span class="p">,</span><span class="n">W</span> <span class="o">=</span> <span class="n">S</span><span class="o">.</span><span class="n">shape</span>
+
+<span class="n">st</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">imCmp</span><span class="p">(</span><span class="n">S</span><span class="p">,</span><span class="n">T</span><span class="p">,</span><span class="n">method</span> <span class="o">=</span> <span class="s1">&#39;compose&#39;</span><span class="p">)</span>
+<span class="n">sl</span> <span class="o">=</span> <span class="n">i3v</span><span class="o">.</span><span class="n">imshow_3d_slider</span><span class="p">(</span><span class="n">st</span><span class="p">,</span> <span class="n">title</span> <span class="o">=</span> <span class="s1">&#39;Source (orange) and Target (blue)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1">## Setting residuals to 0 is equivalent to writing the</span>
+<span class="c1">## following line of code :</span>
+<span class="c1"># residuals= torch.zeros((D,H,W),device = device)</span>
+<span class="c1"># residuals.requires_grad = True</span>
+<span class="n">momentum_ini</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="c1"># reg_grid = tb.make_regular_grid(S.size(),device=device)</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_metamorphosis_3D_001.png" srcset="../../_images/sphx_glr_metamorphosis_3D_001.png" alt="Source (orange) and Target (blue)" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/1_registration/metamorphosis_3D.py:48: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don&#39;t have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  S = torch.load(path+source_name+&quot;.pt&quot;).to(device)
+/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/1_registration/metamorphosis_3D.py:49: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don&#39;t have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  T = torch.load(path+target_name+&quot;.pt&quot;).to(device)
+ic| image_3d_visualisation.py:91 in imshow_3d_slider()
+    image.shape: (45, 53, 45, 4)
+</pre></div>
+</div>
+<p>Inititialize a kernel Operator</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">kernelOp</span> <span class="o">=</span> <span class="n">rk</span><span class="o">.</span><span class="n">GaussianRKHS</span><span class="p">((</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">),</span> <span class="n">normalized</span><span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>LDDMM</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># mu = 0</span>
+<span class="c1"># mu,rho,lamb = 0, 0, .0001   # LDDMM</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Apply LDDMM&quot;</span><span class="p">)</span>
+<span class="n">mr_lddmm</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">lddmm</span><span class="p">(</span><span class="n">S</span><span class="p">,</span><span class="n">T</span><span class="p">,</span><span class="n">momentum_ini</span><span class="p">,</span>
+    <span class="n">kernelOperator</span><span class="o">=</span><span class="n">kernelOp</span><span class="p">,</span>       <span class="c1">#  Kernel</span>
+    <span class="n">cost_cst</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>         <span class="c1"># Regularization parameter</span>
+    <span class="n">integration_steps</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>   <span class="c1"># Number of integration steps</span>
+    <span class="n">n_iter</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>             <span class="c1"># Number of optimization steps</span>
+    <span class="n">grad_coef</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>            <span class="c1"># max Gradient coefficient</span>
+    <span class="n">data_term</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>         <span class="c1"># Data term (default Ssd)</span>
+    <span class="n">safe_mode</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>      <span class="c1"># Safe mode toggle (does not crash when nan values are encountered)</span>
+    <span class="n">integration_method</span><span class="o">=</span><span class="s1">&#39;semiLagrangian&#39;</span><span class="p">,</span>  <span class="c1"># You should not use Eulerian for real usage</span>
+<span class="p">)</span>
+<span class="n">mr_lddmm</span><span class="o">.</span><span class="n">plot_cost</span><span class="p">()</span>
+
+<span class="n">mr_lddmm</span><span class="o">.</span><span class="n">to_device</span><span class="p">(</span><span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+<span class="n">deformation</span> <span class="o">=</span> <span class="n">mr_lddmm</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">get_deformation</span><span class="p">()</span>
+<span class="c1"># # you can save the optimization:</span>
+<span class="c1"># # mr_lddmm.save(source_name,target_name)</span>
+
+<span class="n">image_to_target</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">imCmp</span><span class="p">(</span><span class="n">mr_lddmm</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="n">T</span><span class="p">,</span><span class="n">method</span> <span class="o">=</span> <span class="s1">&#39;compose&#39;</span><span class="p">)</span>
+<span class="n">sl</span> <span class="o">=</span> <span class="n">i3v</span><span class="o">.</span><span class="n">imshow_3d_slider</span><span class="p">(</span><span class="n">image_to_target</span><span class="p">,</span> <span class="n">title</span> <span class="o">=</span> <span class="s1">&#39;LDDMM result&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1">#  visualization tools with issues,TO FIX !</span>
+<span class="c1"># i3v.Visualize_geodesicOptim(mr_lddmm,alpha=1)</span>
+
+<span class="c1"># plt_v = i3v.compare_3D_images_vedo(T.cpu(),mr_lddmm.mp.image_stock.cpu())</span>
+<span class="c1"># plt_v.show_deformation_flow(deformation,1,step=3)</span>
+<span class="c1"># plt_v.plotter.show(interactive=True).close()</span>
+</pre></div>
+</div>
+<ul class="sphx-glr-horizontal">
+<li><img src="../../_images/sphx_glr_metamorphosis_3D_002.png" srcset="../../_images/sphx_glr_metamorphosis_3D_002.png" alt="Lambda = 0.001 rho = 1.0" class = "sphx-glr-multi-img"/></li>
+<li><img src="../../_images/sphx_glr_metamorphosis_3D_003.png" srcset="../../_images/sphx_glr_metamorphosis_3D_003.png" alt="LDDMM result" class = "sphx-glr-multi-img"/></li>
+</ul>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Apply LDDMM
+
+Progress: [#####-----]  50.00%  (Ssd : ,981.1182).
+Progress: [########--]  75.00%  (Ssd : ,641.9344).
+Progress: [##########] 100.00% Done...
+ (Ssd : ,589.7764).
+Computation of forward done in  0:00:19s and 0.243cents  s
+
+Computation of lddmm done in  0:00:19s and 0.244cents  s
+ic| image_3d_visualisation.py:91 in imshow_3d_slider()
+    image.shape: (45, 53, 45, 4)
+Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000003576278687].
+Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000003576278687].
+Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.000000238418579].
+</pre></div>
+</div>
+<p>Metamorphosis
+rho = 0  Pure photometric registration
+rho = 1  Pure geometric registration</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">rho</span> <span class="o">=</span> <span class="mf">0.2</span>
+<span class="n">dx_convention</span> <span class="o">=</span> <span class="s1">&#39;square&#39;</span>
+<span class="c1"># print(&quot;\nApply Metamorphosis&quot;)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Apply Metamorphosis&quot;</span><span class="p">)</span>
+<span class="n">mr_meta</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">metamorphosis</span><span class="p">(</span><span class="n">S</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">momentum_ini</span><span class="p">,</span>
+                           <span class="n">rho</span><span class="o">=</span><span class="n">rho</span><span class="p">,</span>  <span class="c1"># ratio deformation / intensity addition</span>
+                           <span class="n">kernelOperator</span><span class="o">=</span><span class="n">kernelOp</span><span class="p">,</span>  <span class="c1">#  Kernel</span>
+                           <span class="n">cost_cst</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>  <span class="c1"># Regularization parameter</span>
+                           <span class="n">integration_steps</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>  <span class="c1"># Number of integration steps</span>
+                           <span class="n">n_iter</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>  <span class="c1"># Number of optimization steps</span>
+                           <span class="n">grad_coef</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># max Gradient coefficient</span>
+                           <span class="n">data_term</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># Data term (default Ssd)</span>
+                           <span class="n">safe_mode</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># Safe mode toggle (does not crash when nan values are encountered)</span>
+                           <span class="n">integration_method</span><span class="o">=</span><span class="s1">&#39;semiLagrangian&#39;</span><span class="p">,</span>  <span class="c1"># You should not use Eulerian for real usage</span>
+                           <span class="n">dx_convention</span><span class="o">=</span><span class="n">dx_convention</span>
+                           <span class="p">)</span>
+<span class="n">mr_meta</span><span class="o">.</span><span class="n">plot_cost</span><span class="p">()</span>
+
+<span class="n">image_to_target</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">imCmp</span><span class="p">(</span><span class="n">mr_meta</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">image</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="n">T</span><span class="p">,</span><span class="n">method</span> <span class="o">=</span> <span class="s1">&#39;compose&#39;</span><span class="p">)</span>
+<span class="n">sl</span> <span class="o">=</span> <span class="n">i3v</span><span class="o">.</span><span class="n">imshow_3d_slider</span><span class="p">(</span><span class="n">image_to_target</span><span class="p">,</span> <span class="n">title</span> <span class="o">=</span> <span class="s1">&#39;Metamorphosis result&#39;</span><span class="p">)</span>
+<span class="n">image_deformed</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">imgDeform</span><span class="p">(</span><span class="n">S</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="n">mr_meta</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">get_deformator</span><span class="p">(),</span><span class="n">dx_convention</span><span class="o">=</span><span class="n">dx_convention</span><span class="p">)</span>
+<span class="n">imdef_target</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">imCmp</span><span class="p">(</span><span class="n">image_deformed</span><span class="p">,</span><span class="n">T</span><span class="p">,</span><span class="n">method</span> <span class="o">=</span> <span class="s1">&#39;compose&#39;</span><span class="p">)</span>
+<span class="n">sl</span> <span class="o">=</span> <span class="n">i3v</span><span class="o">.</span><span class="n">imshow_3d_slider</span><span class="p">(</span><span class="n">imdef_target</span><span class="p">,</span> <span class="n">title</span> <span class="o">=</span> <span class="s1">&#39;Metamorphosis only deformation&#39;</span><span class="p">)</span>
+<span class="n">ic</span><span class="p">(</span><span class="n">mr_meta</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">image_stock</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="n">sl</span> <span class="o">=</span> <span class="n">i3v</span><span class="o">.</span><span class="n">imshow_3d_slider</span><span class="p">(</span><span class="n">mr_meta</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">image_stock</span><span class="p">,</span> <span class="n">title</span> <span class="o">=</span> <span class="s1">&#39;Metamorphosis evolution&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+
+<span class="c1">#</span>
+<span class="c1"># # you can get the deformation grid:</span>
+<span class="c1"># deformation  = mr_meta.mp.get_deformation()</span>
+
+<span class="c1"># We provide some visualisation tools :</span>
+
+<span class="c1"># i3v.Visualize_geodesicOptim(mr_meta,alpha=1)</span>
+<span class="c1"># plt_v = i3v.compare_3D_images_vedo(T,mr_meta.mp.image_stock.cpu())</span>
+<span class="c1"># plt_v.show_deformation_flow(deformation,1,step=3)</span>
+<span class="c1"># plt_v.plotter.show(interactive=True).close()</span>
+</pre></div>
+</div>
+<ul class="sphx-glr-horizontal">
+<li><img src="../../_images/sphx_glr_metamorphosis_3D_004.png" srcset="../../_images/sphx_glr_metamorphosis_3D_004.png" alt="Lambda = 0.001 rho = 0.2" class = "sphx-glr-multi-img"/></li>
+<li><img src="../../_images/sphx_glr_metamorphosis_3D_005.png" srcset="../../_images/sphx_glr_metamorphosis_3D_005.png" alt="Metamorphosis result" class = "sphx-glr-multi-img"/></li>
+<li><img src="../../_images/sphx_glr_metamorphosis_3D_006.png" srcset="../../_images/sphx_glr_metamorphosis_3D_006.png" alt="Metamorphosis only deformation" class = "sphx-glr-multi-img"/></li>
+<li><img src="../../_images/sphx_glr_metamorphosis_3D_007.png" srcset="../../_images/sphx_glr_metamorphosis_3D_007.png" alt="Metamorphosis evolution" class = "sphx-glr-multi-img"/></li>
+</ul>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Apply Metamorphosis
+
+Progress: [#---------]  13.33%  (Ssd : ,392.0854).
+Progress: [##--------]  20.00%  (Ssd : ,239.2672).
+Progress: [###-------]  26.67%  (Ssd : ,174.5768).
+Progress: [###-------]  33.33%  (Ssd : ,145.0005).
+Progress: [####------]  40.00%  (Ssd : ,121.1691).
+Progress: [#####-----]  46.67%  (Ssd : ,105.2254).
+Progress: [#####-----]  53.33%  (Ssd : , 93.8169).
+Progress: [######----]  60.00%  (Ssd : , 84.6231).
+Progress: [#######---]  66.67%  (Ssd : , 77.9193).
+Progress: [#######---]  73.33%  (Ssd : , 72.8133).
+Progress: [########--]  80.00%  (Ssd : , 68.1130).
+Progress: [#########-]  86.67%  (Ssd : , 64.1878).
+Progress: [#########-]  93.33%  (Ssd : , 60.5835).
+Progress: [##########] 100.00% Done...
+ (Ssd : , 57.3564).
+Computation of forward done in  0:02:58s and 0.586cents  s
+
+Computation of metamorphosis done in  0:02:58s and 0.587cents  s
+ic| image_3d_visualisation.py:91 in imshow_3d_slider()
+    image.shape: (45, 53, 45, 4)
+Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.22403490543365479..1.1820396184921265].
+Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.07220283150672913..1.224704384803772].
+Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.15772485733032227..1.2322198152542114].
+ic| image_3d_visualisation.py:91 in imshow_3d_slider()
+    image.shape: (45, 53, 45, 4)
+Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
+Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
+Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
+ic| metamorphosis_3D.py:139 in &lt;module&gt;
+    mr_meta.mp.image_stock.shape: torch.Size([10, 1, 45, 53, 45])
+/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/image_3d_visualisation.py:83: UserWarning: Reshape to image[0,0]: Batch and channel are ignored
+  warnings.warn(&quot;Reshape to image[0,0]: Batch and channel are ignored&quot;)
+ic| image_3d_visualisation.py:91 in imshow_3d_slider()
+    image.shape: (10, 45, 53, 45, 1)
+</pre></div>
+</div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (3 minutes 22.391 seconds)</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-1-registration-metamorphosis-3d-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/211b9b1f8fd91b47bcd6d510071b6794/metamorphosis_3D.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">metamorphosis_3D.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/4fcd6be45a310ee1d3de7830ada1ee0c/metamorphosis_3D.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">metamorphosis_3D.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-zip docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/1647ec61898785f0a5887c355dede9b3/metamorphosis_3D.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">metamorphosis_3D.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Registration examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="plot_simpleToyExample_metamorphosis.html" class="btn btn-neutral float-right" title="MetaMorphosis behaviour with different values of rho" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Anton François.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
