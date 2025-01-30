@@ -234,9 +234,9 @@ LDDMM
     Apply LDDMM
     Progress: [#####-----]  50.00%  (Ssd : ,981.1182).    Progress: [########--]  75.00%  (Ssd : ,641.9344).    Progress: [##########] 100.00% Done...
      (Ssd : ,589.7764).
-    Computation of forward done in  0:00:18s and 0.788cents  s
+    Computation of forward done in  0:00:19s and 0.068cents  s
 
-    Computation of lddmm done in  0:00:18s and 0.788cents  s
+    Computation of lddmm done in  0:00:19s and 0.069cents  s
     ic| image_3d_visualisation.py:91 in imshow_3d_slider()
         image.shape: (45, 53, 45, 4)
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000003576278687].
@@ -336,9 +336,9 @@ rho = 1  Pure geometric registration
     Apply Metamorphosis
     Progress: [#---------]  13.33%  (Ssd : ,392.0854).    Progress: [##--------]  20.00%  (Ssd : ,239.2672).    Progress: [###-------]  26.67%  (Ssd : ,174.5768).    Progress: [###-------]  33.33%  (Ssd : ,145.0005).    Progress: [####------]  40.00%  (Ssd : ,121.1691).    Progress: [#####-----]  46.67%  (Ssd : ,105.2254).    Progress: [#####-----]  53.33%  (Ssd : , 93.8169).    Progress: [######----]  60.00%  (Ssd : , 84.6231).    Progress: [#######---]  66.67%  (Ssd : , 77.9193).    Progress: [#######---]  73.33%  (Ssd : , 72.8133).    Progress: [########--]  80.00%  (Ssd : , 68.1130).    Progress: [#########-]  86.67%  (Ssd : , 64.1878).    Progress: [#########-]  93.33%  (Ssd : , 60.5835).    Progress: [##########] 100.00% Done...
      (Ssd : , 57.3564).
-    Computation of forward done in  0:02:56s and 0.878cents  s
+    Computation of forward done in  0:03:00s and 0.429cents  s
 
-    Computation of metamorphosis done in  0:02:56s and 0.878cents  s
+    Computation of metamorphosis done in  0:03:00s and 0.429cents  s
     ic| image_3d_visualisation.py:91 in imshow_3d_slider()
         image.shape: (45, 53, 45, 4)
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.22403490543365479..1.1820396184921265].
@@ -362,7 +362,7 @@ rho = 1  Pure geometric registration
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (3 minutes 20.416 seconds)
+   **Total running time of the script:** (3 minutes 24.060 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_metamorphosis_3D.py:
