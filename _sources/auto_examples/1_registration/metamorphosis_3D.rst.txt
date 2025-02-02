@@ -28,7 +28,7 @@ In this file we apply the metamorphosis algorithm to 3D images.
 
 1. Import necessary libraries
 
-.. GENERATED FROM PYTHON SOURCE LINES 11-42
+.. GENERATED FROM PYTHON SOURCE LINES 11-39
 
 .. code-block:: Python
 
@@ -46,13 +46,10 @@ In this file we apply the metamorphosis algorithm to 3D images.
 
     from demeter.constants import *
     import demeter.metamorphosis as mt
-    import demeter.utils.image_3d_visualisation as i3v
+    import demeter.utils.image_3d_plotter as i3p
     from demeter.utils import *
-    import demeter.utils.image_3d_visualisation as i3v
     import demeter.utils.reproducing_kernels as rk
     import demeter.utils.torchbox as tb
-    from icecream import ic
-    import napari
 
     cuda = torch.cuda.is_available()
     # cuda = True
@@ -73,7 +70,7 @@ In this file we apply the metamorphosis algorithm to 3D images.
 
     /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/toolbox.py:270: SyntaxWarning: invalid escape sequence '\d'
       os.system(f'convert -delay {delay} -loop 0 {folder}/{file_name}_\d{3}.png {folder}/{file_name}.gif')
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/torchbox.py:886: SyntaxWarning: invalid escape sequence '\s'
+    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/torchbox.py:930: SyntaxWarning: invalid escape sequence '\s'
       """
     /opt/hostedtoolcache/Python/3.12.8/x64/lib/python3.12/site-packages/kornia/feature/lightglue.py:44: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
       @torch.cuda.amp.custom_fwd(cast_inputs=torch.float32)
@@ -87,11 +84,11 @@ In this file we apply the metamorphosis algorithm to 3D images.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 43-44
+.. GENERATED FROM PYTHON SOURCE LINES 40-41
 
 2. Load the images and visualize them
 
-.. GENERATED FROM PYTHON SOURCE LINES 44-70
+.. GENERATED FROM PYTHON SOURCE LINES 41-67
 
 .. code-block:: Python
 
@@ -110,7 +107,7 @@ In this file we apply the metamorphosis algorithm to 3D images.
     _,_,D,H,W = S.shape
 
     st = tb.imCmp(S,T,method = 'compose')
-    sl = i3v.imshow_3d_slider(st, title = 'Source (orange) and Target (blue)')
+    sl = i3p.imshow_3d_slider(st, title = 'Source (orange) and Target (blue)')
     plt.show()
 
     ## Setting residuals to 0 is equivalent to writing the
@@ -134,21 +131,21 @@ In this file we apply the metamorphosis algorithm to 3D images.
 
  .. code-block:: none
 
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/1_registration/metamorphosis_3D.py:48: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/1_registration/metamorphosis_3D.py:45: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
       S = torch.load(path+source_name+".pt").to(device)
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/1_registration/metamorphosis_3D.py:49: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/1_registration/metamorphosis_3D.py:46: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
       T = torch.load(path+target_name+".pt").to(device)
-    ic| image_3d_visualisation.py:91 in imshow_3d_slider()
+    ic| image_3d_plotter.py:508 in imshow_3d_slider()
         image.shape: (45, 53, 45, 4)
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 71-72
+.. GENERATED FROM PYTHON SOURCE LINES 68-69
 
 Inititialize a kernel Operator
 
-.. GENERATED FROM PYTHON SOURCE LINES 72-76
+.. GENERATED FROM PYTHON SOURCE LINES 69-73
 
 .. code-block:: Python
 
@@ -163,11 +160,11 @@ Inititialize a kernel Operator
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 77-78
+.. GENERATED FROM PYTHON SOURCE LINES 74-75
 
 LDDMM
 
-.. GENERATED FROM PYTHON SOURCE LINES 78-112
+.. GENERATED FROM PYTHON SOURCE LINES 75-110
 
 .. code-block:: Python
 
@@ -175,32 +172,33 @@ LDDMM
     # mu = 0
     # mu,rho,lamb = 0, 0, .0001   # LDDMM
 
-    print("\nApply LDDMM")
-    mr_lddmm = mt.lddmm(S,T,momentum_ini,
-        kernelOperator=kernelOp,       #  Kernel
-        cost_cst=0.001,         # Regularization parameter
-        integration_steps=10,   # Number of integration steps
-        n_iter=4,             # Number of optimization steps
-        grad_coef=1,            # max Gradient coefficient
-        data_term=None,         # Data term (default Ssd)
-        safe_mode = False,      # Safe mode toggle (does not crash when nan values are encountered)
-        integration_method='semiLagrangian',  # You should not use Eulerian for real usage
-    )
-    mr_lddmm.plot_cost()
-
-    mr_lddmm.to_device('cpu')
-    deformation = mr_lddmm.mp.get_deformation()
-    # # you can save the optimization:
-    # # mr_lddmm.save(source_name,target_name)
-
-    image_to_target = tb.imCmp(mr_lddmm.mp.image.cpu(),T,method = 'compose')
-    sl = i3v.imshow_3d_slider(image_to_target, title = 'LDDMM result')
-    plt.show()
+    # print("\nApply LDDMM")
+    # mr_lddmm = mt.lddmm(S,T,momentum_ini,
+    #     kernelOperator=kernelOp,       #  Kernel
+    #     cost_cst=0.001,         # Regularization parameter
+    #     integration_steps=10,   # Number of integration steps
+    #     n_iter=4,             # Number of optimization steps
+    #     grad_coef=1,            # max Gradient coefficient
+    #     data_term=None,         # Data term (default Ssd)
+    #     safe_mode = False,      # Safe mode toggle (does not crash when nan values are encountered)
+    #     integration_method='semiLagrangian',  # You should not use Eulerian for real usage
+    # )
+    # mr_lddmm.plot_cost()
+    #
+    # mr_lddmm.save("ballforhance_LDDMM",light_save= True)
+    # mr_lddmm.to_device('cpu')
+    # deformation = mr_lddmm.mp.get_deformation()
+    # # # you can save the optimization:
+    # # # mr_lddmm.save(source_name,target_name)
+    #
+    # image_to_target = tb.imCmp(mr_lddmm.mp.image.cpu(),T,method = 'compose')
+    # sl = i3p.imshow_3d_slider(image_to_target, title = 'LDDMM result')
+    # plt.show()
 
     #  visualization tools with issues,TO FIX !
-    # i3v.Visualize_geodesicOptim(mr_lddmm,alpha=1)
+    # i3p.Visualize_geodesicOptim(mr_lddmm,alpha=1)
 
-    # plt_v = i3v.compare_3D_images_vedo(T.cpu(),mr_lddmm.mp.image_stock.cpu())
+    # plt_v = i3p.compare_3D_images_vedo(T.cpu(),mr_lddmm.mp.image_stock.cpu())
     # plt_v.show_deformation_flow(deformation,1,step=3)
     # plt_v.plotter.show(interactive=True).close()
 
@@ -208,57 +206,23 @@ LDDMM
 
 
 
-.. rst-class:: sphx-glr-horizontal
-
-
-    *
-
-      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_002.png
-         :alt: Lambda = 0.001 rho = 1.0
-         :srcset: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_002.png
-         :class: sphx-glr-multi-img
-
-    *
-
-      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_003.png
-         :alt: LDDMM result
-         :srcset: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_003.png
-         :class: sphx-glr-multi-img
-
-
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-
-    Apply LDDMM
-    Progress: [#####-----]  50.00%  (Ssd : ,981.1182).    Progress: [########--]  75.00%  (Ssd : ,641.9344).    Progress: [##########] 100.00% Done...
-     (Ssd : ,589.7764).
-    Computation of forward done in  0:00:19s and 0.068cents  s
-
-    Computation of lddmm done in  0:00:19s and 0.069cents  s
-    ic| image_3d_visualisation.py:91 in imshow_3d_slider()
-        image.shape: (45, 53, 45, 4)
-    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000003576278687].
-    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000003576278687].
-    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.000000238418579].
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 113-116
+.. GENERATED FROM PYTHON SOURCE LINES 111-114
 
 Metamorphosis
 rho = 0  Pure photometric registration
 rho = 1  Pure geometric registration
 
-.. GENERATED FROM PYTHON SOURCE LINES 116-153
+.. GENERATED FROM PYTHON SOURCE LINES 114-154
 
 .. code-block:: Python
 
     rho = 0.2
     dx_convention = 'square'
-    # print("\nApply Metamorphosis")
+    # # print("\nApply Metamorphosis")
     print("\nApply Metamorphosis")
     mr_meta = mt.metamorphosis(S, T, momentum_ini,
                                rho=rho,  # ratio deformation / intensity addition
@@ -273,14 +237,17 @@ rho = 1  Pure geometric registration
                                dx_convention=dx_convention
                                )
     mr_meta.plot_cost()
-
+    mr_meta.save(f"{source_name}_{target_name}_Metamorphosis")
     image_to_target = tb.imCmp(mr_meta.mp.image.cpu(),T,method = 'compose')
-    sl = i3v.imshow_3d_slider(image_to_target, title = 'Metamorphosis result')
+
+
+
+    sl = i3p.imshow_3d_slider(image_to_target, title = 'Metamorphosis result')
     image_deformed = tb.imgDeform(S.cpu(),mr_meta.mp.get_deformator(),dx_convention=dx_convention)
     imdef_target = tb.imCmp(image_deformed,T,method = 'compose')
-    sl = i3v.imshow_3d_slider(imdef_target, title = 'Metamorphosis only deformation')
+    sl = i3p.imshow_3d_slider(imdef_target, title = 'Metamorphosis only deformation')
     ic(mr_meta.mp.image_stock.shape)
-    sl = i3v.imshow_3d_slider(mr_meta.mp.image_stock, title = 'Metamorphosis evolution')
+    # sl = i3p.imshow_3d_slider(mr_meta.mp.image_stock, title = 'Metamorphosis evolution')
     plt.show()
 
 
@@ -291,7 +258,7 @@ rho = 1  Pure geometric registration
     # We provide some visualisation tools :
 
     # i3v.Visualize_geodesicOptim(mr_meta,alpha=1)
-    # plt_v = i3v.compare_3D_images_vedo(T,mr_meta.mp.image_stock.cpu())
+    # plt_v = i3p.compare_3D_images_vedo(T,mr_meta.mp.image_stock.cpu())
     # plt_v.show_deformation_flow(deformation,1,step=3)
     # plt_v.plotter.show(interactive=True).close()
 
@@ -301,30 +268,23 @@ rho = 1  Pure geometric registration
 
     *
 
-      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_004.png
+      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_002.png
          :alt: Lambda = 0.001 rho = 0.2
-         :srcset: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_004.png
+         :srcset: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_002.png
          :class: sphx-glr-multi-img
 
     *
 
-      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_005.png
+      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_003.png
          :alt: Metamorphosis result
-         :srcset: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_005.png
+         :srcset: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_003.png
          :class: sphx-glr-multi-img
 
     *
 
-      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_006.png
+      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_004.png
          :alt: Metamorphosis only deformation
-         :srcset: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_006.png
-         :class: sphx-glr-multi-img
-
-    *
-
-      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_007.png
-         :alt: Metamorphosis evolution
-         :srcset: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_007.png
+         :srcset: /auto_examples/1_registration/images/sphx_glr_metamorphosis_3D_004.png
          :class: sphx-glr-multi-img
 
 
@@ -336,25 +296,25 @@ rho = 1  Pure geometric registration
     Apply Metamorphosis
     Progress: [#---------]  13.33%  (Ssd : ,392.0854).    Progress: [##--------]  20.00%  (Ssd : ,239.2672).    Progress: [###-------]  26.67%  (Ssd : ,174.5768).    Progress: [###-------]  33.33%  (Ssd : ,145.0005).    Progress: [####------]  40.00%  (Ssd : ,121.1691).    Progress: [#####-----]  46.67%  (Ssd : ,105.2254).    Progress: [#####-----]  53.33%  (Ssd : , 93.8169).    Progress: [######----]  60.00%  (Ssd : , 84.6231).    Progress: [#######---]  66.67%  (Ssd : , 77.9193).    Progress: [#######---]  73.33%  (Ssd : , 72.8133).    Progress: [########--]  80.00%  (Ssd : , 68.1130).    Progress: [#########-]  86.67%  (Ssd : , 64.1878).    Progress: [#########-]  93.33%  (Ssd : , 60.5835).    Progress: [##########] 100.00% Done...
      (Ssd : , 57.3564).
-    Computation of forward done in  0:03:00s and 0.429cents  s
+    Computation of forward done in  0:03:00s and 0.190cents  s
 
-    Computation of metamorphosis done in  0:03:00s and 0.429cents  s
-    ic| image_3d_visualisation.py:91 in imshow_3d_slider()
+    Computation of metamorphosis done in  0:03:00s and 0.191cents  s
+    ic| abstract.py:1387 in save()
+        path: '/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/saved_optim/'
+    Optimisation saved in /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/saved_optim/3D_02_02_2025_ball_for_hanse_hanse_w_ball_Metamorphosis_000.pk1
+
+    ic| image_3d_plotter.py:508 in imshow_3d_slider()
         image.shape: (45, 53, 45, 4)
-    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.22403490543365479..1.1820396184921265].
-    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.07220283150672913..1.224704384803772].
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.15772485733032227..1.2322198152542114].
-    ic| image_3d_visualisation.py:91 in imshow_3d_slider()
+    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.07220283150672913..1.224704384803772].
+    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.22403490543365479..1.1820396184921265].
+    ic| image_3d_plotter.py:508 in imshow_3d_slider()
         image.shape: (45, 53, 45, 4)
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
-    ic| metamorphosis_3D.py:139 in <module>
+    ic| metamorphosis_3D.py:140 in <module>
         mr_meta.mp.image_stock.shape: torch.Size([10, 1, 45, 53, 45])
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/image_3d_visualisation.py:83: UserWarning: Reshape to image[0,0]: Batch and channel are ignored
-      warnings.warn("Reshape to image[0,0]: Batch and channel are ignored")
-    ic| image_3d_visualisation.py:91 in imshow_3d_slider()
-        image.shape: (10, 45, 53, 45, 1)
 
 
 
@@ -362,7 +322,7 @@ rho = 1  Pure geometric registration
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (3 minutes 24.060 seconds)
+   **Total running time of the script:** (3 minutes 3.755 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_metamorphosis_3D.py:

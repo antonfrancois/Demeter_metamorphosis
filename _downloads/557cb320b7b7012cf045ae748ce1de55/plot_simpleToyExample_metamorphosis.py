@@ -1,5 +1,5 @@
 """
-.. _simpleToyExample_metamorphosis:
+.. _plot_simpleToyExample_metamorphosis:
 
 This is an informative docstring
 
@@ -7,6 +7,8 @@ MetaMorphosis behaviour with different values of rho
 ===================================================
 
 """
+#####################################################################
+# Import the necessary packages
 
 try:
     import sys, os
@@ -19,8 +21,6 @@ except NameError:
     pass
 
 
-#####################################################################
-# Import the necessary packages
 
 import torch
 # import kornia.filters as flt

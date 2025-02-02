@@ -347,205 +347,8 @@ padding and stride for convolutions, where users may only provide an integer.</p
 <dd></dd></dl>
 
 </section>
-<section id="module-demeter.utils.image_3d_visualisation">
-<span id="demeter-utils-image-3d-visualisation-module"></span><h2>demeter.utils.image_3d_visualisation module<a class="headerlink" href="#module-demeter.utils.image_3d_visualisation" title="Link to this heading"></a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.Visualize_geodesicOptim">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">Visualize_geodesicOptim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geoShoot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">close</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.Visualize_geodesicOptim" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.compare_3D_images_vedo">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">compare_3D_images_vedo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">close</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.compare_3D_images_vedo" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<dl class="py method">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.compare_3D_images_vedo.add_landmarks_left">
-<span class="sig-name descname"><span class="pre">add_landmarks_left</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">landmarks</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.compare_3D_images_vedo.add_landmarks_left" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.compare_3D_images_vedo.add_landmarks_right">
-<span class="sig-name descname"><span class="pre">add_landmarks_right</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">landmarks</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.compare_3D_images_vedo.add_landmarks_right" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.compare_3D_images_vedo.close">
-<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.compare_3D_images_vedo.close" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.compare_3D_images_vedo.show_deformation_flow">
-<span class="sig-name descname"><span class="pre">show_deformation_flow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deformation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">at</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.compare_3D_images_vedo.show_deformation_flow" title="Link to this definition"></a></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>deformation</strong> – grid like numpy array</p></li>
-<li><p><strong>step</strong></p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p></p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.deformation_grid3D_surfaces">
-<span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">deformation_grid3D_surfaces</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deformation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_surf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.deformation_grid3D_surfaces" title="Link to this definition"></a></dt>
-<dd><p>function API for <cite>deformation_grid3D_vedo</cite> class</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>deformation</strong> – [1,D,H,W,3] numpy array</p></li>
-<li><p><strong>dim</strong> – Dimension you want to show the surfaces along.</p></li>
-<li><p><strong>n_surf</strong> – Numbers of surfaces you want to plot.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.deformation_grid3D_vedo">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">deformation_grid3D_vedo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">show_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_resolution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'yellow'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_all_surf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">addCutterTool</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.deformation_grid3D_vedo" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<dl class="py method">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.deformation_grid3D_vedo.buttonfunc">
-<span class="sig-name descname"><span class="pre">buttonfunc</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.deformation_grid3D_vedo.buttonfunc" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.deformation_grid3D_vedo.make_surface_mesh">
-<span class="sig-name descname"><span class="pre">make_surface_mesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deformation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_surf</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.deformation_grid3D_vedo.make_surface_mesh" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.deformation_grid3D_vedo.time_slider">
-<span class="sig-name descname"><span class="pre">time_slider</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">widget</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">event</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.deformation_grid3D_vedo.time_slider" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.gridDef_3d_slider">
-<span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">gridDef_3d_slider</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deformation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_grid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_line</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.gridDef_3d_slider" title="Link to this definition"></a></dt>
-<dd><p>Display a 3d grid with sliders</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>image</strong> – (H,W,D) numpy array or tensor</p></li>
-<li><p><strong>image_cmap</strong> – color map for the plot of the image</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>a slider. Note :it is important to store the sliders in order to</p>
-</dd>
-</dl>
-<p># have them updating</p>
-<p>Exemple :
-# H,W,D = (100,75,50)
-# image = np.zeros((H,W,D))
-# mX,mY,mZ = np.meshgrid(np.arange(H),
-#                           np.arange(W),
-#                           np.arange(D))
-#
-# mask_rond = ((mX - H//2)**2 + (mY - W//2)**2).sqrt() &lt; H//6
-# mask_carre = (mX &gt; H//6) &amp; (mX &lt; 5*H//6) &amp; (mZ &gt; D//6) &amp; (mZ &lt; 5*D//6)
-# mask_diamand = ((mY - W//2).abs() + (mZ - D//2).abs()) &lt; W//6
-# mask = mask_rond &amp; mask_carre &amp; mask_diamand
-# image[mask] = 1
-# # it is important to store the sliders in order to
-# # have them updating
-# slider = imshow_3d_slider(image)
-# plt.show()</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.grid_slice">
-<span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">grid_slice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coord</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.grid_slice" title="Link to this definition"></a></dt>
-<dd><p>return a line collection</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>grid</strong></p></li>
-<li><p><strong>coord</strong></p></li>
-<li><p><strong>dim</strong></p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.image_slice_vedo">
-<span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">image_slice_vedo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bg_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('white',</span> <span class="pre">'lightblue')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">close</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.image_slice_vedo" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.imshow_3d_slider">
-<span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">imshow_3d_slider</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_cmap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gray'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.imshow_3d_slider" title="Link to this definition"></a></dt>
-<dd><p>Display a 3d image</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>image</strong> (<em>numpy array</em><em> or </em><em>tensor</em>) – <dl class="simple">
-<dt>if nupy array (H,W,D) or (H,W,D,3) or (T,H,W,D,3)</dt><dd><p>if tensor of shape [T,1,H,W,D]</p>
-</dd>
-</dl>
-</p></li>
-<li><p><strong>image_cmap</strong> (<em>str</em><em>, </em><em>optional</em>) – color map for the plot of the image. The default is ‘gray’.</p></li>
-<li><p><strong>title</strong> (<em>str</em><em>, </em><em>optional</em>) – Title of the plot. The default is “”.</p></li>
-</ul>
-</dd>
-</dl>
-<p>:param :
-:type : return: a slider. Note :it is important to store the sliders in order to
-:param # have them updating:
-:param Exemple:
-:param # H:
-:param W:
-:param D = (100:
-:param 75:
-:param 50):
-:param # image = np.zeros((H:
-:param W:
-:param D)):
-:param # mX:
-:param mY:
-:param mZ = np.meshgrid(np.arange(H):
-:param :
-:param #                           np.arange(W):
-:param :
-:param #                           np.arange(D)):
-:param #:
-:param # mask_rond = ((mX - H//2)**2 + (mY - W//2)**2).sqrt() &lt; H//6:
-:param # mask_carre = (mX &gt; H//6) &amp; (mX &lt; 5*H//6) &amp; (mZ &gt; D//6) &amp; (mZ &lt; 5*D//6):
-:param # mask_diamand = ((mY - W//2).abs() + (mZ - D//2).abs()) &lt; W//6:
-:param # mask = mask_rond &amp; mask_carre &amp; mask_diamand:
-:param # image[mask] = 1:
-:param # # it is important to store the sliders in order to:
-:param # # have them updating:
-:param # slider = imshow_3d_slider(image):
-:param # plt.show():</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.landmark_to_points">
-<span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">landmark_to_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">landmarks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.landmark_to_points" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="demeter.utils.image_3d_visualisation.make_cmp_image">
-<span class="sig-prename descclassname"><span class="pre">demeter.utils.image_3d_visualisation.</span></span><span class="sig-name descname"><span class="pre">make_cmp_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img_2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.image_3d_visualisation.make_cmp_image" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
+<section id="demeter-utils-image-3d-visualisation-module">
+<h2>demeter.utils.image_3d_visualisation module<a class="headerlink" href="#demeter-utils-image-3d-visualisation-module" title="Link to this heading"></a></h2>
 </section>
 <section id="module-demeter.utils.optim">
 <span id="demeter-utils-optim-module"></span><h2>demeter.utils.optim module<a class="headerlink" href="#module-demeter.utils.optim" title="Link to this heading"></a></h2>
@@ -1802,13 +1605,13 @@ is removed  from <cite>field</cite> (default False)</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="demeter.utils.torchbox.resize_image">
-<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">resize_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Iterable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.resize_image" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">resize_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">Tensor</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Iterable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.resize_image" title="Link to this definition"></a></dt>
 <dd><p>Resize an image by a scale factor <span class="math notranslate nohighlight">\(s = (s1,s2,s3)\)</span></p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>image</strong> – list of tensors [B,C,H,W] or [B,C,D,H,W] torch tensor</p></li>
-<li><p><strong>scale_factor</strong> – float or list or tuple of image dimention size</p></li>
+<li><p><strong>scale_factor</strong> – float or list or tuple of image dimension size</p></li>
 </ul>
 </dd>
 </dl>
@@ -1945,6 +1748,11 @@ meaning: <span class="math notranslate nohighlight">\([-1,1]^d \mapsto [0,W-1]\t
 :parma is_grid: (bool) useless in this function, kept for
 consistency with others converters</p>
 </dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="demeter.utils.torchbox.temporal_img_cmp">
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">temporal_img_cmp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'compose'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.temporal_img_cmp" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="demeter.utils.torchbox.thresholding">
