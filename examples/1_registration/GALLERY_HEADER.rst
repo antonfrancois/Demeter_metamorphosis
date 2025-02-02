@@ -3,4 +3,4 @@
 Registration examples
 =======================================================
 
-The examples below shows different types of metamorphosis.
+The examples below shows how to make simple registrations with Demeter-Metamorphosis.

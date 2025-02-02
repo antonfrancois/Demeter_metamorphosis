@@ -96,6 +96,7 @@ def fft_filter(input: torch.Tensor, kernel: torch.Tensor,
 def get_gaussian_kernel1d(sigma,
                           dx = 1,
                           kernel_size = None,
+                          normalized = True,
                           kernel_reach=6,
                           device='cpu',
                           dtype=torch.float):
@@ -108,6 +109,12 @@ def get_gaussian_kernel1d(sigma,
         the size of the kernel.
     dx (float)
         the spacing between the kernel points.
+    normalized (bool)
+        if True, the kernel will be L1 normalized. (divided by the sum of its elements)
+    kernel_reach (int)
+        value times sigma that controls the distance in pixels between
+        the center and the edge of the kernel. The greater it is
+        the closer we are to an actual gaussian kernel. (default = 6)
     sigma (float, Tensor)
          standard deviation of the kernel.
     device (torch.device)
@@ -142,10 +149,17 @@ def get_gaussian_kernel1d(sigma,
         x = x + 0.5
 
     kernel = torch.exp(-x.pow(2.0) / (2 * sigma.pow(2.0)))
-
+    if normalized:
+        kernel = kernel / kernel.sum(dim=-1, keepdim=True)
     return kernel
 
-def get_gaussian_kernel2d( sigma,dx =(1.,1.), kernel_size=None, kernel_reach=6):
+def get_gaussian_kernel2d(
+        sigma,
+        dx =(1.,1.),
+        kernel_size=None,
+        normalized =True,
+        kernel_reach=6,
+    ):
     r"""Function that returns Gaussian filter coefficients.
 
     Parameters:
@@ -166,15 +180,20 @@ def get_gaussian_kernel2d( sigma,dx =(1.,1.), kernel_size=None, kernel_reach=6):
     ksize_h, ksize_w = kernel_size if kernel_size is not None else (None,)*2
     sigma_h, sigma_w = [float(s) for s in sigma]
     dh, dw = [float(d) for d in dx]
-    kernel_h: torch.Tensor = get_gaussian_kernel1d(sigma_h, dh, ksize_h, kernel_reach)
-    kernel_w: torch.Tensor = get_gaussian_kernel1d(sigma_w, dw, ksize_w, kernel_reach)
+    kernel_h: torch.Tensor = get_gaussian_kernel1d(sigma_h, dh, ksize_h, normalized, kernel_reach)
+    kernel_w: torch.Tensor = get_gaussian_kernel1d(sigma_w, dw, ksize_w, normalized, kernel_reach)
     # print(f"kernel_h : {kernel_h.shape}, kernel_w : {kernel_w.shape}")
     # kernel_2d: torch.Tensor = torch.matmul(kernel_h[...,None], kernel_w)
     # print(kernel_h.shape)
     kernel_2d = kernel_h[:,:, None] * kernel_w[:,None, :]
     return kernel_2d
 
-def get_gaussian_kernel3d(sigma, dx=(1.,)*3 , kernel_size =None, kernel_reach=6):
+def get_gaussian_kernel3d(sigma,
+                          dx=(1.,)*3 ,
+                          kernel_size =None,
+                          normalized =True,
+                          kernel_reach=6,
+                          ):
     r"""Function that returns Gaussian filter coefficients.
 
     Parameters:
@@ -205,9 +224,9 @@ def get_gaussian_kernel3d(sigma, dx=(1.,)*3 , kernel_size =None, kernel_reach=6)
     ksize_d, ksize_h, ksize_w= kernel_size
     sigma_d, sigma_h, sigma_w = [ float(s) for s in sigma]
     dd, dh, dw = [float(d) for d in dx]
-    kernel_d: torch.Tensor = get_gaussian_kernel1d(sigma_d, dd, ksize_d, kernel_reach)
-    kernel_h: torch.Tensor = get_gaussian_kernel1d(sigma_h, dh,ksize_h, kernel_reach)
-    kernel_w: torch.Tensor = get_gaussian_kernel1d(sigma_w, dw, ksize_w, kernel_reach)
+    kernel_d: torch.Tensor = get_gaussian_kernel1d(sigma_d, dd, ksize_d, normalized, kernel_reach)
+    kernel_h: torch.Tensor = get_gaussian_kernel1d(sigma_h, dh,ksize_h, normalized, kernel_reach)
+    kernel_w: torch.Tensor = get_gaussian_kernel1d(sigma_w, dw, ksize_w, normalized, kernel_reach)
     # print(f"kernel_d : {kernel_d.shape},\n kernel_h : {kernel_h.shape},\n kernel_w : {kernel_w.shape}")
 
     kernel_3d = (kernel_d[:,:, None, None]
@@ -216,7 +235,12 @@ def get_gaussian_kernel3d(sigma, dx=(1.,)*3 , kernel_size =None, kernel_reach=6)
 
     return kernel_3d
 
-def plot_gaussian_kernel_1d(kernel: torch.Tensor,sigma,ax =None,rotated = False):
+def plot_gaussian_kernel_1d(
+        kernel: torch.Tensor,
+        sigma,
+        ax =None,
+        rotated = False
+):
     r"""
     Function that plots a 1D Gaussian kernel.
 
@@ -477,18 +501,16 @@ class GaussianRKHS(torch.nn.Module):
         self._dim = len(sigma)
         self.kernel_reach = kernel_reach
         if self._dim == 2:
-            self.kernel = get_gaussian_kernel2d(sigma, kernel_reach=kernel_reach)#[None]
+            self.kernel = get_gaussian_kernel2d(sigma, kernel_reach=kernel_reach,normalized=normalized)#[None]
             self.filter = flt.filter2d
         elif self._dim == 3:
-            self.kernel = get_gaussian_kernel3d(sigma, kernel_reach=kernel_reach)#[None]
+            self.kernel = get_gaussian_kernel3d(sigma, kernel_reach=kernel_reach, normalized=normalized)#[None]
             # self.filter = flt.filter3d
             self.filter = fft_filter
         else:
             raise ValueError("Sigma is expected to be a tuple of size 2 or 3 same as the input dimension,"
                              +"len(sigma) == {}".format(len(sigma)))
         self.normalized = normalized
-        if normalized:
-            self.kernel /= self.kernel.sum()
         self.border_type = border_type
 
 
@@ -759,7 +781,9 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
                              "GaussianRKHS instead.")
         super(Multi_scale_GaussianRKHS, self).__init__()
         _ks = []
+        self.product_sigma = 1
         for sigma in list_sigmas:
+            self.product_sigma *= prod(sigma)
             big_odd = lambda val : max(6,int(val*6)) + (1 - max(6,int(val*6)) %2)
             kernel_size = tuple([big_odd(s) for s in sigma])
             _ks.append(kernel_size)
@@ -780,12 +804,17 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
             raise ValueError("Sigma is expected to be a tuple of size 2 or 3 same as the input dimension,"
                              +"len(sigma[0]) == {}".format(len(list_sigmas[0])))
 
+
         self.kernel = torch.cat(
-            [kernel_f(sigma,kernel_size=kernel_size)[None] for sigma in list_sigmas ]
-        ).sum(dim=0)#[None]
-        # self.kernel /= len(list_sigmas)
-        if normalized:
-            self.kernel /= self.kernel.sum()
+            [
+                kernel_f(sigma,kernel_size=kernel_size, normalized=normalized)[None]
+             for sigma in list_sigmas
+            ]
+        ).sum(dim=0) / len(list_sigmas)
+        # if normalized:
+        #     self.kernel /= len(list_sigmas)
+        #     self.kernel /= self.kernel.sum()
+
 
         self.border_type = 'replicate'
 
@@ -816,7 +845,7 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
 
     def __call__(self, input : torch.Tensor):
         if (self._dim == 2 and len(input.shape) == 4) or (self._dim == 3 and len(input.shape) == 5):
-            return self.filter(input,self.kernel,self.border_type)
+            return self.filter(input,self.kernel,self.border_type) #* self.product_sigma
         else:
             raise ValueError(f"{self.__class__.__name__} was initialized "
                              f"with a {self._dim}D mask and input shape is : "
