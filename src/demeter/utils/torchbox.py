@@ -628,21 +628,24 @@ def gridDef_plot_2d(deformation : torch.Tensor,
 
     sign = 1 if origin == 'lower' else -1
     # kw = dict(color=color,linewidth=linewidth)
-    ax.plot(deform[0,:,::step_y, 0].numpy(),
+    l_a = ax.plot(deform[0,:,::step_y, 0].numpy(),
                  sign * deform[0,:,::step_y, 1].numpy(), **kwargs)
-    ax.plot(deform[0,::step_x,:, 0].numpy().T,
+    l_b = ax.plot(deform[0,::step_x,:, 0].numpy().T,
                  sign * deform[0,::step_x,:, 1].numpy().T, **kwargs)
 
     # add the last lines on the right and bottom edges
-    ax.plot(deform[0,:,-1, 0].numpy(),
+    l_c = ax.plot(deform[0,:,-1, 0].numpy(),
                  sign * deform[0,:,-1, 1].numpy(), **kwargs)
-    ax.plot(deform[0,-1,:, 0].numpy().T,
+    l_d = ax.plot(deform[0,-1,:, 0].numpy().T,
                  sign * deform[0,-1,:, 1].numpy().T, **kwargs)
+
+    lines = l_a + l_b + l_c+ l_d
+
     ax.set_aspect('equal')
     ax.set_title(title)
 
 
-    return ax
+    return ax, lines
 
 def quiver_plot(field,
                 ax=None,
@@ -715,12 +718,12 @@ def quiver_plot(field,
     # real scale =1 means to plot quiver arrow with axis scale
     (scale_units,scale ) = ('xy',1) if real_scale else (None,None)
 
-    ax.quiver(reg_grid[0,::step,::step,0],reg_grid[0,::step,::step,1],
+    arrows = ax.quiver(reg_grid[0,::step,::step,0],reg_grid[0,::step,::step,1],
             ((field[0,::step, ::step, 0] ).detach().numpy()),
             ((field[0,::step, ::step, 1] ).detach().numpy()),
             color=color,
             scale_units=scale_units, scale=scale)
-    return ax
+    return ax, arrows
 
 def is_tensor(input):
     # print("is_tensor",input.__class__ == type(torch.Tensor),input.__class__,type(torch.Tensor))
