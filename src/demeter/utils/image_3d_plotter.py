@@ -6,15 +6,18 @@ import torch
 import numpy as np
 from kornia.augmentation.auto.autoaugment.ops import color
 from matplotlib.collections import LineCollection
-from matplotlib.widgets import Slider,  Button
+from matplotlib.widgets import Slider, Button
 from sphinx.writers.text import my_wrap
 from torch import is_tensor
 import warnings
 import os
 from PIL import Image
+from triton.language import dtype
 
 import demeter.utils.torchbox as tb
 from icecream import ic
+
+
 
 def grid_slice(grid, coord, dim):
     """return a line collection
@@ -33,6 +36,7 @@ def grid_slice(grid, coord, dim):
     elif dim == 2:
         return grid[0, :, :, coord, :]
 
+
 class Visualize_GeodesicOptim_plt:
     """
     This class is a visualization tool for the geodesic optimisation. to replace the one using
@@ -41,27 +45,30 @@ class Visualize_GeodesicOptim_plt:
     Je prevois de rajouter des fonctions pour
     """
 
-    def __init__(self,
-                 geodesicOptim,
-                 name : str,
-                 path_save : str| None = None,
-                 ):
-        self.geodesicOptim = geodesicOptim#.to_device("cpu")
-        self.path = "examples/results/plt_mr_visualization" if path_save is None else path_save
+    def __init__(
+        self,
+        geodesicOptim,
+        name: str,
+        path_save: str | None = None,
+    ):
+        self.geodesicOptim = geodesicOptim  # .to_device("cpu")
+        self.path = (
+            "examples/results/plt_mr_visualization" if path_save is None else path_save
+        )
         self.name = name
 
-        my_white = (.7,.7,.7,1)
-        my_dark = (.1, .1, .1, 1)
+        my_white = (0.7, 0.7, 0.7, 1)
+        my_dark = (0.1, 0.1, 0.1, 1)
 
         # make fig, ax, sliders
         self.fig, self.ax = plt.subplots(1, 3, constrained_layout=False)
         self.fig.patch.set_facecolor(my_dark)
 
         for a in self.ax:
-            a.tick_params(axis="both", colors = my_white)
+            a.tick_params(axis="both", colors=my_white)
 
-        title = "Make a intelligent title"
-        self.fig.suptitle(title, c = my_white)
+        title = name
+        self.fig.suptitle(title, c=my_white)
 
         # TODO : make a test to prevent using this class on 2D images
         self.shape = self.geodesicOptim.mp.image_stock.shape
@@ -71,19 +78,23 @@ class Visualize_GeodesicOptim_plt:
             vmin=self.geodesicOptim.mp.image_stock.min(),
             vmax=self.geodesicOptim.mp.image_stock.max(),
             cmap="gray",
-            origin = "lower"
+            # origin = "lower"
         )
         self.kw_grid = dict(
             color="w",
             step=15,
-            alpha = 0.2,
+            alpha=0.2,
         )
 
         # Add 3 image panels
         # shown_image will be the displayed image at all time
         self.shown_image = self.temporal_image_cmp_with_target()[-1]
-        self.shown_attribute =  self.temporal_image_cmp_with_target
-        self.deformation  = self.geodesicOptim.mp.get_deformation(save=True)
+        self.shown_attribute = self.temporal_image_cmp_with_target
+        self.deformation = self.geodesicOptim.mp.get_deformation(save=True)
+        if self.geodesicOptim.dx_convention == "square":
+            self.deformation = tb.square_to_pixel_convention(
+                self.deformation, is_grid=True
+            )
 
         tr_tpl = (1, 0, 2)
         self.plt_img_x = self.ax[0].imshow(
@@ -122,22 +133,19 @@ class Visualize_GeodesicOptim_plt:
         self.sliders = self._init_slider(init_x_coord, init_y_coord, init_z_coord)
 
         # add a button to save all images
-        kw_button = {
-            "color" : my_white,
-            "hovercolor": (.8,.8,.8,1)
-        }
+        kw_button = {"color": my_white, "hovercolor": (0.8, 0.8, 0.8, 1)}
         ax_button_save = plt.axes([0.8, 0.025, 0.1, 0.04])
         ax_button_grid = plt.axes([0.1, 0.025, 0.1, 0.04])
-        ax_button_quiver = plt.axes((.1, 0.125, 0.1, 0.04))
-        self.button_save = Button(ax_button_save, 'Save All times', **kw_button)
+        ax_button_quiver = plt.axes((0.1, 0.125, 0.1, 0.04))
+        self.button_save = Button(ax_button_save, "Save All times", **kw_button)
         self.button_save.on_clicked(self.save_all_times)
 
-        self.button_grid = Button(ax_button_grid, 'show grid', **kw_button)
+        self.button_grid = Button(ax_button_grid, "show grid", **kw_button)
         self.button_grid.on_clicked(self._toggle_grid)
         self.flag_grid = False
         self.grid_was_init = False
 
-        self.button_quiver = Button(ax_button_quiver, 'show_flow',**kw_button)
+        self.button_quiver = Button(ax_button_quiver, "show_flow", **kw_button)
         self.button_quiver.on_clicked(self._toggle_quiver)
         self.flow_was_init = False
         self.flag_quiver = False
@@ -153,7 +161,7 @@ class Visualize_GeodesicOptim_plt:
             self.tmp_img_cmp_w_target = tb.temporal_img_cmp(
                 self.geodesicOptim.mp.image_stock,
                 self.geodesicOptim.target,
-                method="compose"
+                method="compose",
             )
             return self.tmp_img_cmp_w_target
 
@@ -169,65 +177,129 @@ class Visualize_GeodesicOptim_plt:
     def _make_grid(self, t_val, x_val, y_val, z_val):
         t = t_val
         deform_x = self.deformation[t, :, :, z_val, 1:][None].flip(-1)
-        deform_y = self.deformation[t, :, y_val, :, [0,-1]][None].flip(-1)
+        deform_y = self.deformation[t, :, y_val, :, [0, -1]][None].flip(-1)
         deform_z = self.deformation[t, x_val, :, :, :-1][None].flip(-1)
 
         _, lines_x = tb.gridDef_plot_2d(deform_x, ax=self.ax[0], **self.kw_grid)
         _, lines_y = tb.gridDef_plot_2d(deform_y, ax=self.ax[1], **self.kw_grid)
         _, lines_z = tb.gridDef_plot_2d(deform_z, ax=self.ax[2], **self.kw_grid)
 
-        lines =  lines_x + lines_y + lines_z
+        lines = lines_x + lines_y + lines_z
         return lines
 
     def _make_flow(self):
+        print("Building flow")
         deform = self.geodesicOptim.mp.get_deformator(save=True)
+
         # TODO : vérifier que vf est déjà bien un cv intégré  (les fleches de vraient
         # se suivre)
-        vf = torch.cat(
-            [deform[0][None] - self.gs.mp.id_grid, deform[:-1] - deform[1:]], dim=0
+        self.vector_field = torch.cat(
+            [
+                deform[0][None] - self.geodesicOptim.mp.id_grid,
+                deform[:-1] - deform[1:],
+            ],
+            dim=0,
         )
-        T, D, H, W, _ = deform.shape
+        # if self.geodesicOptim.dx_convention == "square":
+        #     self.vector_field = tb.square_to_pixel_convention(
+        #         deform, is_grid = False
+        #     )
+        print("... done")
 
-        d, h, w = (20, 20, 20)
-        print("T:", T, ", D:", D, ", H:", H, ", W:", W, ":: ", H * D * W)
-        print(" d:", d, ", h:", h, ", w:", w, ":: ", h * d * w)
+    def _debug_flow(self):
+        self.vector_field = torch.ones_like( self.geodesicOptim.mp.get_deformator(save=True)) * 5
 
-        lx: torch.Tensor = torch.linspace(0, D - 1, d)
-        ly: torch.Tensor = torch.linspace(0, H - 1, h)
-        lz: torch.Tensor = torch.linspace(0, W - 1, w)
+        #0
+        self.vector_field[0,...,0] *= 0
+        self.vector_field[0,..., 1] *= 0
+        #1
+        self.vector_field[1,...,0] *= 0
+        self.vector_field[1,..., 2] *= 0
+        #2
+        self.vector_field[2,...,1] *= 0
+        self.vector_field[2,..., 2] *= 0
+        #3
+        self.vector_field[3,...,0] *= 0
+        self.vector_field[3,..., 1] *= 0
+        self.vector_field[3,..., 2] *= -1
+        #4
+        self.vector_field[4,...,0] *= 0
+        self.vector_field[4,..., 1] *= -1
+        self.vector_field[4,..., 2] *= 0
+        #5
+        self.vector_field[5,...,0] *= -1
+        self.vector_field[5,..., 1] *= 0
+        self.vector_field[5,..., 2] *= 0
+        #6
+        self.vector_field[6,...,0] *= 0
+        self.vector_field[6,..., 1] *= 1
+        self.vector_field[6,..., 2] *= 0
 
+
+    def _make_arrows(self, t_val, x_val, y_val, z_val):
+
+        # deform_x = self.deformation[t, :, :, z_val, 1:][None].flip(-1)
+        # deform_y = self.deformation[t, :, y_val, :, [0, -1]][None].flip(-1)
+        # deform_z = self.deformation[t, x_val, :, :, :-1][None].flip(-1)
+
+        T, C, D, H, W = self.shape
+        d, h, w = (20, 20, 20)  # TODO: move this somewhere intelligent
+        kw_quiver = dict(color="red", scale_units=None)  # 'xy
+        lx: torch.Tensor = torch.linspace(0, D - 1, d, dtype=torch.int)
+        ly: torch.Tensor = torch.linspace(0, H - 1, h, dtype=torch.int)
+        lz: torch.Tensor = torch.linspace(0, W - 1, w, dtype=torch.int)
         mx, my, mz = torch.meshgrid([lx, ly, lz])
-        pts = torch.stack([mz.flatten(), my.flatten(), mx.flatten()], dim=1).numpy()
-        reg_grid = torch.stack((mx, my, mz), dim=-1)[None]  # shape = [1,d,h,w]
-        print("\nMAKE ARROW reg_grid", reg_grid.shape)
-        print(vf.shape)
-        # deform = deform[:,lx.to(int),ly.to(int),lz.to(int)]
-        deform = deform[:, :, :, lz.to(int)][:, :, ly.to(int)][:, lx.to(int)]
-        vf = vf[:, :, :, lz.to(int)][:, :, ly.to(int)][:, lx.to(int)]
+        mx = mx.flatten()
+        my = my.flatten()
+        mz = mz.flatten()
 
-        # arrows is a list of arrow collections for each time frame (len = T)
+        # self.vector_field = torch.ones_like(self.vector_field)
+        # self.vector_field[...,0] *= 0
+        # # self.vector_field[..., 1] *= 0
+        # self.vector_field[...,2] *= 0
+
         arrows = []
-        arr  =  plt.quiver(pts[:,0],pts[:,1],pts[:,2],vf[0].cpu(),vf[1].cpu(),vf[2].cpu())
-        # for i in range(T):
-        #     vf_i = vf[i].cpu()
-        #     deform_i = deform[i].cpu()
-        arrows.append(arr)
+        pts = tb.make_regular_grid(self.vector_field.shape, dx_convention="pixel")[0]
+        vf = self.vector_field[0]
+
+        for t in range(t_val):
+            pts_x = pts[ :, :, z_val, 1:].flip(-1)
+            vf_x = vf[ :, :, z_val, 1:].flip(-1)
+            pts_y = pts[ :, y_val, :, [0, -1]].flip(-1)
+            vf_y = vf[ :, y_val, :, [0, -1]].flip(-1)
+            pts_z = pts[ x_val, :, :, :-1].flip(-1)
+            vf_z = vf[ x_val, :, :, :-1].flip(-1)
+
+            ic(pts_x.shape, vf_x.shape)
+            ic(pts_y.shape, vf_y.shape)
+            ic(pts_z.shape, vf_z.shape)
+            arrows_x = self.ax[0].quiver(
+                pts_x[mx, my, 0], pts_x[mx, my, 1], vf_x[mx, my, 0], vf_x[mx, my, 1], **kw_quiver
+            )
+            arrows_y = self.ax[1].quiver(
+                pts_y[mx, mz, 0], pts_y[mx, mz, 1], vf_y[mx, mz, 0], vf_y[mx, mz, 1], **kw_quiver
+            )
+            arrows_z = self.ax[2].quiver(
+                pts_z[my, mz, 0], pts_z[my, mz, 1], vf_z[my, mz, 0], vf_z[my, mz, 1], **kw_quiver
+            )
+            ic(arrows_x, arrows_y, arrows_z)
+            arrows.append([arrows_x, arrows_y, arrows_z])
+
+            pts += vf
+            vf = self.vector_field[t]
+
+        ic(vf[mx, my, 0], pts[mx, my, 1])
+
         return arrows
-
-
-    # def _make_arrows(self, t_val, x_val, y_val, z_val):
-    #     t = t_val
-    #     deform_x = self.deformation[t, :, :, z_val, 1:][None].flip(-1)
-    #     deform_y = self.deformation[t, :, y_val, :, [0,-1]][None].flip(-1)
-    #     deform_z = self.deformation[t, x_val, :, :, :-1][None].flip(-1)
-    #
-    #     _, arrows_x = _
-    #     print(arrows_x)
-
 
     def _toggle_grid(self, event):
         if not self.grid_was_init:
-            self.lines = self._make_grid(self.sliders[3].val, self.sliders[2].val, self.sliders[1].val, self.sliders[0].val)
+            self.lines = self._make_grid(
+                self.sliders[3].val,
+                self.sliders[2].val,
+                self.sliders[1].val,
+                self.sliders[0].val,
+            )
             self.grid_was_init = True
             self.flag_grid = True
         else:
@@ -237,9 +309,16 @@ class Visualize_GeodesicOptim_plt:
                 line.set_visible(self.flag_grid)
         self.fig.canvas.draw_idle()
 
-    def _toggle_quiver(self,event):
+    def _toggle_quiver(self, event):
         if not self.flow_was_init:
-            self.arrows = self._make_arrows(self.sliders[3].val, self.sliders[2].val, self.sliders[1].val, self.sliders[0].val)
+            # self._make_flow()
+            self._debug_flow()
+            self.arrows = self._make_arrows(
+                self.sliders[3].val,
+                self.sliders[2].val,
+                self.sliders[1].val,
+                self.sliders[0].val,
+            )
             self.flow_was_init = True
             self.flag_quiver = True
         else:
@@ -274,12 +353,11 @@ class Visualize_GeodesicOptim_plt:
         )
         return [x_slider, y_slider, z_slider, t_slider]
 
-    def update(self,val):
+    def update(self, val):
         """Update the plot when the sliders change."""
         x_slider, y_slider, z_slider, t_slider = self.sliders
         self.shown_image = self.temporal_image_cmp_with_target()[t_slider.val]
-        ic(self.shown_image.shape,
-           self.flag_grid)
+        ic(self.shown_image.shape, self.flag_grid)
 
         img = np.clip(self.shown_image, 0, 1)
 
@@ -298,15 +376,21 @@ class Visualize_GeodesicOptim_plt:
 
         # update grid
         if self.flag_grid:
-            # new_line = self._make_grid()
-            # for i in range(len(self.lines)):
-            #     self.lines[i].set_ydata(new_line[i].get_ydata())
-            #     self.lines[i].set_xdata(new_line[i].get_xdata())
             # Supprimer les anciennes lignes de la grille
             for line in self.lines:
                 line.remove()
             # Créer et ajouter les nouvelles lignes de la grille
-            self.lines = self._make_grid(t_slider.val, x_slider.val, y_slider.val, z_slider.val)
+            self.lines = self._make_grid(
+                t_slider.val, x_slider.val, y_slider.val, z_slider.val
+            )
+
+        if self.flag_quiver:
+            for arr in self.arrows:
+                for a in arr:
+                    a.remove()
+            self.arrows = self._make_arrows(
+                t_slider.val, x_slider.val, y_slider.val, z_slider.val
+            )
 
         self.fig.canvas.draw_idle()
 
@@ -318,10 +402,12 @@ class Visualize_GeodesicOptim_plt:
         for t in range(self.shape[0]):
             self.sliders[3].set_val(t)
             self.update(t)
-            file_path = os.path.join(image_folder, f"{self.name}_{self.shown_attribute.__name__}_t{t}.png")
+            file_path = os.path.join(
+                image_folder, f"{self.name}_{self.shown_attribute.__name__}_t{t}.png"
+            )
             self.fig.savefig(file_path)
 
-                # Redimensionner l'image pour que la largeur et la hauteur soient divisibles par 2
+            # Redimensionner l'image pour que la largeur et la hauteur soient divisibles par 2
             img = Image.open(file_path)
             width, height = img.size
             new_width = width if width % 2 == 0 else width - 1
@@ -332,14 +418,22 @@ class Visualize_GeodesicOptim_plt:
         print(f"Images saved in {image_folder}")
 
         # Create a video using ffmpeg
-        video_path = os.path.join(self.path, f"{self.name}_{self.shown_attribute.__name__}.mp4")
+        video_path = os.path.join(
+            self.path, f"{self.name}_{self.shown_attribute.__name__}.mp4"
+        )
         ffmpeg_command = [
             "ffmpeg",
-            "-framerate", "1",  # Adjust the framerate as needed
-            "-i", os.path.join(image_folder, f"{self.name}_{self.shown_attribute.__name__}_t%d.png"),
-            "-c:v", "libx264",
-            "-pix_fmt", "yuv420p",
-            video_path
+            "-framerate",
+            "1",  # Adjust the framerate as needed
+            "-i",
+            os.path.join(
+                image_folder, f"{self.name}_{self.shown_attribute.__name__}_t%d.png"
+            ),
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            video_path,
         ]
         subprocess.run(ffmpeg_command, check=True)
         print(f"Video saved as {video_path}")
@@ -350,11 +444,11 @@ class Visualize_GeodesicOptim_plt:
 
 
 def imshow_3d_slider(
-        image,
-        image_cmap="gray",
-        title="",
-        vmin=None,
-        vmax=None,
+    image,
+    image_cmap="gray",
+    title="",
+    vmin=None,
+    vmax=None,
 ):
     """Display a 3d image
 
@@ -395,8 +489,8 @@ def imshow_3d_slider(
             " [1,1,D,H,W] tensor object are tolerated.",
         )
     if is_tensor(image) and len(image.shape) == 5:
-        ic("before permute",image.shape)
-        T,C,H,W,D = image.shape
+        ic("before permute", image.shape)
+        T, C, H, W, D = image.shape
 
         image = image.permute(0, 2, 3, 4, 1).cpu().numpy()
         ic("afet C", image.shape)
@@ -404,11 +498,11 @@ def imshow_3d_slider(
             image = image[0]
         # if image.shape[0] == 1: image = image[0]
         # if image.shape[-1] == 1: image = image[..., 0]
-        ic("after permute",image.shape)
+        ic("after permute", image.shape)
 
     # Create the figure and the line that we will manipulate
-    fig, ax = plt.subplots(1, 3,constrained_layout = False)
-    fig.patch.set_facecolor('xkcd:dark gray')
+    fig, ax = plt.subplots(1, 3, constrained_layout=False)
+    fig.patch.set_facecolor("xkcd:dark gray")
 
     fig.suptitle(title)
     ic(image.shape)
@@ -438,15 +532,17 @@ def imshow_3d_slider(
     im_ini = image[0] if T > 1 else image
     tr_tpl = (1, 0, 2) if C > 1 else (1, 0)
     img_x = ax[0].imshow(
-        tb.image_slice(im_ini, init_z_coord, dim=2).transpose(tr_tpl),
-        **kw_image)
+        tb.image_slice(im_ini, init_z_coord, dim=2).transpose(tr_tpl), **kw_image
+    )
     img_y = ax[1].imshow(
         tb.image_slice(im_ini, init_y_coord, dim=1).transpose(tr_tpl),
-        origin="lower", **kw_image
+        origin="lower",
+        **kw_image,
     )
     img_z = ax[2].imshow(
         tb.image_slice(im_ini, init_x_coord, dim=0).transpose(tr_tpl),
-        origin="lower", **kw_image
+        origin="lower",
+        **kw_image,
     )
     ax[0].set_xlabel("X")
     ax[1].set_xlabel("Y")
@@ -455,12 +551,12 @@ def imshow_3d_slider(
     # add init lines
 
     line_color = "green"
-    l_x_v = ax[0].axvline(x=init_y_coord, color=line_color,alpha=.6)
-    l_x_h = ax[0].axhline(y=init_z_coord, color=line_color,alpha=.6)
-    l_y_v = ax[1].axvline(x=init_z_coord, color=line_color,alpha=.6)
-    l_y_h = ax[1].axhline(y=init_x_coord, color=line_color,alpha=.6)
-    l_z_v = ax[2].axvline(x=init_y_coord, color=line_color,alpha=.6)
-    l_z_h = ax[2].axhline(y=init_x_coord, color=line_color,alpha=.6)
+    l_x_v = ax[0].axvline(x=init_y_coord, color=line_color, alpha=0.6)
+    l_x_h = ax[0].axhline(y=init_z_coord, color=line_color, alpha=0.6)
+    l_y_v = ax[1].axvline(x=init_z_coord, color=line_color, alpha=0.6)
+    l_y_h = ax[1].axhline(y=init_x_coord, color=line_color, alpha=0.6)
+    l_z_v = ax[2].axvline(x=init_y_coord, color=line_color, alpha=0.6)
+    l_z_h = ax[2].axhline(y=init_x_coord, color=line_color, alpha=0.6)
 
     ax[0].margins(x=0)
 
@@ -495,15 +591,9 @@ def imshow_3d_slider(
     def update(val):
         img = image[t_slider.val] if T > 1 else image
 
-        img_x.set_data(
-            tb.image_slice(img, z_slider.val, 2).transpose(tr_tpl)
-        )
-        img_y.set_data(
-            tb.image_slice(img, y_slider.val, 1).transpose(tr_tpl)
-        )
-        img_z.set_data(
-            tb.image_slice(img, x_slider.val, 0).transpose(tr_tpl)
-        )
+        img_x.set_data(tb.image_slice(img, z_slider.val, 2).transpose(tr_tpl))
+        img_y.set_data(tb.image_slice(img, y_slider.val, 1).transpose(tr_tpl))
+        img_z.set_data(tb.image_slice(img, x_slider.val, 0).transpose(tr_tpl))
 
         # update lines
         l_x_v.set_xdata([x_slider.val, x_slider.val])
@@ -523,7 +613,7 @@ def imshow_3d_slider(
 
     # it is important to store the sliders in order to
     # have them updating
-    return fig, ax, (x_slider,y_slider,z_slider,t_slider), update
+    return fig, ax, (x_slider, y_slider, z_slider, t_slider), update
 
 
 def _line2segment(x_line, y_line):
