@@ -133,22 +133,18 @@ def _load_light_optim(opti_dict, verbose):
 
     ## Find with which class we are dealing with
     integrator, optimizer = _find_meta_optimiser_from_repr_(opti_dict["__repr__"])
-    # ic(optimizer,integrator)
+
     # Reinitialize the kernelOperator
     kernelOp = _find_kernelOp_from_repr_(
         opti_dict["args"]["kernelOperator"]["name"]
     )
-    ic(kernelOp)
-    ic(opti_dict["args"]["kernelOperator"])
     kernelOp = kernelOp(**opti_dict["args"]["kernelOperator"])
-    ic(kernelOp)
+
     # and inject it in the args
     opti_dict["args"]["kernelOperator"] = kernelOp
-    ic(opti_dict["args"])
     ## Re-shoot the integration
     mp = integrator(**opti_dict["args"])
 
-    plt.imshow(opti_dict["parameter"][0, 0].detach().cpu())
     mp.forward(
         opti_dict["source"],
         opti_dict["parameter"],
@@ -160,9 +156,7 @@ def _load_light_optim(opti_dict, verbose):
 
     # inject the shooting in the optimizer
     opti_dict["geodesic"] = mp
-    # ic(opti_dict)
 
-    # ic(opti_dict['geodesic'].sigma_v)
     opti_dict["hamiltonian_integration"] = opti_dict["args"]["hamiltonian_integration"]
     mr = optimizer(**opti_dict)
     mr.to_analyse = opti_dict["to_analyse"]

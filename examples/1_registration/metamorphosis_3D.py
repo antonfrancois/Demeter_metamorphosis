@@ -22,13 +22,10 @@ import torch
 
 from demeter.constants import *
 import demeter.metamorphosis as mt
-import demeter.utils.image_3d_visualisation as i3v
+import demeter.utils.image_3d_plotter as i3p
 from demeter.utils import *
-import demeter.utils.image_3d_visualisation as i3v
 import demeter.utils.reproducing_kernels as rk
 import demeter.utils.torchbox as tb
-from icecream import ic
-import napari
 
 cuda = torch.cuda.is_available()
 # cuda = True
@@ -56,7 +53,7 @@ if step > 0:
 _,_,D,H,W = S.shape
 
 st = tb.imCmp(S,T,method = 'compose')
-sl = i3v.imshow_3d_slider(st, title = 'Source (orange) and Target (blue)')
+sl = i3p.imshow_3d_slider(st, title = 'Source (orange) and Target (blue)')
 plt.show()
 
 ## Setting residuals to 0 is equivalent to writing the
@@ -79,32 +76,33 @@ kernelOp = rk.GaussianRKHS((4,4,4), normalized= True)
 # mu = 0
 # mu,rho,lamb = 0, 0, .0001   # LDDMM
 
-print("\nApply LDDMM")
-mr_lddmm = mt.lddmm(S,T,momentum_ini,
-    kernelOperator=kernelOp,       #  Kernel
-    cost_cst=0.001,         # Regularization parameter
-    integration_steps=10,   # Number of integration steps
-    n_iter=4,             # Number of optimization steps
-    grad_coef=1,            # max Gradient coefficient
-    data_term=None,         # Data term (default Ssd)
-    safe_mode = False,      # Safe mode toggle (does not crash when nan values are encountered)
-    integration_method='semiLagrangian',  # You should not use Eulerian for real usage
-)
-mr_lddmm.plot_cost()
-
-mr_lddmm.to_device('cpu')
-deformation = mr_lddmm.mp.get_deformation()
-# # you can save the optimization:
-# # mr_lddmm.save(source_name,target_name)
-
-image_to_target = tb.imCmp(mr_lddmm.mp.image.cpu(),T,method = 'compose')
-sl = i3v.imshow_3d_slider(image_to_target, title = 'LDDMM result')
-plt.show()
+# print("\nApply LDDMM")
+# mr_lddmm = mt.lddmm(S,T,momentum_ini,
+#     kernelOperator=kernelOp,       #  Kernel
+#     cost_cst=0.001,         # Regularization parameter
+#     integration_steps=10,   # Number of integration steps
+#     n_iter=4,             # Number of optimization steps
+#     grad_coef=1,            # max Gradient coefficient
+#     data_term=None,         # Data term (default Ssd)
+#     safe_mode = False,      # Safe mode toggle (does not crash when nan values are encountered)
+#     integration_method='semiLagrangian',  # You should not use Eulerian for real usage
+# )
+# mr_lddmm.plot_cost()
+#
+# mr_lddmm.save("ballforhance_LDDMM",light_save= True)
+# mr_lddmm.to_device('cpu')
+# deformation = mr_lddmm.mp.get_deformation()
+# # # you can save the optimization:
+# # # mr_lddmm.save(source_name,target_name)
+#
+# image_to_target = tb.imCmp(mr_lddmm.mp.image.cpu(),T,method = 'compose')
+# sl = i3p.imshow_3d_slider(image_to_target, title = 'LDDMM result')
+# plt.show()
 
 #  visualization tools with issues,TO FIX !
-# i3v.Visualize_geodesicOptim(mr_lddmm,alpha=1)
+# i3p.Visualize_geodesicOptim(mr_lddmm,alpha=1)
 
-# plt_v = i3v.compare_3D_images_vedo(T.cpu(),mr_lddmm.mp.image_stock.cpu())
+# plt_v = i3p.compare_3D_images_vedo(T.cpu(),mr_lddmm.mp.image_stock.cpu())
 # plt_v.show_deformation_flow(deformation,1,step=3)
 # plt_v.plotter.show(interactive=True).close()
 
@@ -115,7 +113,7 @@ plt.show()
 # rho = 1  Pure geometric registration
 rho = 0.2
 dx_convention = 'square'
-# print("\nApply Metamorphosis")
+# # print("\nApply Metamorphosis")
 print("\nApply Metamorphosis")
 mr_meta = mt.metamorphosis(S, T, momentum_ini,
                            rho=rho,  # ratio deformation / intensity addition
@@ -130,14 +128,17 @@ mr_meta = mt.metamorphosis(S, T, momentum_ini,
                            dx_convention=dx_convention
                            )
 mr_meta.plot_cost()
-
+mr_meta.save(f"{source_name}_{target_name}_Metamorphosis")
 image_to_target = tb.imCmp(mr_meta.mp.image.cpu(),T,method = 'compose')
-sl = i3v.imshow_3d_slider(image_to_target, title = 'Metamorphosis result')
+
+
+
+sl = i3p.imshow_3d_slider(image_to_target, title = 'Metamorphosis result')
 image_deformed = tb.imgDeform(S.cpu(),mr_meta.mp.get_deformator(),dx_convention=dx_convention)
 imdef_target = tb.imCmp(image_deformed,T,method = 'compose')
-sl = i3v.imshow_3d_slider(imdef_target, title = 'Metamorphosis only deformation')
+sl = i3p.imshow_3d_slider(imdef_target, title = 'Metamorphosis only deformation')
 ic(mr_meta.mp.image_stock.shape)
-sl = i3v.imshow_3d_slider(mr_meta.mp.image_stock, title = 'Metamorphosis evolution')
+# sl = i3p.imshow_3d_slider(mr_meta.mp.image_stock, title = 'Metamorphosis evolution')
 plt.show()
 
 
@@ -148,6 +149,6 @@ plt.show()
 # We provide some visualisation tools :
 
 # i3v.Visualize_geodesicOptim(mr_meta,alpha=1)
-# plt_v = i3v.compare_3D_images_vedo(T,mr_meta.mp.image_stock.cpu())
+# plt_v = i3p.compare_3D_images_vedo(T,mr_meta.mp.image_stock.cpu())
 # plt_v.show_deformation_flow(deformation,1,step=3)
 # plt_v.plotter.show(interactive=True).close()

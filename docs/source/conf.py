@@ -31,8 +31,8 @@ ignore_files = [
     '*.ipynb',
     'brats_utils.py',
     'visualize_geodesicOptim.py',
-    'toyExample_grayScott_JoinedMetamorphosis.py',
     'weightedMetamorphosis_3D.py',
+    'toyExample_grayScott_JoinedMetamorphosis.py',
     'save_load_metamorphosis.py'
 ]
 
