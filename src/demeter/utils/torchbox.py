@@ -38,7 +38,7 @@ def reg_open(number, size = None,requires_grad= False,device='cpu'):
 
 
 
-def resize_image(image : torch.Tensor,
+def resize_image(image : torch.Tensor | list[torch.Tensor],
                  scale_factor: float | int | Iterable
                  ):
     """
@@ -46,19 +46,24 @@ def resize_image(image : torch.Tensor,
 
 
     :param image: list of tensors [B,C,H,W] or [B,C,D,H,W] torch tensor
-    :param scale_factor: float or list or tuple of image dimention size
+    :param scale_factor: float or list or tuple of image dimension size
 
     : return: tensor of size [B,C,s1*H,s2*W] or [B,C,s1*D, s2*H, s3*W] or list
     containing tensors.
     """
+    if isinstance(image, torch.Tensor):
+        image = [image]
+    device = image[0].device
     Ishape = image[0].shape[2:]
     if isinstance(scale_factor,float | int):
         scale_factor = (scale_factor,)*len(Ishape)
     Ishape_D = tuple([int(s * f) for s,f in zip(Ishape,scale_factor)])
-    id_grid = make_regular_grid(Ishape_D,dx_convention='2square').to(image[0].device)
+    id_grid = make_regular_grid(Ishape_D,dx_convention='2square').to(device).to(image[0].dtype)
     i_s = []
     for i in image:
-        i_s.append(torch.nn.functional.grid_sample(i.to(image[0].device),id_grid,**DLT_KW_GRIDSAMPLE))
+        i_s.append(
+            torch.nn.functional.grid_sample(i.to(device),id_grid,**DLT_KW_GRIDSAMPLE)
+        )
     if len(i_s) == 1:
         return i_s[0]
     return i_s
