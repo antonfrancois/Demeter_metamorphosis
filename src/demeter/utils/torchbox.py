@@ -431,7 +431,6 @@ def imCmp(I1, I2, method= None):
         shape_to_fill = I1.shape [2:] + (1,)
     else:
         raise ValueError(f"I1 should be [B,C,H,W] or [B,C,K,H,W] got {I1.shape}")
-
     if not isinstance(I1,np.ndarray):
         I1 = I1.detach().cpu().numpy()
     if not isinstance(I2,np.ndarray):
@@ -489,6 +488,43 @@ def imCmp(I1, I2, method= None):
                 I2[..., None],
                 ones(shape_to_fill)
             ), axis=-1
+        )
+
+
+def temporal_img_cmp(img_1, img2, method="compose"):
+    T1, C1, D1, H1, W1 = img_1.shape
+    T2, C2, D2, H2, W2 = img2.shape
+    if D1 != D2 or H1 != H2 or W1 != W2:
+        raise ValueError(
+            f"The images must have the same shape, got img_1 : {img_1.shape} and img_2 : {img2.shape}"
+        )
+    if C1 > 1 or C2 > 1:
+        raise ValueError(
+            f"The images must have only one channel, got img_1 : {img_1.shape} and img_2 : {img2.shape}"
+        )
+
+    if T1 == T2 and T1 == 1:
+        return imCmp(img_1, img2, method=method)
+    elif T2 > T1 and T1 == 1:
+        buffer_img = img2
+        img2 = img_1
+        img_1 = buffer_img
+        T1, T2 = T2, T1
+
+    if T1 > T2 and T2 == 1:
+        t_img = np.zeros((T1, D1, H1, W1, 4))
+        for t, im1 in enumerate(img_1):
+            t_img[t] = imCmp(im1[None], img2, method=method)
+        return t_img
+
+    elif T1 == T2 and T1 > 1:
+        t_img = np.zeros((T1, D1, H1, W1, 4))
+        for t, im1, im2 in enumerate(zip(img_1, img2)):
+            t_img[t] = imCmp(im1[None], im2[None], method=method)
+        return t_img
+    else:
+        raise ValueError(
+            f"Supports only temporal images with the same number of time of one temporal image and one static image, got img_1 : {img_1.shape} and img_2 : {img2.shape}"
         )
 
 def checkDiffeo(field):
