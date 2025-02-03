@@ -12,7 +12,7 @@ from . import torchbox as tb
  # TODO : Faire docstring
 class FieldIntegrator:
     def __init__(self,method,save=False,N=None,dx_convention = 'pixel'):
-        """
+        r"""
 
         :param method:
             'fast_exp' :

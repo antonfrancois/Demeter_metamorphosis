@@ -3,7 +3,7 @@ import warnings
 import matplotlib.pyplot as plt
 from math import prod
 
-from abc import ABC, abstractmethod
+
 from .abstract import Geodesic_integrator,Optimize_geodesicShooting
 
 from ..utils.constants import *
@@ -19,8 +19,32 @@ from ..utils import cost_functions as cf
 
 
 class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
+    r"""
+    This class is an extension of the Geodesic_integrator class. It allows to
+    integrate a geodesic with a constraint on the residual and the field using prior
+    masks and fields.
 
-    def __init__(self, residual_mask: torch.Tensor = None | int | float,
+    priors one can add are:
+    - a residual mask: $M: \Omega \times t \rightarrow [0,1]$ a mask that for each time and pixel will control
+    the amount of deformation versus the amount of photometric changes.
+    - an orienting field: $w: \Omega \times t \rightarrow \mathbb{R}^d$ a field that will guide the deformation
+    - an orienting mask: $Q: \Omega \times t \rightarrow [0,1]$ a mask that will control the
+    prevalence of the orienting field over the deformation field.
+    The image evolution is given by the following equation
+    $$\dot{ I}_{t} = - \sqrt{ M_{t} } \left( ((1 - Q_{t}) v_{t} + Q_{t} w_{t}) \nabla I_{t} \right) + \sqrt{ 1 - M_{t} } z_{t} $$
+
+
+    $$\left\{
+	\begin{array}{rl}
+		 v_{t} &= -\sqrt{ M }(1 - Q_{t}) K_{V}( p\nabla I)\\
+         \dot{p_{t}} &= -\sqrt{ M_t } \nabla \cdot [p_{t}( (1 - Q_{t}) v_{t} + Q_{t}w_{t})] \\
+         z_{t} &= \sqrt{ 1 - M_t } p_{t} \\
+         \dot{I_{t}} &= - \sqrt{ M_{t} } \left( ((1 - Q_{t}) v_{t} + Q_{t} w_{t}) \nabla I_{t} \right) + \sqrt{ 1 - M_{t} } z_{t}.
+	\end{array}
+    \right. $$
+    """
+
+    def __init__(self, residual_mask: torch.Tensor  | int | float,
                  orienting_field: torch.Tensor = None,
                  orienting_mask: torch.Tensor = None,
                  sharp = False,
@@ -37,8 +61,9 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
             self.orienting_mask = orienting_mask
             self.orienting_field = orienting_field
             self.n_step = orienting_mask.shape[0]
-        if (residual_mask is None
-                or isinstance(residual_mask,int) or isinstance(residual_mask,float)):
+        if residual_mask is None:
+            raise ValueError("You must set a residual_mask")
+        if (isinstance(residual_mask,int | float)):
             self.flag_W = False
             if not self.flag_O:
                 raise ValueError("You did not set any mask, did you want to use classical Metamorphosis ?")
@@ -89,83 +114,56 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
         return self.__class__.__name__ + f"({mode})\n" \
                                          f"\t {param}\n\t{self.kernelOperator.__repr__()} "
 
+    def _get_rho_(self):
+        return 0
 
     def step(self):
-        if self.flag_O or self.flag_W:
-            self._update_field_oriented_weighted_()
+        self._update_field_()
+        # self.field *= torch.sqrt(self.residual_mask[self._i,0])[...,None]
+        # self.field *= (1 - self.orienting_mask[self._i,0])[...,None]
+        r_mask = self.residual_mask[self._i,0][...,None]
+        if self.flag_O:
+            ic(self.flag_O)
+            o_mask = self.orienting_mask[self._i,0][...,None]
+            composite_field = (1 - o_mask) * self.field + o_mask * self.orienting_field[self._i]
+        # o_mask = self.orienting_mask[self._i,0][...,None]
         else:
-            self._update_field_()
-
-
-        mask = self.residual_mask[self._i,0]
+            ic(self.flag_O)
+            composite_field = self.field
         deform = (self.id_grid -
-                        torch.sqrt(mask[...,None]) * self.field / self.n_step)
-        resi_to_add = (1 - mask) * self.momentum
+                        r_mask * composite_field / self.n_step)
+        resi_to_add = (1 - r_mask[...,0]) * self.momentum
 
-        self._update_image_weighted_semiLagrangian_(deform,resi_to_add,sharp=False)
+        # ic(r_mask.shape,
+        #    o_mask.shape,
+        #    composite_field.shape,
+        #    deform.shape,
+        #    resi_to_add.shape,
+        #       self.momentum.shape,
+        #    )
+        # fig,ax = plt.subplots(1,2)
+        # ax[0].imshow(resi_to_add[0,0].cpu())
+        # ax[1].imshow(self.momentum[0,0].cpu())
+        # plt.show()
+
+        self._update_image_semiLagrangian_(deform,resi_to_add,sharp=False)
         # self._update_momentum_semiLagrangian_(deform)
+        # ic(torch.sqrt(r_mask)[...,0].shape)
         self.momentum  = self._compute_div_momentum_semiLagrangian_(
             deform,
             self.momentum,
-            torch.sqrt(mask)
+            torch.sqrt(r_mask)[...,0],
+            field = composite_field
         )
+        # ic(self.momentum.shape)
 
+        #Note:  we do not return the field like usual but the fields that genrate the deformations
         return (self.image,
-                torch.sqrt(mask)[...,None] * self.field,
+                r_mask * composite_field,
                 resi_to_add)
 
 
-    def step_deprecated(self):
-        if self.flag_O or self.flag_W:
-            self._update_field_oriented_weighted_()
-        else:
-            self._update_field_()
 
-        if self.flag_sharp:
-            self._update_sharp_intermediary_field_()
-            def_z = self._phis[self._i][self._i]
-            def_I = self._phis[self._i][0]
-            if self._get_mu_() != 0:
-                resi_to_add = self._compute_sharp_intermediary_residuals_()
-                # resi_to_add = self.kernelOperator(self._compute_sharp_intermediary_residuals_())
-            if self._i > 0: self._phis[self._i - 1] = None
-        else:
-            def_z = self.id_grid - self.field / self.n_step
-            def_I = def_z
-            resi_to_add = self.momentum
-
-        if self.flag_W:
-            self._update_image_weighted_semiLagrangian_(def_I,resi_to_add,sharp=self.flag_sharp)
-            self._update_momentum_weighted_semiLagrangian_(def_z)
-
-            # DEBUG
-            # print(">> ",self._i)
-            # if v_scalar_n.sum()> 0:# and self._i in [0,3,8,15]:
-            #     fig,ax = plt.subplots(2,2)
-            #     # tb.quiver_plot(self.rf.border_normal_vector(self._i).cpu(),ax=ax[0],step= 5)
-            #     _1_= ax[0,0].imshow(self.residuals.detach().cpu())
-            #     fig.colorbar(_1_,ax=ax[0,0],fraction=0.046, pad=0.04)
-            #     ax[0,0].set_title('z')
-            #     _2_ = ax[0,1].imshow((self.rf.inv_F(self._i)*(div_fzv)).cpu().detach())
-            #     fig.colorbar(_2_,ax=ax[0,1],fraction=0.046, pad=0.04)
-            #     ax[0,1].set_title('div_fzv')
-            #     _3_ = ax[1,0].imshow((( z_time_dtF)).cpu().detach())
-            #     fig.colorbar(_3_,ax=ax[1,0],fraction=0.046, pad=0.04)
-            #     ax[1,0].set_title('z x dtF')
-            #     _4_ = ax[1,1].imshow((border).cpu().detach())
-            #     fig.colorbar(_4_,ax=ax[1,1],fraction=0.046, pad=0.04)
-            #     ax[1,1].set_title('border')
-            #     plt.show()
-            # else:
-            #     print("-------------ZERO------------------")
-            # print(self._i,' : ',border.mean()/div_fzv.mean(), z_time_dtF.mean()/div_fzv.mean())
-
-        else:
-            self._update_image_semiLagrangian_(def_I,resi_to_add,
-                                               sharp = self.flag_sharp)
-            self._update_momentum_semiLagrangian_(def_z)
-
-        return (self.image, self.field, self.momentum)
 
     def compute_field_sim(self):
         if not self.flag_O:
@@ -220,8 +218,8 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
         loss_stock[i, 1] = self.norm_v_2.detach()
 
         loss_stock[i, 2] = self.norm_l2_on_z.detach()
-        if self.mp.flag_O:
-            loss_stock[i, 3] = self.scaprod_v_w.detach()
+        # if self.mp.flag_O:
+        #     loss_stock[i, 3] = self.scaprod_v_w.detach()
 
 
         return loss_stock
@@ -237,6 +235,9 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
 
         return total_cost
 
+    def _get_rho_(self):
+        return "Weighted"
+
     def cost(self, momentum_ini: torch.Tensor) -> torch.Tensor:
         lamb = self.cost_cst
 
@@ -246,29 +247,22 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
         self.data_loss = self.data_term()
 
         # Norm V
-        grad_source = tb.spatialGradient(self.source, dx_convention=self.dx_convention)
-        field_momentum = (grad_source * momentum_ini.unsqueeze(2)).sum(dim=1) #/ C
-        field = self.mp.kernelOperator(field_momentum)
 
-        self.norm_v_2 = .5 * (field_momentum * field).sum() #* prod(self.dx)
+        # grad_source = tb.spatialGradient(self.source, dx_convention=self.dx_convention)
+        # field_momentum = (grad_source * momentum_ini.unsqueeze(2)).sum(dim=1) #/ C
+        # field = self.mp.kernelOperator(field_momentum)
+
+        # self.norm_v_2 = .5 * (field_momentum * field).sum() #* prod(self.dx)
+        self.norm_v_2 = self._compute_V_norm_(momentum_ini,self.source)
 
         # Norm on the residuals only
         self.norm_l2_on_z = .5 * (momentum_ini**2).sum()/prod(self.source.shape[2:])
 
 
         self.total_cost = (self.data_loss +
-                           lamb * (
-                                   self.norm_v_2
-                                   + self.norm_l2_on_z
-                        )
+                           lamb * (self.norm_v_2+ self.norm_l2_on_z)
         )
-        # Oriented field norm
-        if self.mp.flag_O:
-            self.scaprod_v_w = (tb.im2grid(field) * self.mp.orienting_field[0][None]).sum(dim=-1)
-            self.scaprod_v_w *= self.mp.orienting_mask[0]
-            self.scaprod_v_w = self.scaprod_v_w.sum()/prod(self.source.shape[2:])
 
-            self.total_cost += lamb * self.scaprod_v_w
 
         return self.total_cost
 

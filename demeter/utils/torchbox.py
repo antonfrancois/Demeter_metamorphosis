@@ -1202,7 +1202,7 @@ def vect_spline_diffeo(control_matrix,field_size, N = None,forward = True):
     return vff.FieldIntegrator(method='fast_exp')(field.clone(),forward= forward)
 
 class RandomGaussianImage:
-    """
+    r"""
     Generate a random image made from a sum of N gaussians
     and compute the derivative of the image with respect
      to the parameters of the gaussians.
