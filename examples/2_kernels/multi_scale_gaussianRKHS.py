@@ -8,8 +8,8 @@ In this file we look more closely at the multiscale Gaussian Reproducing Kernel 
 The multiscale Gaussian RK is build as a sum of Gaussian RK with different
 sigma. In Metamorphosis, the  RK is used to parameterize V the space of
 acceptable vector fields. In practice, it has a smoothing effect on vector fields.
- However, Gaussian RK erase the high frequency of the vector fields which
- prevents the vector fields to match small details in the images. To overcome this
+However, Gaussian RK erase the high frequency of the vector fields which
+prevents the vector fields to match small details in the images. To overcome this
 issue, we can use a multiscale Gaussian RK, that will keep smoothing properties
 while keeping some high frequency information. It can be seen as a compromise
 kernel.
@@ -17,7 +17,7 @@ kernel.
 """
 
 ######################################################################
-# Importing the necessary libraries
+# First let's Import the necessary libraries
 
 import numpy as np
 
@@ -61,7 +61,6 @@ def see_kernels_filter_2D(sigma_list,ax=None, force_xticks=None):
     if ax is None:
         fig,ax = plt.subplots(figsize=(10,5))
     kernel_multi = multi_RKHS.kernel
-    ic(kernel_multi.max())
     _,h,w = kernel_multi.shape
     tick_max = w if force_xticks is None else force_xticks
     x_scale = (torch.arange(w) - w/2)
@@ -71,10 +70,7 @@ def see_kernels_filter_2D(sigma_list,ax=None, force_xticks=None):
     for i,s in enumerate(sigma_list):
         kernel_m = mono_gauss[i].kernel
         _,hh,ww = kernel_m.shape
-        ic(s, kernel_m.max(),
-            kernel_m.shape,
-           kernel_m.sum()
-           )
+
         # x_scale = (torch.arange(ww)+((tick_max - ww)/2))
         x_scale = (torch.arange(ww) - ww/2)
         ax.plot(x_scale,

@@ -220,18 +220,18 @@ def spatialGradient(image, dx_convention ='pixel'):
 
     Examples
     --------
-    .. code-block:: python
-        H,W = (300,400)
-        rgi = tb.RandomGaussianImage((H, W), 2, 'square',
-                                     a=[-1, 1],
-                                     b=[15, 25],
-                                     c=[[.3*400 , .3*300], [.7*400, .7*300]])
-        image =  rgi.image()
-        theoretical_derivative = rgi.derivative()
-        print(f"image shape : {image.shape}")
-        derivative = tb.spatialGradient(image, dx_convention="square")
-        dx = torch.tensor([[1. / (W - 1), 1. / (H - 1)]], dtype=torch.float64)
-        derivative_2 = tb.spatialGradient(mage, dx_convention=dx)
+
+        >>>H,W = (300,400)
+        >>>rgi = tb.RandomGaussianImage((H, W), 2, 'square',
+        >>>                             a=[-1, 1],
+       >>>                              b=[15, 25],
+        >>>                             c=[[.3*400 , .3*300], [.7*400, .7*300]])
+        >>>image =  rgi.image()
+        >>>theoretical_derivative = rgi.derivative()
+        >>>print(f"image shape : {image.shape}")
+        >>>derivative = tb.spatialGradient(image, dx_convention="square")
+        >>>dx = torch.tensor([[1. / (W - 1), 1. / (H - 1)]], dtype=torch.float64)
+        >>>derivative_2 = tb.spatialGradient(mage, dx_convention=dx)
 
     """
     if isinstance(dx_convention,str):
@@ -740,16 +740,16 @@ def deformation_show(deformation,step=2,
     :return:
 
     Example :
-    cms = mbs.getCMS_allcombinaision()
-
-    H,W = 100,150
-    # vector defomation generation
-    v = mbs.field2D_bspline(cms,(H,W),dim_stack=2).unsqueeze(0)
-    v *= 0.5
-
-    deform_diff = vff.FieldIntegrator(method='fast_exp')(v.clone(),forward= True)
-
-    deformation_show(deform_diff,step=4,check_diffeo=True)
+    >>>cms = mbs.getCMS_allcombinaision()
+    >>>
+    >>>H,W = 100,150
+    >>># vector defomation generation
+    >>>v = mbs.field2D_bspline(cms,(H,W),dim_stack=2).unsqueeze(0)
+    >>>v *= 0.5
+    >>>
+    >>>deform_diff = vff.FieldIntegrator(method='fast_exp')(v.clone(),forward= True)
+    >>>
+    >>>deformation_show(deform_diff,step=4,check_diffeo=True)
     """
 
     fig, axes = plt.subplots(1,2)
@@ -773,14 +773,15 @@ def vectField_show(field,step=2,check_diffeo= False,title="",
     :return:
 
     Example :
-    cms = mbs.getCMS_allcombinaision()
-
-    H,W = 100,150
-    # vector defomation generation
-    v = mbs.field2D_bspline(cms,(H,W),dim_stack=2).unsqueeze(0)
-    v *= 0.5
-
-    vectField_show(v,step=4,check_diffeo=True)
+    ----------
+    >>>cms = mbs.getCMS_allcombinaision()
+    >>>
+    >>>H,W = 100,150
+    >>># vector defomation generation
+    >>>v = mbs.field2D_bspline(cms,(H,W),dim_stack=2).unsqueeze(0)
+    >>>v *= 0.5
+    >>>
+    >>>vectField_show(v,step=4,check_diffeo=True)
     """
 
     fig, axes = plt.subplots(1,2,figsize= (10,5),constrained_layout=True)
@@ -859,9 +860,6 @@ def geodesic_3d_slider(mr):
     # have them updating
     return t_slider
 
-@deco.deprecated("function deprecated. DO NOT USE, see defomation_show")
-def showDef(field,axes=None, grid=None, step=2, title="",check_diffeo=False,color=None):
-     return deformation_show(field)
 
 # =================================================
 #            FIELD RELATED FUNCTIONS
@@ -876,21 +874,41 @@ def field2diffeo(in_vectField, N=None,save= False,forward=True):
    return vff.FieldIntegrator(method='fast_exp')(in_vectField.clone(),forward= forward)
 
 
-def imgDeform(I,deform_grid,dx_convention ='2square',clamp=False):
-    if I.shape[0] > 1 and deform_grid.shape[0] == 1:
-        deform_grid = torch.cat(I.shape[0]*[deform_grid],dim=0)
+def imgDeform(img,deform_grid,dx_convention ='2square',clamp=False):
+    """
+    Apply a deformation grid to an image
+
+    Parameters
+    ----------
+    img : torch.Tensor of shape [B,C,H,W] or [B,C,D,H,W]
+        image to deform
+    deform_grid : torch.Tensor of shape [B,H,W,2] or [B,D,H,W,3]
+        deformation grid
+    dx_convention : str, optional
+        convention of the deformation grid (default '2square')
+    clamp : bool, optional
+        if True, clamp the image between 0 and 1 if the max value is less than 1 else between 0 and 255 (default False)
+
+    Returns
+    -------
+    torch.Tensor
+        deformed image of shape [B,C,H,W] or [B,C,D,H,W]
+    """
+
+    if img.shape[0] > 1 and deform_grid.shape[0] == 1:
+        deform_grid = torch.cat(img.shape[0]*[deform_grid],dim=0)
     if dx_convention == 'pixel':
         deform_grid = pixel_to_2square_convention(deform_grid)
     elif dx_convention == 'square':
         deform_grid = square_to_2square_convention(deform_grid)
-    deformed = F.grid_sample(I.to(deform_grid.dtype),
+    deformed = F.grid_sample(img.to(deform_grid.dtype),
                              deform_grid,
                              **DLT_KW_GRIDSAMPLE
                              )
     # if len(I.shape) == 5:
     #     deformed = deformed.permute(0,1,4,3,2)
     if clamp:
-        max_val = 1 if I.max() <= 1 else 255
+        max_val = 1 if img.max() <= 1 else 255
         # print(f"I am clamping max_val = {max_val}, I.max,min = {I.max(),I.min()},")
         deformed = torch.clamp(deformed,min=0,max=max_val)
     return deformed
@@ -952,21 +970,14 @@ class RandomGaussianImage:
 
     Example:
     --------
-    .. code-block:: python
-
-            RGI = RandomGaussianImage((100,100),5,'pixel')
-            image = RGI.image()
-            derivative = RGI.der
+    >>>RGI = RandomGaussianImage((100,100),5,'pixel')
+    >>> image = RGI.image()
+    >>> derivative = RGI.derivative()
 
     """
 
 
     def __init__(self, size, n_gaussians, dx_convention,a =None,b=None,c=None):
-        """
-
-        :param size: tuple with the image dimensions to create
-        :param n_gaussians: Number of gaussians to sum.
-        """
         if a is None:
             self.a = 2 * torch.rand((n_gaussians,)) - 1
         else:
@@ -1064,7 +1075,31 @@ class RandomGaussianImage:
 
 
 class RandomGaussianField:
+    """
+    Generate a random field made from a sum of N gaussians
+    and compute the theoretical divergence of the field. It is usefully
+    for testing function on random generated fields with known expressions,
+    making it possible to compute theoretical values. It uses the function RandomGaussianImage.
 
+    If $v : \Omega \mapsto \mathbb{R}^d$ for all $n < d$
+
+    $$ v_n = \sum_{i=1}^{N} a_i \exp(- \frac{||X - c_i||^2}{2b_i^2})$$
+
+    Parameters:
+    -----------
+    size: tuple
+        tuple with the image dimensions to create (H,W) will create a 2d field  of shape (H,W,2),
+         ((D,H,W,3) in 3d)
+    n_gaussian: int
+        Number of gaussians to sum.
+    a: list of float
+        list of the a parameters of the gaussians controlling the amplitude
+    b: list of float
+        list of the b parameters of the gaussians controlling the width
+    c: list of float
+        list of the c parameters of the gaussians controlilng the position
+
+    """
     def __init__(self, size, n_gaussian, dx_convention,a=None,b=None,c=None):
         """
         :param size: tuple with dimensions  of the field to create with convention:
@@ -1099,30 +1134,39 @@ class RandomGaussianField:
 
 def field_2d_jacobian(field):
     r"""
+    compute the jacobian of the field
 
-    :param field: field.size (B,H,W,2)
-    :return: output.size = (B,2,2,H,W)
+    parameters:
+    -----------
+    field: field.size (b,h,w,2)
+
+    returns:
+    --------
+    jacobian of the field.size = (b,2,2,h,w)
 
     :example:
-    field = torch.zeros((100,100,2))
-    field[::2,:,0] = 1
-    field[:,::2,1] = 1
 
-    jaco =  field_2d_jacobian(field)
+    .. code-block:: python
+
+        field = torch.zeros((100,100,2))
+        field[::2,:,0] = 1
+        field[:,::2,1] = 1
+
+        jaco =  field_2d_jacobian(field)
 
 
-    plt.rc('text',usetex=True)
-    fig, axes = plt.subplots(2,2)
-    axes[0,0].imshow(jaco[0,0,0,:,:].detach().numpy(),cmap='gray')
-    axes[0,0].set_title(r"$\frac{\partial f_1}{\partial x}$")
-    axes[0,1].imshow(jaco[0,0,1,:,:].detach().numpy(),cmap='gray')
-    axes[0,1].set_title(r"$\frac{\partial f_1}{\partial y}$")
-    axes[1,0].imshow(jaco[0,1,0,:,:].detach().numpy(),cmap='gray')
-    axes[1,0].set_title(r"$\frac{\partial f_2}{\partial x}$")
-    axes[1,1].imshow(jaco[0,1,1,:,:].detach().numpy(),cmap='gray')
-    axes[1,1].set_title(r"$\frac{\partial f_2}{\partial y}$")
+        plt.rc('text',usetex=true)
+        fig, axes = plt.subplots(2,2)
+        axes[0,0].imshow(jaco[0,0,0,:,:].detach().numpy(),cmap='gray')
+        axes[0,0].set_title(r"$\frac{\partial f_1}{\partial x}$")
+        axes[0,1].imshow(jaco[0,0,1,:,:].detach().numpy(),cmap='gray')
+        axes[0,1].set_title(r"$\frac{\partial f_1}{\partial y}$")
+        axes[1,0].imshow(jaco[0,1,0,:,:].detach().numpy(),cmap='gray')
+        axes[1,0].set_title(r"$\frac{\partial f_2}{\partial x}$")
+        axes[1,1].imshow(jaco[0,1,1,:,:].detach().numpy(),cmap='gray')
+        axes[1,1].set_title(r"$\frac{\partial f_2}{\partial y}$")
 
-    plt.show()
+        plt.show()
     """
 
     f_d = grid2im(field)
@@ -1244,59 +1288,81 @@ def field_divergence(field,dx_convention = 'pixel'):
     r"""
     make the divergence of a field, for each pixel $p$ in I
     $$div(I(p)) = \sum_{i=1}^C \frac{\partial I(p)_i}{\partial x_i}$$
-    :param field: (B,H,W,2) tensor
-    :return:
 
-    cms = torch.tensor([  # control matrices
-    [[0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, +1, 0, -1, 0, -1, 0, -1, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, +1, 0, -1, 0, +1, 0, +1, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, +1, 0, +1, 0, -1, 0, +1, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, -1, 0, -1, 0, -1, 0, +1, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
-     ],
-    [[0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, +1, 0, +1, 0, -1, 0, +1, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],#[0, .2, .75, 1, 0],
-     [0, -1, 0, -1, 0, -1, 0, +1, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, +1, 0, -1, 0, -1, 0, -1, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, +1, 0, -1, 0, +1, 0, +1, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0]]
-    ],requires_grad=False,dtype=torch.float)
+    Parameters:
+    -----------
+    field: torch.Tensor
+        of shape (B,H,W,2) or (B,D,H,W,3)
 
-    field_size = (20,20)
-    field = mbs.field2D_bspline(cms,field_size,
-                                degree=(3,3),dim_stack=2).unsqueeze(0)
+    Returns:
+    --------
+    div: torch.Tensor
+        of shape (B,2,2H,W) or (B,3,3,D,H,W)
+    Example:
+    ---------
 
-    # field_diff = vect_spline_diffeo(cms,field_size)
-    H,W = field_size
-    xx, yy = torch.meshgrid(torch.linspace(-1, 1, H), torch.linspace(-1, 1, W))
+    .. code-block:: python
 
-    div = field_2d_divergence(field)
+        cms = torch.tensor([  # control matrices
+        [[0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, +1, 0, -1, 0, -1, 0, -1, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, +1, 0, -1, 0, +1, 0, +1, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, +1, 0, +1, 0, -1, 0, +1, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, -1, 0, -1, 0, -1, 0, +1, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0],
+         ],
+        [[0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, +1, 0, +1, 0, -1, 0, +1, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0],#[0, .2, .75, 1, 0],
+         [0, -1, 0, -1, 0, -1, 0, +1, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, +1, 0, -1, 0, -1, 0, -1, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, +1, 0, -1, 0, +1, 0, +1, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0]]
+        ],requires_grad=False,dtype=torch.float)
 
-    # _,d_ax = plt.subplots()
-    fig,ax = plt.subplots()
+        field_size = (20,20)
+        field = mbs.field2D_bspline(cms,field_size,
+                                    degree=(3,3),dim_stack=2).unsqueeze(0)
 
-    div_plot = ax.imshow(div[0,0,:,:],origin='lower')
-    ax.quiver(field[0,:,:,0],field[0,:,:,1])
-    fig.colorbar(div_plot)
-    plt.show()
+        # field_diff = vect_spline_diffeo(cms,field_size)
+        H,W = field_size
+        xx, yy = torch.meshgrid(torch.linspace(-1, 1, H), torch.linspace(-1, 1, W))
+
+        div = field_2d_divergence(field)
+
+        # _,d_ax = plt.subplots()
+        fig,ax = plt.subplots()
+
+        div_plot = ax.imshow(div[0,0,:,:],origin='lower')
+        ax.quiver(field[0,:,:,0],field[0,:,:,1])
+        fig.colorbar(div_plot)
+        plt.show()
     """
     return Field_divergence(dx_convention)(field)
 
 def pixel_to_2square_convention(field, is_grid = True):
-    """ Convert a field in spacial pixelic convention in one on as
+    """
+    Convert a field in spatial pixelic convention in one on as
     [-1,1]^2 square as requested by pytorch's gridSample
 
-    :field: (torch tensor) of size [T,H,W,2] or [T,D,H,W,3]
-    :grid: (bool, default = True) if true field is considered as a deformation (i.e.: field = (id + v))
-    else field is a vector field (i.e.: field = v)
-    :return:
+    Parameters
+    ----------
+    field : torch.Tensor
+        of size [T,H,W,2] or [T,D,H,W,3]
+    is_grid : bool
+        if True field is considered as a deformation (i.e.: field = (id + v))
+        else field is a vector field (i.e.: field = v)
+        (default is True)
+
+    Returns
+    -------
+    field : torch.Tensor
+        of size [T,H,W,2] or [T,D,H,W,3]
     """
     field = field.clone()
     if field.shape[-1] == 2 :
