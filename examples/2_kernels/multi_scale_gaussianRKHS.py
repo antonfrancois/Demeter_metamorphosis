@@ -1,16 +1,16 @@
 """
 .. _mutli_scale_gaussianRK:
 
-A multi-scale Gaussian Reproducing Kernel
+A multiscale Gaussian Reproducing Kernel
 ================================================
 
-In this file we look more closely at the multi-scale Gaussian Reproducing Kernel (RK)
-The multi-scale Gaussian RK is build as a sum of Gaussian RK with different
+In this file we look more closely at the multiscale Gaussian Reproducing Kernel (RK)
+The multiscale Gaussian RK is build as a sum of Gaussian RK with different
 sigma. In Metamorphosis, the  RK is used to parameterize V the space of
-acceptable vector fields. In practice, it have a smoothing effect on vector fields.
- However, Gaussian RK erase the high frequency of the vector fields wich
+acceptable vector fields. In practice, it has a smoothing effect on vector fields.
+ However, Gaussian RK erase the high frequency of the vector fields which
  prevents the vector fields to match small details in the images. To overcome this
-issue, we can use a multi-scale Gaussian RK, that will keep smoothing properties
+issue, we can use a multiscale Gaussian RK, that will keep smoothing properties
 while keeping some high frequency information. It can be seen as a compromise
 kernel.
 

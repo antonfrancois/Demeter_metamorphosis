@@ -158,9 +158,14 @@ class Visualize_GeodesicOptim_plt:
         try:
             return self.tmp_img_cmp_w_target
         except AttributeError:
+            def mult_clip(img, factor):
+                return torch.clip(img * factor, 0, 1)
             self.tmp_img_cmp_w_target = tb.temporal_img_cmp(
-                self.geodesicOptim.mp.image_stock,
-                self.geodesicOptim.target,
+                 # mult_clip(self.geodesicOptim.mp.image_stock, 1.5),
+                 # mult_clip(self.geodesicOptim.target, 1.5),
+                 self.geodesicOptim.mp.image_stock,
+                 self.geodesicOptim.target,
+
                 method="compose",
             )
             return self.tmp_img_cmp_w_target
