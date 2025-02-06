@@ -3,7 +3,7 @@ name: Deploy Sphinx Documentation
 on:
   push:
     branches:
-      - preparation-pip  # Branche principale où vous travaillez
+      - main  # Branche principale où vous travaillez
 
 jobs:
   deploy:
