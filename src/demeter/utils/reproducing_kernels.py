@@ -97,7 +97,7 @@ def get_gaussian_kernel1d(sigma,
                           dx = 1,
                           kernel_size = None,
                           normalized = True,
-                          kernel_reach=6,
+                          kernel_reach=3,
                           device='cpu',
                           dtype=torch.float):
     r"""Function that returns Gaussian filter coefficients.
@@ -129,7 +129,7 @@ def get_gaussian_kernel1d(sigma,
         - Output: :math:`(K,)`
     """
     if kernel_size is None:
-        s = kernel_reach
+        s = kernel_reach * 2
         kernel_size = max(s,int(sigma*s/dx)) + (1 - max(s,int(sigma*s/dx)) %2)
     if isinstance(sigma,int):
         sigma = float(sigma)
@@ -158,7 +158,7 @@ def get_gaussian_kernel2d(
         dx =(1.,1.),
         kernel_size=None,
         normalized =True,
-        kernel_reach=6,
+        kernel_reach=3,
     ):
     r"""Function that returns Gaussian filter coefficients.
 
@@ -192,7 +192,7 @@ def get_gaussian_kernel3d(sigma,
                           dx=(1.,)*3 ,
                           kernel_size =None,
                           normalized =True,
-                          kernel_reach=6,
+                          kernel_reach=3,
                           ):
     r"""Function that returns Gaussian filter coefficients.
 
@@ -462,31 +462,29 @@ class GaussianRKHS(torch.nn.Module):
         ``'replicate'`` or ``'circular'``. Default: ``'reflect'``.
     normalized (bool):
         If True, kernel will be L1 normalized. (kernle.max wil be 1)
+    kernel_reach (int):
+        value times sigma that controls the distance in pixels between
+        the center and the edge of the kernel. The greater it is
+        the closer we are to an actual gaussian kernel. (default = 6)
 
     Examples:
     ---------
-    >>> #import matplotlib.pyplot as plt
-    >>> import numpy as np
-    >>> import nibabel as nib
-    >>> import image_3d_visualisation as iv3
-    >>> import reproducing_kernels as rkhs
+
     >>> import torch
+    >>> import demeter.utils.torchbox as tb
+    >>> import demeter.utils.reproducing_kernels as rk
     >>>
-    >>> %matplotlib qt
-    >>> irm_type = 'flair'
-    >>> folder_name = 'Brats18_CBICA_APY_1'
-    >>> img = nib.load(ROOT_DIRECTORY+'/../data/brats/'+folder_name+'/'+folder_name+'_'+irm_type+'.nii.gz')
-    >>> # img.affine
-    >>> img_data = torch.Tensor(img.get_fdata())[None,None]
-    >>> sigma = (3,5,5)
-    >>> # img_data = torch.Tensor(img.get_fdata()[125])[None,None]
-    >>> # sigma = (5,5)
-    >>> blured = rkhs.GaussianRKHS(sigma)(img_data)
-    >>> # fig,ax = plt.subplots(1,2)
-    >>> # ax[0].imshow(img_data[0,0])
-    >>> # ax[1].imshow(blured[0,0])
-    >>> iv3.imshow_3d_slider(img_data)
-    >>> iv3.imshow_3d_slider(blured)
+    >>>img_name = '01'           # simple disk
+    >>>img_name = 'sri24'      # slice of a brain
+    >>>img = tb.reg_open(img_name,size = (300,300))
+    >>>sigma = (3,5)
+    >>>kernelOp = rk.GaussianRKHS(sigma)
+    >>>print(kernelOp)
+    >>>blured = kernelOp(img_data)
+    >>>fig,ax = plt.subplots(1,2)
+    >>>ax[0].imshow(img_data[0,0])
+    >>>ax[1].imshow(blured[0,0])
+    >>>plt.show()
     """
     def __init__(self,sigma : Tuple,
                  border_type: str = 'replicate',
@@ -558,7 +556,9 @@ class GaussianRKHS(torch.nn.Module):
         return self.__class__.__name__+\
         ','+str(self._dim)+'D '+\
         f'\n\tfilter :{self.filter.__name__}, '+sig_str+\
-        f'\n\tkernel_size :{tuple(self.kernel.shape)}'
+        f'\n\tkernel_size :{tuple(self.kernel.shape)}'+\
+        f'\n\tkernel_reach :{self.kernel_reach}'+\
+        f'\n\tnormalized :{self.normalized}'
 
     def forward(self, input: torch.Tensor):
         """
@@ -579,6 +579,13 @@ class GaussianRKHS(torch.nn.Module):
             raise ValueError(f"{self.__class__.__name__} was initialized "
                              f"with a {self._dim}D mask and input shape is : "
                              f"{input.shape}")
+
+    def plot(self):
+        if self._dim == 2:
+            plot_gaussian_kernel_2d(self.kernel, self.sigma)
+        elif self._dim == 3:
+            plot_gaussian_kernel_3d(self.kernel, self.sigma)
+
 
 class VolNormalizedGaussianRKHS(torch.nn.Module):
     """

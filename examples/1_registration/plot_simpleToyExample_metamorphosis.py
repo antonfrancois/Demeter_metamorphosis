@@ -23,12 +23,8 @@ except NameError:
 
 
 import torch
-# import kornia.filters as flt
 import matplotlib.pyplot as plt
-from demeter import DLT_KW_IMAGE,GRIDDEF_YELLOW, ROOT_DIRECTORY
-# import demeter as dm
-# %load_ext autoreload
-# %autoreload 2
+from demeter import DLT_KW_IMAGE, ROOT_DIRECTORY
 import demeter.utils.reproducing_kernels as rk
 import demeter.metamorphosis as mt
 import demeter.utils.torchbox as tb
@@ -73,7 +69,7 @@ plt.show()
 image_subdivisions = 10
 sigma = rk.get_sigma_from_img_ratio(T.shape,subdiv = image_subdivisions)
 
-kernelOperator = rk.GaussianRKHS(sigma,kernel_reach=7)
+kernelOperator = rk.GaussianRKHS(sigma,kernel_reach=4)
 
 rk.plot_kernel_on_image(kernelOperator,image= T,subdiv=image_subdivisions)
 plt.show()
