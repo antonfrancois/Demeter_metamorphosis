@@ -30,6 +30,10 @@ image evolution is not only modelled by deformation, we allow adding intensity a
 time for every voxel, making topological changes possible. Metamorphosis is solved through
 an Hamiltonian formulation and the momentum control both the deformation and the intensity changes.
 
+You can find more information on the [documentation](https://antonfrancois.github.io/Demeter_metamorphosis/)
+but also follow a rapid introduction in the following slides:
+[slides](https://slides.com/antonfrancois/metamorphosis-presentation-inria)
+<iframe src="https://slides.com/antonfrancois/metamorphosis-presentation-inria/embed" width="576" height="420" title="Tutorial Demeter" scrolling="no" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
 
 ## Installation
 At the moment, demeter-metamorphosis is available on linux and macOS only.
