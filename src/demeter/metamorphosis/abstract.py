@@ -783,110 +783,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                     self.field_stock[i].unsqueeze(0), step=10, ax=ax[i], color="red"
                 )
 
-    def save_to_gif(self, object, file_name, folder=None, delay=40, clean=True):
-
-        # prepare list of object
-        if "image" in object and "deformation" in object:
-            image_list_for_gif = []
-            image_kw = dict()
-            for n in range(self.n_step):
-                deformation = self.get_deformation(n).cpu()
-                img = self.image_stock[n, 0].cpu().numpy()
-                fig, ax = plt.subplots()
-                ax.imshow(img, **DLT_KW_IMAGE)
-                tb.gridDef_plot_2d(
-                    deformation,
-                    ax=ax,
-                    step=10,
-                    # color='#FFC759',
-                    color="#E5BB5F",
-                    linewidth=3,
-                )
-                image_list_for_gif.append(fig_to_image(fig, ax))
-            plt.close(fig)
-
-        elif ("image" in object or "I" in object) and "quiver" in object:
-            image_list_for_gif = []
-            for n in range(self.n_step):
-                deformation = self.get_deformation(n).cpu()
-                if n != 0:
-                    deformation -= self.id_grid.cpu()
-                img = self.image_stock[n, 0].cpu().numpy()
-                fig, ax = plt.subplots()
-                ax.imshow(img, **DLT_KW_IMAGE)
-                tb.quiver_plot(
-                    deformation,
-                    ax=ax,
-                    step=10,
-                    color="#E5BB5F",
-                )
-                image_list_for_gif.append(fig_to_image(fig, ax))
-            image_kw = dict()
-            plt.close(fig)
-        elif "image" in object or "I" in object:
-            image_list_for_gif = [I[0].numpy() for I in self.image_stock]
-            image_kw = DLT_KW_IMAGE
-        elif "residual" in object or "z" in object:
-            image_list_for_gif = [z[0].numpy() for z in self.momentum_stock]
-            # image_kw = DLT_KW_RESIDUALS
-            image_kw = dict(
-                cmap="RdYlBu_r",
-                origin="lower",
-                vmin=self.momentum_stock.min(),
-                vmax=self.momentum_stock.max(),
-            )
-        elif "deformation" in object:
-            image_list_for_gif = []
-            for n in range(self.n_step):
-                deformation = self.get_deformation(n).cpu()
-                if n == 0:
-                    deformation += self.id_grid.cpu()
-                fig, ax = plt.subplots()
-                tb.gridDef_plot_2d(
-                    deformation,
-                    ax=ax,
-                    step=10,
-                    color="black",
-                    # color='#E5BB5F',
-                    linewidth=5,
-                )
-                image_list_for_gif.append(fig_to_image(fig, ax))
-            image_kw = dict()
-            plt.close(fig)
-        elif "quiver" in object:
-            image_list_for_gif = []
-            for n in range(self.n_step):
-                deformation = self.get_deformation(n).cpu()
-                if n != 0:
-                    deformation -= self.id_grid.cpu()
-                fig, ax = plt.subplots()
-                tb.quiver_plot(
-                    deformation,
-                    ax=ax,
-                    step=10,
-                    color="black",
-                )
-                image_list_for_gif.append(fig_to_image(fig, ax))
-            image_kw = dict()
-            plt.close(fig)
-        else:
-            raise ValueError(
-                "object must be a string containing at least"
-                "one of the following : `image`,`residual`,`deformation`."
-            )
-
-        path, im = save_gif_with_plt(
-            image_list_for_gif,
-            file_name,
-            folder,
-            duplicate=True,
-            image_args=image_kw,
-            verbose=True,
-            delay=delay,
-            clean=clean,
-        )
-        return path, im
-
 
 class Optimize_geodesicShooting(torch.nn.Module, ABC):
     """Abstract method for geodesic shooting optimisation. It needs to be provided with an object
@@ -1469,6 +1365,138 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         print("Optimisation saved in " + path + file_save + "\n")
 
         return file_save, path
+
+    def save_to_gif(self, object, file_name, folder=None, delay=40, clean=True):
+
+        # prepare list of object
+        if "image" in object and "deformation" in object:
+            # source image
+            fig, ax = plt.subplots()
+            ax.imshow(self.source[0].cpu().numpy(), **DLT_KW_IMAGE)
+            tb.gridDef_plot_2d(self.id_grid,ax=ax,step=10,color="#E5BB5F",linewidth=3)
+
+            image_list_for_gif = [fig_to_image(fig, ax)]
+            image_kw = dict()
+            for n in range(self.mp.n_step):
+                deformation = self.mp.get_deformation(n).cpu()
+                img = self.mp.image_stock[n, 0].cpu().numpy()
+                fig, ax = plt.subplots()
+                ax.imshow(img, **DLT_KW_IMAGE)
+                tb.gridDef_plot_2d(
+                    deformation,
+                    ax=ax,
+                    step=10,
+                    # color='#FFC759',
+                    color="#E5BB5F",
+                    linewidth=3,
+                )
+                image_list_for_gif.append(fig_to_image(fig, ax))
+            plt.close(fig)
+
+        elif ("image" in object or "I" in object) and "quiver" in object:
+            image_list_for_gif = []
+            for n in range(self.n_step):
+                deformation = self.mp.get_deformation(n).cpu()
+                if n != 0:
+                    deformation -= self.id_grid.cpu()
+                img = self.mp.image_stock[n, 0].cpu().numpy()
+                fig, ax = plt.subplots()
+                ax.imshow(img, **DLT_KW_IMAGE)
+                tb.quiver_plot(
+                    deformation,
+                    ax=ax,
+                    step=10,
+                    color="#E5BB5F",
+                )
+                image_list_for_gif.append(fig_to_image(fig, ax))
+            image_kw = dict()
+            plt.close(fig)
+
+        elif 'image' in object and 'cmp' in object:
+            method="segw"
+            image_list_for_gif = [
+                tb.imCmp(self.source, self.target, method=method)
+            ]
+            ic(image_list_for_gif[0].shape,image_list_for_gif[0].min(),image_list_for_gif[0].max())
+            ic(self.target.max(),self.source.max())
+            for n in range(self.mp.n_step):
+                img = self.mp.image_stock[n,None]
+                image_list_for_gif.append(
+                    tb.imCmp(img, self.target, method=method)
+                )
+
+                ic(image_list_for_gif[0].shape,image_list_for_gif[0].min(),image_list_for_gif[0].max(),
+                   img.max())
+
+            image_kw = DLT_KW_IMAGE
+
+        elif "image" in object or "I" in object:
+            image_list_for_gif = [self.source[0,0].cpu().numpy()]
+            tmp_list= [img[0].numpy() for img in self.mp.image_stock]
+            image_list_for_gif += tmp_list
+            image_kw = DLT_KW_IMAGE
+        elif "residual" in object or "z" in object:
+            image_list_for_gif = [z[0].numpy() for z in self.mp.momentum_stock]
+            # image_kw = DLT_KW_RESIDUALS
+            image_kw = dict(
+                cmap="RdYlBu_r",
+                origin="lower",
+                vmin=self.mp.momentum_stock.min(),
+                vmax=self.mp.momentum_stock.max(),
+            )
+        elif "deformation" in object:
+            image_list_for_gif = []
+            for n in range(self.mp.n_step):
+                deformation = self.mp.get_deformation(n).cpu()
+                if n == 0:
+                    deformation += self.id_grid.cpu()
+                fig, ax = plt.subplots()
+                tb.gridDef_plot_2d(
+                    deformation,
+                    ax=ax,
+                    step=10,
+                    color="black",
+                    # color='#E5BB5F',
+                    linewidth=5,
+                )
+                image_list_for_gif.append(fig_to_image(fig, ax))
+            image_kw = dict()
+            plt.close(fig)
+        elif "quiver" in object:
+            image_list_for_gif = []
+            for n in range(self.mp.n_step):
+                deformation = self.mp.get_deformation(n).cpu()
+                if n != 0:
+                    deformation -= self.id_grid.cpu()
+                fig, ax = plt.subplots()
+                tb.quiver_plot(
+                    deformation,
+                    ax=ax,
+                    step=10,
+                    color="black",
+                )
+                image_list_for_gif.append(fig_to_image(fig, ax))
+            image_kw = dict()
+            plt.close(fig)
+        else:
+            raise ValueError(
+                "object must be a string containing at least"
+                "one of the following : `image`,`residual`,`deformation`."
+            )
+
+        path, im = save_gif_with_plt(
+            image_list_for_gif,
+            file_name,
+            folder,
+            duplicate=True,
+            image_args=image_kw,
+            verbose=True,
+            delay=delay,
+            clean=clean,
+        )
+        return path, im
+
+
 
     # ==================================================================
     #                 PLOTS
