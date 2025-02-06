@@ -457,6 +457,7 @@ def imCmp(I1, I2, method= None):
             rgb =concatenate(
                 (r,g,b,ones(shape_to_fill)), axis=-1
             )
+            rgb = np.clip(rgb,0,1)
             # print(f"r {r.min()};{r.max()}")
             return rgb
         if 'h' in method:
