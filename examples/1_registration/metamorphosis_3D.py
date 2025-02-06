@@ -1,5 +1,6 @@
 """
 .. _metamorphosis_3D:
+
 Metamorphosis on 3D images
 ================================================
 

@@ -1,5 +1,3 @@
-
-
 For advanced users
 ================================================
 
@@ -50,7 +48,7 @@ to the `optimizer`. In the `Optimize_geodesicShooting` class one can access
 the `integrator` by calling the attribute `Optimize_geodesicShooting.mp`, mp
 standing for metamorphosis path. This choice was made for conciseness.
 
-More precise explanations : The LDDMM case
+More precise explanations : The classic Metamorphic case
 -----------------------------------------------------------------------------------------------
 
 As you might know, the LDDMM algorithm can be seen as a particular case of the
@@ -76,7 +74,7 @@ An optimal trajectory or geodesic under the conditions given by :math:`H` is:
     p_t &= z_t\\
     v_t &= -K_V\left( z_t\nabla q_t \right)  \end{array}\right.
 
-These equations are written in the continuous case. In this document, all discretization choices made during the implementation are detailed.
+These equations are written in the continuous case. In this document, all discretisation choices made during the implementation are detailed.
 
 To solve the registration problem, a geodesic shooting strategy is used. For this, a relaxed version of :math:`H` is minimized:
 
@@ -90,7 +88,7 @@ You may have noticed that in the above equation :math:`E(p_{0})` depends only on
 
 .. math::
 
-    \forall t \in [0,1], \|v_{0}\|^2_{V} = \|v_{t}\|^2_{V}; \|v_{0}\|^2_{2} = \|z_{t}\|^2_{2}.
+    \forall t \in [0,1], \|v_{0}\|^2_{V} = \|v_{t}\|^2_{V}; \|z_{0}\|^2_{2} = \|z_{t}\|^2_{2}.
 
 This property is used to save computation time. In practice, due to numerical scheme choices, norm conservation may not be achieved. In this case, it is possible to optimize over the set of norms and :math:`E` becomes:
 
@@ -106,6 +104,7 @@ Contributing to Demeter:
 
 Posting an issue:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 If you have any questions, need help with the library or you have an incredible ideas that you want to share, do not hesitate to post an issue on the github repository. The issue can be about a bug, a feature request, or a question about the code. The more precise you are in your issue, the more likely you are to get a quick answer. Here are some guidelines to help you write a good issue:
  `Guides lines on Issues <https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-an-issue>`_
 
