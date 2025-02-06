@@ -20,7 +20,7 @@ from ..utils.reproducing_kernels import (
 )
 
 
-def find_meta_optimiser_from_repr(repr_str):
+def _find_meta_optimiser_from_repr_(repr_str):
     if "ConstrainedMetamorphosis_Shooting" in repr_str:
         return ConstrainedMetamorphosis_integrator, ConstrainedMetamorphosis_Shooting
     if "Metamorphosis_Shooting" in repr_str:

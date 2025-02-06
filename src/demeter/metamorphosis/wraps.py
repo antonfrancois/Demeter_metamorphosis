@@ -14,7 +14,7 @@ from ..utils import torchbox as tb
 from ..utils.decorators import time_it
 
 
-def commun_before(momentum_ini, source):
+def _commun_before(momentum_ini, source):
     if type(momentum_ini) in [int, float]:
         momentum_ini = momentum_ini * torch.ones(source.shape, device=source.device)
     momentum_ini.requires_grad = True
@@ -22,7 +22,7 @@ def commun_before(momentum_ini, source):
     return momentum_ini
 
 
-def commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef):
+def _commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef):
     if not safe_mode:
         mr.forward(momentum_ini, n_iter=n_iter, grad_coef=grad_coef)
     else:
@@ -89,11 +89,11 @@ def lddmm(
 
     Examples
     --------
-    .. code-block:: python
+    TODO : Add examples
 
     """
 
-    momentum_ini = commun_before(momentum_ini, source)
+    momentum_ini = _commun_before(momentum_ini, source)
     if sharp:
         integration_method = "sharp"
 
@@ -115,7 +115,7 @@ def lddmm(
         hamiltonian_integration=hamiltonian_integration,
     )
 
-    mr = commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef)
+    mr = _commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef)
 
     return mr
 
@@ -139,8 +139,12 @@ def metamorphosis(
     dx_convention="pixel",
     hamiltonian_integration=False,
 ):
+    """
 
-    momentum_ini = commun_before(momentum_ini, source)
+
+    """
+
+    momentum_ini = _commun_before(momentum_ini, source)
     if sharp:
         integration_method = "sharp"
 
@@ -162,7 +166,7 @@ def metamorphosis(
         hamiltonian_integration=hamiltonian_integration,
     )
 
-    mr = commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef)
+    mr = _commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef)
     return mr
 
 
@@ -188,7 +192,7 @@ def weighted_metamorphosis(
 ):
     print("plop")
     device = source.device
-    momentum_ini = commun_before(momentum_ini, source)
+    momentum_ini = _commun_before(momentum_ini, source)
 
     mp_weighted = cn.ConstrainedMetamorphosis_integrator(
         residual_mask=residual_mask,
@@ -205,7 +209,7 @@ def weighted_metamorphosis(
         data_term=data_term,
     )
 
-    mr_weighted = commun_after(mr_weighted, momentum_ini, safe_mode, n_iter, grad_coef)
+    mr_weighted = _commun_after(mr_weighted, momentum_ini, safe_mode, n_iter, grad_coef)
     return mr_weighted
 
 
@@ -247,7 +251,7 @@ def oriented_metamorphosis(
         # optimizer_method='LBFGS_torch')
         optimizer_method="adadelta",
     )
-    mr_orient = commun_after(mr_orient, momentum_ini, safe_mode, n_iter, grad_coef)
+    mr_orient = _commun_after(mr_orient, momentum_ini, safe_mode, n_iter, grad_coef)
     return mr_orient
 
 
@@ -268,7 +272,7 @@ def constrained_metamorphosis(
     optimizer_method='LBFGS_torch',
    safe_mode=True,
 ):
-    momentum_ini = commun_before(momentum_ini, source)
+    momentum_ini = _commun_before(momentum_ini, source)
 
     # start = time.time()
     mp_constr = cn.ConstrainedMetamorphosis_integrator(
@@ -284,7 +288,7 @@ def constrained_metamorphosis(
         source, target, mp_constr, cost_cst=cost_cst, optimizer_method="LBFGS_torch"
     )
     # optimizer_method='adadelta')
-    mr_constr = commun_after(mr_constr, momentum_ini, safe_mode, n_iter, grad_coef)
+    mr_constr = _commun_after(mr_constr, momentum_ini, safe_mode, n_iter, grad_coef)
     return mr_constr
 
 

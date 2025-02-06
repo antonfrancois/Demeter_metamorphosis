@@ -470,7 +470,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self.image = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
 
         if self._get_rho_() < 1:
-            ic(residuals.max().item(),residuals.min().item())
             self.image += residuals / self.n_step
 
     def _update_sharp_intermediary_field_(self):

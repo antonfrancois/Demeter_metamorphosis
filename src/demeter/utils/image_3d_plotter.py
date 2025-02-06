@@ -51,14 +51,17 @@ class Visualize_GeodesicOptim_plt:
         name: str,
         path_save: str | None = None,
     ):
+        # Constants:
+        my_white = (0.7, 0.7, 0.7, 1)
+        my_dark = (0.1, 0.1, 0.1, 1)
+        self.imcmp_method = "segh" # compose
+
         self.geodesicOptim = geodesicOptim  # .to_device("cpu")
         self.path = (
             "examples/results/plt_mr_visualization" if path_save is None else path_save
         )
         self.name = name
 
-        my_white = (0.7, 0.7, 0.7, 1)
-        my_dark = (0.1, 0.1, 0.1, 1)
 
         # make fig, ax, sliders
         self.fig, self.ax = plt.subplots(1, 3, constrained_layout=False)
@@ -166,7 +169,7 @@ class Visualize_GeodesicOptim_plt:
                  self.geodesicOptim.mp.image_stock,
                  self.geodesicOptim.target,
 
-                method="compose",
+                method=self.imcmp_method,
             )
             return self.tmp_img_cmp_w_target
 

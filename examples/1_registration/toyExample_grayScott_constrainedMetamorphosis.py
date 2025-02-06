@@ -23,7 +23,7 @@ except NameError:
 #####################################################################
 # Import the necessary packages
 
-from demeter.utils.constants import *
+from demeter.constants import *
 import torch
 import kornia.filters as flt
 # %reload_ext autoreload
@@ -337,4 +337,5 @@ mr_cm.mp.plot()
 mr_cm.save(f"TEST_toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}")
 
 #%%
+plt.show()
 
