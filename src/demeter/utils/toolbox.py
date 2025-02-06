@@ -254,20 +254,23 @@ def save_gif_with_plt(image_list,file_name,folder=None, delay = 20,duplicate=Tru
     :param duplicate: (bool) duplicate the first and last frame for longer duration.
     :return:
     """
-    path = ROOT_DIRECTORY + '/gifs/'
+    path = ROOT_DIRECTORY + '/examples/gifs/'
     if folder is None: folder = file_name
     if image_args is None: image_args = dict()
     #make folder if not existing
-    if not os.path.exists(path+folder): os.mkdir(path+folder)
+    if not os.path.exists(path+folder): os.makedirs(path+folder)
     folder = path + folder
 
     for i in range(len(image_list)):
-        plt.imsave(folder+'/'+file_name+'_{:03d}.png'.format(i),
-            image_list[i],
-                   **image_args
-                   )
+        plt.imsave(f'{folder}/{file_name}_{i:03d}.png', image_list[i], **image_args)
 
-    os.system(f'convert -delay {delay} -loop 0 {folder}/{file_name}_\d{3}.png {folder}/{file_name}.gif')
+    # Check that the images were created
+    for i in range(len(image_list)):
+        if not os.path.exists(f'{folder}/{file_name}_{i:03d}.png'):
+            raise FileNotFoundError(f'Image {folder}/{file_name}_{i:03d}.png not found')
+
+    print(f'convert -delay {delay} -loop 0 {folder}/{file_name}_\d{3}.png {folder}/{file_name}.gif')
+    os.system(f'convert -delay {delay} -loop 0 {folder}/{file_name}_*.png {folder}/{file_name}.gif')
     if duplicate: os.system(f'convert -duplicate 1,-1 {folder}/{file_name}.gif {folder}/{file_name}.gif')
     # clean
     if not clean: return folder+'/',file_name+'.gif'
@@ -292,6 +295,10 @@ def fig_to_image(fig,ax):
     canvas = FigureCanvas(fig)
     canvas.draw()       # draw the canvas, cache the renderer
 
-    image_from_plot = np.frombuffer(canvas.tostring_rgb(), dtype='uint8')
-    image_from_plot = image_from_plot.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    # image_from_plot = np.frombuffer(canvas.tostring_rgb(), dtype='uint8')
+    # image_from_plot = image_from_plot.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    # Utiliser tostring_argb et convertir ARGB en RGB
+    image_from_plot = np.frombuffer(canvas.tostring_argb(), dtype='uint8')
+    image_from_plot = image_from_plot.reshape(fig.canvas.get_width_height()[::-1] + (4,))
+    image_from_plot = image_from_plot[:, :, [1, 2, 3]]  # Convertir ARGB en RGB
     return image_from_plot

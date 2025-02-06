@@ -21,10 +21,9 @@ except NameError:
     pass
 
 
-
 import torch
 import matplotlib.pyplot as plt
-from demeter import DLT_KW_IMAGE, ROOT_DIRECTORY
+from demeter import *
 import demeter.utils.reproducing_kernels as rk
 import demeter.metamorphosis as mt
 import demeter.utils.torchbox as tb
@@ -39,7 +38,9 @@ import demeter.utils.torchbox as tb
 # and the point as intensity additions.
 print("ROOT_DIRECTORY : ",ROOT_DIRECTORY)
 source_name,target_name = 'm0t', 'm1c'
-# source_name,target_name = '17','20'
+# other suggestion of images to try
+# source_name,target_name = '17','20'        # easy, only deformation
+# source_name,target_name = '08','m1c'  # hard, big deformation !
 size = (300,300)
 
 S = tb.reg_open(source_name,size = size)
@@ -86,29 +87,29 @@ T = T.to(device)
 dx_convention = 'square'
 # dx_convention = 'pixel'
 
-rho = .1
+rho = 0.05
 #
 # data_cost = mt.Ssd_normalized(T)
 data_cost = mt.Ssd(T)
 
 mr = mt.metamorphosis(S,T,0,
                       rho,
-                      cost_cst=.001,
+                      cost_cst=.001, # If the end result is far from the target, try decreasing the cost constant (reduce regularisation)
                       kernelOperator=kernelOperator,
-                      integration_steps=10,
-                      n_iter=15,
-                      grad_coef=1,
+                      integration_steps=10,   # If the deformation is big or complex, try increasing the number of integration steps
+                      n_iter=15,   #   If the optimisation did not converge, try increasing the number of iterations
+                      grad_coef=1,  # if the optimisation diverged, try decreasing the gradient coefficient
                       dx_convention=dx_convention,
                     data_term=data_cost,
-                    hamiltonian_integration=True
+                    hamiltonian_integration=True  # Set to true if you want to have control over the intermediate steps of the optimisation
                       )
-
-# mr.save('simpleToyExample_test',light_save = True)
+# mr.save(f'round_to_mot_rho{rho}',light_save = True)
 #%%
-mr.plot()
-mr.plot_deform()
+_, fig_ax = mr.plot()
+fig_cmp = fig_ax[0]
+fig_def = mr.plot_deform()
 mr.mp.plot()
-plt.show()
+
 #%%
 #####################################################################
 # We will test different values of rho to see how the registration behaves
@@ -162,4 +163,4 @@ for i,rho in enumerate(rho_list):
 
 plt.show()
 
-# sphinx_gallery_thumbnail_number = 6
+# sphinx_gallery_thumbnail_number = 3
