@@ -11,9 +11,9 @@ It can perform efficient registration of images in 2D and 3D with or without top
 We propose a flexible framework to perform Metamorphosis with differents modeling
 choices. Are provided:
 - The classic LDDMM registration method for registering image having the same topologies as described by Trouvé et al. or Beg's 2005 paper.
-- The classic Metamorphosis registration method for mixing diffeomorphic transport with intensities additions as described by Trouvé et al.  2005 paper.
-- A Weighted Metamorphosis registration method to control the intensity addition locally as described by me IN.
-- A Constrained Metamorphosis registration method to control the intensity addition locally and guide the registration with a pre-computed vector field as described by me IN.
+- The classic Metamorphosis registration method for mixing diffeomorphic transport with intensities additions as described in Younes's book "Shape and Diffeomorphisms" (2019).
+- A Weighted Metamorphosis registration method to control the intensity addition locally as described by me in [this paper](https://hal.science/hal-03971473)
+- A Constrained Metamorphosis registration method to control the intensity addition locally and guide the registration with a pre-computed vector field as described by me in [my thesis](https://u-paris.fr/theses/detail-dune-these/?id_these=5642). (paper comming soon)
 - and more to come...
 
 The library is designed to be flexible and allow the user to define custom data cost functions, custom norms on the residual, custom vector fields, and custom geodesic integrators. Feel
@@ -22,21 +22,18 @@ free to contact me through github Issues if you have any questions or need help 
 Why the name Demeter ? Because in ancient Rome, Demeter was the goddess of agriculture.
 Isn't it the perfect protection for or vectors fields ? 
 
-## Requirement 
+The Metamorphic framework [Holm et al., 2009; Trouvé and Younes, 2005; Younes, 2019]
+can be seen as a relaxed version of [LDDMM ](https://en.wikipedia.org/wiki/Large_deformation_diffeomorphic_metric_mapping)
+in which we add time-varying intensity variations
+are added to the diffeomorphic flow, therefore allowing for topological changes. The
+image evolution is not only modelled by deformation, we allow adding intensity at each
+time for every voxel, making topological changes possible. Metamorphosis is solved through
+an Hamiltonian formulation and the momentum control both the deformation and the intensity changes.
 
-In this project depend on plural libraries, some quite basics like Numpy 
-
-
-and some more complex. make sure that you have :
-- [`torch 1.8`](https://pytorch.org/) or higher as we use the fft function 
-- [`kornia`](https://pypi.org/project/kornia/).
-- [`vedo 2021.0.5`](https://vedo.embl.es/) for 3D visualisation
-
-
-Demeter plotting capabilities (i.e., functions start with plot_ and classes end with Display) require Matplotlib (>= 3.3.4). For running the examples Matplotlib >= 3.3.4 is required. A few examples require scikit-image >= 0.17.2, a few examples require pandas >= 1.2.0, some examples require seaborn >= 0.9.0 and plotly >= 5.14.0.
 
 ## Installation
-At the moment, demeter-metamorphosis is available on linux and macOS only
+At the moment, demeter-metamorphosis is available on linux and macOS only.
+Windows user can use the [WSL](https://learn.microsoft.com/en-us/windows/wsl/about) to install the package.
 
 ### From pip
 The last stable version of demeter_metamorphosis can be installed directly from pip with

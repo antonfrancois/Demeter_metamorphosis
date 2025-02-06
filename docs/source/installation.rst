@@ -13,7 +13,7 @@ TBA
 From source
 -----------
 
-First, install `demeter_metamorphosis` ,you need to clone the `GitHub repository <https://github.com/antonfrancois/Demeter_metamorphosis>`_:.
+First, install `demeter_metamorphosis`, you need to clone the `GitHub repository <https://github.com/antonfrancois/Demeter_metamorphosis>`_:.
 
 You can do this by running the following command on a terminal,
 navigate to the directory and run

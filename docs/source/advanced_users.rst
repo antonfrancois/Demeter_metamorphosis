@@ -101,7 +101,17 @@ This property is used to save computation time. In practice, due to numerical sc
 The :math:`I_{t},v_t,z_{t}` are still deduced from :math:`p_0`. It is possible to switch between the two in the code using the `hamiltonian_integration` option in the children of `Optimize_geodesicShooting`.
 
 
-In practice:
-************************************************************
+Contributing to Demeter:
+-----------------------------------------------------------------------------------------------
 
-some more words...
+Posting an issue:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+If you have any questions, need help with the library or you have an incredible ideas that you want to share, do not hesitate to post an issue on the github repository. The issue can be about a bug, a feature request, or a question about the code. The more precise you are in your issue, the more likely you are to get a quick answer. Here are some guidelines to help you write a good issue:
+ `Guides lines on Issues <https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-an-issue>`_
+
+Contributing to the code:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you want to contribute to the code, you can fork the repository and make a pull request. The pull request will be reviewed by the maintainers and merged if it is in line with the project's objectives. Here are some guidelines to help you write a good pull request:
+ `Guides lines on Pull requests <https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request>`_
+
