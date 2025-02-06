@@ -452,6 +452,11 @@ class GaussianRKHS(torch.nn.Module):
     """ Is equivalent to a gaussian blur. This function support 2d and 3d images in the
     PyTorch convention
 
+    $$ \mathrm{kernel} = \exp\left(\frac{-x^2}{2 \sigma^2}\right) $$
+    if normalised is True, the kernel will be L1 normalised: `kernel = kernel / kernel.sum()`
+    making it equivalent to a divisino by $\frac{1}{2 \pi}$ but less sensitive to the
+    discretisation choices..
+
     Parameters:
     -----------
     sigma (Tuple[float, float] or [float,float,float]):
@@ -589,6 +594,13 @@ class GaussianRKHS(torch.nn.Module):
 
 class VolNormalizedGaussianRKHS(torch.nn.Module):
     """
+    A kernel that preserves the value of the norm $V$ for different images resolution.
+
+    Let $\sigma=(\sigma_h)_{1\leq h\leq d}$ be the standard deviation along the different coordinate in $\R^d$ and $B=B(0,1)$ the closed ball of radius $1$.  We denote $D=\text{diag}(\sigma_h^2)$ and we consider the kernel
+
+    $$K(x,y)=\frac{1}{\Vol(\Dh B)}\exp\left(-\frac{1}{2}\la D^{-1}(x-y),(x-y)\ra\right)D\,.$$
+
+call the \emph{anisotropic volume normalized gaussian kernel} (AVNG kernel).
 
     Parameters:
     -------------
@@ -746,6 +758,13 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
     This class is a multi-scale Gaussian RKHS. It is equivalent to a
     multi-scale Gaussian blur. This function support 2d and 3d images in the
     PyTorch convention
+
+    Let $\Gamma = { \sigma_1, \sigma_2, \ldots, \sigma_n}$ be a list of standard deviations.
+    $$ \mathrm{kernel}_\Gamma = \sum_{\sigma \in \Gamma} \frac {1}{nk_\sigma} \exp\left(\frac{-x^2}{2 \sigma^2}\right) $$
+    where $n$ is the number of elements in $\Gamma$.
+    if normalised is True, $k$ is equal to:
+    $$k_\sigma = \sum_{x \in Omega}  \exp\left(\frac{-x^2}{2 \sigma^2}\right) $$
+    else, $k$ is equal to 1.
 
     Parameters:
     -----------
