@@ -492,6 +492,25 @@ def imCmp(I1, I2, method= None):
 
 
 def temporal_img_cmp(img_1, img2, method="compose"):
+    """
+    Stack two gray-scales images to compare them. The images must have the same
+    height and width and depth (for 3d). Images can be temporal meaning that
+    they have a time dimension stored in the first dimension.
+
+    Parameters
+    ----------
+    img_1 : torch.Tensor
+        [T_1,C,H,W] or [T_1,C,D,H,W] tensor C = 1
+    img2 : torch.Tensor
+        [T_2,C,H,W] or [T_2,C,D,H,W] tensor C = 1
+    .. note:
+
+        T_1 = 1 and T_2 > 1 or T_1 > 1 and T_2 = 1 or T_1 = T_2 > 1 works, any other case will raise an error.
+
+    method: str
+        method to compare the images, among {'compose','seg','segw','segh'}
+
+    """
     T1, C1, D1, H1, W1 = img_1.shape
     T2, C2, D2, H2, W2 = img2.shape
     if D1 != D2 or H1 != H2 or W1 != W2:
