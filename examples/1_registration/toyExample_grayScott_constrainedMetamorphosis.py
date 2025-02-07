@@ -244,33 +244,35 @@ plt.show()
 # and tweak them to our linking.
 
 
-residuals_mask = mr_mask_residuals.mp.image_stock.clone() * .5
+residuals_mask = mr_mask_residuals.mp.image_stock.clone() #* .5
 residuals_mask = 1 - residuals_mask
 
-sig = 5 # blur the mask to avoid sharp transitions
-residuals_mask = flt.gaussian_blur2d(residuals_mask,(int(6*sig)+1,int(6*sig)+1),(sig,sig))
 
 
 orienting_field = mr_mask_orienting.mp.field_stock.clone()
 # In this case we though best to set the orienting mask as
 # at constant value
-orienting_mask = torch.ones(residuals_mask.shape)
-orienting_mask *= .7
+# orienting_mask = torch.ones(residuals_mask.shape)
+# orienting_mask *= 1
 # # but you can try with different types of masks, like the one below
-# orienting_mask = mr_mask_residuals.mp.image_stock.clone()
-# orienting_mask[orienting_mask>.5] =.5
+orienting_mask = mr_mask_residuals.mp.image_stock.clone()
+orienting_mask[orienting_mask>.5] =.7
 
 
+sig = 2 # blur the mask to avoid sharp transitions
+residuals_mask = flt.gaussian_blur2d(residuals_mask,(int(6*sig)+1,int(6*sig)+1),(sig,sig))
+sig = 5
+orienting_mask = flt.gaussian_blur2d(orienting_mask,(int(6*sig)+1,int(6*sig)+1),(sig,sig))
 
 L = [0,2,8,-1]
 fig,ax = plt.subplots(2,len(L),figsize=(len(L)*5,10))
 for i,ll in enumerate(L):
-    ax[0,i].imshow(orienting_mask[ll,0].cpu(),cmap='gray',vmin=0, vmax = 1)
+    ax[0,i].imshow(orienting_mask[ll,0].cpu(),cmap='gray',vmin=0, vmax = 1,origin = "lower")
     tb.quiver_plot(orienting_mask[ll,0][...,None].cpu() * orienting_field[ll][None].cpu(),
                    ax[0,i],
                    step = 10,color='C3',dx_convention=dx_convention)
 
-    ax[1,i].imshow(residuals_mask[ll,0].cpu(),cmap='gray',vmin=0, vmax = 1)
+    ax[1,i].imshow(residuals_mask[ll,0].cpu(),cmap='gray',vmin=0, vmax = 1,origin = "lower")
 
 plt.show()
 
@@ -290,8 +292,7 @@ plt.show()
 
 sigma = [(5,5),(20,20),(30,30)]
 kernelOp = rk.Multi_scale_GaussianRKHS(sigma,normalized=True)
-# rk.plot_kernel_on_image(kernelOp,subdiv=10,image=T.cpu())
-# plt.show()
+
 print(kernelOp)
 
 #%%
@@ -316,21 +317,24 @@ mr_cm = mt.constrained_metamorphosis(S,T,momentum_ini,
                                      kernelOperator=kernelOp,
                                      cost_cst=.00001,
                                      grad_coef=.1,
-                                    n_iter=30,
+                                    n_iter=10,
                                      dx_convention=dx_convention,
                                         # optimizer_method='adadelta',
                                      )
 
 mr_cm.compute_landmark_dist(source_landmarks,target_landmarks)
 mr_cm.plot_cost()
+plt.show()
+
 
 #%%
 mr_cm.plot_imgCmp()
-
+plt.show()
 
 #%%
 
 mr_cm.plot_deform()
+plt.show()
 
 
 #%%

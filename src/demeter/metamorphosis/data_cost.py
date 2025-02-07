@@ -325,15 +325,14 @@ class Mutual_Information(DataCost):
                  max = 1,
                  mult = 1.0,
                  ):
-        super(Mutual_Information, self).__init__()
-        self.target = target
+        super(Mutual_Information, self).__init__(target)
+        # self.target = target
         self.mult = mult
         self.mi = cf.Mutual_Information(bins, min, max)
 
     def __call__(self, at_step=-1):
         if at_step == -1:
             mi = self.mi(self.optimizer.mp.image,self.target)
-            print("\n\nMI = ",float(mi))
             return self.mult/mi
         else:
             return self.mult / self.mi(self.optimizer.mp.image_stock[at_step],self.target)

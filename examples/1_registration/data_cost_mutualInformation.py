@@ -53,21 +53,23 @@ plt.show()
 #
 # Now we will create a mutual information data cost object and use it in the registration.
 
-data_term = mt.Mutual_Information(T,mult=10)
+data_term = mt.Mutual_Information(T,mult=1)
 # data_term = mt.Ssd(T)
 
 momentum_ini = 0
 # momentum_ini = mr.to_analyse[0]
 # momentum_ini.requires_grad = True
-kernelOp = rk.GaussianRKHS(sigma=(10,10))
+kernelOp = rk.GaussianRKHS(sigma=(6,6))
 
 mr = mt.lddmm(S,T,momentum_ini,
                 kernelOperator = kernelOp,
                 cost_cst=.0001,
                 integration_steps=5,
-                n_iter=150,
-                grad_coef=100,
-                data_term=data_term
+                n_iter=15,
+                grad_coef=1,
+                data_term=data_term,
+              dx_convention='square',
 )
 mr.plot()
 mr.plot_deform()
+plt.show()
