@@ -7,7 +7,8 @@
 Registration examples
 =======================================================
 
-The examples below shows different types of metamorphosis.
+The examples below shows how to make simple registrations with Demeter-Metamorphosis.
+
 
 
 .. raw:: html
@@ -15,6 +16,23 @@ The examples below shows different types of metamorphosis.
     <div class="sphx-glr-thumbnails">
 
 .. thumbnail-parent-div-open
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This example demonstrates how to change the data cost for the registration. We will build a simple toy example mimicking situations we can encounter in medical imaging where the shapes to match are clode in geometry but have different intensity distributions. There are plenty other data costs in the literature for every specific purpose, and we will focus on the mutual information.">
+
+.. only:: html
+
+  .. image:: /auto_examples/1_registration/images/thumb/sphx_glr_data_cost_mutualInformation_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_1_registration_data_cost_mutualInformation.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Data cost variation example:: Mutual Information</div>
+    </div>
+
 
 .. raw:: html
 
@@ -29,13 +47,13 @@ The examples below shows different types of metamorphosis.
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">In this file we apply the metamorphosis algorithm to 3D images.</div>
+      <div class="sphx-glr-thumbnail-title">Metamorphosis on 3D images</div>
     </div>
 
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="MetaMorphosis behaviour with different values of rho ===================================================">
+    <div class="sphx-glr-thumbcontainer" tooltip="This example shows how the MetaMorphosis behaves with different values of rho.">
 
 .. only:: html
 
@@ -46,7 +64,24 @@ The examples below shows different types of metamorphosis.
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">This is an informative docstring</div>
+      <div class="sphx-glr-thumbnail-title">MetaMorphosis behaviour with different values of rho</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="import matplotlib.pyplot as plt">
+
+.. only:: html
+
+  .. image:: /auto_examples/1_registration/images/thumb/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_1_registration_toyExample_grayScott_constrainedMetamorphosis.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">This toy example was build to simulate a cancer growth in a brain.</div>
     </div>
 
 
@@ -60,6 +95,8 @@ The examples below shows different types of metamorphosis.
 .. toctree::
    :hidden:
 
+   /auto_examples/1_registration/data_cost_mutualInformation
    /auto_examples/1_registration/metamorphosis_3D
    /auto_examples/1_registration/plot_simpleToyExample_metamorphosis
+   /auto_examples/1_registration/toyExample_grayScott_constrainedMetamorphosis
 

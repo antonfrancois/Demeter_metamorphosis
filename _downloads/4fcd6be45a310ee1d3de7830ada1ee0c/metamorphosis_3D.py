@@ -1,5 +1,6 @@
 """
 .. _metamorphosis_3D:
+
 Metamorphosis on 3D images
 ================================================
 
@@ -8,6 +9,7 @@ In this file we apply the metamorphosis algorithm to 3D images.
 """
 ################################################################################
 # 1. Import necessary libraries
+
 try:
     import sys, os
     # add the parent directory to the path

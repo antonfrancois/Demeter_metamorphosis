@@ -52,6 +52,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Gallery of examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#kernel-examples">Kernel examples</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">Demeter documentation</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="demeter.html">demeter package</a><ul class="current">
 <li class="toctree-l3 current"><a class="reference internal" href="demeter.html#subpackages">Subpackages</a><ul class="current">
@@ -286,11 +287,6 @@ and saved in the good attributes (usually <cite>norm_v</cite> and <cite>norm_z</
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Geodesic_integrator.save_to_gif">
-<span class="sig-name descname"><span class="pre">save_to_gif</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">folder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delay</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">40</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clean</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Geodesic_integrator.save_to_gif" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Geodesic_integrator.step">
 <em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Geodesic_integrator.step" title="Link to this definition"></a></dt>
 <dd></dd></dl>
@@ -468,6 +464,11 @@ default is ‘saved_optim/saves_overview.csv’</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.save_to_gif">
+<span class="sig-name descname"><span class="pre">save_to_gif</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">folder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delay</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">40</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clean</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.save_to_gif" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.to_device">
 <span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.to_device" title="Link to this definition"></a></dt>
 <dd></dd></dl>
@@ -601,8 +602,35 @@ registered hooks while the latter silently ignores them.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.constrained.</span></span><span class="sig-name descname"><span class="pre">ConstrainedMetamorphosis_integrator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">residual_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span> <span class="pre">|</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">orienting_field</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">orienting_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sharp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.constrained.</span></span><span class="sig-name descname"><span class="pre">ConstrainedMetamorphosis_integrator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">residual_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">orienting_field</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">orienting_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sharp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.abstract.Geodesic_integrator" title="demeter.metamorphosis.abstract.Geodesic_integrator"><code class="xref py py-class docutils literal notranslate"><span class="pre">Geodesic_integrator</span></code></a></p>
+<p>This class is an extension of the Geodesic_integrator class. It allows to
+integrate a geodesic with a constraint on the residual and the field using prior
+masks and fields.</p>
+<p>priors one can add are:
+- a residual mask: <span class="math notranslate nohighlight">\(M: \Omega \times t \rightarrow [0,1]\)</span> a mask that for each time and pixel will control
+the amount of deformation versus the amount of photometric changes.
+- an orienting field: <span class="math notranslate nohighlight">\(w: \Omega \times t \rightarrow \mathbb{R}^d\)</span> a field that will guide the deformation
+- an orienting mask: <span class="math notranslate nohighlight">\(Q: \Omega \times t \rightarrow [0,1]\)</span> a mask that will control the
+prevalence of the orienting field over the deformation field.
+The image evolution is given by the following equation
+<div class="math notranslate nohighlight">
+\[\dot{ I}_{t} = - \sqrt{ M_{t} } \left( ((1 - Q_{t}) v_{t} + Q_{t} w_{t}) \nabla I_{t} \right) + \sqrt{ 1 - M_{t} } z_{t} \]</div>
+</p>
+<dl>
+<dt>$$left{</dt><dd><dl>
+<dt>begin{array}{rl}</dt><dd><blockquote>
+<div><p>v_{t} &amp;= -sqrt{ M }(1 - Q_{t}) K_{V}( pnabla I)\</p>
+</div></blockquote>
+<p>dot{p_{t}} &amp;= -sqrt{ M_t } nabla cdot [p_{t}( (1 - Q_{t}) v_{t} + Q_{t}w_{t})] \
+z_{t} &amp;= sqrt{ 1 - M_t } p_{t} \
+dot{I_{t}} &amp;= - sqrt{ M_{t} } left( ((1 - Q_{t}) v_{t} + Q_{t} w_{t}) nabla I_{t} right) + sqrt{ 1 - M_{t} } z_{t}.</p>
+</dd>
+</dl>
+<p>end{array}</p>
+</dd>
+</dl>
+<p>right. $$</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.compute_field_sim">
 <span class="sig-name descname"><span class="pre">compute_field_sim</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.compute_field_sim" title="Link to this definition"></a></dt>
@@ -838,6 +866,43 @@ used at the optimizer initialisation.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.Mutlimodal_ssd_cfm.to_device">
 <span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.Mutlimodal_ssd_cfm.to_device" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.Mutual_Information">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.data_cost.</span></span><span class="sig-name descname"><span class="pre">Mutual_Information</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mult</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.Mutual_Information" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.data_cost.DataCost" title="demeter.metamorphosis.data_cost.DataCost"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataCost</span></code></a></p>
+<blockquote>
+<div><p>Mutual information measures the amount of information shared between two images. It is effective for multi-modal image registration.</p>
+<p>$$I(X;Y) = sum_{x in X} sum_{y in Y} p(x,y) log left(</p>
+</div></blockquote>
+<p>rac{p(x,y)}{p(x)p(y)}
+ight)$$</p>
+<blockquote>
+<div><p>Where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(X\)</span> and <span class="math notranslate nohighlight">\(Y\)</span> are the images being registered.</p></li>
+<li><p><span class="math notranslate nohighlight">\(p(x,y)\)</span> is the joint probability distribution of the intensities.</p></li>
+<li><p><span class="math notranslate nohighlight">\(p(x)\)</span> and <span class="math notranslate nohighlight">\(p(y)\)</span> are the marginal probability distributions of the intensities.</p></li>
+</ul>
+<dl class="simple">
+<dt>target<span class="classifier">torch.Tensor</span></dt><dd><p>Target image [B,C,H,W] or [B,C,D,H,W]</p>
+</dd>
+<dt>bins<span class="classifier">int</span></dt><dd><p>Number of bins for the histogram (default : 20)</p>
+</dd>
+<dt>min<span class="classifier">float</span></dt><dd><p>Minimum value for the histogram (default : 0)</p>
+</dd>
+<dt>max<span class="classifier">float</span></dt><dd><p>Maximum value for the histogram (default : 1)</p>
+</dd>
+<dt>mult<span class="classifier">float</span></dt><dd><p>Multiplicative factor for the mutual information (default : 1.0)</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.Mutual_Information.to_device">
+<span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.Mutual_Information.to_device" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -1146,16 +1211,6 @@ and saved in the good attributes (usually <cite>norm_v</cite> and <cite>norm_z</
 </section>
 <section id="module-demeter.metamorphosis.wraps">
 <span id="demeter-metamorphosis-wraps-module"></span><h2>demeter.metamorphosis.wraps module<a class="headerlink" href="#module-demeter.metamorphosis.wraps" title="Link to this heading"></a></h2>
-<dl class="py function">
-<dt class="sig sig-object py" id="demeter.metamorphosis.wraps.commun_after">
-<span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.wraps.</span></span><span class="sig-name descname"><span class="pre">commun_after</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">momentum_ini</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">safe_mode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iter</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad_coef</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.wraps.commun_after" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="demeter.metamorphosis.wraps.commun_before">
-<span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.wraps.</span></span><span class="sig-name descname"><span class="pre">commun_before</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">momentum_ini</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.wraps.commun_before" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
 <dl class="py function">
 <dt class="sig sig-object py" id="demeter.metamorphosis.wraps.joined_metamorphosis">
 <span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.wraps.</span></span><span class="sig-name descname"><span class="pre">joined_metamorphosis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">momentum_ini</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernelOperator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_term</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grad_coef</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cost_cst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LBFGS_torch'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">safe_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.wraps.joined_metamorphosis" title="Link to this definition"></a></dt>

@@ -20,6 +20,8 @@
       <script src="../_static/documentation_options.js?v=938c9ccc"></script>
       <script src="../_static/doctools.js?v=9bcbadda"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]]}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -49,8 +51,10 @@
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Gallery of examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="#registration-examples">Registration examples</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="#registration-examples">Registration examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#kernel-examples">Kernel examples</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="1_registration/index.html">Registration examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="2_kernels/index.html">Kernel examples</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../modules.html">Demeter documentation</a></li>
@@ -87,13 +91,30 @@
 <div class="sphx-glr-thumbnails"></div></section>
 <section id="registration-examples">
 <h1>Registration examples<a class="headerlink" href="#registration-examples" title="Link to this heading"></a></h1>
-<p>The examples below shows different types of metamorphosis.</p>
-<div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="In this file we apply the metamorphosis algorithm to 3D images."><img alt="" src="../_images/sphx_glr_metamorphosis_3D_thumb.png" />
+<p>The examples below shows how to make simple registrations with Demeter-Metamorphosis.</p>
+<div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="This example demonstrates how to change the data cost for the registration. We will build a simple toy example mimicking situations we can encounter in medical imaging where the shapes to match are clode in geometry but have different intensity distributions. There are plenty other data costs in the literature for every specific purpose, and we will focus on the mutual information."><img alt="" src="../_images/sphx_glr_data_cost_mutualInformation_thumb.png" />
+<p><span class="xref std std-ref">sphx_glr_auto_examples_1_registration_data_cost_mutualInformation.py</span></p>
+  <div class="sphx-glr-thumbnail-title">Data cost variation example:: Mutual Information</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="In this file we apply the metamorphosis algorithm to 3D images."><img alt="" src="../_images/sphx_glr_metamorphosis_3D_thumb.png" />
 <p><a class="reference internal" href="1_registration/metamorphosis_3D.html#sphx-glr-auto-examples-1-registration-metamorphosis-3d-py"><span class="std std-ref">Metamorphosis on 3D images</span></a></p>
-  <div class="sphx-glr-thumbnail-title">In this file we apply the metamorphosis algorithm to 3D images.</div>
-</div><div class="sphx-glr-thumbcontainer" tooltip="MetaMorphosis behaviour with different values of rho ==================================================="><img alt="" src="../_images/sphx_glr_plot_simpleToyExample_metamorphosis_thumb.png" />
-<p><span class="xref std std-ref">sphx_glr_auto_examples_1_registration_plot_simpleToyExample_metamorphosis.py</span></p>
-  <div class="sphx-glr-thumbnail-title">This is an informative docstring</div>
+  <div class="sphx-glr-thumbnail-title">Metamorphosis on 3D images</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="This example shows how the MetaMorphosis behaves with different values of rho."><img alt="" src="../_images/sphx_glr_plot_simpleToyExample_metamorphosis_thumb.png" />
+<p><a class="reference internal" href="1_registration/plot_simpleToyExample_metamorphosis.html#sphx-glr-auto-examples-1-registration-plot-simpletoyexample-metamorphosis-py"><span class="std std-ref">MetaMorphosis behaviour with different values of rho</span></a></p>
+  <div class="sphx-glr-thumbnail-title">MetaMorphosis behaviour with different values of rho</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="import matplotlib.pyplot as plt"><img alt="" src="../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_thumb.png" />
+<p><span class="xref std std-ref">sphx_glr_auto_examples_1_registration_toyExample_grayScott_constrainedMetamorphosis.py</span></p>
+  <div class="sphx-glr-thumbnail-title">This toy example was build to simulate a cancer growth in a brain.</div>
+</div></div></section>
+<section id="kernel-examples">
+<h1>Kernel examples<a class="headerlink" href="#kernel-examples" title="Link to this heading"></a></h1>
+<p>The examples below shows the differents kernels available in Demeter-Metamorphosis
+and how to use them.</p>
+<div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="This page is not only meant to show you how to use the Gaussian Reproducing Kernel (GRK) but also, to provide you with everything you need to know about kernel operators in the Demeter library: how they are used and the available options. If you are familiar with reproducing kernels on point cloud data, you might be surprised. Since we are working with images, it is as if we had a point cloud where each pixel is a Dirac with its weight being the pixel intensity. As a result, there is a large number of closely spaced points.  This is why, instead of using a classical kernel that computes the distance between points, we perform the same operation using a convolution."><img alt="" src="../_images/sphx_glr_Gaussian_RK_thumb.png" />
+<p><a class="reference internal" href="2_kernels/Gaussian_RK.html#sphx-glr-auto-examples-2-kernels-gaussian-rk-py"><span class="std std-ref">A Gaussian Reproducing Kernel</span></a></p>
+  <div class="sphx-glr-thumbnail-title">A Gaussian Reproducing Kernel</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="In this file we look more closely at the multiscale Gaussian Reproducing Kernel (RK) The multiscale Gaussian RK is build as a sum of Gaussian RK with different sigma. In Metamorphosis, the  RK is used to parameterize V the space of acceptable vector fields. In practice, it has a smoothing effect on vector fields. However, Gaussian RK erase the high frequency of the vector fields which prevents the vector fields to match small details in the images. To overcome this issue, we can use a multiscale Gaussian RK, that will keep smoothing properties while keeping some high frequency information. It can be seen as a compromise kernel."><img alt="" src="../_images/sphx_glr_multi_scale_gaussianRKHS_thumb.png" />
+<p><a class="reference internal" href="2_kernels/multi_scale_gaussianRKHS.html#sphx-glr-auto-examples-2-kernels-multi-scale-gaussianrkhs-py"><span class="std std-ref">A multiscale Gaussian Reproducing Kernel</span></a></p>
+  <div class="sphx-glr-thumbnail-title">A multiscale Gaussian Reproducing Kernel</div>
 </div></div><div class="toctree-wrapper compound">
 </div>
 <div class="sphx-glr-footer sphx-glr-footer-gallery docutils container">

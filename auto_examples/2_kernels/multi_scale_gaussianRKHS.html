@@ -1,0 +1,262 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A multiscale Gaussian Reproducing Kernel &mdash; Demeter_metamorphosis 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Demeter documentation" href="../../modules.html" />
+    <link rel="prev" title="A Gaussian Reproducing Kernel" href="Gaussian_RK.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Demeter_metamorphosis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Gallery of examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html#kernel-examples">Kernel examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../1_registration/index.html">Registration examples</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Kernel examples</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="Gaussian_RK.html">A Gaussian Reproducing Kernel</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">A multiscale Gaussian Reproducing Kernel</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Demeter documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../advanced_users.html">For advanced users</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Demeter_metamorphosis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Gallery of examples</a></li>
+          <li class="breadcrumb-item"><a href="index.html">Kernel examples</a></li>
+      <li class="breadcrumb-item active">A multiscale Gaussian Reproducing Kernel</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/auto_examples/2_kernels/multi_scale_gaussianRKHS.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-auto-examples-2-kernels-multi-scale-gaussianrkhs-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code.</p>
+</div>
+<section class="sphx-glr-example-title" id="a-multiscale-gaussian-reproducing-kernel">
+<span id="mutli-scale-gaussianrk"></span><span id="sphx-glr-auto-examples-2-kernels-multi-scale-gaussianrkhs-py"></span><h1>A multiscale Gaussian Reproducing Kernel<a class="headerlink" href="#a-multiscale-gaussian-reproducing-kernel" title="Link to this heading"></a></h1>
+<p>In this file we look more closely at the multiscale Gaussian Reproducing Kernel (RK)
+The multiscale Gaussian RK is build as a sum of Gaussian RK with different
+sigma. In Metamorphosis, the  RK is used to parameterize V the space of
+acceptable vector fields. In practice, it has a smoothing effect on vector fields.
+However, Gaussian RK erase the high frequency of the vector fields which
+prevents the vector fields to match small details in the images. To overcome this
+issue, we can use a multiscale Gaussian RK, that will keep smoothing properties
+while keeping some high frequency information. It can be seen as a compromise
+kernel.</p>
+<p>First let’s Import the necessary libraries</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">demeter.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">DLT_KW_IMAGE</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.reproducing_kernels</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">rk</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.torchbox</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tb</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;text.usetex&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+</pre></div>
+</div>
+<p>To use the multi-scale Gaussian RK, we need to choose
+a list of sigma. The larger the sigma, the more the RK will
+smooth the vector fields. The smaller the sigma, the more the RK will
+keep the high frequency information of the vector fields.
+Feel free to change the sigma_list to see the effect of the RK on next figures</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">sigma_list</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="c1"># (1,1),</span>
+        <span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">),</span>
+        <span class="c1"># (16,16)</span>
+        <span class="c1"># (20,20),</span>
+    <span class="p">]</span>
+</pre></div>
+</div>
+<p>First let’s see the kernels of the Gaussian Reproducing Kernel for different sigma
+superimposed on the Multi-scale Gaussian Reproducing Kernel. We plot a 1D slice
+of the 2D kernels at its center.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">see_kernels_filter_2D</span><span class="p">(</span><span class="n">sigma_list</span><span class="p">,</span><span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force_xticks</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+    <span class="n">mono_gauss</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">rk</span><span class="o">.</span><span class="n">GaussianRKHS</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="s1">&#39;constant&#39;</span><span class="p">,</span><span class="n">normalized</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sigma_list</span>
+    <span class="p">]</span>
+    <span class="n">multi_RKHS</span> <span class="o">=</span> <span class="n">rk</span><span class="o">.</span><span class="n">Multi_scale_GaussianRKHS</span><span class="p">(</span><span class="n">sigma_list</span><span class="p">,</span> <span class="n">normalized</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">font_size</span><span class="o">=</span> <span class="mi">20</span>
+    <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig</span><span class="p">,</span><span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
+    <span class="n">kernel_multi</span> <span class="o">=</span> <span class="n">multi_RKHS</span><span class="o">.</span><span class="n">kernel</span>
+    <span class="n">_</span><span class="p">,</span><span class="n">h</span><span class="p">,</span><span class="n">w</span> <span class="o">=</span> <span class="n">kernel_multi</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">tick_max</span> <span class="o">=</span> <span class="n">w</span> <span class="k">if</span> <span class="n">force_xticks</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">force_xticks</span>
+    <span class="n">x_scale</span> <span class="o">=</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">-</span> <span class="n">w</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_scale</span><span class="p">,</span><span class="n">kernel_multi</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">h</span><span class="o">//</span><span class="mi">2</span><span class="p">],</span><span class="n">label</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">sigma_list</span><span class="p">),</span><span class="n">c</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">)</span>
+    <span class="n">style</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;--&#39;</span><span class="p">,</span><span class="s1">&#39;-.&#39;</span><span class="p">,</span><span class="s1">&#39;:&#39;</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sigma_list</span><span class="p">):</span>
+        <span class="n">kernel_m</span> <span class="o">=</span> <span class="n">mono_gauss</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">kernel</span>
+        <span class="n">_</span><span class="p">,</span><span class="n">hh</span><span class="p">,</span><span class="n">ww</span> <span class="o">=</span> <span class="n">kernel_m</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># x_scale = (torch.arange(ww)+((tick_max - ww)/2))</span>
+        <span class="n">x_scale</span> <span class="o">=</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">ww</span><span class="p">)</span> <span class="o">-</span> <span class="n">ww</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_scale</span><span class="p">,</span>
+                <span class="n">mono_gauss</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">kernel</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">hh</span><span class="o">//</span><span class="mi">2</span><span class="p">],</span>
+                <span class="n">label</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="p">),</span><span class="n">linestyle</span><span class="o">=</span><span class="n">style</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">3</span><span class="o">*</span><span class="p">(</span><span class="n">i</span><span class="o">//</span><span class="mi">3</span><span class="p">)])</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$K_\sigma(x)$&#39;</span><span class="p">,</span><span class="n">fontsize</span><span class="o">=</span><span class="n">font_size</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$x$&#39;</span><span class="p">,</span><span class="n">fontsize</span><span class="o">=</span><span class="n">font_size</span><span class="p">)</span>
+    <span class="c1"># tick_max = w if force_xticks is None else force_xticks</span>
+    <span class="n">x_ticks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="n">tick_max</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span><span class="n">tick_max</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">x_ticks</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span>
+                   <span class="c1">#which=&#39;minor&#39;,</span>
+                   <span class="n">labelsize</span><span class="o">=</span><span class="n">font_size</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper left&#39;</span><span class="p">,</span>
+              <span class="n">fontsize</span><span class="o">=</span><span class="n">font_size</span><span class="p">,</span>
+              <span class="n">bbox_to_anchor</span><span class="o">=</span><span class="p">(</span><span class="mf">.75</span><span class="p">,</span> <span class="mf">1.</span><span class="p">),</span>
+              <span class="c1"># ncol=len(sigma_list)+1</span>
+              <span class="p">)</span>
+
+<span class="n">see_kernels_filter_2D</span><span class="p">(</span><span class="n">sigma_list</span><span class="p">)</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_multi_scale_gaussianRKHS_001.png" srcset="../../_images/sphx_glr_multi_scale_gaussianRKHS_001.png" alt="multi scale gaussianRKHS" class = "sphx-glr-single-img"/><p>Now let’s visualize the convolution of an image by the Gaussian RKs and the
+multi-scale Gaussian RK. For visualization purposes, we will use images
+but keep in mind that the RK is intended to be used on vector fields.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">see_im_convoled_by_kernel</span><span class="p">(</span><span class="n">kernelOp</span><span class="p">,</span><span class="n">I</span><span class="p">,</span><span class="n">ax</span><span class="p">):</span>
+    <span class="n">_</span><span class="p">,</span><span class="n">_</span><span class="p">,</span><span class="n">H</span><span class="p">,</span><span class="n">W</span> <span class="o">=</span> <span class="n">I</span><span class="o">.</span><span class="n">shape</span>
+    <span class="k">if</span> <span class="n">kernelOp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">I_g</span> <span class="o">=</span><span class="n">I</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">I_g</span> <span class="o">=</span> <span class="n">kernelOp</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">I_g</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="o">**</span><span class="n">DLT_KW_IMAGE</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">I_g</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">H</span><span class="o">//</span><span class="mi">2</span><span class="p">])</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">see_mono_kernels</span><span class="p">(</span><span class="n">I</span><span class="p">,</span><span class="n">sigma_list</span><span class="p">):</span>
+    <span class="n">fig</span><span class="p">,</span><span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">sigma_list</span><span class="p">)</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Convolution of an image by a reproducing kernel, </span><span class="si">{</span><span class="n">sigma_list</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">see_im_convoled_by_kernel</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span><span class="n">I</span><span class="p">,</span><span class="n">ax</span><span class="p">[:,</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sigma_list</span><span class="p">):</span>
+        <span class="n">grk</span> <span class="o">=</span> <span class="n">rk</span><span class="o">.</span><span class="n">GaussianRKHS</span><span class="p">(</span><span class="n">s</span><span class="p">,</span><span class="s1">&#39;constant&#39;</span><span class="p">)</span>
+        <span class="n">see_im_convoled_by_kernel</span><span class="p">(</span><span class="n">grk</span><span class="p">,</span><span class="n">I</span><span class="p">,</span><span class="n">ax</span><span class="p">[:,</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;$\sigma = $&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">grk</span><span class="o">.</span><span class="n">sigma</span><span class="p">))</span>
+    <span class="n">mgrk</span> <span class="o">=</span> <span class="n">rk</span><span class="o">.</span><span class="n">Multi_scale_GaussianRKHS</span><span class="p">(</span><span class="n">sigma_list</span><span class="p">,</span> <span class="n">normalized</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">see_im_convoled_by_kernel</span><span class="p">(</span><span class="n">mgrk</span><span class="p">,</span><span class="n">I</span><span class="p">,</span><span class="n">ax</span><span class="p">[:,</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;Multi-scale &quot;</span><span class="p">)</span>
+
+<span class="c1"># You can choose different images to see the effect of the RK on them</span>
+<span class="n">img_name</span> <span class="o">=</span> <span class="s1">&#39;01&#39;</span>           <span class="c1"># simple disk</span>
+<span class="n">img_name</span> <span class="o">=</span> <span class="s1">&#39;sri24&#39;</span>      <span class="c1"># slice of a brain</span>
+<span class="n">img</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">reg_open</span><span class="p">(</span><span class="n">img_name</span><span class="p">,</span><span class="n">size</span> <span class="o">=</span> <span class="p">(</span><span class="mi">300</span><span class="p">,</span><span class="mi">300</span><span class="p">))</span>
+
+
+<span class="n">see_mono_kernels</span><span class="p">(</span><span class="n">img</span><span class="p">,</span><span class="n">sigma_list</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_multi_scale_gaussianRKHS_002.png" srcset="../../_images/sphx_glr_multi_scale_gaussianRKHS_002.png" alt="Convolution of an image by a reproducing kernel, [(2, 2), (5, 5), (10, 10)], $\sigma = $(2, 2), $\sigma = $(5, 5), $\sigma = $(10, 10), Multi-scale" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.420 seconds)</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-2-kernels-multi-scale-gaussianrkhs-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/d8e5af3934990bfb7e6083b7a653302e/multi_scale_gaussianRKHS.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">multi_scale_gaussianRKHS.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/c491ae2dd0d82416efe6d70324b4f38a/multi_scale_gaussianRKHS.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">multi_scale_gaussianRKHS.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-zip docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/b74a9741c65a35d169b279f70e18ade9/multi_scale_gaussianRKHS.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">multi_scale_gaussianRKHS.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="Gaussian_RK.html" class="btn btn-neutral float-left" title="A Gaussian Reproducing Kernel" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../../modules.html" class="btn btn-neutral float-right" title="Demeter documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Anton François.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

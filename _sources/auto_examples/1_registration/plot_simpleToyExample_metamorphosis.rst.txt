@@ -20,16 +20,43 @@
 
 .. _plot_simpleToyExample_metamorphosis:
 
-This is an informative docstring
-
 MetaMorphosis behaviour with different values of rho
-===================================================
+=======================================================
 
-.. GENERATED FROM PYTHON SOURCE LINES 11-12
+This example shows how the MetaMorphosis behaves with different values of rho.
+
+Let $ho \in [0,1]$, we define the evolution of the image over time as:
+$$\dot{I_{t}} = - \sqrt{ ho } v_{t} \cdot 
+abla I_{t} + \sqrt{ 1-ho } z. $$
+Note: The square roots may seem surprising, but the reason will become clear at the end.
+
+We define the Hamiltonian:
+$$H(I,p,v,z) = - (p |\dot{ I}) - rac{1}{2} (Lv|v)_{2} - rac{1}{2}(z,z)_{2}. $$
+By calculating the optimal trajectories we obtain the system:
+$$\left\{
+        egin{array}{rl}
+                 v &= - \sqrt{ ho } K_{V} (p 
+abla I)\
+         \dot{p} &= -\sqrt{ ho } 
+abla \cdot (pv) \
+         z &= \sqrt{ 1 - ho } p \
+         \dot{I} &=  - \sqrt{ ho } v_{t} \cdot 
+abla I_{t} + \sqrt{ 1-ho } z.
+        \end{array}
+ight. $$
+We notice that we can rewrite:
+$$  \dot{ I_{t}} = - \sqrt{ ho } v_{t} \cdot 
+abla I_{t} + \sqrt{ 1-ho } z = -  ho K_{V}(p_{t}
+abla I) \cdot 
+abla I_{t} +  (1-ho) p_{t}.$$
+This means that the optimal dynamics is the weighted average between the
+creation of the field and the photometric addition controlled by the momentum $p$.
+
+.. GENERATED FROM PYTHON SOURCE LINES 32-33
 
 Import the necessary packages
 
-.. GENERATED FROM PYTHON SOURCE LINES 12-38
+.. GENERATED FROM PYTHON SOURCE LINES 33-54
 
 .. code-block:: Python
 
@@ -45,14 +72,9 @@ Import the necessary packages
         pass
 
 
-
     import torch
-    # import kornia.filters as flt
     import matplotlib.pyplot as plt
-    from demeter import DLT_KW_IMAGE,GRIDDEF_YELLOW, ROOT_DIRECTORY
-    # import demeter as dm
-    # %load_ext autoreload
-    # %autoreload 2
+    from demeter import *
     import demeter.utils.reproducing_kernels as rk
     import demeter.metamorphosis as mt
     import demeter.utils.torchbox as tb
@@ -66,7 +88,7 @@ Import the necessary packages
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 39-44
+.. GENERATED FROM PYTHON SOURCE LINES 55-60
 
 Open and visualise images before registration. The source and target are 'C' shapes.
 The source is a 'C' shape that is deformed. The target is a 'C' shape that was
@@ -74,13 +96,15 @@ cut in half changing its topology and a point was added. The goal is to register
 the source to the target by deforming the 'C' shape and accounting the cut
 and the point as intensity additions.
 
-.. GENERATED FROM PYTHON SOURCE LINES 44-61
+.. GENERATED FROM PYTHON SOURCE LINES 60-79
 
 .. code-block:: Python
 
     print("ROOT_DIRECTORY : ",ROOT_DIRECTORY)
     source_name,target_name = 'm0t', 'm1c'
-    # source_name,target_name = '17','20'
+    # other suggestion of images to try
+    # source_name,target_name = '17','20'        # easy, only deformation
+    # source_name,target_name = '08','m1c'  # hard, big deformation !
     size = (300,300)
 
     S = tb.reg_open(source_name,size = size)
@@ -113,7 +137,7 @@ and the point as intensity additions.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 62-72
+.. GENERATED FROM PYTHON SOURCE LINES 80-90
 
 Before choosing the optimisation method, we need to define a
 reproducing kernel and choose a good sigma. The simpler reproducing
@@ -126,7 +150,7 @@ is basically in how many parts we want to divide the image to get the size
 of wanted details. The second function will plot the kernel on the image to
 help us validate our choice of sigma.
 
-.. GENERATED FROM PYTHON SOURCE LINES 72-82
+.. GENERATED FROM PYTHON SOURCE LINES 90-100
 
 .. code-block:: Python
 
@@ -134,7 +158,7 @@ help us validate our choice of sigma.
     image_subdivisions = 10
     sigma = rk.get_sigma_from_img_ratio(T.shape,subdiv = image_subdivisions)
 
-    kernelOperator = rk.GaussianRKHS(sigma,kernel_reach=7)
+    kernelOperator = rk.GaussianRKHS(sigma,kernel_reach=4)
 
     rk.plot_kernel_on_image(kernelOperator,image= T,subdiv=image_subdivisions)
     plt.show()
@@ -153,20 +177,20 @@ help us validate our choice of sigma.
 
  .. code-block:: none
 
-    kernel shape: torch.Size([1, 225, 225])
-    kernel shape: 225 225
+    kernel shape: torch.Size([1, 257, 257])
+    kernel shape: 257 257
     /opt/hostedtoolcache/Python/3.12.8/x64/lib/python3.12/site-packages/torch/functional.py:513: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at ../aten/src/ATen/native/TensorShape.cpp:3609.)
       return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
-    x, y torch.Size([225, 225]) torch.Size([225, 225])
+    x, y torch.Size([257, 257]) torch.Size([257, 257])
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 83-84
+.. GENERATED FROM PYTHON SOURCE LINES 101-102
 
 Perform a first Metamorphosis registration
 
-.. GENERATED FROM PYTHON SOURCE LINES 84-111
+.. GENERATED FROM PYTHON SOURCE LINES 102-128
 
 .. code-block:: Python
 
@@ -179,24 +203,23 @@ Perform a first Metamorphosis registration
     dx_convention = 'square'
     # dx_convention = 'pixel'
 
-    rho = .1
+    rho = 0.05
     #
     # data_cost = mt.Ssd_normalized(T)
     data_cost = mt.Ssd(T)
 
     mr = mt.metamorphosis(S,T,0,
                           rho,
-                          cost_cst=.001,
+                          cost_cst=.001, # If the end result is far from the target, try decreasing the cost constant (reduce regularisation)
                           kernelOperator=kernelOperator,
-                          integration_steps=10,
-                          n_iter=15,
-                          grad_coef=1,
+                          integration_steps=10,   # If the deformation is big or complex, try increasing the number of integration steps
+                          n_iter=15,   #   If the optimisation did not converge, try increasing the number of iterations
+                          grad_coef=1,  # if the optimisation diverged, try decreasing the gradient coefficient
                           dx_convention=dx_convention,
                         data_term=data_cost,
-                        hamiltonian_integration=True
+                        hamiltonian_integration=True  # Set to true if you want to have control over the intermediate steps of the optimisation
                           )
-
-    # mr.save('simpleToyExample_test',light_save = True)
+    # mr.save(f'round_to_mot_rho{rho}',light_save = True)
 
 
 
@@ -205,23 +228,24 @@ Perform a first Metamorphosis registration
 
  .. code-block:: none
 
-    Progress: [#---------]  13.33%  (Ssd : ,1266.3970).    Progress: [##--------]  20.00%  (Ssd : ,394.8731).    Progress: [###-------]  26.67%  (Ssd : ,228.5141).    Progress: [###-------]  33.33%  (Ssd : ,163.6883).    Progress: [####------]  40.00%  (Ssd : ,130.7267).    Progress: [#####-----]  46.67%  (Ssd : ,114.5429).    Progress: [#####-----]  53.33%  (Ssd : ,102.1567).    Progress: [######----]  60.00%  (Ssd : , 95.3597).    Progress: [#######---]  66.67%  (Ssd : , 89.5801).    Progress: [#######---]  73.33%  (Ssd : , 86.4610).    Progress: [########--]  80.00%  (Ssd : , 79.0536).    Progress: [#########-]  86.67%  (Ssd : , 75.5419).    Progress: [#########-]  93.33%  (Ssd : , 72.8030).    Progress: [##########] 100.00% Done...
-     (Ssd : , 68.7999).
-    Computation of forward done in  0:01:47s and 0.148cents  s
+    Progress: [#---------]  13.33%  (Ssd : ,951.8339).    Progress: [##--------]  20.00%  (Ssd : ,163.0543).    Progress: [###-------]  26.67%  (Ssd : , 87.2839).    Progress: [###-------]  33.33%  (Ssd : , 69.1459).    Progress: [####------]  40.00%  (Ssd : , 58.2597).    Progress: [#####-----]  46.67%  (Ssd : , 52.8064).    Progress: [#####-----]  53.33%  (Ssd : , 48.8959).    Progress: [######----]  60.00%  (Ssd : , 46.2517).    Progress: [#######---]  66.67%  (Ssd : , 43.6152).    Progress: [#######---]  73.33%  (Ssd : , 41.2657).    Progress: [########--]  80.00%  (Ssd : , 39.5326).    Progress: [#########-]  86.67%  (Ssd : , 38.1187).    Progress: [#########-]  93.33%  (Ssd : , 36.9905).    Progress: [##########] 100.00% Done...
+     (Ssd : , 36.3640).
+    Computation of forward done in  0:01:49s and 0.864cents  s
 
-    Computation of metamorphosis done in  0:01:47s and 0.149cents  s
-
-
+    Computation of metamorphosis done in  0:01:49s and 0.864cents  s
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 112-116
+
+
+.. GENERATED FROM PYTHON SOURCE LINES 129-134
 
 .. code-block:: Python
 
-    mr.plot()
-    mr.plot_deform()
+    _, fig_ax = mr.plot()
+    fig_cmp = fig_ax[0]
+    fig_def = mr.plot_deform()
     mr.mp.plot()
-    plt.show()
+
 
 
 
@@ -231,7 +255,7 @@ Perform a first Metamorphosis registration
     *
 
       .. image-sg:: /auto_examples/1_registration/images/sphx_glr_plot_simpleToyExample_metamorphosis_003.png
-         :alt: Lambda = 0.001 rho = 0.1
+         :alt: Lambda = 0.001 rho = 0.05
          :srcset: /auto_examples/1_registration/images/sphx_glr_plot_simpleToyExample_metamorphosis_003.png
          :class: sphx-glr-multi-img
 
@@ -261,12 +285,22 @@ Perform a first Metamorphosis registration
 
  .. code-block:: none
 
-    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.4122110605239868..1.2817898988723755].
+    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.13349886238574982..1.406984806060791].
+
+    (<Figure size 1500x2500 with 25 Axes>, array([[<Axes: title={'center': 't = 0.0'}>, <Axes: >,
+            <Axes: title={'center': 'diffeo = tensor(True)'}>],
+           [<Axes: title={'center': 't = 0.2'}>, <Axes: >,
+            <Axes: title={'center': 'diffeo = tensor(True)'}>],
+           [<Axes: title={'center': 't = 0.4'}>, <Axes: >,
+            <Axes: title={'center': 'diffeo = tensor(True)'}>],
+           [<Axes: title={'center': 't = 0.7'}>, <Axes: >,
+            <Axes: title={'center': 'diffeo = tensor(True)'}>],
+           [<Axes: title={'center': 't = 1.0'}>, <Axes: >,
+            <Axes: title={'center': 'diffeo = tensor(True)'}>]], dtype=object))
 
 
 
-
-.. GENERATED FROM PYTHON SOURCE LINES 117-123
+.. GENERATED FROM PYTHON SOURCE LINES 135-141
 
 ####################################################################
  We will test different values of rho to see how the registration behaves
@@ -275,7 +309,7 @@ Perform a first Metamorphosis registration
  Feel free to try yourselves If you want to recompute them by setting
  recompute to True. The number of rho to test is set by n_plot.
 
-.. GENERATED FROM PYTHON SOURCE LINES 123-169
+.. GENERATED FROM PYTHON SOURCE LINES 141-187
 
 .. code-block:: Python
 
@@ -325,7 +359,7 @@ Perform a first Metamorphosis registration
 
     plt.show()
 
-    # sphinx_gallery_thumbnail_number = 6
+    # sphinx_gallery_thumbnail_number = 3
 
 
 .. image-sg:: /auto_examples/1_registration/images/sphx_glr_plot_simpleToyExample_metamorphosis_007.png
@@ -350,6 +384,8 @@ Perform a first Metamorphosis registration
       (kernelOperator): GaussianRKHS,2D 
             filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
             kernel_size :(1, 225, 225)
+            kernel_reach :7
+            normalized :True
     )
             integration method : _step_full_semiLagrangian
             optimisation method : LBFGS_torch
@@ -367,6 +403,8 @@ Perform a first Metamorphosis registration
       (kernelOperator): GaussianRKHS,2D 
             filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
             kernel_size :(1, 225, 225)
+            kernel_reach :7
+            normalized :True
     )
             integration method : _step_full_semiLagrangian
             optimisation method : LBFGS_torch
@@ -384,6 +422,8 @@ Perform a first Metamorphosis registration
       (kernelOperator): GaussianRKHS,2D 
             filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
             kernel_size :(1, 225, 225)
+            kernel_reach :7
+            normalized :True
     )
             integration method : _step_full_semiLagrangian
             optimisation method : LBFGS_torch
@@ -401,6 +441,8 @@ Perform a first Metamorphosis registration
       (kernelOperator): GaussianRKHS,2D 
             filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
             kernel_size :(1, 225, 225)
+            kernel_reach :7
+            normalized :True
     )
             integration method : _step_full_semiLagrangian
             optimisation method : LBFGS_torch
@@ -418,6 +460,8 @@ Perform a first Metamorphosis registration
       (kernelOperator): GaussianRKHS,2D 
             filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
             kernel_size :(1, 225, 225)
+            kernel_reach :7
+            normalized :True
     )
             integration method : _step_full_semiLagrangian
             optimisation method : LBFGS_torch
@@ -435,6 +479,8 @@ Perform a first Metamorphosis registration
       (kernelOperator): GaussianRKHS,2D 
             filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
             kernel_size :(1, 225, 225)
+            kernel_reach :7
+            normalized :True
     )
             integration method : _step_full_semiLagrangian
             optimisation method : LBFGS_torch
@@ -452,6 +498,8 @@ Perform a first Metamorphosis registration
       (kernelOperator): GaussianRKHS,2D 
             filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
             kernel_size :(1, 225, 225)
+            kernel_reach :7
+            normalized :True
     )
             integration method : _step_full_semiLagrangian
             optimisation method : LBFGS_torch
@@ -469,6 +517,8 @@ Perform a first Metamorphosis registration
       (kernelOperator): GaussianRKHS,2D 
             filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
             kernel_size :(1, 225, 225)
+            kernel_reach :7
+            normalized :True
     )
             integration method : _step_full_semiLagrangian
             optimisation method : LBFGS_torch
@@ -486,6 +536,8 @@ Perform a first Metamorphosis registration
       (kernelOperator): GaussianRKHS,2D 
             filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
             kernel_size :(1, 225, 225)
+            kernel_reach :7
+            normalized :True
     )
             integration method : _step_full_semiLagrangian
             optimisation method : LBFGS_torch
@@ -503,6 +555,8 @@ Perform a first Metamorphosis registration
       (kernelOperator): GaussianRKHS,2D 
             filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
             kernel_size :(1, 225, 225)
+            kernel_reach :7
+            normalized :True
     )
             integration method : _step_full_semiLagrangian
             optimisation method : LBFGS_torch
@@ -515,7 +569,7 @@ Perform a first Metamorphosis registration
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 52.105 seconds)
+   **Total running time of the script:** (1 minutes 54.701 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_plot_simpleToyExample_metamorphosis.py:

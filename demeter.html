@@ -52,6 +52,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Gallery of examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#kernel-examples">Kernel examples</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">Demeter documentation</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">demeter package</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#subpackages">Subpackages</a><ul>
@@ -117,7 +118,6 @@ demeter.utils contains utility functions and classes that are used in the optimi
 <li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator.get_deformator"><code class="docutils literal notranslate"><span class="pre">Geodesic_integrator.get_deformator()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator.plot"><code class="docutils literal notranslate"><span class="pre">Geodesic_integrator.plot()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator.plot_deform"><code class="docutils literal notranslate"><span class="pre">Geodesic_integrator.plot_deform()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator.save_to_gif"><code class="docutils literal notranslate"><span class="pre">Geodesic_integrator.save_to_gif()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator.step"><code class="docutils literal notranslate"><span class="pre">Geodesic_integrator.step()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator.to_device"><code class="docutils literal notranslate"><span class="pre">Geodesic_integrator.to_device()</span></code></a></li>
 </ul>
@@ -139,6 +139,7 @@ demeter.utils contains utility functions and classes that are used in the optimi
 <li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.plot_deform"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.plot_deform()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.plot_imgCmp"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.plot_imgCmp()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.save"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.save()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.save_to_gif"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.save_to_gif()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.to_device"><code class="docutils literal notranslate"><span class="pre">Optimize_geodesicShooting.to_device()</span></code></a></li>
 </ul>
 </li>
@@ -206,6 +207,10 @@ demeter.utils contains utility functions and classes that are used in the optimi
 <li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Mutlimodal_ssd_cfm.to_device"><code class="docutils literal notranslate"><span class="pre">Mutlimodal_ssd_cfm.to_device()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Mutual_Information"><code class="docutils literal notranslate"><span class="pre">Mutual_Information</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Mutual_Information.to_device"><code class="docutils literal notranslate"><span class="pre">Mutual_Information.to_device()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.SimiliSegs"><code class="docutils literal notranslate"><span class="pre">SimiliSegs</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.SimiliSegs.set_optimizer"><code class="docutils literal notranslate"><span class="pre">SimiliSegs.set_optimizer()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.SimiliSegs.to_device"><code class="docutils literal notranslate"><span class="pre">SimiliSegs.to_device()</span></code></a></li>
@@ -258,8 +263,6 @@ demeter.utils contains utility functions and classes that are used in the optimi
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="demeter.metamorphosis.html#module-demeter.metamorphosis.wraps">demeter.metamorphosis.wraps module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.wraps.commun_after"><code class="docutils literal notranslate"><span class="pre">commun_after()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.wraps.commun_before"><code class="docutils literal notranslate"><span class="pre">commun_before()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.wraps.joined_metamorphosis"><code class="docutils literal notranslate"><span class="pre">joined_metamorphosis()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="demeter.metamorphosis.html#demeter.metamorphosis.wraps.simplex_metamorphosis"><code class="docutils literal notranslate"><span class="pre">simplex_metamorphosis()</span></code></a></li>
 </ul>
@@ -282,6 +285,19 @@ demeter.utils contains utility functions and classes that are used in the optimi
 </li>
 <li class="toctree-l2"><a class="reference internal" href="demeter.utils.html#module-demeter.utils.cost_functions">demeter.utils.cost_functions module</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.cost_functions.Combine_ssd_CFM"><code class="docutils literal notranslate"><span class="pre">Combine_ssd_CFM</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.cost_functions.Mutual_Information"><code class="docutils literal notranslate"><span class="pre">Mutual_Information</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.cost_functions.Mutual_Information.forward"><code class="docutils literal notranslate"><span class="pre">Mutual_Information.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.cost_functions.Mutual_Information.independence_plot"><code class="docutils literal notranslate"><span class="pre">Mutual_Information.independence_plot()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.cost_functions.SoftHistogram1D"><code class="docutils literal notranslate"><span class="pre">SoftHistogram1D</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.cost_functions.SoftHistogram1D.forward"><code class="docutils literal notranslate"><span class="pre">SoftHistogram1D.forward()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.cost_functions.SoftHistogram2D"><code class="docutils literal notranslate"><span class="pre">SoftHistogram2D</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.cost_functions.SoftHistogram2D.forward"><code class="docutils literal notranslate"><span class="pre">SoftHistogram2D.forward()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.cost_functions.SumSquaredDifference"><code class="docutils literal notranslate"><span class="pre">SumSquaredDifference</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.cost_functions.SumSquaredDifference.function"><code class="docutils literal notranslate"><span class="pre">SumSquaredDifference.function()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.cost_functions.SumSquaredDifference.imgShow"><code class="docutils literal notranslate"><span class="pre">SumSquaredDifference.imgShow()</span></code></a></li>
@@ -320,6 +336,7 @@ demeter.utils contains utility functions and classes that are used in the optimi
 <li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.GaussianRKHS.forward"><code class="docutils literal notranslate"><span class="pre">GaussianRKHS.forward()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.GaussianRKHS.get_all_arguments"><code class="docutils literal notranslate"><span class="pre">GaussianRKHS.get_all_arguments()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.GaussianRKHS.init_kernel"><code class="docutils literal notranslate"><span class="pre">GaussianRKHS.init_kernel()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.GaussianRKHS.plot"><code class="docutils literal notranslate"><span class="pre">GaussianRKHS.plot()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS"><code class="docutils literal notranslate"><span class="pre">Multi_scale_GaussianRKHS</span></code></a><ul>
@@ -414,7 +431,6 @@ demeter.utils contains utility functions and classes that are used in the optimi
 <li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.quiver_plot"><code class="docutils literal notranslate"><span class="pre">quiver_plot()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.reg_open"><code class="docutils literal notranslate"><span class="pre">reg_open()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.resize_image"><code class="docutils literal notranslate"><span class="pre">resize_image()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.showDef"><code class="docutils literal notranslate"><span class="pre">showDef()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.spatialGradient"><code class="docutils literal notranslate"><span class="pre">spatialGradient()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.spatialGradient_2d"><code class="docutils literal notranslate"><span class="pre">spatialGradient_2d()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="demeter.utils.html#demeter.utils.torchbox.spatialGradient_3d"><code class="docutils literal notranslate"><span class="pre">spatialGradient_3d()</span></code></a></li>

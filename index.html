@@ -51,6 +51,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Gallery of examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#kernel-examples">Kernel examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules.html">Demeter documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="advanced_users.html">For advanced users</a></li>
 </ul>
@@ -79,15 +80,18 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <p>sphinx, last updated Feb 02, 2025</p>
+  <p>sphinx, last updated Feb 07, 2025</p>
 <section id="welcome-to-demeter-metamorphosis-s-documentation">
 <h1>Welcome to Demeter_metamorphosis’s documentation!<a class="headerlink" href="#welcome-to-demeter-metamorphosis-s-documentation" title="Link to this heading"></a></h1>
+<p><strong>In short:</strong></p>
 <ul class="simple">
 <li><p>Efficient and flexible optimization of metamorphoses in images</p></li>
 <li><p>2D and 3D images registration</p></li>
 <li><p>Free software: MIT license</p></li>
 <li><p>Based on Pytorch with GPU support</p></li>
 </ul>
+<section id="contents">
+<h2>Contents:<a class="headerlink" href="#contents" title="Link to this heading"></a></h2>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
@@ -97,17 +101,43 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Gallery of examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#kernel-examples">Kernel examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules.html">Demeter documentation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="demeter.html">demeter package</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="advanced_users.html">For advanced users</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="advanced_users.html#theory-and-implementation-choices-in-metamorphoses-in-demeter">Theory and Implementation choices in Metamorphoses in Demeter</a></li>
-<li class="toctree-l2"><a class="reference internal" href="advanced_users.html#in-practice">In practice:</a></li>
 </ul>
 </li>
 </ul>
 </div>
+</section>
+<section id="more-about-demeter-metamorphosis">
+<h2>More about Demeter_metamorphosis<a class="headerlink" href="#more-about-demeter-metamorphosis" title="Link to this heading"></a></h2>
+<p>Demeter_metamorphosis is a library intended to perform Metamorphosis on images.
+It can perform efficient registration of images in 2D and 3D with or without topology differences.
+We propose a flexible framework to perform Metamorphosis with different modeling
+choices. Are provided:</p>
+<ul class="simple">
+<li><p>The classic LDDMM registration method for registering image having the same topologies as described by Trouvé et al. or Beg’s 2005 paper.</p></li>
+<li><p>The classic Metamorphosis registration method for mixing diffeomorphic transport with intensities additions as described in Younes’s book “Shape and Diffeomorphisms” (2019).</p></li>
+<li><p>A Weighted Metamorphosis registration method to control the intensity addition locally as described by me in <a class="reference external" href="https://hal.science/hal-03971473">this paper</a>.</p></li>
+<li><p>A Constrained Metamorphosis registration method to control the intensity addition locally and guide the registration with a pre-computed vector field as described by me in <a class="reference external" href="https://u-paris.fr/theses/detail-dune-these/?id_these=5642">my thesis</a>. (paper comming soon)</p></li>
+<li><p>and more to come…</p></li>
+</ul>
+<p>The library is designed to be flexible and allow the user to define custom data cost functions, custom norms on the residual, custom vector fields, and custom geodesic integrators. Feel
+free to contact me through github Issues if you have any questions or need help with the library.</p>
+<p>Why the name Demeter ? Because in ancient Rome, Demeter was the goddess of agriculture.
+Isn’t it the perfect protection for or vectors fields ?</p>
+<p>The Metamorphic framework [Holm et al., 2009; Trouvé and Younes, 2005; Younes, 2019]
+can be seen as a relaxed version of <a class="reference external" href="https://en.wikipedia.org/wiki/Large_deformation_diffeomorphic_metric_mapping">LDDMM</a>.
+in which we add time-varying intensity variations
+are added to the diffeomorphic flow, therefore allowing for topological changes. The
+image evolution is not only modelled by deformation, we allow adding intensity at each
+time for every voxel, making topological changes possible. Metamorphosis is solved through
+an Hamiltonian formulation and the momentum control both the deformation and the intensity changes.</p>
+</section>
 </section>
 <section id="more">
 <h1>More<a class="headerlink" href="#more" title="Link to this heading"></a></h1>

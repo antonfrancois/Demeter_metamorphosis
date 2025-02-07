@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**04:55.861** total execution time for 2 files **from all galleries**:
+**11:11.504** total execution time for 6 files **from all galleries**:
 
 .. container::
 
@@ -33,8 +33,20 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_1_registration_metamorphosis_3D.py` (``../../examples/1_registration/metamorphosis_3D.py``)
-     - 03:03.755
+     - 08:28.597
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_registration_plot_simpleToyExample_metamorphosis.py` (``../../examples/1_registration/plot_simpleToyExample_metamorphosis.py``)
-     - 01:52.105
+     - 01:54.701
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_2_kernels_Gaussian_RK.py` (``../../examples/2_kernels/Gaussian_RK.py``)
+     - 00:29.083
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_1_registration_data_cost_mutualInformation.py` (``../../examples/1_registration/data_cost_mutualInformation.py``)
+     - 00:18.703
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_2_kernels_multi_scale_gaussianRKHS.py` (``../../examples/2_kernels/multi_scale_gaussianRKHS.py``)
+     - 00:00.420
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_1_registration_toyExample_grayScott_constrainedMetamorphosis.py` (``../../examples/1_registration/toyExample_grayScott_constrainedMetamorphosis.py``)
+     - 00:00.000
      - 0.0

@@ -52,6 +52,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Gallery of examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#kernel-examples">Kernel examples</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">Demeter documentation</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="demeter.html">demeter package</a><ul class="current">
 <li class="toctree-l3 current"><a class="reference internal" href="demeter.html#subpackages">Subpackages</a><ul class="current">
@@ -194,6 +195,116 @@ Then when called again with same args, we can just look it up.</p>
 <dt class="sig sig-object py" id="demeter.utils.cost_functions.Combine_ssd_CFM">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.cost_functions.</span></span><span class="sig-name descname"><span class="pre">Combine_ssd_CFM</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ssd_target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cfm_target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cancer_on_target</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.cost_functions.Combine_ssd_CFM" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.cost_functions.Mutual_Information">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.cost_functions.</span></span><span class="sig-name descname"><span class="pre">Mutual_Information</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sum'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.cost_functions.Mutual_Information" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>This class is a pytorch implementation of the mutual information (MI) calculation between two images.
+This is an approximation, as the images’ histograms rely on differentiable approximations of rectangular windows.</p>
+<blockquote>
+<div><p>I(X, Y) = H(X) + H(Y) - H(X, Y) = sum(sum(p(X, Y) * log(p(Y, Y)/(p(X) * p(Y)))))</p>
+</div></blockquote>
+<p>where H(X) = -sum(p(x) * log(p(x))) is the entropy</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.cost_functions.Mutual_Information.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">im1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">im2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.cost_functions.Mutual_Information.forward" title="Link to this definition"></a></dt>
+<dd><p>Forward implementation of a differentiable MI estimator for batched images
+:param im1: N x … tensor, where N is the batch size</p>
+<blockquote>
+<div><p>… dimensions can take any form, i.e. 2D images or 3D volumes.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>im2</strong> – N x … tensor, where N is the batch size</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>N x 1 vector - the approximate MI values between the batched im1 and im2</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.cost_functions.Mutual_Information.independence_plot">
+<span class="sig-name descname"><span class="pre">independence_plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">joinedLaw_xy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">marginal_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">marginal_y</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.cost_functions.Mutual_Information.independence_plot" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.cost_functions.SoftHistogram1D">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.cost_functions.</span></span><span class="sig-name descname"><span class="pre">SoftHistogram1D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.cost_functions.SoftHistogram1D" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Differentiable 1D histogram calculation (supported via pytorch’s autograd)
+inupt:</p>
+<blockquote>
+<div><p>x     - N x D array, where N is the batch size and D is the length of each data series
+bins  - Number of bins for the histogram
+min   - Scalar min value to be included in the histogram
+max   - Scalar max value to be included in the histogram
+sigma - Scalar smoothing factor fir the bin approximation via sigmoid functions.</p>
+<blockquote>
+<div><p>Larger values correspond to sharper edges, and thus yield a more accurate approximation</p>
+</div></blockquote>
+</div></blockquote>
+<dl class="simple">
+<dt>output:</dt><dd><p>N x bins array, where each row is a histogram</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.cost_functions.SoftHistogram1D.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.cost_functions.SoftHistogram1D.forward" title="Link to this definition"></a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="demeter.utils.cost_functions.SoftHistogram2D">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.cost_functions.</span></span><span class="sig-name descname"><span class="pre">SoftHistogram2D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.cost_functions.SoftHistogram2D" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Differentiable 1D histogram calculation (supported via pytorch’s autograd)
+inupt:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>x, y  - N x D array, where N is the batch size and D is the length of each data series</dt><dd><p>(i.e. vectorized image or vectorized 3D volume)</p>
+</dd>
+</dl>
+<p>bins  - Number of bins for the histogram
+min   - Scalar min value to be included in the histogram
+max   - Scalar max value to be included in the histogram
+sigma - Scalar smoothing factor fir the bin approximation via sigmoid functions.</p>
+<blockquote>
+<div><p>Larger values correspond to sharper edges, and thus yield a more accurate approximation</p>
+</div></blockquote>
+</div></blockquote>
+<dl class="simple">
+<dt>output:</dt><dd><p>N x bins array, where each row is a histogram</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.cost_functions.SoftHistogram2D.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.cost_functions.SoftHistogram2D.forward" title="Link to this definition"></a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -381,10 +492,19 @@ padding and stride for convolutions, where users may only provide an integer.</p
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.GaussianRKHS">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">GaussianRKHS</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">border_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'replicate'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_reach</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.GaussianRKHS" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
-<p>Is equivalent to a gaussian blur. This function support 2d and 3d images in the
-PyTorch convention</p>
-<section id="parameters">
-<h3>Parameters:<a class="headerlink" href="#parameters" title="Link to this heading"></a></h3>
+<dl>
+<dt>Is equivalent to a gaussian blur. This function support 2d and 3d images in the</dt><dd><p>PyTorch convention</p>
+<p>$$ mathrm{kernel} = expleft(</p>
+</dd>
+</dl>
+<p>rac{-x^2}{2 sigma^2}
+ight) $$</p>
+<blockquote>
+<div><p>if normalised is True, the kernel will be L1 normalised: <cite>kernel = kernel / kernel.sum()</cite>
+making it equivalent to a divisino by $</p>
+</div></blockquote>
+<dl>
+<dt>rac{1}{2 pi}$ but less sensitive to the</dt><dd><p>discretisation choices..</p>
 <dl class="simple">
 <dt>sigma (Tuple[float, float] or [float,float,float]):</dt><dd><p>the standard deviation of the kernel.</p>
 </dd>
@@ -394,47 +514,43 @@ The expected modes are: <code class="docutils literal notranslate"><span class="
 </dd>
 <dt>normalized (bool):</dt><dd><p>If True, kernel will be L1 normalized. (kernle.max wil be 1)</p>
 </dd>
+<dt>kernel_reach (int):</dt><dd><p>value times sigma that controls the distance in pixels between
+the center and the edge of the kernel. The greater it is
+the closer we are to an actual gaussian kernel. (default = 6)</p>
+</dd>
 </dl>
-</section>
-<section id="examples">
-<h3>Examples:<a class="headerlink" href="#examples" title="Link to this heading"></a></h3>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1">#import matplotlib.pyplot as plt</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nibabel</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nib</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">image_3d_visualisation</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">iv3</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">reproducing_kernels</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">rkhs</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.torchbox</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tb</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.reproducing_kernels</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">rk</span>
 <span class="gp">&gt;&gt;&gt;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="o">%</span><span class="n">matplotlib</span> <span class="n">qt</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">irm_type</span> <span class="o">=</span> <span class="s1">&#39;flair&#39;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">folder_name</span> <span class="o">=</span> <span class="s1">&#39;Brats18_CBICA_APY_1&#39;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">img</span> <span class="o">=</span> <span class="n">nib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">ROOT_DIRECTORY</span><span class="o">+</span><span class="s1">&#39;/../data/brats/&#39;</span><span class="o">+</span><span class="n">folder_name</span><span class="o">+</span><span class="s1">&#39;/&#39;</span><span class="o">+</span><span class="n">folder_name</span><span class="o">+</span><span class="s1">&#39;_&#39;</span><span class="o">+</span><span class="n">irm_type</span><span class="o">+</span><span class="s1">&#39;.nii.gz&#39;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># img.affine</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">img_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">get_fdata</span><span class="p">())[</span><span class="kc">None</span><span class="p">,</span><span class="kc">None</span><span class="p">]</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">sigma</span> <span class="o">=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># img_data = torch.Tensor(img.get_fdata()[125])[None,None]</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># sigma = (5,5)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">blured</span> <span class="o">=</span> <span class="n">rkhs</span><span class="o">.</span><span class="n">GaussianRKHS</span><span class="p">(</span><span class="n">sigma</span><span class="p">)(</span><span class="n">img_data</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># fig,ax = plt.subplots(1,2)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># ax[0].imshow(img_data[0,0])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="c1"># ax[1].imshow(blured[0,0])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">iv3</span><span class="o">.</span><span class="n">imshow_3d_slider</span><span class="p">(</span><span class="n">img_data</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">iv3</span><span class="o">.</span><span class="n">imshow_3d_slider</span><span class="p">(</span><span class="n">blured</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;img_name = &#39;01&#39;           # simple disk</span>
+<span class="go">&gt;&gt;&gt;img_name = &#39;sri24&#39;      # slice of a brain</span>
+<span class="go">&gt;&gt;&gt;img = tb.reg_open(img_name,size = (300,300))</span>
+<span class="go">&gt;&gt;&gt;sigma = (3,5)</span>
+<span class="go">&gt;&gt;&gt;kernelOp = rk.GaussianRKHS(sigma)</span>
+<span class="go">&gt;&gt;&gt;print(kernelOp)</span>
+<span class="go">&gt;&gt;&gt;blured = kernelOp(img_data)</span>
+<span class="go">&gt;&gt;&gt;fig,ax = plt.subplots(1,2)</span>
+<span class="go">&gt;&gt;&gt;ax[0].imshow(img_data[0,0])</span>
+<span class="go">&gt;&gt;&gt;ax[1].imshow(blured[0,0])</span>
+<span class="go">&gt;&gt;&gt;plt.show()</span>
 </pre></div>
 </div>
+</dd>
+</dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.GaussianRKHS.forward">
 <span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.GaussianRKHS.forward" title="Link to this definition"></a></dt>
 <dd><p>Convolve the input tensor with the Gaussian kernel.</p>
 <section id="args">
-<h4>Args:<a class="headerlink" href="#args" title="Link to this heading"></a></h4>
+<h3>Args:<a class="headerlink" href="#args" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>input (torch.Tensor):</dt><dd><p>the input tensor with shape of <span class="math notranslate nohighlight">\((B, C, H, W)\)</span> or <span class="math notranslate nohighlight">\((B, C, D, H, W)\)</span></p>
 </dd>
 </dl>
 </section>
 <section id="returns">
-<h4>Returns:<a class="headerlink" href="#returns" title="Link to this heading"></a></h4>
+<h3>Returns:<a class="headerlink" href="#returns" title="Link to this heading"></a></h3>
 <p>torch.Tensor: the convolved tensor of same size and numbers of channels as the input.</p>
 </section>
 </dd></dl>
@@ -458,7 +574,7 @@ is used to save the class.</p>
 sigma is a tuple of the right dimension according to the given image
 in the integrator.</p>
 <section id="id1">
-<h4>Args:<a class="headerlink" href="#id1" title="Link to this heading"></a></h4>
+<h3>Args:<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>image (torch.Tensor):</dt><dd><p>the image to be convolved</p>
 </dd>
@@ -466,7 +582,11 @@ in the integrator.</p>
 </section>
 </dd></dl>
 
-</section>
+<dl class="py method">
+<dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.GaussianRKHS.plot">
+<span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.GaussianRKHS.plot" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -476,8 +596,16 @@ in the integrator.</p>
 <p>This class is a multi-scale Gaussian RKHS. It is equivalent to a
 multi-scale Gaussian blur. This function support 2d and 3d images in the
 PyTorch convention</p>
-<section id="id2">
-<h3>Parameters:<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<p>Let <span class="math notranslate nohighlight">\(\Gamma = { \sigma_1, \sigma_2, \ldots, \sigma_n}\)</span> be a list of standard deviations.
+$$ \mathrm{kernel}_\Gamma = \sum_{\sigma \in \Gamma} \frac {1}{<a href="#id25"><span class="problematic" id="id26">nk_</span></a>\sigma} \exp\left(\frac{-x^2}{2 \sigma^2}\right) $$
+where <span class="math notranslate nohighlight">\(n\)</span> is the number of elements in <span class="math notranslate nohighlight">\(\Gamma\)</span>.
+if normalised is True, <span class="math notranslate nohighlight">\(k\)</span> is equal to:
+<div class="math notranslate nohighlight">
+\[k_\sigma = \sum_{x \in Omega}  \exp\left(\frac{-x^2}{2 \sigma^2}\right) \]</div>
+
+else, <span class="math notranslate nohighlight">\(k\)</span> is equal to 1.</p>
+<section id="parameters">
+<h3>Parameters:<a class="headerlink" href="#parameters" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>list_sigmas: List[Tuple[float,float] or Tuple[float,float,float]]</dt><dd><p>the standard deviation of the kernel.</p>
 </dd>
@@ -535,9 +663,18 @@ PyTorch convention</p>
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">VolNormalizedGaussianRKHS</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1,)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">border_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'constant'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_reach</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
-<section id="id3">
-<h3>Parameters:<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
-<dl class="simple">
+<blockquote>
+<div><p>A kernel that preserves the value of the norm <span class="math notranslate nohighlight">\(V\)</span> for different images resolution.</p>
+<p>Let <span class="math notranslate nohighlight">\(\sigma=(\sigma_h)_{1\leq h\leq d}\)</span> be the standard deviation along the different coordinate in <span class="math notranslate nohighlight">\(\R^d\)</span> and <span class="math notranslate nohighlight">\(B=B(0,1)\)</span> the closed ball of radius <span class="math notranslate nohighlight">\(1\)</span>.  We denote <span class="math notranslate nohighlight">\(D=     ext{diag}(\sigma_h^2)\)</span> and we consider the kernel</p>
+<p>$$K(x,y)=</p>
+</div></blockquote>
+<p>rac{1}{Vol(Dh B)}expleft(-
+rac{1}{2}la D^{-1}(x-y),(x-y)
+a
+ight)D,.$$</p>
+<p>call the emph{anisotropic volume normalized gaussian kernel} (AVNG kernel).</p>
+<blockquote>
+<div><dl class="simple">
 <dt>sigma (Tuple[float,float] or [float,float,float]):</dt><dd><p>the standard deviation of the kernel.</p>
 </dd>
 <dt>sigma_convention (str):</dt><dd><p>default ‘pixel’. expected modes are: {‘pixel’,’continuous’}
@@ -561,19 +698,20 @@ enough for most of the applications, but if you notice negative V_norms,
 increasing this value might help.</p>
 </dd>
 </dl>
+</div></blockquote>
 <dl class="py method">
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS.forward">
 <span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS.forward" title="Link to this definition"></a></dt>
 <dd><p>Convolve the input tensor with the Gaussian kernel.</p>
-<section id="id4">
-<h4>Args:<a class="headerlink" href="#id4" title="Link to this heading"></a></h4>
+<section id="id2">
+<h3>Args:<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>input (torch.Tensor):</dt><dd><p>the input tensor with shape of <span class="math notranslate nohighlight">\((B, C, H, W)\)</span> or <span class="math notranslate nohighlight">\((B, C, D, H, W)\)</span></p>
 </dd>
 </dl>
 </section>
-<section id="id5">
-<h4>Returns:<a class="headerlink" href="#id5" title="Link to this heading"></a></h4>
+<section id="id3">
+<h3>Returns:<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
 <p>torch.Tensor: the convolved tensor of same size and numbers of channels as the input.</p>
 </section>
 </dd></dl>
@@ -593,7 +731,6 @@ increasing this value might help.</p>
 <span class="sig-name descname"><span class="pre">plot</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.VolNormalizedGaussianRKHS.plot" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
-</section>
 </dd></dl>
 
 <dl class="py function">
@@ -610,8 +747,8 @@ the function filter2d from kornia, adapted to work with 2d and 3d tensors.</p>
 independently at each depth channel of the tensor. Before applying the
 kernel, the function applies padding according to the specified mode so
 that the output remains in the same shape.</p>
-<section id="id6">
-<h3>Parameters:<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<section id="id4">
+<h3>Parameters:<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>input (torch.Tensor):</dt><dd><p>the input tensor with shape of <span class="math notranslate nohighlight">\((B, C, H, W)\)</span> or <span class="math notranslate nohighlight">\((B, C, D, H, W)\)</span></p>
 </dd>
@@ -637,7 +774,7 @@ as the input.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.get_gaussian_kernel1d">
-<span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">get_gaussian_kernel1d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_reach</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.get_gaussian_kernel1d" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">get_gaussian_kernel1d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_reach</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.get_gaussian_kernel1d" title="Link to this definition"></a></dt>
 <dd><p>Function that returns Gaussian filter coefficients.</p>
 <p>$$ g(x) = expleft(frac{-x^2}{2 sigma^2}right) $$
 Parameters:
@@ -648,6 +785,12 @@ kernel_size (int)</p>
 </div></blockquote>
 <dl class="simple">
 <dt>dx (float)</dt><dd><p>the spacing between the kernel points.</p>
+</dd>
+<dt>normalized (bool)</dt><dd><p>if True, the kernel will be L1 normalized. (divided by the sum of its elements)</p>
+</dd>
+<dt>kernel_reach (int)</dt><dd><p>value times sigma that controls the distance in pixels between
+the center and the edge of the kernel. The greater it is
+the closer we are to an actual gaussian kernel. (default = 6)</p>
 </dd>
 <dt>sigma (float, Tensor)</dt><dd><p>standard deviation of the kernel.</p>
 </dd>
@@ -674,10 +817,10 @@ kernel_size (int)</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.get_gaussian_kernel2d">
-<span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">get_gaussian_kernel2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_reach</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.get_gaussian_kernel2d" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">get_gaussian_kernel2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_reach</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.get_gaussian_kernel2d" title="Link to this definition"></a></dt>
 <dd><p>Function that returns Gaussian filter coefficients.</p>
-<section id="id7">
-<h3>Parameters:<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<section id="id5">
+<h3>Parameters:<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>sigma (Tuple[float, float] or torch.Tensor):</dt><dd><p>the standard deviation of the kernel.</p>
 </dd>
@@ -705,10 +848,10 @@ kernel_size (int)</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.get_gaussian_kernel3d">
-<span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">get_gaussian_kernel3d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1.0,</span> <span class="pre">1.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_reach</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.get_gaussian_kernel3d" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">get_gaussian_kernel3d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1.0,</span> <span class="pre">1.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_reach</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.get_gaussian_kernel3d" title="Link to this definition"></a></dt>
 <dd><p>Function that returns Gaussian filter coefficients.</p>
-<section id="id8">
-<h3>Parameters:<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<section id="id6">
+<h3>Parameters:<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>sigma (Tuple[float, float, float] or torch.Tensor):</dt><dd><p>the standard deviation of the kernel.</p>
 </dd>
@@ -722,8 +865,8 @@ the closer we are to an actual gaussian kernel. (default = 6)</p>
 </dd>
 </dl>
 </section>
-<section id="id9">
-<h3>Returns:<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<section id="id7">
+<h3>Returns:<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
 <p>torch.Tensor: 3D tensor with the filter coefficients.</p>
 </section>
 </dd></dl>
@@ -788,8 +931,8 @@ we simply apply the ‘int case’ to each element of the list.</p>
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.plot_gaussian_kernel_1d">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">plot_gaussian_kernel_1d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rotated</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.plot_gaussian_kernel_1d" title="Link to this definition"></a></dt>
 <dd><p>Function that plots a 1D Gaussian kernel.</p>
-<section id="id10">
-<h3>Parameters:<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<section id="id8">
+<h3>Parameters:<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>kernel (torch.Tensor):</dt><dd><p>the kernel to be plotted.</p>
 </dd>
@@ -801,8 +944,8 @@ we simply apply the ‘int case’ to each element of the list.</p>
 </dd>
 </dl>
 </section>
-<section id="id11">
-<h3>Returns:<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<section id="id9">
+<h3>Returns:<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
 <p>matplotlib.axes.Axes: the axes where the kernel was plotted.</p>
 </section>
 </dd></dl>
@@ -811,8 +954,8 @@ we simply apply the ‘int case’ to each element of the list.</p>
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.plot_gaussian_kernel_2d">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">plot_gaussian_kernel_2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.plot_gaussian_kernel_2d" title="Link to this definition"></a></dt>
 <dd><p>Function that plots a 2D Gaussian kernel.</p>
-<section id="id12">
-<h3>Parameters:<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<section id="id10">
+<h3>Parameters:<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>kernel (torch.Tensor):</dt><dd><p>the kernel to be plotted.</p>
 </dd>
@@ -822,8 +965,8 @@ we simply apply the ‘int case’ to each element of the list.</p>
 </dd>
 </dl>
 </section>
-<section id="id13">
-<h3>Returns:<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<section id="id11">
+<h3>Returns:<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
 <p>matplotlib.axes.Axes: the axes where the kernel was plotted.</p>
 </section>
 </dd></dl>
@@ -832,8 +975,8 @@ we simply apply the ‘int case’ to each element of the list.</p>
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.plot_gaussian_kernel_3d">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">plot_gaussian_kernel_3d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.plot_gaussian_kernel_3d" title="Link to this definition"></a></dt>
 <dd><p>Function that plots a 3D Gaussian kernel.</p>
-<section id="id14">
-<h3>Parameters:<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<section id="id12">
+<h3>Parameters:<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>kernel (torch.Tensor):</dt><dd><p>the kernel to be plotted.</p>
 </dd>
@@ -1000,6 +1143,32 @@ not provided, use current axes or create a new one.  Optional.</p></li>
 <dt class="sig sig-object py" id="demeter.utils.torchbox.RandomGaussianField">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">RandomGaussianField</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_gaussian</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.RandomGaussianField" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<blockquote>
+<div><p>Generate a random field made from a sum of N gaussians
+and compute the theoretical divergence of the field. It is usefully
+for testing function on random generated fields with known expressions,
+making it possible to compute theoretical values. It uses the function RandomGaussianImage.</p>
+<p>If <span class="math notranslate nohighlight">\(v : \Omega \mapsto \mathbb{R}^d\)</span> for all <span class="math notranslate nohighlight">\(n &lt; d\)</span></p>
+<p>$$ v_n = sum_{i=1}^{N} a_i exp(-</p>
+</div></blockquote>
+<p>rac{||X - c_i||^2}{2b_i^2})$$</p>
+<blockquote>
+<div><dl class="simple">
+<dt>size: tuple</dt><dd><dl class="simple">
+<dt>tuple with the image dimensions to create (H,W) will create a 2d field  of shape (H,W,2),</dt><dd><p>((D,H,W,3) in 3d)</p>
+</dd>
+</dl>
+</dd>
+<dt>n_gaussian: int</dt><dd><p>Number of gaussians to sum.</p>
+</dd>
+<dt>a: list of float</dt><dd><p>list of the a parameters of the gaussians controlling the amplitude</p>
+</dd>
+<dt>b: list of float</dt><dd><p>list of the b parameters of the gaussians controlling the width</p>
+</dd>
+<dt>c: list of float</dt><dd><p>list of the c parameters of the gaussians controlilng the position</p>
+</dd>
+</dl>
+</div></blockquote>
 <dl class="py method">
 <dt class="sig sig-object py" id="demeter.utils.torchbox.RandomGaussianField.divergence">
 <span class="sig-name descname"><span class="pre">divergence</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.RandomGaussianField.divergence" title="Link to this definition"></a></dt>
@@ -1018,18 +1187,16 @@ not provided, use current axes or create a new one.  Optional.</p></li>
 <dt class="sig sig-object py" id="demeter.utils.torchbox.RandomGaussianImage">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">RandomGaussianImage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_gaussians</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.RandomGaussianImage" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<blockquote>
-<div><p>Generate a random image made from a sum of N gaussians
+<p>Generate a random image made from a sum of N gaussians
 and compute the derivative of the image with respect</p>
 <blockquote>
 <div><p>to the parameters of the gaussians.</p>
 <p>self.a[i] * torch.exp(- ((self.X - self.c[i])**2).sum(-1) / (2*self.b[i]**2))
-$$ I = sum_{i=1}^{N} a_i exp(-</p>
+$$ I = sum_{i=1}^{N} a_i exp(- frac{||X - c_i||^2}{2b_i^2})$$</p>
 </div></blockquote>
-</div></blockquote>
-<p>rac{||X - c_i||^2}{2b_i^2})$$</p>
-<blockquote>
-<div><dl class="simple">
+<section id="id13">
+<h3>Parameters:<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<dl class="simple">
 <dt>size: tuple</dt><dd><p>tuple with the image dimensions to create</p>
 </dd>
 <dt>n_gaussians: int</dt><dd><p>Number of gaussians to sum.</p>
@@ -1043,12 +1210,12 @@ $$ I = sum_{i=1}^{N} a_i exp(-</p>
 <dt>c: list of float</dt><dd><p>list of the c parameters of the gaussians controling the position</p>
 </dd>
 </dl>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">RGI</span> <span class="o">=</span> <span class="n">RandomGaussianImage</span><span class="p">((</span><span class="mi">100</span><span class="p">,</span><span class="mi">100</span><span class="p">),</span><span class="mi">5</span><span class="p">,</span><span class="s1">&#39;pixel&#39;</span><span class="p">)</span>
-<span class="n">image</span> <span class="o">=</span> <span class="n">RGI</span><span class="o">.</span><span class="n">image</span><span class="p">()</span>
-<span class="n">derivative</span> <span class="o">=</span> <span class="n">RGI</span><span class="o">.</span><span class="n">der</span>
-</pre></div>
-</div>
-</div></blockquote>
+</section>
+<section id="id14">
+<h3>Example:<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<p>&gt;&gt;&gt;RGI = RandomGaussianImage((100,100),5,’pixel’)
+&gt;&gt;&gt; image = RGI.image()
+&gt;&gt;&gt; derivative = RGI.derivative()</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="demeter.utils.torchbox.RandomGaussianImage.derivative">
 <span class="sig-name descname"><span class="pre">derivative</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.RandomGaussianImage.derivative" title="Link to this definition"></a></dt>
@@ -1070,6 +1237,7 @@ $$ I = sum_{i=1}^{N} a_i exp(-</p>
 : return: torch.Tensor of shape [1,1,H,W] or [1,1,D,H,W]</p>
 </dd></dl>
 
+</section>
 </dd></dl>
 
 <dl class="py function">
@@ -1118,13 +1286,16 @@ $$ I = sum_{i=1}^{N} a_i exp(-</p>
 </dd>
 </dl>
 <p>Example :
-cms = mbs.getCMS_allcombinaision()</p>
-<p>H,W = 100,150
-# vector defomation generation
-v = mbs.field2D_bspline(cms,(H,W),dim_stack=2).unsqueeze(0)
-v <a href="#id15"><span class="problematic" id="id16">*</span></a>= 0.5</p>
-<p>deform_diff = vff.FieldIntegrator(method=’fast_exp’)(v.clone(),forward= True)</p>
-<p>deformation_show(deform_diff,step=4,check_diffeo=True)</p>
+&gt;&gt;&gt;cms = mbs.getCMS_allcombinaision()
+&gt;&gt;&gt;
+&gt;&gt;&gt;H,W = 100,150
+&gt;&gt;&gt;# vector defomation generation
+&gt;&gt;&gt;v = mbs.field2D_bspline(cms,(H,W),dim_stack=2).unsqueeze(0)
+&gt;&gt;&gt;v <a href="#id15"><span class="problematic" id="id16">*</span></a>= 0.5
+&gt;&gt;&gt;
+&gt;&gt;&gt;deform_diff = vff.FieldIntegrator(method=’fast_exp’)(v.clone(),forward= True)
+&gt;&gt;&gt;
+&gt;&gt;&gt;deformation_show(deform_diff,step=4,check_diffeo=True)</p>
 </dd></dl>
 
 <dl class="py function">
@@ -1183,31 +1354,40 @@ axes[x][d].set_title(str((x,d)))</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="demeter.utils.torchbox.field_2d_jacobian">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">field_2d_jacobian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.field_2d_jacobian" title="Link to this definition"></a></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>field</strong> – field.size (B,H,W,2)</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>output.size = (B,2,2,H,W)</p>
-</dd>
-<dt class="field-odd">Example<span class="colon">:</span></dt>
+<dd><p>compute the jacobian of the field</p>
+<section id="id17">
+<h3>parameters:<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<p>field: field.size (b,h,w,2)</p>
+</section>
+<section id="id18">
+<h3>returns:<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<p>jacobian of the field.size = (b,2,2,h,w)</p>
+<dl class="field-list simple">
+<dt class="field-odd">example<span class="colon">:</span></dt>
 <dd class="field-odd"><p></p></dd>
 </dl>
-<p>field = torch.zeros((100,100,2))
-field[::2,:,0] = 1
-field[:,::2,1] = 1</p>
-<p>jaco =  field_2d_jacobian(field)</p>
-<p>plt.rc(‘text’,usetex=True)
-fig, axes = plt.subplots(2,2)
-axes[0,0].imshow(jaco[0,0,0,:,:].detach().numpy(),cmap=’gray’)
-axes[0,0].set_title(r”<span class="math notranslate nohighlight">\(\frac{\partial f_1}{\partial x}\)</span>”)
-axes[0,1].imshow(jaco[0,0,1,:,:].detach().numpy(),cmap=’gray’)
-axes[0,1].set_title(r”<span class="math notranslate nohighlight">\(\frac{\partial f_1}{\partial y}\)</span>”)
-axes[1,0].imshow(jaco[0,1,0,:,:].detach().numpy(),cmap=’gray’)
-axes[1,0].set_title(r”<span class="math notranslate nohighlight">\(\frac{\partial f_2}{\partial x}\)</span>”)
-axes[1,1].imshow(jaco[0,1,1,:,:].detach().numpy(),cmap=’gray’)
-axes[1,1].set_title(r”<span class="math notranslate nohighlight">\(\frac{\partial f_2}{\partial y}\)</span>”)</p>
-<p>plt.show()</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">field</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">100</span><span class="p">,</span><span class="mi">100</span><span class="p">,</span><span class="mi">2</span><span class="p">))</span>
+<span class="n">field</span><span class="p">[::</span><span class="mi">2</span><span class="p">,:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">field</span><span class="p">[:,::</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="n">jaco</span> <span class="o">=</span>  <span class="n">field_2d_jacobian</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+
+
+<span class="n">plt</span><span class="o">.</span><span class="n">rc</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">,</span><span class="n">usetex</span><span class="o">=</span><span class="n">true</span><span class="p">)</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">jaco</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,:,:]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span><span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;$\frac{\partial f_1}{\partial x}$&quot;</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">jaco</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,:,:]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span><span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;$\frac{\partial f_1}{\partial y}$&quot;</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">jaco</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,:,:]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span><span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;$\frac{\partial f_2}{\partial x}$&quot;</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">jaco</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,:,:]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span><span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">)</span>
+<span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;$\frac{\partial f_2}{\partial y}$&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
 </dd></dl>
 
 <dl class="py function">
@@ -1216,49 +1396,65 @@ axes[1,1].set_title(r”<span class="math notranslate nohighlight">\(\frac{\part
 <dd><p>make the divergence of a field, for each pixel <span class="math notranslate nohighlight">\(p\)</span> in I
 <div class="math notranslate nohighlight">
 \[div(I(p)) = \sum_{i=1}^C \frac{\partial I(p)_i}{\partial x_i}\]</div>
-
-:param field: (B,H,W,2) tensor
-:return:</p>
-<p>cms = torch.tensor([  # control matrices
-[[0, 0, 0, 0, 0, 0, 0, 0, 0],</p>
-<blockquote>
-<div><p>[0, +1, 0, -1, 0, -1, 0, -1, 0],
-[0, 0, 0, 0, 0, 0, 0, 0, 0],
-[0, +1, 0, -1, 0, +1, 0, +1, 0],
-[0, 0, 0, 0, 0, 0, 0, 0, 0],
-[0, +1, 0, +1, 0, -1, 0, +1, 0],
-[0, 0, 0, 0, 0, 0, 0, 0, 0],
-[0, -1, 0, -1, 0, -1, 0, +1, 0],
-[0, 0, 0, 0, 0, 0, 0, 0, 0],
-],</p>
-</div></blockquote>
+</p>
+<section id="id19">
+<h3>Parameters:<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
 <dl class="simple">
-<dt>[[0, 0, 0, 0, 0, 0, 0, 0, 0],</dt><dd><p>[0, +1, 0, +1, 0, -1, 0, +1, 0],
-[0, 0, 0, 0, 0, 0, 0, 0, 0],#[0, .2, .75, 1, 0],
-[0, -1, 0, -1, 0, -1, 0, +1, 0],
-[0, 0, 0, 0, 0, 0, 0, 0, 0],
-[0, +1, 0, -1, 0, -1, 0, -1, 0],
-[0, 0, 0, 0, 0, 0, 0, 0, 0],
-[0, +1, 0, -1, 0, +1, 0, +1, 0],
-[0, 0, 0, 0, 0, 0, 0, 0, 0]]</p>
+<dt>field: torch.Tensor</dt><dd><p>of shape (B,H,W,2) or (B,D,H,W,3)</p>
 </dd>
 </dl>
-<p>],requires_grad=False,dtype=torch.float)</p>
-<p>field_size = (20,20)
-field = mbs.field2D_bspline(cms,field_size,</p>
-<blockquote>
-<div><p>degree=(3,3),dim_stack=2).unsqueeze(0)</p>
-</div></blockquote>
-<p># field_diff = vect_spline_diffeo(cms,field_size)
-H,W = field_size
-xx, yy = torch.meshgrid(torch.linspace(-1, 1, H), torch.linspace(-1, 1, W))</p>
-<p>div = field_2d_divergence(field)</p>
-<p># _,d_ax = plt.subplots()
-fig,ax = plt.subplots()</p>
-<p>div_plot = ax.imshow(div[0,0,:,:],origin=’lower’)
-ax.quiver(field[0,:,:,0],field[0,:,:,1])
-fig.colorbar(div_plot)
-plt.show()</p>
+</section>
+<section id="id20">
+<h3>Returns:<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<dl class="simple">
+<dt>div: torch.Tensor</dt><dd><p>of shape (B,2,2H,W) or (B,3,3,D,H,W)</p>
+</dd>
+</dl>
+</section>
+<section id="id21">
+<h3>Example:<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cms</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>  <span class="c1"># control matrices</span>
+<span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+ <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+ <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+ <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+ <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+ <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+ <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+ <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+ <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+ <span class="p">],</span>
+<span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+ <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+ <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span><span class="c1">#[0, .2, .75, 1, 0],</span>
+ <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+ <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+ <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+ <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+ <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+ <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]</span>
+<span class="p">],</span><span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span><span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+
+<span class="n">field_size</span> <span class="o">=</span> <span class="p">(</span><span class="mi">20</span><span class="p">,</span><span class="mi">20</span><span class="p">)</span>
+<span class="n">field</span> <span class="o">=</span> <span class="n">mbs</span><span class="o">.</span><span class="n">field2D_bspline</span><span class="p">(</span><span class="n">cms</span><span class="p">,</span><span class="n">field_size</span><span class="p">,</span>
+                            <span class="n">degree</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">),</span><span class="n">dim_stack</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># field_diff = vect_spline_diffeo(cms,field_size)</span>
+<span class="n">H</span><span class="p">,</span><span class="n">W</span> <span class="o">=</span> <span class="n">field_size</span>
+<span class="n">xx</span><span class="p">,</span> <span class="n">yy</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">H</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">W</span><span class="p">))</span>
+
+<span class="n">div</span> <span class="o">=</span> <span class="n">field_2d_divergence</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+
+<span class="c1"># _,d_ax = plt.subplots()</span>
+<span class="n">fig</span><span class="p">,</span><span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+
+<span class="n">div_plot</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">div</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,:,:],</span><span class="n">origin</span><span class="o">=</span><span class="s1">&#39;lower&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">quiver</span><span class="p">(</span><span class="n">field</span><span class="p">[</span><span class="mi">0</span><span class="p">,:,:,</span><span class="mi">0</span><span class="p">],</span><span class="n">field</span><span class="p">[</span><span class="mi">0</span><span class="p">,:,:,</span><span class="mi">1</span><span class="p">])</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">div_plot</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
 </dd></dl>
 
 <dl class="py function">
@@ -1449,8 +1645,25 @@ count += (image_3D[i,2,…] == image_3D_as_grid[i,…,2]).sum()</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="demeter.utils.torchbox.imgDeform">
-<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">imgDeform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">I</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deform_grid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'2square'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clamp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.imgDeform" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">imgDeform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deform_grid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'2square'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clamp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.imgDeform" title="Link to this definition"></a></dt>
+<dd><p>Apply a deformation grid to an image</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>torch.Tensor</em><em> of </em><em>shape</em><em> [</em><em>B</em><em>,</em><em>C</em><em>,</em><em>H</em><em>,</em><em>W</em><em>] or </em><em>[</em><em>B</em><em>,</em><em>C</em><em>,</em><em>D</em><em>,</em><em>H</em><em>,</em><em>W</em><em>]</em>) – image to deform</p></li>
+<li><p><strong>deform_grid</strong> (<em>torch.Tensor</em><em> of </em><em>shape</em><em> [</em><em>B</em><em>,</em><em>H</em><em>,</em><em>W</em><em>,</em><em>2</em><em>] or </em><em>[</em><em>B</em><em>,</em><em>D</em><em>,</em><em>H</em><em>,</em><em>W</em><em>,</em><em>3</em><em>]</em>) – deformation grid</p></li>
+<li><p><strong>dx_convention</strong> (<em>str</em><em>, </em><em>optional</em>) – convention of the deformation grid (default ‘2square’)</p></li>
+<li><p><strong>clamp</strong> (<em>bool</em><em>, </em><em>optional</em>) – if True, clamp the image between 0 and 1 if the max value is less than 1 else between 0 and 255 (default False)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>deformed image of shape [B,C,H,W] or [B,C,D,H,W]</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="demeter.utils.torchbox.is_tensor">
@@ -1545,18 +1758,24 @@ takes</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="demeter.utils.torchbox.pixel_to_2square_convention">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">pixel_to_2square_convention</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.pixel_to_2square_convention" title="Link to this definition"></a></dt>
-<dd><p>Convert a field in spacial pixelic convention in one on as
+<dd><p>Convert a field in spatial pixelic convention in one on as
 [-1,1]^2 square as requested by pytorch’s gridSample</p>
 <dl class="field-list simple">
-<dt class="field-odd">Field<span class="colon">:</span></dt>
-<dd class="field-odd"><p>(torch tensor) of size [T,H,W,2] or [T,D,H,W,3]</p>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>field</strong> (<em>torch.Tensor</em>) – of size [T,H,W,2] or [T,D,H,W,3]</p></li>
+<li><p><strong>is_grid</strong> (<em>bool</em>) – if True field is considered as a deformation (i.e.: field = (id + v))
+else field is a vector field (i.e.: field = v)
+(default is True)</p></li>
+</ul>
 </dd>
-<dt class="field-even">Grid<span class="colon">:</span></dt>
-<dd class="field-even"><p>(bool, default = True) if true field is considered as a deformation (i.e.: field = (id + v))</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>field</strong> – of size [T,H,W,2] or [T,D,H,W,3]</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
 </dd>
 </dl>
-<p>else field is a vector field (i.e.: field = v)
-:return:</p>
 </dd></dl>
 
 <dl class="py function">
@@ -1620,11 +1839,6 @@ containing tensors.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="demeter.utils.torchbox.showDef">
-<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">showDef</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_diffeo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.showDef" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
 <dt class="sig sig-object py" id="demeter.utils.torchbox.spatialGradient">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">spatialGradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pixel'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.spatialGradient" title="Link to this definition"></a></dt>
 <dd><p>Compute the spatial gradient on 2d and 3d images by applying
@@ -1649,6 +1863,19 @@ Attention : this last values must be in reverse order of the image shape.</p></l
 </dd>
 </dl>
 <p class="rubric">Examples</p>
+<p>&gt;&gt;&gt;H,W = (300,400)
+&gt;&gt;&gt;rgi = tb.RandomGaussianImage((H, W), 2, ‘square’,
+&gt;&gt;&gt;                             a=[-1, 1],</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span>                             <span class="n">b</span><span class="o">=</span><span class="p">[</span><span class="mi">15</span><span class="p">,</span> <span class="mi">25</span><span class="p">],</span>
+<span class="go"> &gt;&gt;&gt;                             c=[[.3*400 , .3*300], [.7*400, .7*300]])</span>
+<span class="go"> &gt;&gt;&gt;image =  rgi.image()</span>
+<span class="go"> &gt;&gt;&gt;theoretical_derivative = rgi.derivative()</span>
+<span class="go"> &gt;&gt;&gt;print(f&quot;image shape : {image.shape}&quot;)</span>
+<span class="go"> &gt;&gt;&gt;derivative = tb.spatialGradient(image, dx_convention=&quot;square&quot;)</span>
+<span class="go"> &gt;&gt;&gt;dx = torch.tensor([[1. / (W - 1), 1. / (H - 1)]], dtype=torch.float64)</span>
+<span class="go"> &gt;&gt;&gt;derivative_2 = tb.spatialGradient(mage, dx_convention=dx)</span>
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py function">
@@ -1752,7 +1979,20 @@ consistency with others converters</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="demeter.utils.torchbox.temporal_img_cmp">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">temporal_img_cmp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'compose'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.temporal_img_cmp" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Stack two gray-scales images to compare them. The images must have the same
+height and width and depth (for 3d). Images can be temporal meaning that
+they have a time dimension stored in the first dimension.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img_1</strong> (<em>torch.Tensor</em>) – [T_1,C,H,W] or [T_1,C,D,H,W] tensor C = 1</p></li>
+<li><p><strong>img2</strong> (<em>torch.Tensor</em>) – [T_2,C,H,W] or [T_2,C,D,H,W] tensor C = 1</p></li>
+<li><p><strong>note</strong> (<em>..</em>) – T_1 = 1 and T_2 &gt; 1 or T_1 &gt; 1 and T_2 = 1 or T_1 = T_2 &gt; 1 works, any other case will raise an error.</p></li>
+<li><p><strong>method</strong> (<em>str</em>) – method to compare the images, among {‘compose’,’seg’,’segw’,’segh’}</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="demeter.utils.torchbox.thresholding">
@@ -1774,13 +2014,17 @@ consistency with others converters</p>
 <dd class="field-even"><p></p>
 </dd>
 </dl>
-<p>Example :
-cms = mbs.getCMS_allcombinaision()</p>
-<p>H,W = 100,150
-# vector defomation generation
-v = mbs.field2D_bspline(cms,(H,W),dim_stack=2).unsqueeze(0)
-v <a href="#id17"><span class="problematic" id="id18">*</span></a>= 0.5</p>
-<p>vectField_show(v,step=4,check_diffeo=True)</p>
+<section id="id22">
+<h3>Example :<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<p>&gt;&gt;&gt;cms = mbs.getCMS_allcombinaision()
+&gt;&gt;&gt;
+&gt;&gt;&gt;H,W = 100,150
+&gt;&gt;&gt;# vector defomation generation
+&gt;&gt;&gt;v = mbs.field2D_bspline(cms,(H,W),dim_stack=2).unsqueeze(0)
+&gt;&gt;&gt;v <a href="#id23"><span class="problematic" id="id24">*</span></a>= 0.5
+&gt;&gt;&gt;
+&gt;&gt;&gt;vectField_show(v,step=4,check_diffeo=True)</p>
+</section>
 </dd></dl>
 
 <dl class="py function">

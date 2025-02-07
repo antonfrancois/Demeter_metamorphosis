@@ -1,0 +1,67 @@
+
+
+.. _sphx_glr_auto_examples_2_kernels:
+
+.. _examples_gallery:
+
+Kernel examples
+=======================================================
+
+The examples below shows the differents kernels available in Demeter-Metamorphosis
+and how to use them.
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbnails">
+
+.. thumbnail-parent-div-open
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This page is not only meant to show you how to use the Gaussian Reproducing Kernel (GRK) but also, to provide you with everything you need to know about kernel operators in the Demeter library: how they are used and the available options. If you are familiar with reproducing kernels on point cloud data, you might be surprised. Since we are working with images, it is as if we had a point cloud where each pixel is a Dirac with its weight being the pixel intensity. As a result, there is a large number of closely spaced points.  This is why, instead of using a classical kernel that computes the distance between points, we perform the same operation using a convolution.">
+
+.. only:: html
+
+  .. image:: /auto_examples/2_kernels/images/thumb/sphx_glr_Gaussian_RK_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_2_kernels_Gaussian_RK.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">A Gaussian Reproducing Kernel</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="In this file we look more closely at the multiscale Gaussian Reproducing Kernel (RK) The multiscale Gaussian RK is build as a sum of Gaussian RK with different sigma. In Metamorphosis, the  RK is used to parameterize V the space of acceptable vector fields. In practice, it has a smoothing effect on vector fields. However, Gaussian RK erase the high frequency of the vector fields which prevents the vector fields to match small details in the images. To overcome this issue, we can use a multiscale Gaussian RK, that will keep smoothing properties while keeping some high frequency information. It can be seen as a compromise kernel.">
+
+.. only:: html
+
+  .. image:: /auto_examples/2_kernels/images/thumb/sphx_glr_multi_scale_gaussianRKHS_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_2_kernels_multi_scale_gaussianRKHS.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">A multiscale Gaussian Reproducing Kernel</div>
+    </div>
+
+
+.. thumbnail-parent-div-close
+
+.. raw:: html
+
+    </div>
+
+
+.. toctree::
+   :hidden:
+
+   /auto_examples/2_kernels/Gaussian_RK
+   /auto_examples/2_kernels/multi_scale_gaussianRKHS
+

@@ -47,6 +47,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Gallery of examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#kernel-examples">Kernel examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules.html">Demeter documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="advanced_users.html">For advanced users</a></li>
 </ul>
@@ -152,10 +153,6 @@
 </li>
       <li><a href="demeter.utils.html#demeter.utils.cost_functions.Combine_ssd_CFM">Combine_ssd_CFM (class in demeter.utils.cost_functions)</a>
 </li>
-      <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.wraps.commun_after">commun_after() (in module demeter.metamorphosis.wraps)</a>
-</li>
-      <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.wraps.commun_before">commun_before() (in module demeter.metamorphosis.wraps)</a>
-</li>
       <li><a href="demeter.utils.html#demeter.utils.fft_conv.complex_matmul">complex_matmul() (in module demeter.utils.fft_conv)</a>
 </li>
       <li><a href="demeter.utils.html#demeter.utils.torchbox.compose_fields">compose_fields() (in module demeter.utils.torchbox)</a>
@@ -164,10 +161,10 @@
 </li>
       <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator.compute_field_sim">compute_field_sim() (demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.compute_landmark_dist">compute_landmark_dist() (demeter.metamorphosis.abstract.Optimize_geodesicShooting method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_integrator">ConstrainedMetamorphosis_integrator (class in demeter.metamorphosis.constrained)</a>
 </li>
       <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.constrained.ConstrainedMetamorphosis_Shooting">ConstrainedMetamorphosis_Shooting (class in demeter.metamorphosis.constrained)</a>
@@ -396,12 +393,12 @@
 </li>
       <li><a href="demeter.utils.html#demeter.utils.torchbox.find_binary_center">find_binary_center() (in module demeter.utils.torchbox)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="demeter.html#demeter.constants.find_cuda">find_cuda() (in module demeter.constants)</a>
 </li>
       <li><a href="demeter.utils.html#demeter.utils.torchbox.format_sigmas">format_sigmas() (in module demeter.utils.torchbox)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="demeter.utils.html#demeter.utils.toolbox.format_time">format_time() (in module demeter.utils.toolbox)</a>
 </li>
       <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator.forward">forward() (demeter.metamorphosis.abstract.Geodesic_integrator method)</a>
@@ -416,6 +413,12 @@
         <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.forward">(demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator method)</a>
 </li>
         <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.simplex.Simplex_sqrt_Metamorphosis_integrator.forward">(demeter.metamorphosis.simplex.Simplex_sqrt_Metamorphosis_integrator method)</a>
+</li>
+        <li><a href="demeter.utils.html#demeter.utils.cost_functions.Mutual_Information.forward">(demeter.utils.cost_functions.Mutual_Information method)</a>
+</li>
+        <li><a href="demeter.utils.html#demeter.utils.cost_functions.SoftHistogram1D.forward">(demeter.utils.cost_functions.SoftHistogram1D method)</a>
+</li>
+        <li><a href="demeter.utils.html#demeter.utils.cost_functions.SoftHistogram2D.forward">(demeter.utils.cost_functions.SoftHistogram2D method)</a>
 </li>
         <li><a href="demeter.utils.html#demeter.utils.reproducing_kernels.GaussianRKHS.forward">(demeter.utils.reproducing_kernels.GaussianRKHS method)</a>
 </li>
@@ -546,11 +549,13 @@
         <li><a href="demeter.utils.html#demeter.utils.torchbox.imCmp">(in module demeter.utils.torchbox)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="demeter.utils.html#demeter.utils.torchbox.imgDeform">imgDeform() (in module demeter.utils.torchbox)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="demeter.utils.html#demeter.utils.cost_functions.SumSquaredDifference.imgShow">imgShow() (demeter.utils.cost_functions.SumSquaredDifference method)</a>
+</li>
+      <li><a href="demeter.utils.html#demeter.utils.cost_functions.Mutual_Information.independence_plot">independence_plot() (demeter.utils.cost_functions.Mutual_Information method)</a>
 </li>
       <li><a href="demeter.utils.html#demeter.utils.reproducing_kernels.GaussianRKHS.init_kernel">init_kernel() (demeter.utils.reproducing_kernels.GaussianRKHS method)</a>
 
@@ -661,6 +666,12 @@
 </li>
       <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Mutlimodal_ssd_cfm">Mutlimodal_ssd_cfm (class in demeter.metamorphosis.data_cost)</a>
 </li>
+      <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Mutual_Information">Mutual_Information (class in demeter.metamorphosis.data_cost)</a>
+
+      <ul>
+        <li><a href="demeter.utils.html#demeter.utils.cost_functions.Mutual_Information">(class in demeter.utils.cost_functions)</a>
+</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -687,6 +698,8 @@
         <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.plot">(demeter.metamorphosis.abstract.Optimize_geodesicShooting method)</a>
 </li>
         <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator.plot">(demeter.metamorphosis.joined.Weighted_joinedMask_Metamorphosis_integrator method)</a>
+</li>
+        <li><a href="demeter.utils.html#demeter.utils.reproducing_kernels.GaussianRKHS.plot">(demeter.utils.reproducing_kernels.GaussianRKHS method)</a>
 </li>
         <li><a href="demeter.utils.html#demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS.plot">(demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS method)</a>
 </li>
@@ -767,7 +780,7 @@
 </li>
       <li><a href="demeter.utils.html#demeter.utils.toolbox.save_gif_with_plt">save_gif_with_plt() (in module demeter.utils.toolbox)</a>
 </li>
-      <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Geodesic_integrator.save_to_gif">save_to_gif() (demeter.metamorphosis.abstract.Geodesic_integrator method)</a>
+      <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.abstract.Optimize_geodesicShooting.save_to_gif">save_to_gif() (demeter.metamorphosis.abstract.Optimize_geodesicShooting method)</a>
 </li>
       <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.DataCost.set_optimizer">set_optimizer() (demeter.metamorphosis.data_cost.DataCost method)</a>, <a href="demeter.metamorphosis.html#id0">[1]</a>
 
@@ -781,8 +794,6 @@
       </ul></li>
       <li><a href="demeter.html#demeter.constants.set_ticks_off">set_ticks_off() (in module demeter.constants)</a>
 </li>
-      <li><a href="demeter.utils.html#demeter.utils.torchbox.showDef">showDef() (in module demeter.utils.torchbox)</a>
-</li>
       <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.SimiliSegs">SimiliSegs (class in demeter.metamorphosis.data_cost)</a>
 </li>
       <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.wraps.simplex_metamorphosis">simplex_metamorphosis() (in module demeter.metamorphosis.wraps)</a>
@@ -790,6 +801,10 @@
       <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.simplex.Simplex_sqrt_Metamorphosis_integrator">Simplex_sqrt_Metamorphosis_integrator (class in demeter.metamorphosis.simplex)</a>
 </li>
       <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.simplex.Simplex_sqrt_Shooting">Simplex_sqrt_Shooting (class in demeter.metamorphosis.simplex)</a>
+</li>
+      <li><a href="demeter.utils.html#demeter.utils.cost_functions.SoftHistogram1D">SoftHistogram1D (class in demeter.utils.cost_functions)</a>
+</li>
+      <li><a href="demeter.utils.html#demeter.utils.cost_functions.SoftHistogram2D">SoftHistogram2D (class in demeter.utils.cost_functions)</a>
 </li>
       <li><a href="demeter.utils.html#demeter.utils.torchbox.spatialGradient">spatialGradient() (in module demeter.utils.torchbox)</a>
 </li>
@@ -865,6 +880,8 @@
         <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Longitudinal_DataCost.to_device">(demeter.metamorphosis.data_cost.Longitudinal_DataCost method)</a>
 </li>
         <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Mutlimodal_ssd_cfm.to_device">(demeter.metamorphosis.data_cost.Mutlimodal_ssd_cfm method)</a>
+</li>
+        <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.Mutual_Information.to_device">(demeter.metamorphosis.data_cost.Mutual_Information method)</a>
 </li>
         <li><a href="demeter.metamorphosis.html#demeter.metamorphosis.data_cost.SimiliSegs.to_device">(demeter.metamorphosis.data_cost.SimiliSegs method)</a>
 </li>

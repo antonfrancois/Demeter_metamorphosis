@@ -19,18 +19,20 @@
 
 
 .. _metamorphosis_3D:
+
 Metamorphosis on 3D images
 ================================================
 
 In this file we apply the metamorphosis algorithm to 3D images.
 
-.. GENERATED FROM PYTHON SOURCE LINES 10-11
+.. GENERATED FROM PYTHON SOURCE LINES 11-12
 
 1. Import necessary libraries
 
-.. GENERATED FROM PYTHON SOURCE LINES 11-39
+.. GENERATED FROM PYTHON SOURCE LINES 12-41
 
 .. code-block:: Python
+
 
     try:
         import sys, os
@@ -68,27 +70,17 @@ In this file we apply the metamorphosis algorithm to 3D images.
 
  .. code-block:: none
 
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/toolbox.py:270: SyntaxWarning: invalid escape sequence '\d'
-      os.system(f'convert -delay {delay} -loop 0 {folder}/{file_name}_\d{3}.png {folder}/{file_name}.gif')
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/torchbox.py:930: SyntaxWarning: invalid escape sequence '\s'
-      """
-    /opt/hostedtoolcache/Python/3.12.8/x64/lib/python3.12/site-packages/kornia/feature/lightglue.py:44: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
-      @torch.cuda.amp.custom_fwd(cast_inputs=torch.float32)
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/vector_field_to_flow.py:15: SyntaxWarning: invalid escape sequence '\i'
-      """
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/vector_field_to_flow.py:186: SyntaxWarning: invalid escape sequence '\i'
-      """
     device used : cpu
     Warning : the computation will be slow, it is recommended to use a GPU
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 40-41
+.. GENERATED FROM PYTHON SOURCE LINES 42-43
 
 2. Load the images and visualize them
 
-.. GENERATED FROM PYTHON SOURCE LINES 41-67
+.. GENERATED FROM PYTHON SOURCE LINES 43-69
 
 .. code-block:: Python
 
@@ -131,21 +123,21 @@ In this file we apply the metamorphosis algorithm to 3D images.
 
  .. code-block:: none
 
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/1_registration/metamorphosis_3D.py:45: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/1_registration/metamorphosis_3D.py:47: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
       S = torch.load(path+source_name+".pt").to(device)
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/1_registration/metamorphosis_3D.py:46: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/1_registration/metamorphosis_3D.py:48: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
       T = torch.load(path+target_name+".pt").to(device)
-    ic| image_3d_plotter.py:508 in imshow_3d_slider()
+    ic| image_3d_plotter.py:516 in imshow_3d_slider()
         image.shape: (45, 53, 45, 4)
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 68-69
+.. GENERATED FROM PYTHON SOURCE LINES 70-71
 
 Inititialize a kernel Operator
 
-.. GENERATED FROM PYTHON SOURCE LINES 69-73
+.. GENERATED FROM PYTHON SOURCE LINES 71-75
 
 .. code-block:: Python
 
@@ -160,11 +152,11 @@ Inititialize a kernel Operator
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 74-75
+.. GENERATED FROM PYTHON SOURCE LINES 76-77
 
 LDDMM
 
-.. GENERATED FROM PYTHON SOURCE LINES 75-110
+.. GENERATED FROM PYTHON SOURCE LINES 77-112
 
 .. code-block:: Python
 
@@ -210,13 +202,13 @@ LDDMM
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 111-114
+.. GENERATED FROM PYTHON SOURCE LINES 113-116
 
 Metamorphosis
 rho = 0  Pure photometric registration
 rho = 1  Pure geometric registration
 
-.. GENERATED FROM PYTHON SOURCE LINES 114-154
+.. GENERATED FROM PYTHON SOURCE LINES 116-156
 
 .. code-block:: Python
 
@@ -294,26 +286,26 @@ rho = 1  Pure geometric registration
 
 
     Apply Metamorphosis
-    Progress: [#---------]  13.33%  (Ssd : ,392.0854).    Progress: [##--------]  20.00%  (Ssd : ,239.2672).    Progress: [###-------]  26.67%  (Ssd : ,174.5768).    Progress: [###-------]  33.33%  (Ssd : ,145.0005).    Progress: [####------]  40.00%  (Ssd : ,121.1691).    Progress: [#####-----]  46.67%  (Ssd : ,105.2254).    Progress: [#####-----]  53.33%  (Ssd : , 93.8169).    Progress: [######----]  60.00%  (Ssd : , 84.6231).    Progress: [#######---]  66.67%  (Ssd : , 77.9193).    Progress: [#######---]  73.33%  (Ssd : , 72.8133).    Progress: [########--]  80.00%  (Ssd : , 68.1130).    Progress: [#########-]  86.67%  (Ssd : , 64.1878).    Progress: [#########-]  93.33%  (Ssd : , 60.5835).    Progress: [##########] 100.00% Done...
-     (Ssd : , 57.3564).
-    Computation of forward done in  0:03:00s and 0.190cents  s
+    Progress: [#---------]  13.33%  (Ssd : ,392.4647).    Progress: [##--------]  20.00%  (Ssd : ,238.3630).    Progress: [###-------]  26.67%  (Ssd : ,176.7307).    Progress: [###-------]  33.33%  (Ssd : ,142.2821).    Progress: [####------]  40.00%  (Ssd : ,121.9555).    Progress: [#####-----]  46.67%  (Ssd : ,104.3126).    Progress: [#####-----]  53.33%  (Ssd : , 93.9064).    Progress: [######----]  60.00%  (Ssd : , 85.1858).    Progress: [#######---]  66.67%  (Ssd : , 78.4671).    Progress: [#######---]  73.33%  (Ssd : , 72.5419).    Progress: [########--]  80.00%  (Ssd : , 67.5149).    Progress: [#########-]  86.67%  (Ssd : , 63.5503).    Progress: [#########-]  93.33%  (Ssd : , 59.9256).    Progress: [##########] 100.00% Done...
+     (Ssd : , 56.9746).
+    Computation of forward done in  0:08:27s and 0.014cents  s
 
-    Computation of metamorphosis done in  0:03:00s and 0.191cents  s
-    ic| abstract.py:1387 in save()
+    Computation of metamorphosis done in  0:08:27s and 0.014cents  s
+    ic| abstract.py:1286 in save()
         path: '/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/saved_optim/'
-    Optimisation saved in /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/saved_optim/3D_02_02_2025_ball_for_hanse_hanse_w_ball_Metamorphosis_000.pk1
+    Optimisation saved in /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/saved_optim/3D_07_02_2025_ball_for_hanse_hanse_w_ball_Metamorphosis_000.pk1
 
-    ic| image_3d_plotter.py:508 in imshow_3d_slider()
+    ic| image_3d_plotter.py:516 in imshow_3d_slider()
         image.shape: (45, 53, 45, 4)
-    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.15772485733032227..1.2322198152542114].
-    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.07220283150672913..1.224704384803772].
-    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.22403490543365479..1.1820396184921265].
-    ic| image_3d_plotter.py:508 in imshow_3d_slider()
+    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.1539537012577057..1.2265067100524902].
+    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.07041192799806595..1.2168718576431274].
+    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.22210828959941864..1.1664692163467407].
+    ic| image_3d_plotter.py:516 in imshow_3d_slider()
         image.shape: (45, 53, 45, 4)
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
-    ic| metamorphosis_3D.py:140 in <module>
+    ic| metamorphosis_3D.py:142 in <module>
         mr_meta.mp.image_stock.shape: torch.Size([10, 1, 45, 53, 45])
 
 
@@ -322,7 +314,7 @@ rho = 1  Pure geometric registration
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (3 minutes 3.755 seconds)
+   **Total running time of the script:** (8 minutes 28.597 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_metamorphosis_3D.py:

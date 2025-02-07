@@ -24,7 +24,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="MetaMorphosis behaviour with different values of rho" href="plot_simpleToyExample_metamorphosis.html" />
-    <link rel="prev" title="Registration examples" href="index.html" /> 
+    <link rel="prev" title="Data cost variation example:: Mutual Information" href="data_cost_mutualInformation.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -49,12 +49,17 @@
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Gallery of examples</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../index.html#registration-examples">Registration examples</a><ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html#kernel-examples">Kernel examples</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="index.html">Registration examples</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="data_cost_mutualInformation.html">Data cost variation example:: Mutual Information</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">Metamorphosis on 3D images</a></li>
 <li class="toctree-l3"><a class="reference internal" href="plot_simpleToyExample_metamorphosis.html">MetaMorphosis behaviour with different values of rho</a></li>
+<li class="toctree-l3"><a class="reference internal" href="toyExample_grayScott_constrainedMetamorphosis.html"># #%%</a></li>
+<li class="toctree-l3"><a class="reference internal" href="toyExample_grayScott_constrainedMetamorphosis.html#id4">#%%</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../2_kernels/index.html">Kernel examples</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../modules.html">Demeter documentation</a></li>
@@ -127,17 +132,7 @@ to download the full example code.</p>
     <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Warning : the computation will be slow, it is recommended to use a GPU&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/toolbox.py:270: SyntaxWarning: invalid escape sequence &#39;\d&#39;
-  os.system(f&#39;convert -delay {delay} -loop 0 {folder}/{file_name}_\d{3}.png {folder}/{file_name}.gif&#39;)
-/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/torchbox.py:930: SyntaxWarning: invalid escape sequence &#39;\s&#39;
-  &quot;&quot;&quot;
-/opt/hostedtoolcache/Python/3.12.8/x64/lib/python3.12/site-packages/kornia/feature/lightglue.py:44: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type=&#39;cuda&#39;)` instead.
-  @torch.cuda.amp.custom_fwd(cast_inputs=torch.float32)
-/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/vector_field_to_flow.py:15: SyntaxWarning: invalid escape sequence &#39;\i&#39;
-  &quot;&quot;&quot;
-/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/vector_field_to_flow.py:186: SyntaxWarning: invalid escape sequence &#39;\i&#39;
-  &quot;&quot;&quot;
-device used : cpu
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>device used : cpu
 Warning : the computation will be slow, it is recommended to use a GPU
 </pre></div>
 </div>
@@ -170,11 +165,11 @@ Warning : the computation will be slow, it is recommended to use a GPU
 <span class="c1"># reg_grid = tb.make_regular_grid(S.size(),device=device)</span>
 </pre></div>
 </div>
-<img src="../../_images/sphx_glr_metamorphosis_3D_001.png" srcset="../../_images/sphx_glr_metamorphosis_3D_001.png" alt="Source (orange) and Target (blue)" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/1_registration/metamorphosis_3D.py:45: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don&#39;t have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+<img src="../../_images/sphx_glr_metamorphosis_3D_001.png" srcset="../../_images/sphx_glr_metamorphosis_3D_001.png" alt="Source (orange) and Target (blue)" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/1_registration/metamorphosis_3D.py:47: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don&#39;t have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   S = torch.load(path+source_name+&quot;.pt&quot;).to(device)
-/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/1_registration/metamorphosis_3D.py:46: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don&#39;t have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/1_registration/metamorphosis_3D.py:48: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don&#39;t have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   T = torch.load(path+target_name+&quot;.pt&quot;).to(device)
-ic| image_3d_plotter.py:508 in imshow_3d_slider()
+ic| image_3d_plotter.py:516 in imshow_3d_slider()
     image.shape: (45, 53, 45, 4)
 </pre></div>
 </div>
@@ -270,43 +265,43 @@ rho = 1  Pure geometric registration</p>
 </ul>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Apply Metamorphosis
 
-Progress: [#---------]  13.33%  (Ssd : ,392.0854).
-Progress: [##--------]  20.00%  (Ssd : ,239.2672).
-Progress: [###-------]  26.67%  (Ssd : ,174.5768).
-Progress: [###-------]  33.33%  (Ssd : ,145.0005).
-Progress: [####------]  40.00%  (Ssd : ,121.1691).
-Progress: [#####-----]  46.67%  (Ssd : ,105.2254).
-Progress: [#####-----]  53.33%  (Ssd : , 93.8169).
-Progress: [######----]  60.00%  (Ssd : , 84.6231).
-Progress: [#######---]  66.67%  (Ssd : , 77.9193).
-Progress: [#######---]  73.33%  (Ssd : , 72.8133).
-Progress: [########--]  80.00%  (Ssd : , 68.1130).
-Progress: [#########-]  86.67%  (Ssd : , 64.1878).
-Progress: [#########-]  93.33%  (Ssd : , 60.5835).
+Progress: [#---------]  13.33%  (Ssd : ,392.4647).
+Progress: [##--------]  20.00%  (Ssd : ,238.3630).
+Progress: [###-------]  26.67%  (Ssd : ,176.7307).
+Progress: [###-------]  33.33%  (Ssd : ,142.2821).
+Progress: [####------]  40.00%  (Ssd : ,121.9555).
+Progress: [#####-----]  46.67%  (Ssd : ,104.3126).
+Progress: [#####-----]  53.33%  (Ssd : , 93.9064).
+Progress: [######----]  60.00%  (Ssd : , 85.1858).
+Progress: [#######---]  66.67%  (Ssd : , 78.4671).
+Progress: [#######---]  73.33%  (Ssd : , 72.5419).
+Progress: [########--]  80.00%  (Ssd : , 67.5149).
+Progress: [#########-]  86.67%  (Ssd : , 63.5503).
+Progress: [#########-]  93.33%  (Ssd : , 59.9256).
 Progress: [##########] 100.00% Done...
- (Ssd : , 57.3564).
-Computation of forward done in  0:03:00s and 0.190cents  s
+ (Ssd : , 56.9746).
+Computation of forward done in  0:08:27s and 0.014cents  s
 
-Computation of metamorphosis done in  0:03:00s and 0.191cents  s
-ic| abstract.py:1387 in save()
+Computation of metamorphosis done in  0:08:27s and 0.014cents  s
+ic| abstract.py:1286 in save()
     path: &#39;/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/saved_optim/&#39;
-Optimisation saved in /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/saved_optim/3D_02_02_2025_ball_for_hanse_hanse_w_ball_Metamorphosis_000.pk1
+Optimisation saved in /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/saved_optim/3D_07_02_2025_ball_for_hanse_hanse_w_ball_Metamorphosis_000.pk1
 
-ic| image_3d_plotter.py:508 in imshow_3d_slider()
+ic| image_3d_plotter.py:516 in imshow_3d_slider()
     image.shape: (45, 53, 45, 4)
-Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.15772485733032227..1.2322198152542114].
-Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.07220283150672913..1.224704384803772].
-Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.22403490543365479..1.1820396184921265].
-ic| image_3d_plotter.py:508 in imshow_3d_slider()
+Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.1539537012577057..1.2265067100524902].
+Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.07041192799806595..1.2168718576431274].
+Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.22210828959941864..1.1664692163467407].
+ic| image_3d_plotter.py:516 in imshow_3d_slider()
     image.shape: (45, 53, 45, 4)
 Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
 Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
 Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
-ic| metamorphosis_3D.py:140 in &lt;module&gt;
+ic| metamorphosis_3D.py:142 in &lt;module&gt;
     mr_meta.mp.image_stock.shape: torch.Size([10, 1, 45, 53, 45])
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (3 minutes 3.755 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (8 minutes 28.597 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-1-registration-metamorphosis-3d-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/211b9b1f8fd91b47bcd6d510071b6794/metamorphosis_3D.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">metamorphosis_3D.ipynb</span></code></a></p>
@@ -325,7 +320,7 @@ ic| metamorphosis_3D.py:140 in &lt;module&gt;
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="index.html" class="btn btn-neutral float-left" title="Registration examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="data_cost_mutualInformation.html" class="btn btn-neutral float-left" title="Data cost variation example:: Mutual Information" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="plot_simpleToyExample_metamorphosis.html" class="btn btn-neutral float-right" title="MetaMorphosis behaviour with different values of rho" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

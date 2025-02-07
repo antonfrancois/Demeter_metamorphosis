@@ -51,14 +51,19 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Gallery of examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#kernel-examples">Kernel examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules.html">Demeter documentation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">For advanced users</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#theory-and-implementation-choices-in-metamorphoses-in-demeter">Theory and Implementation choices in Metamorphoses in Demeter</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#minimal-theory-to-understand-before-using-metamorphoses-in-demeter">Minimal theory to understand before using Metamorphoses in Demeter</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#more-precise-explanations-the-lddmm-case">More precise explanations : The LDDMM case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#more-precise-explanations-the-classic-metamorphic-case">More precise explanations : The classic Metamorphic case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#contributing-to-demeter">Contributing to Demeter:</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#posting-an-issue">Posting an issue:</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#contributing-to-the-code">Contributing to the code:</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#in-practice">In practice:</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -123,8 +128,8 @@ to the <cite>optimizer</cite>. In the <cite>Optimize_geodesicShooting</cite> cla
 the <cite>integrator</cite> by calling the attribute <cite>Optimize_geodesicShooting.mp</cite>, mp
 standing for metamorphosis path. This choice was made for conciseness.</p>
 </section>
-<section id="more-precise-explanations-the-lddmm-case">
-<h3>More precise explanations : The LDDMM case<a class="headerlink" href="#more-precise-explanations-the-lddmm-case" title="Link to this heading"></a></h3>
+<section id="more-precise-explanations-the-classic-metamorphic-case">
+<h3>More precise explanations : The classic Metamorphic case<a class="headerlink" href="#more-precise-explanations-the-classic-metamorphic-case" title="Link to this heading"></a></h3>
 <p>As you might know, the LDDMM algorithm can be seen as a particular case of the
 metamorphoses one. The implementation of Metamorphoses in <strong>Demeter</strong> is based on the minimization of a Hamiltonian:</p>
 <div class="math notranslate nohighlight">
@@ -138,23 +143,36 @@ metamorphoses one. The implementation of Metamorphoses in <strong>Demeter</stron
 \[\begin{split}\left\{\begin{array}{rl} \dot q_t &amp;= - \nabla q_t \cdot v_t + z_t\\ \dot z_t &amp;= - \mathrm{div}(z_t  v_t) \\
 p_t &amp;= z_t\\
 v_t &amp;= -K_V\left( z_t\nabla q_t \right)  \end{array}\right.\end{split}\]</div>
-<p>These equations are written in the continuous case. In this document, all discretization choices made during the implementation are detailed.</p>
+<p>These equations are written in the continuous case. In this document, all discretisation choices made during the implementation are detailed.</p>
 <p>To solve the registration problem, a geodesic shooting strategy is used. For this, a relaxed version of <span class="math notranslate nohighlight">\(H\)</span> is minimized:</p>
 <div class="math notranslate nohighlight">
 \[E(p_0) = D_T(I_1) + \frac \lambda2 \left( \|v_0\|_V^2 +\|z_0\|_Z^2  \right)\]</div>
 <p>Where <span class="math notranslate nohighlight">\(D_T\)</span> is a data attachment term and <span class="math notranslate nohighlight">\(T\)</span> is a target image, <span class="math notranslate nohighlight">\(I_1\)</span> is the image at the end of the geodesic integration, and <span class="math notranslate nohighlight">\(p_0\)</span> is the initial momentum. Note that in the case of Metamorphoses valued in images, <span class="math notranslate nohighlight">\(p = z\)</span>.</p>
 <p>You may have noticed that in the above equation <span class="math notranslate nohighlight">\(E(p_{0})\)</span> depends only on the initial momentum. Indeed, thanks to a conservation property of norms during the calculation of optimal trajectories in a Hamiltonian which states: Let <span class="math notranslate nohighlight">\(v\)</span> and <span class="math notranslate nohighlight">\(z\)</span> follow a geodesic given by <span class="math notranslate nohighlight">\(H\)</span>, then</p>
 <div class="math notranslate nohighlight">
-\[\forall t \in [0,1], \|v_{0}\|^2_{V} = \|v_{t}\|^2_{V}; \|v_{0}\|^2_{2} = \|z_{t}\|^2_{2}.\]</div>
+\[\forall t \in [0,1], \|v_{0}\|^2_{V} = \|v_{t}\|^2_{V}; \|z_{0}\|^2_{2} = \|z_{t}\|^2_{2}.\]</div>
 <p>This property is used to save computation time. In practice, due to numerical scheme choices, norm conservation may not be achieved. In this case, it is possible to optimize over the set of norms and <span class="math notranslate nohighlight">\(E\)</span> becomes:</p>
 <div class="math notranslate nohighlight">
 \[E(p_0) = D_T(I_1) + \frac \lambda2 \int_{0}^1 \left( \|v_t\|_V^2 +\|z_t\|_Z^2  \right) dt.\]</div>
 <p>The <span class="math notranslate nohighlight">\(I_{t},v_t,z_{t}\)</span> are still deduced from <span class="math notranslate nohighlight">\(p_0\)</span>. It is possible to switch between the two in the code using the <cite>hamiltonian_integration</cite> option in the children of <cite>Optimize_geodesicShooting</cite>.</p>
 </section>
+<section id="contributing-to-demeter">
+<h3>Contributing to Demeter:<a class="headerlink" href="#contributing-to-demeter" title="Link to this heading"></a></h3>
+<section id="posting-an-issue">
+<h4>Posting an issue:<a class="headerlink" href="#posting-an-issue" title="Link to this heading"></a></h4>
+<dl class="simple">
+<dt>If you have any questions, need help with the library or you have an incredible ideas that you want to share, do not hesitate to post an issue on the github repository. The issue can be about a bug, a feature request, or a question about the code. The more precise you are in your issue, the more likely you are to get a quick answer. Here are some guidelines to help you write a good issue:</dt><dd><p><a class="reference external" href="https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-an-issue">Guides lines on Issues</a></p>
+</dd>
+</dl>
 </section>
-<section id="in-practice">
-<h2>In practice:<a class="headerlink" href="#in-practice" title="Link to this heading"></a></h2>
-<p>some more words…</p>
+<section id="contributing-to-the-code">
+<h4>Contributing to the code:<a class="headerlink" href="#contributing-to-the-code" title="Link to this heading"></a></h4>
+<dl class="simple">
+<dt>If you want to contribute to the code, you can fork the repository and make a pull request. The pull request will be reviewed by the maintainers and merged if it is in line with the project’s objectives. Here are some guidelines to help you write a good pull request:</dt><dd><p><a class="reference external" href="https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request">Guides lines on Pull requests</a></p>
+</dd>
+</dl>
+</section>
+</section>
 </section>
 </section>
 

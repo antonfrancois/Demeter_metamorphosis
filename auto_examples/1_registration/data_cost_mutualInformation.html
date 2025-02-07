@@ -1,0 +1,256 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data cost variation example:: Mutual Information &mdash; Demeter_metamorphosis 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]]}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Metamorphosis on 3D images" href="metamorphosis_3D.html" />
+    <link rel="prev" title="Registration examples" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Demeter_metamorphosis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Gallery of examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html#kernel-examples">Kernel examples</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Registration examples</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Data cost variation example:: Mutual Information</a></li>
+<li class="toctree-l3"><a class="reference internal" href="metamorphosis_3D.html">Metamorphosis on 3D images</a></li>
+<li class="toctree-l3"><a class="reference internal" href="plot_simpleToyExample_metamorphosis.html">MetaMorphosis behaviour with different values of rho</a></li>
+<li class="toctree-l3"><a class="reference internal" href="toyExample_grayScott_constrainedMetamorphosis.html"># #%%</a></li>
+<li class="toctree-l3"><a class="reference internal" href="toyExample_grayScott_constrainedMetamorphosis.html#id4">#%%</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../2_kernels/index.html">Kernel examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Demeter documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../advanced_users.html">For advanced users</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Demeter_metamorphosis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Gallery of examples</a></li>
+          <li class="breadcrumb-item"><a href="index.html">Registration examples</a></li>
+      <li class="breadcrumb-item active">Data cost variation example:: Mutual Information</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/auto_examples/1_registration/data_cost_mutualInformation.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-auto-examples-1-registration-data-cost-mutualinformation-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code.</p>
+</div>
+<span class="target" id="sphx-glr-auto-examples-1-registration-data-cost-mutualinformation-py"></span><section class="sphx-glr-example-title" id="data-cost-variation-example-mutual-information">
+<h1>Data cost variation example:: Mutual Information<a class="headerlink" href="#data-cost-variation-example-mutual-information" title="Link to this heading"></a></h1>
+<p>This example demonstrates how to change the data cost for the registration.
+We will build a simple toy example mimicking situations we can encounter in
+medical imaging where the shapes to match are clode in geometry but have
+different intensity distributions. There are plenty other data costs in the literature
+for every specific purpose, and we will focus on the mutual information.</p>
+<p>Mutual information measures the amount of information shared between two images. It is effective for multi-modal image registration.</p>
+<p><div class="math notranslate nohighlight">
+\[I(X;Y) = \sum_{x \in X} \sum_{y \in Y} p(x,y) \log \left( rac{p(x,y)}{p(x)p(y)}
+ight)\]</div>
+</p>
+<p>Where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(X\)</span> and <span class="math notranslate nohighlight">\(Y\)</span> are the images being registered.</p></li>
+<li><p><span class="math notranslate nohighlight">\(p(x,y)\)</span> is the joint probability distribution of the intensities.</p></li>
+<li><p><span class="math notranslate nohighlight">\(p(x)\)</span> and <span class="math notranslate nohighlight">\(p(y)\)</span> are the marginal probability distributions of the intensities.</p></li>
+</ul>
+<p>Importing the necessary libraries</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">demeter.constants</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.torchbox</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tb</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.metamorphosis</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.reproducing_kernels</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">rk</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/torchbox.py:1098: SyntaxWarning: invalid escape sequence &#39;\O&#39;
+  &quot;&quot;&quot;
+/opt/hostedtoolcache/Python/3.12.8/x64/lib/python3.12/site-packages/kornia/feature/lightglue.py:44: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type=&#39;cuda&#39;)` instead.
+  @torch.cuda.amp.custom_fwd(cast_inputs=torch.float32)
+/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/toolbox.py:272: SyntaxWarning: invalid escape sequence &#39;\d&#39;
+  print(f&#39;convert -delay {delay} -loop 0 {folder}/{file_name}_\d{3}.png {folder}/{file_name}.gif&#39;)
+/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/vector_field_to_flow.py:186: SyntaxWarning: invalid escape sequence &#39;\i&#39;
+  &quot;&quot;&quot;
+/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/cost_functions.py:161: SyntaxWarning: invalid escape sequence &#39;\s&#39;
+  &#39;&#39;&#39;
+/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/metamorphosis/data_cost.py:296: SyntaxWarning: invalid escape sequence &#39;\s&#39;
+  &quot;&quot;&quot;
+/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/reproducing_kernels.py:452: SyntaxWarning: invalid escape sequence &#39;\m&#39;
+  &quot;&quot;&quot; Is equivalent to a gaussian blur. This function support 2d and 3d images in the
+/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/reproducing_kernels.py:596: SyntaxWarning: invalid escape sequence &#39;\s&#39;
+  &quot;&quot;&quot;
+</pre></div>
+</div>
+<p>Openning the source and target images</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">size</span> <span class="o">=</span> <span class="p">(</span><span class="mi">200</span><span class="p">,</span><span class="mi">200</span><span class="p">)</span>
+<span class="n">S</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">reg_open</span><span class="p">(</span><span class="s1">&#39;01&#39;</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
+<span class="n">T</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span><span class="n">tb</span><span class="o">.</span><span class="n">reg_open</span><span class="p">(</span><span class="s1">&#39;17&#39;</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
+
+<span class="n">fig</span><span class="p">,</span><span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">S</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="o">**</span><span class="n">DLT_KW_IMAGE</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;source&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="o">**</span><span class="n">DLT_KW_IMAGE</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;target&#39;</span><span class="p">)</span>
+<span class="n">set_ticks_off</span><span class="p">(</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_data_cost_mutualInformation_001.png" srcset="../../_images/sphx_glr_data_cost_mutualInformation_001.png" alt="source, target" class = "sphx-glr-single-img"/><p>As you see in the previous plot, using the Ssd as a data cost will lead to have the ball
+badly registered. (Try predicting the result before running the code !). However, we can
+use the mutual information as a data cost to get a better registration.</p>
+<p>Now we will create a mutual information data cost object and use it in the registration.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">data_term</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">Mutual_Information</span><span class="p">(</span><span class="n">T</span><span class="p">,</span><span class="n">mult</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="c1"># data_term = mt.Ssd(T)</span>
+
+<span class="n">momentum_ini</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="c1"># momentum_ini = mr.to_analyse[0]</span>
+<span class="c1"># momentum_ini.requires_grad = True</span>
+<span class="n">kernelOp</span> <span class="o">=</span> <span class="n">rk</span><span class="o">.</span><span class="n">GaussianRKHS</span><span class="p">(</span><span class="n">sigma</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
+
+<span class="n">mr</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">lddmm</span><span class="p">(</span><span class="n">S</span><span class="p">,</span><span class="n">T</span><span class="p">,</span><span class="n">momentum_ini</span><span class="p">,</span>
+                <span class="n">kernelOperator</span> <span class="o">=</span> <span class="n">kernelOp</span><span class="p">,</span>
+                <span class="n">cost_cst</span><span class="o">=</span><span class="mf">.0001</span><span class="p">,</span>
+                <span class="n">integration_steps</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+                <span class="n">n_iter</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+                <span class="n">grad_coef</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">data_term</span><span class="o">=</span><span class="n">data_term</span><span class="p">,</span>
+              <span class="n">dx_convention</span><span class="o">=</span><span class="s1">&#39;square&#39;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">mr</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="n">mr</span><span class="o">.</span><span class="n">plot_deform</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<ul class="sphx-glr-horizontal">
+<li><img src="../../_images/sphx_glr_data_cost_mutualInformation_002.png" srcset="../../_images/sphx_glr_data_cost_mutualInformation_002.png" alt="Lambda = 0.0001 rho = 1.0" class = "sphx-glr-multi-img"/></li>
+<li><img src="../../_images/sphx_glr_data_cost_mutualInformation_003.png" srcset="../../_images/sphx_glr_data_cost_mutualInformation_003.png" alt="source, target, Integrated source image, comparaison deformed image with target" class = "sphx-glr-multi-img"/></li>
+<li><img src="../../_images/sphx_glr_data_cost_mutualInformation_004.png" srcset="../../_images/sphx_glr_data_cost_mutualInformation_004.png" alt="diffeo = tensor(False)" class = "sphx-glr-multi-img"/></li>
+</ul>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Progress: [#---------]  13.33%  (Mutual_Information : ,  3.8573).
+Progress: [##--------]  20.00%  (Mutual_Information : ,  3.3919).
+Progress: [###-------]  26.67%  (Mutual_Information : ,  3.3576).
+Progress: [###-------]  33.33%  (Mutual_Information : ,  3.3550).
+Progress: [####------]  40.00%  (Mutual_Information : ,  3.3538).
+Progress: [#####-----]  46.67%  (Mutual_Information : ,  3.3525).
+Progress: [#####-----]  53.33%  (Mutual_Information : ,  3.3514).
+Progress: [######----]  60.00%  (Mutual_Information : ,  3.3507).
+Progress: [#######---]  66.67%  (Mutual_Information : ,  3.3497).
+Progress: [#######---]  73.33%  (Mutual_Information : ,  3.3489).
+Progress: [########--]  80.00%  (Mutual_Information : ,  3.3481).
+Progress: [#########-]  86.67%  (Mutual_Information : ,  3.3475).
+Progress: [#########-]  93.33%  (Mutual_Information : ,  3.3468).
+Progress: [##########] 100.00% Done...
+ (Mutual_Information : ,  3.3463).
+Computation of forward done in  0:00:15s and 0.201cents  s
+
+Computation of lddmm done in  0:00:15s and 0.202cents  s
+</pre></div>
+</div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 18.703 seconds)</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-1-registration-data-cost-mutualinformation-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/8a1ad42d484c122fd520bfef9e736249/data_cost_mutualInformation.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">data_cost_mutualInformation.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/e0f90dc8584e4bb39b4e434c17b35c57/data_cost_mutualInformation.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">data_cost_mutualInformation.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-zip docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/4624b1e7b03b907ece61bae954004819/data_cost_mutualInformation.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">data_cost_mutualInformation.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Registration examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="metamorphosis_3D.html" class="btn btn-neutral float-right" title="Metamorphosis on 3D images" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Anton François.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

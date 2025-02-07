@@ -1,10 +1,31 @@
 """
 .. _plot_simpleToyExample_metamorphosis:
 
-This is an informative docstring
-
 MetaMorphosis behaviour with different values of rho
-===================================================
+=======================================================
+
+This example shows how the MetaMorphosis behaves with different values of rho.
+
+Let $\rho \in [0,1]$, we define the evolution of the image over time as:
+$$\dot{I_{t}} = - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z. $$
+Note: The square roots may seem surprising, but the reason will become clear at the end.
+
+We define the Hamiltonian:
+$$H(I,p,v,z) = - (p |\dot{ I}) - \frac{1}{2} (Lv|v)_{2} - \frac{1}{2}(z,z)_{2}. $$
+By calculating the optimal trajectories we obtain the system:
+$$\left\{
+	\begin{array}{rl}
+		 v &= - \sqrt{ \rho } K_{V} (p \nabla I)\\
+         \dot{p} &= -\sqrt{ \rho } \nabla \cdot (pv) \\
+         z &= \sqrt{ 1 - \rho } p \\
+         \dot{I} &=  - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z.
+	\end{array}
+\right. $$
+We notice that we can rewrite:
+$$  \dot{ I_{t}} = - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z = -  \rho K_{V}(p_{t}\nabla I) \cdot \nabla I_{t} +  (1-\rho) p_{t}.$$
+This means that the optimal dynamics is the weighted average between the
+creation of the field and the photometric addition controlled by the momentum $p$.
+
 
 """
 #####################################################################
@@ -21,14 +42,9 @@ except NameError:
     pass
 
 
-
 import torch
-# import kornia.filters as flt
 import matplotlib.pyplot as plt
-from demeter import DLT_KW_IMAGE,GRIDDEF_YELLOW, ROOT_DIRECTORY
-# import demeter as dm
-# %load_ext autoreload
-# %autoreload 2
+from demeter import *
 import demeter.utils.reproducing_kernels as rk
 import demeter.metamorphosis as mt
 import demeter.utils.torchbox as tb
@@ -43,7 +59,9 @@ import demeter.utils.torchbox as tb
 # and the point as intensity additions.
 print("ROOT_DIRECTORY : ",ROOT_DIRECTORY)
 source_name,target_name = 'm0t', 'm1c'
-# source_name,target_name = '17','20'
+# other suggestion of images to try
+# source_name,target_name = '17','20'        # easy, only deformation
+# source_name,target_name = '08','m1c'  # hard, big deformation !
 size = (300,300)
 
 S = tb.reg_open(source_name,size = size)
@@ -73,7 +91,7 @@ plt.show()
 image_subdivisions = 10
 sigma = rk.get_sigma_from_img_ratio(T.shape,subdiv = image_subdivisions)
 
-kernelOperator = rk.GaussianRKHS(sigma,kernel_reach=7)
+kernelOperator = rk.GaussianRKHS(sigma,kernel_reach=4)
 
 rk.plot_kernel_on_image(kernelOperator,image= T,subdiv=image_subdivisions)
 plt.show()
@@ -90,29 +108,29 @@ T = T.to(device)
 dx_convention = 'square'
 # dx_convention = 'pixel'
 
-rho = .1
+rho = 0.05
 #
 # data_cost = mt.Ssd_normalized(T)
 data_cost = mt.Ssd(T)
 
 mr = mt.metamorphosis(S,T,0,
                       rho,
-                      cost_cst=.001,
+                      cost_cst=.001, # If the end result is far from the target, try decreasing the cost constant (reduce regularisation)
                       kernelOperator=kernelOperator,
-                      integration_steps=10,
-                      n_iter=15,
-                      grad_coef=1,
+                      integration_steps=10,   # If the deformation is big or complex, try increasing the number of integration steps
+                      n_iter=15,   #   If the optimisation did not converge, try increasing the number of iterations
+                      grad_coef=1,  # if the optimisation diverged, try decreasing the gradient coefficient
                       dx_convention=dx_convention,
                     data_term=data_cost,
-                    hamiltonian_integration=True
+                    hamiltonian_integration=True  # Set to true if you want to have control over the intermediate steps of the optimisation
                       )
-
-# mr.save('simpleToyExample_test',light_save = True)
+# mr.save(f'round_to_mot_rho{rho}',light_save = True)
 #%%
-mr.plot()
-mr.plot_deform()
+_, fig_ax = mr.plot()
+fig_cmp = fig_ax[0]
+fig_def = mr.plot_deform()
 mr.mp.plot()
-plt.show()
+
 #%%
 #####################################################################
 # We will test different values of rho to see how the registration behaves
@@ -166,4 +184,4 @@ for i,rho in enumerate(rho_list):
 
 plt.show()
 
-# sphinx_gallery_thumbnail_number = 6
+# sphinx_gallery_thumbnail_number = 3
