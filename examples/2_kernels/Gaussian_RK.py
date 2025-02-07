@@ -99,6 +99,10 @@ plt.show()
 # Good, now lets try on a real use case. First let's load a source and image target:
 # Try to change the size and the proposed sigma to see their effects on the
 # registration results.  Feel free to try different values that the one proposed.
+device = 'cpu'
+if torch.cuda.is_available():
+    device = 'cuda:0'
+print('device used :',device)
 
 size = (300,300)
 # size = (300,150)
@@ -117,9 +121,6 @@ plt.show()
 ######################################################################
 # Now let's try to register the source to the target using LDDMM with differents
 # sigma values.
-device = 'cpu'
-if torch.cuda.is_available():
-    device = 'cuda:0'
 
 source = source.to(device)
 target = target.to(device)
