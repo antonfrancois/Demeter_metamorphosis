@@ -5,7 +5,6 @@ This toy example was build to simulate a cancer growth in a brain.
 The gray scott texture as been used to add intricate patterns to the
 brain background.
 
-"""
 import matplotlib.pyplot as plt
 
 
@@ -346,3 +345,4 @@ mr_cm.save(f"TEST_toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}")
 #%%
 plt.show()
 
+"""
