@@ -32,7 +32,10 @@ import demeter.utils.reproducing_kernels as rk
 import demeter.metamorphosis as mt
 import demeter.utils.torchbox as tb
 
-device = 'cuda:0'
+device = 'cpu'
+if torch.cuda.is_available():
+    device = 'cuda:0'
+print(f"Used device: {device}")
 size = (300,300)
 
 #####################################################################

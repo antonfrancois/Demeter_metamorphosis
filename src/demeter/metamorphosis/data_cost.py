@@ -293,6 +293,31 @@ class Mutlimodal_ssd_cfm(DataCost):
         self.source_cfm = self.source_cfm.to(device)
 
 class Mutual_Information(DataCost):
+    """
+    Mutual information measures the amount of information shared between two images. It is effective for multi-modal image registration.
+
+    $$I(X;Y) = \sum_{x \in X} \sum_{y \in Y} p(x,y) \log \left(\frac{p(x,y)}{p(x)p(y)}\right)$$
+
+    Where:
+
+    - $X$ and $Y$ are the images being registered.
+    - $p(x,y)$ is the joint probability distribution of the intensities.
+    - $p(x)$ and $p(y)$ are the marginal probability distributions of the intensities.
+
+    Parameters
+    ---------------------
+    target : torch.Tensor
+        Target image [B,C,H,W] or [B,C,D,H,W]
+    bins : int
+        Number of bins for the histogram (default : 20)
+    min : float
+        Minimum value for the histogram (default : 0)
+    max : float
+        Maximum value for the histogram (default : 1)
+    mult : float
+        Multiplicative factor for the mutual information (default : 1.0)
+
+    """
 
     def __init__(self,target,
                  bins = 20,
