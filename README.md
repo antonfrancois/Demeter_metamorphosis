@@ -1,10 +1,10 @@
 # Demeter 0.2
-![](demeter_logo_darkLight.png)
+![](assets/demeter_logo_darkLight.png)
 (DiffEoMorphic METamorphic Regristration)
 
 Package status : alpha. see [Documentation](https://antonfrancois.github.io/Demeter_metamorphosis/)
 
-![LDDMM visualisation on a 3D brain](brain_lddmm_grid.png)
+![LDDMM visualisation on a 3D brain](assets/brain_lddmm_grid.png)
 
 Demeter_metamorphosis is a library intended to perform Metamorphosis on images.
 It can perform efficient registration of images in 2D and 3D with or without topology differences.
