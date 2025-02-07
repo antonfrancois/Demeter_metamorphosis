@@ -1,3 +1,7 @@
+"""
+In this file you will find everything you need to load a previously saved optimisation.
+"""
+
 import pickle
 from icecream import ic
 

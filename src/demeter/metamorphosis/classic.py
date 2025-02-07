@@ -1,3 +1,20 @@
+r"""
+This module contains the classical Metamorphosis algorithm. Defined as follows:
+
+We define the Hamiltonian:
+$$H(I,p,v,z) = - (p |\dot{ I}) - \frac{1}{2} (Lv|v)_{2} - \frac{1}{2}(z,z)_{2}. $$
+By calculating the optimal trajectories we obtain the system:
+$$\left\{ 	\begin{array}{rl} v &= - \sqrt{ \rho } K_{V} (p \nabla I)\\ \dot{p} &= -\sqrt{ \rho } \nabla \cdot (pv) \\ z &= \sqrt{ 1 - \rho } p \\  \dot{I} &=  - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z.\end{array} \right. $$
+
+In practice we minimize the Energy function:
+$$E(p_0) = D(I_1,T) + \lambda \Big[ \|v_0\|^2_V + \|z_0\|^2_{L_2} \Big]$$
+with $D(I_1,T)$ the data term given by the user, $\|v_0\|^2_V = (Lv,v)_2$ the RKHS norm of the velocity field parametrized
+by L^{-1} = K_\sigma$  that we call the kernel operator and $\|z_0\|^2_{L_2}$ the $L_2$ norm of the momentum field.
+
+"""
+
+
+
 import torch
 from math import prod, sqrt
 
@@ -56,9 +73,11 @@ class Metamorphosis_integrator(Geodesic_integrator):
 
     def _step_fullEulerian(self):
         self._update_field_()
-        self.field *= self.rho
+        self.field *= sqrt(self.rho)
+        ic(self.rho,self.field.min().item(), self.field.max().item())
         self._update_image_Eulerian_()
-        self._update_residuals_Eulerian_()
+        # self._update_residuals_Eulerian_()
+        self._update_momentum_Eulerian_()
 
         return (self.image,self.field,self.momentum)
 
@@ -148,10 +167,17 @@ class Metamorphosis_integrator(Geodesic_integrator):
 class Metamorphosis_Shooting(Optimize_geodesicShooting):
     r"""
     Metamorphosis shooting class, implements the shooting algorithm for metamorphosis
-    over the Hamiltonian:
+    over the energy function:
 
     .. math::
-        H(z_0) =   \frac 12\| I_1 - T \|_{L_2}^2 + \lambda \Big[ \|v_0\|^2_V + \mu ^2 \|z_0\|^2_{L_2} \Big]
+        E(p_0) =   D( I_1,T)  + \lambda \Big[ \|v_0\|^2_V + \mu ^2 \|z_0\|^2_{L_2} \Big]
+
+
+    with:
+        - $D(I_1,T)$ the data term given by the user.
+        - I_1 is obtained by integrating the geodesics over the geodesic equation using the provided integrator class.
+        - $\|v_0\|^2_V = (Lv,v)_2$ the RKHS norm of the velocity field parametrized by L^{-1} = K_\sigma$  that we call the kernel operator
+        - $\|z_0\|^2_{L_2} =\frac{1}{\# \Omega} \sum z_0^2$ the $L_2$ norm of the momentum field, with $\# \Omega$ the number of pixels in the image.
 
     Parameters
     ----------
@@ -200,10 +226,8 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
 
 
     def cost(self, momentum_ini : torch.Tensor) -> torch.Tensor:
-        r""" cost computation
-
-        .. math::
-            H(z_0) =   \frac 12\| I_1 - T \|_{L_2}^2 + \lambda \Big[ \|v_0\|^2_V + \mu ^2 \|z_0\|^2_{L_2} \Big]
+        r"""
+        cost computation
 
         :param momentum_ini: Moment initial p_0
         :return: :math:`H(z_0)` a single valued tensor

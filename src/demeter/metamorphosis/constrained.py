@@ -1,3 +1,12 @@
+r"""
+This module contains the classes for the constrained metamorphosis framework.
+The constrained metamorphosis framework is a generalisation of the metamorphosis framework
+that allows to add two types of constraints:
+- One on the residual by controlling locally the amount of deformation versus the amount of photometric changes at given pixels.
+- One on the field by adding a prior orienting field that will guide the deformation.
+"""
+
+
 from math import prod
 
 
@@ -31,14 +40,15 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
     $$\dot{ I}_{t} = - \sqrt{ M_{t} } \left( ((1 - Q_{t}) v_{t} + Q_{t} w_{t}) \nabla I_{t} \right) + \sqrt{ 1 - M_{t} } z_{t} $$
 
 
-    $$\left\{
-	\begin{array}{rl}
-		 v_{t} &= -\sqrt{ M }(1 - Q_{t}) K_{V}( p\nabla I)\\
-         \dot{p_{t}} &= -\sqrt{ M_t } \nabla \cdot [p_{t}( (1 - Q_{t}) v_{t} + Q_{t}w_{t})] \\
-         z_{t} &= \sqrt{ 1 - M_t } p_{t} \\
-         \dot{I_{t}} &= - \sqrt{ M_{t} } \left( ((1 - Q_{t}) v_{t} + Q_{t} w_{t}) \nabla I_{t} \right) + \sqrt{ 1 - M_{t} } z_{t}.
-	\end{array}
-    \right. $$
+    .. math::
+
+        \begin{array}{rl}
+             v_{t} &= -\sqrt{ M }(1 - Q_{t}) K_{V}( p\nabla I)\\
+             \dot{p_{t}} &= -\sqrt{ M_t } \nabla \cdot [p_{t}( (1 - Q_{t}) v_{t} + Q_{t}w_{t})] \\
+             z_{t} &= \sqrt{ 1 - M_t } p_{t} \\
+             \dot{I_{t}} &= - \sqrt{ M_{t} } \left( ((1 - Q_{t}) v_{t} + Q_{t} w_{t}) \nabla I_{t} \right) + \sqrt{ 1 - M_{t} } z_{t}.
+        \end{array}
+        \right.
     """
 
     def __init__(self, residual_mask: torch.Tensor  | int | float,
@@ -220,6 +230,22 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
 
 
 class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
+    r"""
+    This class is an extension of the Optimize_geodesicShooting class. It allows to
+    optimise a geodesic with constraints on the residual and the field using prior
+    masks and fields.
+
+    It implements and optiimise over the following cost function:
+    $$H(I,p,v,z) = D(I_1,T) - \frac{1}{2} (Lv|v)_{2} - \frac{1}{2}|z|_{2} - \langle v,Qw\rangle_{2}. $$
+
+    with:
+        - $D(I_1,T)$ the data term given by the user.
+        - I_1 is obtained by integrating the geodesics over the geodesic equation using the provided integrator class.
+        - $\|v_0\|^2_V = (Lv,v)_2$ the RKHS norm of the velocity field parametrized by L^{-1} = K_\sigma$  that we call the kernel operator
+        - $\|z_0\|^2_{L_2} =\frac{1}{\# \Omega} \sum z_0^2$ the $L_2$ norm of the momentum field, with $\# \Omega$ the number of pixels in the image.
+        - $\langle v,Qw\rangle_{2} = \frac{1}{\# \Omega} \sum v \cdot Qw$ the scalar product between the velocity field $v$ and the orienting field $w$ weighted by the orienting mask $Q$.
+
+    """
 
     def __init__(self, source, target, geodesic, cost_cst,data_term=None, optimizer_method='adadelta',**kwargs):
         super().__init__(source, target, geodesic, cost_cst,data_term, optimizer_method)

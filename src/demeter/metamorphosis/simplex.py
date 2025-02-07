@@ -1,3 +1,8 @@
+"""
+
+
+"""
+
 from math import prod, sqrt
 
 from demeter.metamorphosis import Geodesic_integrator, Optimize_geodesicShooting

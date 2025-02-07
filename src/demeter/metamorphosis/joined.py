@@ -1,3 +1,9 @@
+"""
+This module contains the class for the joined mask metamorphosis.
+but it is broken for the moment. Please come back later.
+"""
+
+
 import torch
 import matplotlib.pyplot as plt
 from math import prod,sqrt

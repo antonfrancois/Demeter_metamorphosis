@@ -293,10 +293,12 @@ class Mutlimodal_ssd_cfm(DataCost):
         self.source_cfm = self.source_cfm.to(device)
 
 class Mutual_Information(DataCost):
-    """
+    r"""
     Mutual information measures the amount of information shared between two images. It is effective for multi-modal image registration.
 
-    $$I(X;Y) = \sum_{x \in X} \sum_{y \in Y} p(x,y) \log \left(\frac{p(x,y)}{p(x)p(y)}\right)$$
+    .. math::
+
+        I(X;Y) = \sum_{x \in X} \sum_{y \in Y} p(x,y) \log \left(\frac{p(x,y)}{p(x)p(y)}\right)
 
     Where:
 

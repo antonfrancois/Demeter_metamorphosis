@@ -450,9 +450,12 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     def _update_image_Eulerian_(self):
         # Warning, in classical metamorphosis, the momentum (p) is proportional to the residual (z)
         # with the relation z = (1 - rho) * p. Here we use the momentum as the residual
+        ic(self.image.min().item(), self.image.max().item())
         self.image = self._image_Eulerian_integrator_(
             self.image, self.field, 1 / self.n_step, 1
         )
+        ic(self.image.min().item(), self.image.max().item())
+
         # z = sqrt(1 - rho) * p and I = v gradI + sqrt(1-rho) * z
         residuals = (1 - self.rho) * self.momentum
         self.image = (sqrt(self.rho) * self.image + residuals) / self.n_step
@@ -1253,8 +1256,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         in a csv file
 
 
-        Args:
-        ------
+        Parameters:
+        ---------------
         file_name  : str
             will appear in the file name
         light_save : bool
@@ -1272,7 +1275,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             default is 'saved_optim/saves_overview.csv'
 
 
-        :return:
+        Returns:
+        ---------------
         file_save,
             name of the file saved
         path
@@ -1367,7 +1371,21 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         return file_save, path
 
     def save_to_gif(self, object, file_name, folder=None, delay=40, clean=True):
+        """
+        Save a gif of the optimisation. The object must be a string containing at least
+        one of the following : `image`,`residual`,`deformation`.
 
+        :param object: str
+            can be a string containing at least one of the following : `image`,`residual`,`deformation`. or a combination of them.
+        :param file_name: str
+            name of the file to save
+        :param folder: str
+            path of the folder to save the gif
+        :param delay: int
+            delay between each frame in the gif
+        :param clean: bool
+            if True, the images used to create the gif are deleted.
+        """
         # prepare list of object
         if "image" in object and "deformation" in object:
             # source image
@@ -1623,6 +1641,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         return fig, ax
 
     def plot_deform(self, temporal_nfigs=0):
+        r"""Display the deformation of the source image to the target image and the source image deformed
+        by the deformation field.
+        """
         residuals = self.to_analyse[0]
         # print(residuals.device,self.source.device)
         self.mp.forward(self.source.clone(), residuals, save=True, plot=0)
