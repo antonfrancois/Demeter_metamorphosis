@@ -2,7 +2,7 @@ import torch
 # import __init__
 import sys
 from icecream import ic
-
+from warnings import warn
 
 # import metamorphosis as mt
 from . import classic as cl
@@ -171,7 +171,7 @@ def metamorphosis(
 
 
 # ==================================================
-#  From contrained.py
+#  From constrained.py
 
 
 @time_it
@@ -226,6 +226,7 @@ def oriented_metamorphosis(
     dx_convention="pixel",
     safe_mode=True,
 ):
+    warn("This function has not been updated. Use `constrained_metamorphosis` instead.")
     mask = mp_orienting.image_stock.to(source.device)
     orienting_field = mp_orienting.field_stock.to(source.device)
     if type(momentum_ini) == int:
@@ -271,6 +272,8 @@ def constrained_metamorphosis(
     dx_convention="pixel",
     optimizer_method='LBFGS_torch',
    safe_mode=True,
+    hamiltonian_integration=False,
+
 ):
     momentum_ini = _commun_before(momentum_ini, source)
 
@@ -285,7 +288,8 @@ def constrained_metamorphosis(
         # n_step=20 # n_step is defined from mask.shape[0]
     )
     mr_constr = cn.ConstrainedMetamorphosis_Shooting(
-        source, target, mp_constr, cost_cst=cost_cst, optimizer_method="LBFGS_torch"
+        source, target, mp_constr, cost_cst=cost_cst, optimizer_method="LBFGS_torch",
+                hamiltonian_integration=hamiltonian_integration,
     )
     # optimizer_method='adadelta')
     mr_constr = _commun_after(mr_constr, momentum_ini, safe_mode, n_iter, grad_coef)

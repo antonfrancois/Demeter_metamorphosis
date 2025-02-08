@@ -4,7 +4,7 @@
 This toy example was build to simulate a cancer growth in a brain.
 The gray scott texture as been used to add intricate patterns to the
 brain background.
-
+"""
 import matplotlib.pyplot as plt
 
 
@@ -135,12 +135,13 @@ segs[seg_necrosis > 0] = val_n
 # plt.imshow(segs[0,0],vmin=0,vmax=1,cmap='gray')
 
 # make source image
-center = (160,155)
+center_o = (160,155)
+center_n = (167,163)
 ini_ball_n,_ = tb.make_ball_at_shape_center(
-    seg_necrosis,verbose=True,force_r=8,force_center=center
+    seg_necrosis,verbose=True,force_r=12,force_center=center_n
 )
 ini_ball_o,_ = tb.make_ball_at_shape_center(
-    seg_necrosis,verbose=True,force_r=20,force_center=center
+    seg_necrosis,verbose=True,force_r=21,force_center=center_o
 )
 ini_ball_on = torch.zeros(ini_ball_o.shape)
 ini_ball_on[ini_ball_o > 0] = val_o
@@ -158,7 +159,7 @@ ax[2].imshow(tb.imCmp(ini_ball_on,segs,'seg'),origin='lower')
 ax[2].set_title('superposition')
 ax[3].imshow(tb.imCmp(ini_ball_on,S,'seg'),origin='lower')
 plt.show()
-# # %%
+#%%
 #####################################################################
 # Register the prior masks to the source and target images using LDDMM:
 # First we build the kernel operator that will be used for the registration and
@@ -166,7 +167,7 @@ plt.show()
 
 ## Build temporal masks
 
-sigma = [(2,2),(5,5),(20,20)]
+sigma = [(5,5),(10,10),(15,15)]
 # sigma = [(10,10)]
 kernelOp = rk.Multi_scale_GaussianRKHS(sigma,normalized=True)
 rk.plot_kernel_on_image(kernelOp,subdiv=10,image=T.cpu())
@@ -175,11 +176,11 @@ print(kernelOp)
 dx_convention = 'square'
 n_steps= 20
 
-
+#%%
 #####################################################################
 # Register the orienting mask to the source and target images using LDDMM:
 print(">>>> Mask for orienting field <<<<")
-recompute = False
+recompute = True
 if recompute:
     momentum_ini = 0
     mr_mask_orienting = mt.lddmm(ini_ball_n.to(device),seg_necrosis,momentum_ini,
@@ -222,6 +223,9 @@ else:
 
 mr_mask_residuals.plot_imgCmp()
 plt.show()
+#%%
+mr_mask_residuals.mp.plot()
+plt.show()
 # #%%
 # # file  ="2D_23_01_2025_mask_tE_gs_CM_square_000.pk1"
 # # file = "2D_23_01_2025_mask_tE_gs_CM_square_all_000.pk1"
@@ -237,34 +241,43 @@ plt.show()
 # mr_mask_necrosis.plot_imgCmp()
 # plt.show()
 
-# #%%
+#%%
 #####################################################################
 # Finally, we extract the masks and the fields from the LDDMM object
 # and tweak them to our linking.
 
 
 residuals_mask = mr_mask_residuals.mp.image_stock.clone() #* .5
+# residuals_mask *= 1.3
 residuals_mask = 1 - residuals_mask
+residuals_mask = torch.ones(residuals_mask.shape)
 
 
 
 orienting_field = mr_mask_orienting.mp.field_stock.clone()
 # In this case we though best to set the orienting mask as
 # at constant value
-# orienting_mask = torch.ones(residuals_mask.shape)
-# orienting_mask *= 1
+orienting_mask = torch.ones(residuals_mask.shape)
+orienting_mask *= .5
 # # but you can try with different types of masks, like the one below
-orienting_mask = mr_mask_residuals.mp.image_stock.clone()
-orienting_mask[orienting_mask>.5] =.7
+# orienting_mask = mr_mask_residuals.mp.image_stock.clone()
+# orienting_mask[orienting_mask>.5] =.7
+
+# if w is zero give back power to v
+norm_2_on_w  = torch.sqrt((orienting_field**2).sum(dim = -1))
+orienting_mask = norm_2_on_w[:,None]/ norm_2_on_w.max()
+# orienting_mask[]
 
 
-sig = 2 # blur the mask to avoid sharp transitions
-residuals_mask = flt.gaussian_blur2d(residuals_mask,(int(6*sig)+1,int(6*sig)+1),(sig,sig))
-sig = 5
-orienting_mask = flt.gaussian_blur2d(orienting_mask,(int(6*sig)+1,int(6*sig)+1),(sig,sig))
+# sig = 5 # blur the mask to avoid sharp transitions
+# residuals_mask = flt.gaussian_blur2d(residuals_mask,(int(6*sig)+1,int(6*sig)+1),(sig,sig))
+# sig = 5
+# orienting_mask = flt.gaussian_blur2d(orienting_mask,(int(6*sig)+1,int(6*sig)+1),(sig,sig))
 
 L = [0,2,8,-1]
 fig,ax = plt.subplots(2,len(L),figsize=(len(L)*5,10))
+ax[0,0].set_title('orienting mask')
+ax[1,0].set_title('residuals mask')
 for i,ll in enumerate(L):
     ax[0,i].imshow(orienting_mask[ll,0].cpu(),cmap='gray',vmin=0, vmax = 1,origin = "lower")
     tb.quiver_plot(orienting_mask[ll,0][...,None].cpu() * orienting_field[ll][None].cpu(),
@@ -275,7 +288,7 @@ for i,ll in enumerate(L):
 
 plt.show()
 
-# #%%
+#%%
 fig1,ax1 = plt.subplots(1,1)
 ax1.plot(orienting_mask[-1,0,:,150].cpu(),label="orienting_mask")
 ax1.plot(residuals_mask[-1,0,:,150].cpu(),label="residuals_mask")
@@ -289,8 +302,8 @@ plt.show()
 
 
 
-sigma = [(5,5),(20,20),(30,30)]
-kernelOp = rk.Multi_scale_GaussianRKHS(sigma,normalized=True)
+# sigma = [(5,5),(20,20),(30,30)]
+# kernelOp = rk.Multi_scale_GaussianRKHS(sigma,normalized=True)
 
 print(kernelOp)
 
@@ -315,9 +328,10 @@ mr_cm = mt.constrained_metamorphosis(S,T,momentum_ini,
                                      residuals_mask,
                                      kernelOperator=kernelOp,
                                      cost_cst=.00001,
-                                     grad_coef=.1,
-                                    n_iter=10,
+                                     grad_coef=.000001,
+                                    n_iter=30,
                                      dx_convention=dx_convention,
+                                     hamiltonian_integrator = True
                                         # optimizer_method='adadelta',
                                      )
 
@@ -338,11 +352,20 @@ plt.show()
 
 #%%
 mr_cm.mp.plot()
-
+plt.show()
 #%%
 mr_cm.save(f"TEST_toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}")
 
 #%%
+
+L = [0,2,8,-1]
+fig,ax = plt.subplots(1,len(L),figsize=(len(L)*5,10), constrained_layout=True)
+ax[0].set_title('orienting mask')
+for i,ll in enumerate(L):
+    ax[i].imshow(mr_cm.mp.image_stock[ll,0].cpu(),cmap='gray',vmin=0, vmax = 1,origin = "lower")
+    ax[i].imshow(residuals_mask[ll,0].cpu(),cmap='Oranges',vmin=0, vmax = 1,origin = "lower",alpha = .5)
+
 plt.show()
 
-"""
+plt.show()
+

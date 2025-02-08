@@ -327,11 +327,6 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
         return self.total_cost
 
 
-
-        # print('ssd :',self.ssd,' norm_v :',self.norm_v_2)
-        return self.total_cost
-
-
     def forward(self,
                 z_0,
                 n_iter=10,
