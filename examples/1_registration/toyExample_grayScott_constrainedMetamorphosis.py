@@ -250,7 +250,7 @@ plt.show()
 residuals_mask = mr_mask_residuals.mp.image_stock.clone() #* .5
 # residuals_mask *= 1.3
 residuals_mask = 1 - residuals_mask
-residuals_mask = torch.ones(residuals_mask.shape)
+# residuals_mask = torch.ones(residuals_mask.shape)
 
 
 
@@ -264,8 +264,8 @@ orienting_mask *= .5
 # orienting_mask[orienting_mask>.5] =.7
 
 # if w is zero give back power to v
-norm_2_on_w  = torch.sqrt((orienting_field**2).sum(dim = -1))
-orienting_mask = norm_2_on_w[:,None]/ norm_2_on_w.max()
+# norm_2_on_w  = torch.sqrt((orienting_field**2).sum(dim = -1))
+# orienting_mask = norm_2_on_w[:,None]/ norm_2_on_w.max()
 # orienting_mask[]
 
 
@@ -301,9 +301,21 @@ plt.title('orienting and residuals masks profiles cut at x=150')
 plt.show()
 
 
-
+#%%
 # sigma = [(5,5),(20,20),(30,30)]
 # kernelOp = rk.Multi_scale_GaussianRKHS(sigma,normalized=True)
+
+sigma = [(5,5),(10,10),(15,15),(25,25)]
+# sigma = [(10,10)]
+kernelOp = rk.Multi_scale_GaussianRKHS(sigma,normalized=False)
+
+sigma = (10,10)
+kernelOp = rk.GaussianRKHS(sigma)
+rk.plot_kernel_on_image(kernelOp,subdiv=10,image=T.cpu())
+plt.show()
+print(kernelOp)
+print(kernelOp.kernel.max())
+
 
 print(kernelOp)
 
@@ -327,11 +339,10 @@ mr_cm = mt.constrained_metamorphosis(S,T,momentum_ini,
                                      orienting_field,
                                      residuals_mask,
                                      kernelOperator=kernelOp,
-                                     cost_cst=.00001,
-                                     grad_coef=.000001,
+                                     cost_cst=1e-10,
+                                     grad_coef=.1,
                                     n_iter=30,
                                      dx_convention=dx_convention,
-                                     hamiltonian_integrator = True
                                         # optimizer_method='adadelta',
                                      )
 
@@ -363,7 +374,7 @@ fig,ax = plt.subplots(1,len(L),figsize=(len(L)*5,10), constrained_layout=True)
 ax[0].set_title('orienting mask')
 for i,ll in enumerate(L):
     ax[i].imshow(mr_cm.mp.image_stock[ll,0].cpu(),cmap='gray',vmin=0, vmax = 1,origin = "lower")
-    ax[i].imshow(residuals_mask[ll,0].cpu(),cmap='Oranges',vmin=0, vmax = 1,origin = "lower",alpha = .5)
+    ax[i].imshow(1-residuals_mask[ll,0].cpu(),cmap='Oranges',vmin=0, vmax = 1,origin = "lower",alpha = .5)
 
 plt.show()
 
