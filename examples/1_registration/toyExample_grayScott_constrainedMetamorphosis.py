@@ -250,7 +250,14 @@ plt.show()
 residuals_mask = mr_mask_residuals.mp.image_stock.clone() #* .5
 # residuals_mask *= 1.3
 residuals_mask = 1 - residuals_mask
-# residuals_mask = torch.ones(residuals_mask.shape)
+
+
+# residuals_mask = segs.repeat((n_steps,1,1,1))
+# pos = residuals_mask > 0.1
+# residuals_mask *= .1
+# residuals_mask[pos] += .9
+# residuals_mask = 1 - residuals_mask
+residuals_mask = torch.ones(residuals_mask.shape) * .15
 
 
 
@@ -258,7 +265,7 @@ orienting_field = mr_mask_orienting.mp.field_stock.clone()
 # In this case we though best to set the orienting mask as
 # at constant value
 orienting_mask = torch.ones(residuals_mask.shape)
-orienting_mask *= .5
+orienting_mask *= 0
 # # but you can try with different types of masks, like the one below
 # orienting_mask = mr_mask_residuals.mp.image_stock.clone()
 # orienting_mask[orienting_mask>.5] =.7
@@ -269,8 +276,8 @@ orienting_mask *= .5
 # orienting_mask[]
 
 
-# sig = 5 # blur the mask to avoid sharp transitions
-# residuals_mask = flt.gaussian_blur2d(residuals_mask,(int(6*sig)+1,int(6*sig)+1),(sig,sig))
+sig = 5 # blur the mask to avoid sharp transitions
+residuals_mask = flt.gaussian_blur2d(residuals_mask,(int(6*sig)+1,int(6*sig)+1),(sig,sig))
 # sig = 5
 # orienting_mask = flt.gaussian_blur2d(orienting_mask,(int(6*sig)+1,int(6*sig)+1),(sig,sig))
 
@@ -339,9 +346,9 @@ mr_cm = mt.constrained_metamorphosis(S,T,momentum_ini,
                                      orienting_field,
                                      residuals_mask,
                                      kernelOperator=kernelOp,
-                                     cost_cst=1e-10,
-                                     grad_coef=.1,
-                                    n_iter=30,
+                                     cost_cst=1e-5,
+                                     grad_coef=.01,
+                                    n_iter=20,
                                      dx_convention=dx_convention,
                                         # optimizer_method='adadelta',
                                      )
