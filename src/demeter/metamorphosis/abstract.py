@@ -1405,7 +1405,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             # source image
             fig, ax = plt.subplots()
             ax.imshow(self.source[0,0].cpu().numpy(), **DLT_KW_IMAGE)
-            tb.gridDef_plot_2d(self.id_grid,ax=ax,step=10,color="#E5BB5F",linewidth=3)
+            tb.gridDef_plot_2d(self.mp.id_grid,ax=ax,step=10,color="#E5BB5F",linewidth=3)
 
             image_list_for_gif = [fig_to_image(fig, ax)]
             image_kw = dict()
@@ -1428,7 +1428,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         elif ("image" in object or "I" in object) and "quiver" in object:
             image_list_for_gif = []
             for n in range(self.n_step):
-                deformation = self.mp.get_deformation(n).cpu()
+                deformation = self.mp.get_deformation(to_t= n+1).cpu()
                 if n != 0:
                     deformation -= self.id_grid.cpu()
                 img = self.mp.image_stock[n, 0].cpu().numpy()
@@ -1479,9 +1479,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         elif "deformation" in object:
             image_list_for_gif = []
             for n in range(self.mp.n_step):
-                deformation = self.mp.get_deformation(n).cpu()
+                deformation = self.mp.get_deformation(to_t= n+1).cpu()
                 if n == 0:
-                    deformation += self.id_grid.cpu()
+                    deformation += self.mp.id_grid.cpu()
                 fig, ax = plt.subplots()
                 tb.gridDef_plot_2d(
                     deformation,
@@ -1497,7 +1497,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         elif "quiver" in object:
             image_list_for_gif = []
             for n in range(self.mp.n_step):
-                deformation = self.mp.get_deformation(n).cpu()
+                deformation = self.mp.get_deformation(to_t = n+1).cpu()
                 if n != 0:
                     deformation -= self.id_grid.cpu()
                 fig, ax = plt.subplots()

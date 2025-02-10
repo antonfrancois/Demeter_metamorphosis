@@ -249,6 +249,8 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
         super().__init__(source, target, geodesic, cost_cst,data_term, optimizer_method)
         self._cost_saving_ = self._oriented_cost_saving_
 
+    def _get_rho_(self):
+        return "Weighted"
 
     def get_all_arguments(self):
         params_all  = super().get_all_arguments()
