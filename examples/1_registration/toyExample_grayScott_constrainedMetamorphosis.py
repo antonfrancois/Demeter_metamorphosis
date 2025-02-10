@@ -4,7 +4,7 @@
 This toy example was build to simulate a cancer growth in a brain.
 The gray scott texture as been used to add intricate patterns to the
 brain background.
-"""
+
 import matplotlib.pyplot as plt
 
 
@@ -397,3 +397,4 @@ for i,ll in enumerate(L):
 plt.show()
 
 
+"""
