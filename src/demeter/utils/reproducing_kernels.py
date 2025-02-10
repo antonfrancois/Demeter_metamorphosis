@@ -264,15 +264,20 @@ def plot_gaussian_kernel_1d(
     dist_from_center = float(kernel_size)/2
     x = torch.linspace(-dist_from_center,dist_from_center,kernel_size)
 
-    kw = {'color':'gray','linestyle':'--'}
-    line_1_x = [-sigma,-sigma]
-    line_1_y = [0,kernel[0,x > -sigma][0]]
-    line_1_kw = kw.copy()
-    line_1_kw['label'] = f"K(sigma) ~= {kernel[0,x > -sigma][0]:.3f}"
-    line_2_x = [sigma,sigma]
-    line_2_y = [0,kernel[0,x < sigma][-1]]
-    line_3_x = [x[0],x[-1]]
-    line_3_y = [kernel[0,x > -sigma][0],kernel[0,x < sigma][-1]]
+    try:
+        kw = {'color':'gray','linestyle':'--'}
+        line_1_x = [-sigma,-sigma]
+        line_1_y = [0,kernel[0,x > -sigma][0]]
+        line_1_kw = kw.copy()
+        line_1_kw['label'] = f"K(sigma) ~= {kernel[0,x > -sigma][0]:.3f}"
+        line_2_x = [sigma,sigma]
+        line_2_y = [0,kernel[0,x < sigma][-1]]
+        line_3_x = [x[0],x[-1]]
+        line_3_y = [kernel[0,x > -sigma][0],kernel[0,x < sigma][-1]]
+        plot_lines= True
+    except TypeError:
+        print("sigma is not a float, I suspect that the kernel is not purly gaussian.")
+        plot_lines = False
 
 
     if ax is None:
@@ -280,16 +285,18 @@ def plot_gaussian_kernel_1d(
     ax.set_title(f'kernel sigma: {sigma}')
     if rotated:
         ax.plot(kernel[0].numpy(),x)
-        ax.plot(line_1_y,line_1_x,**line_1_kw)
-        ax.plot(line_2_y,line_2_x,**kw)
-        ax.plot(line_3_y,line_3_x,**kw)
+        if plot_lines:
+            ax.plot(line_1_y,line_1_x,**line_1_kw)
+            ax.plot(line_2_y,line_2_x,**kw)
+            ax.plot(line_3_y,line_3_x,**kw)
         ax.set_xlabel('K')
         ax.set_ylabel('x')
     else:
         ax.plot(x,kernel[0].numpy())
-        ax.plot(line_1_x,line_1_y,**line_1_kw)
-        ax.plot(line_2_x,line_2_y,**kw)
-        ax.plot(line_3_x,line_3_y,**kw)
+        if plot_lines:
+            ax.plot(line_1_x,line_1_y,**line_1_kw)
+            ax.plot(line_2_x,line_2_y,**kw)
+            ax.plot(line_3_x,line_3_y,**kw)
         ax.set_xlabel('x')
         ax.set_ylabel('K')
     ax.legend()
@@ -836,9 +843,9 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
                 kernel_f(sigma,kernel_size=kernel_size, normalized=normalized)[None]
              for sigma in list_sigmas
             ]
-        ).sum(dim=0) / len(list_sigmas)
-        # if normalized:
-        #     self.kernel /= len(list_sigmas)
+        ).sum(dim=0)
+        if normalized:
+            self.kernel /= len(list_sigmas)
         #     self.kernel /= self.kernel.sum()
 
 

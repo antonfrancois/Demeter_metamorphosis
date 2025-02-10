@@ -44,6 +44,7 @@ sigma_list = [
         # (16,16)
         # (20,20),
     ]
+normalize = True
 
 ######################################################################
 # First let's see the kernels of the Gaussian Reproducing Kernel for different sigma
@@ -53,10 +54,10 @@ sigma_list = [
 def see_kernels_filter_2D(sigma_list,ax=None, force_xticks=None):
 
     mono_gauss = [
-        rk.GaussianRKHS(s,'constant',normalized=True)
+        rk.GaussianRKHS(s,'constant',normalized=normalize)
         for s in sigma_list
     ]
-    multi_RKHS = rk.Multi_scale_GaussianRKHS(sigma_list, normalized=True)
+    multi_RKHS = rk.Multi_scale_GaussianRKHS(sigma_list, normalized=normalize)
     font_size= 20
     if ax is None:
         fig,ax = plt.subplots(figsize=(10,5))
@@ -114,7 +115,7 @@ def see_mono_kernels(I,sigma_list):
         grk = rk.GaussianRKHS(s,'constant')
         see_im_convoled_by_kernel(grk,I,ax[:,i+1])
         ax[0,i+1].set_title(r'$\sigma = $'+str(grk.sigma))
-    mgrk = rk.Multi_scale_GaussianRKHS(sigma_list, normalized=True)
+    mgrk = rk.Multi_scale_GaussianRKHS(sigma_list, normalized=normalize)
     see_im_convoled_by_kernel(mgrk,I,ax[:,-1])
     ax[0,-1].set_title(r"Multi-scale ")
 
