@@ -1,5 +1,5 @@
-"""
-.. data_cost_mutualInformation:
+r"""
+.. _data_cost_mutualInformation:
 
 Data cost variation example:: Mutual Information
 ===============================================

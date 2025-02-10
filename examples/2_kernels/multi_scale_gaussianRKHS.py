@@ -1,4 +1,4 @@
-"""
+r"""
 .. _mutli_scale_gaussianRK:
 
 A multiscale Gaussian Reproducing Kernel
@@ -13,6 +13,20 @@ prevents the vector fields to match small details in the images. To overcome thi
 issue, we can use a multiscale Gaussian RK, that will keep smoothing properties
 while keeping some high frequency information. It can be seen as a compromise
 kernel.
+
+The formal definition is:
+Let $\Gamma = { \sigma_1, \sigma_2, \ldots, \sigma_n}$ be a list of standard deviations.
+
+.. math::
+    \mathrm{kernel}_\Gamma = \sum_{\sigma \in \Gamma} \frac {1}{nk_\sigma} \exp\left(\frac{-x^2}{2 \sigma^2}\right)
+
+where $n$ is the number of elements in $\Gamma$.
+if normalised is True, $k$ is equal to:
+
+.. math::
+    k_\sigma = \sum_{x \in Omega}  \exp\left(\frac{-x^2}{2 \sigma^2}\right)
+
+else, $k$ is equal to 1.
 
 """
 

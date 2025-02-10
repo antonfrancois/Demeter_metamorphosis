@@ -1,4 +1,4 @@
-"""
+r"""
 .. _plot_simpleToyExample_metamorphosis:
 
 MetaMorphosis behaviour with different values of rho
@@ -7,15 +7,27 @@ MetaMorphosis behaviour with different values of rho
 This example shows how the MetaMorphosis behaves with different values of rho.
 
 Let $\rho \in [0,1]$, we define the evolution of the image over time as:
-$$\dot{I_{t}} = - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z. $$
+
+.. math::
+    \dot{I_{t}} = - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z.
+
 Note: The square roots may seem surprising, but the reason will become clear at the end.
 
 We define the Hamiltonian:
-$$H(I,p,v,z) = - (p |\dot{ I}) - \frac{1}{2} (Lv|v)_{2} - \frac{1}{2}(z,z)_{2}. $$
+
+.. math::
+    H(I,p,v,z) = - (p |\dot{ I}) - \frac{1}{2} (Lv|v)_{2} - \frac{1}{2}(z,z)_{2}.
+
 By calculating the optimal trajectories we obtain the system:
-$$\left\{ 	\begin{array}{rl} v &= - \sqrt{ \rho } K_{V} (p \nabla I)\\ \dot{p} &= -\sqrt{ \rho } \nabla \cdot (pv) \\ z &= \sqrt{ 1 - \rho } p \\  \dot{I} &=  - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z.\end{array} \right. $$
+
+.. math::
+    \left\{ 	\begin{array}{rl} v &= - \sqrt{ \rho } K_{V} (p \nabla I)\\ \dot{p} &= -\sqrt{ \rho } \nabla \cdot (pv) \\ z &= \sqrt{ 1 - \rho } p \\  \dot{I} &=  - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z.\end{array} \right.
+
 We notice that we can rewrite:
-$$  \dot{ I_{t}} = - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z = -  \rho K_{V}(p_{t}\nabla I) \cdot \nabla I_{t} +  (1-\rho) p_{t}.$$
+
+.. math::
+    \dot{ I_{t}} = - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z = -  \rho K_{V}(p_{t}\nabla I) \cdot \nabla I_{t} +  (1-\rho) p_{t}.
+
 This means that the optimal dynamics is the weighted average between the
 creation of the field and the photometric addition controlled by the momentum $p$.
 

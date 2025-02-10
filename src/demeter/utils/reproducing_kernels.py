@@ -781,28 +781,31 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
     Example:
     --------
 
-    >>>import __init__
-    >>>import demeter.utils.reproducing_kernels as rk
-    >>>import demeter.utils.torchbox as tb
-    >>>import matplotlib.pyplot as plt
-    >>>import torch
-    >>>
-    >>>sigma= [(5,5),(7,7),(10,10)]
-    >>>kernelOp = rk.Multi_scale_GaussianRKHS(sigma)
-    >>>
-    >>>image = tb.RandomGaussianImage((100,100),5,'pixel').image()
-    >>>image_b = kernelOp(image)
-    >>>
-    >>>fig, ax = plt.subplots(2,2,figsize=(10,5))
-    >>>ax[0,0].imshow(kernelOp.kernel[0])
-    >>>ax[0,0].set_title('kernel 1')
-    >>>ax[0,1].plot(kernelOp.kernel[0][kernelOp.kernel[0].shape[0]//2])
-    >>>
-    >>>ax[1,0].imshow(image[0,0])
-    >>>ax[1,0].set_title('image')
-    >>>ax[1,1].imshow(image_b[0,0])
-    >>>ax[1,1].set_title('image_b')
-    >>>plt.show()
+    .. code-block:: python
+
+        import __init__
+        import demeter.utils.reproducing_kernels as rk
+        import demeter.utils.torchbox as tb
+        import matplotlib.pyplot as plt
+        import torch
+
+        sigma= [(5,5),(7,7),(10,10)]
+        kernelOp = rk.Multi_scale_GaussianRKHS(sigma)
+
+        image = tb.RandomGaussianImage((100,100),5,'pixel').image()
+        image_b = kernelOp(image)
+
+        fig, ax = plt.subplots(2,2,figsize=(10,5))
+        ax[0,0].imshow(kernelOp.kernel[0])
+        ax[0,0].set_title('kernel 1')
+        ax[0,1].plot(kernelOp.kernel[0][kernelOp.kernel[0].shape[0]//2])
+
+        ax[1,0].imshow(image[0,0])
+        ax[1,0].set_title('image')
+        ax[1,1].imshow(image_b[0,0])
+        ax[1,1].set_title('image_b')
+        plt.show()
+
     """
 
     def __init__(self, list_sigmas,

@@ -128,7 +128,6 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
         mask = self.residual_mask[self._i,0]
 
         if self.flag_O or self.flag_W:
-            print("Field oriented")
             self._update_field_oriented_weighted_()
         else:
             self._update_field_()
