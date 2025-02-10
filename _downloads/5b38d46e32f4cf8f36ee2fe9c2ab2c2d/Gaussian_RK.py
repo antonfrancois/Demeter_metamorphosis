@@ -1,4 +1,4 @@
-"""
+r"""
 .. _gaussianRK:
 
 A Gaussian Reproducing Kernel

@@ -24,9 +24,7 @@
       <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="For advanced users" href="advanced_users.html" />
-    <link rel="prev" title="demeter.metamorphosis package" href="demeter.metamorphosis.html" /> 
+    <link rel="search" title="Search" href="search.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -48,25 +46,13 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
+              <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Gallery of examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#registration-examples">Registration examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#kernel-examples">Kernel examples</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="modules.html">Demeter documentation</a><ul class="current">
-<li class="toctree-l2 current"><a class="reference internal" href="demeter.html">demeter package</a><ul class="current">
-<li class="toctree-l3 current"><a class="reference internal" href="demeter.html#subpackages">Subpackages</a><ul class="current">
-<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html">demeter.metamorphosis package</a></li>
-<li class="toctree-l4 current"><a class="current reference internal" href="#">demeter.utils package</a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="demeter.html#submodules">Submodules</a></li>
-<li class="toctree-l3"><a class="reference internal" href="demeter.html#module-demeter.constants">demeter.constants module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="demeter.html#module-demeter">Module contents</a></li>
-</ul>
-</li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#utility-functions-examples">Utility functions examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Demeter documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="advanced_users.html">For advanced users</a></li>
 </ul>
 
@@ -84,8 +70,6 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
-          <li class="breadcrumb-item"><a href="modules.html">Demeter documentation</a></li>
-          <li class="breadcrumb-item"><a href="demeter.html">demeter package</a></li>
       <li class="breadcrumb-item active">demeter.utils package</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/demeter.utils.rst.txt" rel="nofollow"> View page source</a>
@@ -613,28 +597,30 @@ else, <span class="math notranslate nohighlight">\(k\)</span> is equal to 1.</p>
 </section>
 <section id="example">
 <h3>Example:<a class="headerlink" href="#example" title="Link to this heading"></a></h3>
-<p>&gt;&gt;&gt;import __init__
-&gt;&gt;&gt;import demeter.utils.reproducing_kernels as rk
-&gt;&gt;&gt;import demeter.utils.torchbox as tb
-&gt;&gt;&gt;import matplotlib.pyplot as plt
-&gt;&gt;&gt;import torch
-&gt;&gt;&gt;
-&gt;&gt;&gt;sigma= [(5,5),(7,7),(10,10)]
-&gt;&gt;&gt;kernelOp = rk.Multi_scale_GaussianRKHS(sigma)
-&gt;&gt;&gt;
-&gt;&gt;&gt;image = tb.RandomGaussianImage((100,100),5,’pixel’).image()
-&gt;&gt;&gt;image_b = kernelOp(image)
-&gt;&gt;&gt;
-&gt;&gt;&gt;fig, ax = plt.subplots(2,2,figsize=(10,5))
-&gt;&gt;&gt;ax[0,0].imshow(kernelOp.kernel[0])
-&gt;&gt;&gt;ax[0,0].set_title(‘kernel 1’)
-&gt;&gt;&gt;ax[0,1].plot(kernelOp.kernel[0][kernelOp.kernel[0].shape[0]//2])
-&gt;&gt;&gt;
-&gt;&gt;&gt;ax[1,0].imshow(image[0,0])
-&gt;&gt;&gt;ax[1,0].set_title(‘image’)
-&gt;&gt;&gt;ax[1,1].imshow(image_b[0,0])
-&gt;&gt;&gt;ax[1,1].set_title(‘image_b’)
-&gt;&gt;&gt;plt.show()</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">__init__</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.reproducing_kernels</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">rk</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.torchbox</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tb</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">sigma</span><span class="o">=</span> <span class="p">[(</span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="p">),(</span><span class="mi">7</span><span class="p">,</span><span class="mi">7</span><span class="p">),(</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">)]</span>
+<span class="n">kernelOp</span> <span class="o">=</span> <span class="n">rk</span><span class="o">.</span><span class="n">Multi_scale_GaussianRKHS</span><span class="p">(</span><span class="n">sigma</span><span class="p">)</span>
+
+<span class="n">image</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">RandomGaussianImage</span><span class="p">((</span><span class="mi">100</span><span class="p">,</span><span class="mi">100</span><span class="p">),</span><span class="mi">5</span><span class="p">,</span><span class="s1">&#39;pixel&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">image</span><span class="p">()</span>
+<span class="n">image_b</span> <span class="o">=</span> <span class="n">kernelOp</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">kernelOp</span><span class="o">.</span><span class="n">kernel</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;kernel 1&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kernelOp</span><span class="o">.</span><span class="n">kernel</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">kernelOp</span><span class="o">.</span><span class="n">kernel</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">//</span><span class="mi">2</span><span class="p">])</span>
+
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">image</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;image&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">image_b</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;image_b&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
 <dl class="py method">
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS.get_all_arguments">
 <span class="sig-name descname"><span class="pre">get_all_arguments</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.Multi_scale_GaussianRKHS.get_all_arguments" title="Link to this definition"></a></dt>
@@ -2050,10 +2036,7 @@ they have a time dimension stored in the first dimension.</p>
 
            </div>
           </div>
-          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="demeter.metamorphosis.html" class="btn btn-neutral float-left" title="demeter.metamorphosis package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="advanced_users.html" class="btn btn-neutral float-right" title="For advanced users" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-    </div>
+          <footer>
 
   <hr/>
 

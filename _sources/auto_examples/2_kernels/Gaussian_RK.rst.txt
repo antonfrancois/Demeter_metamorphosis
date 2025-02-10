@@ -36,12 +36,10 @@ In metamorphosis, the RK is used to parameterize the space of acceptable vector 
 through its norm, and is used to compute the vector field from the momentum.
 
 .. math::
-    v = - K_{\sigma} ( p 
-abla I)
+    v = - K_{\sigma} ( p \nabla I)
 
 where $p$ is the momentum, $I$ the image and $K_{\sigma}$ the Gaussian RK operator.
-we also call $p 
-abla I$ the field momentum.
+we also call $p \nabla I$ the field momentum.
 
 .. GENERATED FROM PYTHON SOURCE LINES 27-28
 
@@ -158,8 +156,6 @@ visualize its effect on a synthetic vector field.
 
  .. code-block:: none
 
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/2_kernels/Gaussian_RK.py:1: SyntaxWarning: invalid escape sequence '\s'
-      """
     ic| Gaussian_RK.py:74 in <module>
         field.shape: torch.Size([1, 30, 30, 2])
         smoothed_field.shape: torch.Size([1, 30, 30, 2])
@@ -274,9 +270,9 @@ sigma values.
             normalized :True
     Progress: [##--------]  20.00%  (Ssd : ,655.1315).    Progress: [###-------]  30.00%  (Ssd : ,285.0678).    Progress: [####------]  40.00%  (Ssd : ,157.9997).    Progress: [#####-----]  50.00%  (Ssd : ,126.9168).    Progress: [######----]  60.00%  (Ssd : ,121.4015).    Progress: [#######---]  70.00%  (Ssd : ,117.6779).    Progress: [########--]  80.00%  (Ssd : ,115.2220).    Progress: [#########-]  90.00%  (Ssd : ,104.2477).    Progress: [##########] 100.00% Done...
      (Ssd : , 97.9167).
-    Computation of forward done in  0:00:26s and 0.853cents  s
+    Computation of forward done in  0:00:27s and 0.109cents  s
 
-    Computation of lddmm done in  0:00:26s and 0.853cents  s
+    Computation of lddmm done in  0:00:27s and 0.109cents  s
 
 
 
@@ -353,7 +349,7 @@ deformed image.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 29.083 seconds)
+   **Total running time of the script:** (0 minutes 29.337 seconds)
 
 
 .. _sphx_glr_download_auto_examples_2_kernels_Gaussian_RK.py:

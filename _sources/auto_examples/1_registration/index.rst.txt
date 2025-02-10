@@ -53,14 +53,31 @@ The examples below shows how to make simple registrations with Demeter-Metamorph
 
 .. raw:: html
 
+    <div class="sphx-glr-thumbcontainer" tooltip=" In this example I will try to demonstrate to you why we should use the semi-Lagrangian scheme during geodesic integration rather than Eulerian. Obviously, we could use even more developed schemes like Runge-Kutta, but semi-Lagrangian is a good compromise between speed and accuracy.">
+
+.. only:: html
+
+  .. image:: /auto_examples/1_registration/images/thumb/sphx_glr_semiLagrangian_scheme_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_1_registration_semiLagrangian_scheme.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Why we should use semi-Lagrangian scheme?</div>
+    </div>
+
+
+.. raw:: html
+
     <div class="sphx-glr-thumbcontainer" tooltip="This example shows how the MetaMorphosis behaves with different values of rho.">
 
 .. only:: html
 
-  .. image:: /auto_examples/1_registration/images/thumb/sphx_glr_plot_simpleToyExample_metamorphosis_thumb.png
+  .. image:: /auto_examples/1_registration/images/thumb/sphx_glr_simpleToyExample_metamorphosis_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_1_registration_plot_simpleToyExample_metamorphosis.py`
+  :ref:`sphx_glr_auto_examples_1_registration_simpleToyExample_metamorphosis.py`
 
 .. raw:: html
 
@@ -70,14 +87,14 @@ The examples below shows how to make simple registrations with Demeter-Metamorph
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="import matplotlib.pyplot as plt">
+    <div class="sphx-glr-thumbcontainer" tooltip="This toy example was build to simulate a cancer growth in a brain.">
 
 .. only:: html
 
-  .. image:: /auto_examples/1_registration/images/thumb/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_thumb.png
+  .. image:: /auto_examples/1_registration/images/thumb/sphx_glr_toyExample_weightedMetamorphosis_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_1_registration_toyExample_grayScott_constrainedMetamorphosis.py`
+  :ref:`sphx_glr_auto_examples_1_registration_toyExample_weightedMetamorphosis.py`
 
 .. raw:: html
 
@@ -97,6 +114,7 @@ The examples below shows how to make simple registrations with Demeter-Metamorph
 
    /auto_examples/1_registration/data_cost_mutualInformation
    /auto_examples/1_registration/metamorphosis_3D
-   /auto_examples/1_registration/plot_simpleToyExample_metamorphosis
-   /auto_examples/1_registration/toyExample_grayScott_constrainedMetamorphosis
+   /auto_examples/1_registration/semiLagrangian_scheme
+   /auto_examples/1_registration/simpleToyExample_metamorphosis
+   /auto_examples/1_registration/toyExample_weightedMetamorphosis
 

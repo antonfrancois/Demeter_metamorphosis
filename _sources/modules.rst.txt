@@ -4,4 +4,7 @@ Demeter documentation
 .. toctree::
    :maxdepth: 4
 
-   demeter
+.. automodule:: demeter
+    :members:
+    :undoc-members:
+    :show-inheritance:

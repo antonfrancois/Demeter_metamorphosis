@@ -1,0 +1,198 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>&lt;no title&gt; &mdash; Demeter_metamorphosis 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Demeter documentation" href="../../modules.html" />
+    <link rel="prev" title="Utility functions examples" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Demeter_metamorphosis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Gallery of examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#kernel-examples">Kernel examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#utility-functions-examples">Utility functions examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Demeter documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../advanced_users.html">For advanced users</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Demeter_metamorphosis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Gallery of examples</a></li>
+          <li class="breadcrumb-item"><a href="index.html">Utility functions examples</a></li>
+      <li class="breadcrumb-item active">&lt;no title&gt;</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/auto_examples/3_utils/make_ball_at_shape_center.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-auto-examples-3-utils-make-ball-at-shape-center-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code.</p>
+</div>
+<p class="sphx-glr-example-title" id="make-ball-at-shape-center"><span id="sphx-glr-auto-examples-3-utils-make-ball-at-shape-center-py"></span>A utility function to create a ball at the center of a shape in an image.
+Can be useful to initialise a mask for a guided registration task.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span><span class="o">,</span><span class="w"> </span><span class="nn">os</span>
+    <span class="c1"># add the parent directory to the path</span>
+    <span class="n">base_path</span>  <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)),</span><span class="s1">&#39;..&#39;</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">base_path</span><span class="p">)</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">__init__</span>
+
+<span class="k">except</span> <span class="ne">NameError</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+
+<span class="c1"># import __init__</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">demeter.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">ROOT_DIRECTORY</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">demeter.utils.torchbox</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_ball_at_shape_center</span><span class="p">,</span><span class="n">reg_open</span><span class="p">,</span> <span class="n">imCmp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.image_3d_plotter</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">i3p</span>
+</pre></div>
+</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;2D Example :&quot;</span><span class="p">)</span>
+<span class="n">img</span> <span class="o">=</span> <span class="n">reg_open</span><span class="p">(</span><span class="s1">&#39;m0t&#39;</span><span class="p">)</span>
+
+<span class="n">ball</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">make_ball_at_shape_center</span><span class="p">(</span><span class="n">img</span><span class="p">,</span>
+                                       <span class="n">overlap_threshold</span><span class="o">=</span><span class="mf">.1</span><span class="p">,</span>
+                                       <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">centre_x</span><span class="p">,</span><span class="n">centre_y</span><span class="p">,</span><span class="n">r</span> <span class="o">=</span> <span class="n">info</span>
+
+<span class="n">fig</span><span class="p">,</span><span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span><span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">centre_x</span><span class="p">,</span><span class="n">centre_y</span><span class="p">,</span><span class="s1">&#39;x&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">imCmp</span><span class="p">(</span><span class="n">img</span><span class="p">,</span><span class="n">ball</span><span class="p">),</span><span class="n">origin</span><span class="o">=</span><span class="s1">&#39;lower&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_make_ball_at_shape_center_001.png" srcset="../../_images/sphx_glr_make_ball_at_shape_center_001.png" alt="make ball at shape center" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>2D Example :
+centre = (tensor(350), tensor(351)), r = 143 and the seg and ball have 10061 pixels overlapping
+</pre></div>
+</div>
+<p>_ = input(“Press for 3D example :”)</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">img</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">ROOT_DIRECTORY</span><span class="o">+</span><span class="s2">&quot;/examples/im3Dbank/hanse_w_ball.pt&quot;</span><span class="p">)</span>
+
+
+<span class="n">ball</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">make_ball_at_shape_center</span><span class="p">(</span><span class="n">img</span><span class="p">,</span>
+                                       <span class="c1"># shape_binarization=img == img.max(),</span>
+                                       <span class="n">overlap_threshold</span><span class="o">=</span><span class="mf">.1</span><span class="p">,</span>
+                                       <span class="c1"># force_r=50,</span>
+                                       <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">centre_x</span><span class="p">,</span><span class="n">centre_y</span><span class="p">,</span><span class="n">centre_z</span><span class="p">,</span><span class="n">r</span> <span class="o">=</span> <span class="n">info</span>
+
+<span class="n">img_cmp</span> <span class="o">=</span> <span class="n">imCmp</span><span class="p">(</span><span class="n">img</span><span class="p">,</span><span class="n">ball</span><span class="p">)</span>
+<span class="n">i3p</span><span class="o">.</span><span class="n">imshow_3d_slider</span><span class="p">(</span><span class="n">img_cmp</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_make_ball_at_shape_center_002.png" srcset="../../_images/sphx_glr_make_ball_at_shape_center_002.png" alt="make ball at shape center" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/3_utils/make_ball_at_shape_center.py:44: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don&#39;t have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  img = torch.load(ROOT_DIRECTORY+&quot;/examples/im3Dbank/hanse_w_ball.pt&quot;)
+centre = (tensor(65), tensor(78), tensor(65)), r = 21 and the seg and ball have 38641 pixels overlapping
+ic| image_3d_plotter.py:516 in imshow_3d_slider()
+    image.shape: (133, 159, 133, 3)
+</pre></div>
+</div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.602 seconds)</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-3-utils-make-ball-at-shape-center-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/6d7857e33122e137e818705f274f1b19/make_ball_at_shape_center.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">make_ball_at_shape_center.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/1d1849d4b26955d6c265328e1224db42/make_ball_at_shape_center.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">make_ball_at_shape_center.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-zip docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/d689b9d3c68b40348104aba617c882c1/make_ball_at_shape_center.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">make_ball_at_shape_center.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Utility functions examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../../modules.html" class="btn btn-neutral float-right" title="Demeter documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Anton François.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

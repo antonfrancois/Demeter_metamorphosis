@@ -33,11 +33,25 @@ issue, we can use a multiscale Gaussian RK, that will keep smoothing properties
 while keeping some high frequency information. It can be seen as a compromise
 kernel.
 
-.. GENERATED FROM PYTHON SOURCE LINES 20-21
+The formal definition is:
+Let $\Gamma = { \sigma_1, \sigma_2, \ldots, \sigma_n}$ be a list of standard deviations.
+
+.. math::
+    \mathrm{kernel}_\Gamma = \sum_{\sigma \in \Gamma} \frac {1}{nk_\sigma} \exp\left(\frac{-x^2}{2 \sigma^2}\right)
+
+where $n$ is the number of elements in $\Gamma$.
+if normalised is True, $k$ is equal to:
+
+.. math::
+    k_\sigma = \sum_{x \in Omega}  \exp\left(\frac{-x^2}{2 \sigma^2}\right)
+
+else, $k$ is equal to 1.
+
+.. GENERATED FROM PYTHON SOURCE LINES 34-35
 
 First let's Import the necessary libraries
 
-.. GENERATED FROM PYTHON SOURCE LINES 21-32
+.. GENERATED FROM PYTHON SOURCE LINES 35-46
 
 .. code-block:: Python
 
@@ -59,7 +73,7 @@ First let's Import the necessary libraries
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 33-38
+.. GENERATED FROM PYTHON SOURCE LINES 47-52
 
 To use the multi-scale Gaussian RK, we need to choose
 a list of sigma. The larger the sigma, the more the RK will
@@ -67,7 +81,7 @@ smooth the vector fields. The smaller the sigma, the more the RK will
 keep the high frequency information of the vector fields.
 Feel free to change the sigma_list to see the effect of the RK on next figures
 
-.. GENERATED FROM PYTHON SOURCE LINES 38-48
+.. GENERATED FROM PYTHON SOURCE LINES 52-63
 
 .. code-block:: Python
 
@@ -80,6 +94,7 @@ Feel free to change the sigma_list to see the effect of the RK on next figures
             # (16,16)
             # (20,20),
         ]
+    normalize = True
 
 
 
@@ -88,13 +103,13 @@ Feel free to change the sigma_list to see the effect of the RK on next figures
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 49-52
+.. GENERATED FROM PYTHON SOURCE LINES 64-67
 
 First let's see the kernels of the Gaussian Reproducing Kernel for different sigma
 superimposed on the Multi-scale Gaussian Reproducing Kernel. We plot a 1D slice
 of the 2D kernels at its center.
 
-.. GENERATED FROM PYTHON SOURCE LINES 52-95
+.. GENERATED FROM PYTHON SOURCE LINES 67-110
 
 .. code-block:: Python
 
@@ -102,10 +117,10 @@ of the 2D kernels at its center.
     def see_kernels_filter_2D(sigma_list,ax=None, force_xticks=None):
 
         mono_gauss = [
-            rk.GaussianRKHS(s,'constant',normalized=True)
+            rk.GaussianRKHS(s,'constant',normalized=normalize)
             for s in sigma_list
         ]
-        multi_RKHS = rk.Multi_scale_GaussianRKHS(sigma_list, normalized=True)
+        multi_RKHS = rk.Multi_scale_GaussianRKHS(sigma_list, normalized=normalize)
         font_size= 20
         if ax is None:
             fig,ax = plt.subplots(figsize=(10,5))
@@ -153,13 +168,13 @@ of the 2D kernels at its center.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 96-99
+.. GENERATED FROM PYTHON SOURCE LINES 111-114
 
 Now let's visualize the convolution of an image by the Gaussian RKs and the
 multi-scale Gaussian RK. For visualization purposes, we will use images
 but keep in mind that the RK is intended to be used on vector fields.
 
-.. GENERATED FROM PYTHON SOURCE LINES 99-131
+.. GENERATED FROM PYTHON SOURCE LINES 114-146
 
 .. code-block:: Python
 
@@ -181,7 +196,7 @@ but keep in mind that the RK is intended to be used on vector fields.
             grk = rk.GaussianRKHS(s,'constant')
             see_im_convoled_by_kernel(grk,I,ax[:,i+1])
             ax[0,i+1].set_title(r'$\sigma = $'+str(grk.sigma))
-        mgrk = rk.Multi_scale_GaussianRKHS(sigma_list, normalized=True)
+        mgrk = rk.Multi_scale_GaussianRKHS(sigma_list, normalized=normalize)
         see_im_convoled_by_kernel(mgrk,I,ax[:,-1])
         ax[0,-1].set_title(r"Multi-scale ")
 
@@ -210,7 +225,7 @@ but keep in mind that the RK is intended to be used on vector fields.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.420 seconds)
+   **Total running time of the script:** (0 minutes 0.418 seconds)
 
 
 .. _sphx_glr_download_auto_examples_2_kernels_multi_scale_gaussianRKHS.py:

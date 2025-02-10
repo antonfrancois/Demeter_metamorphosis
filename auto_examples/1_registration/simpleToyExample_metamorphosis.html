@@ -1,0 +1,562 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MetaMorphosis behaviour with different values of rho &mdash; Demeter_metamorphosis 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]]}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Weighted metamorphosis with time evolving mask." href="toyExample_weightedMetamorphosis.html" />
+    <link rel="prev" title="Why we should use semi-Lagrangian scheme?" href="semiLagrangian_scheme.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Demeter_metamorphosis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Gallery of examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#kernel-examples">Kernel examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html#utility-functions-examples">Utility functions examples</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Registration examples</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="data_cost_mutualInformation.html">Data cost variation example:: Mutual Information</a></li>
+<li class="toctree-l3"><a class="reference internal" href="metamorphosis_3D.html">Metamorphosis on 3D images</a></li>
+<li class="toctree-l3"><a class="reference internal" href="semiLagrangian_scheme.html">Why we should use semi-Lagrangian scheme?</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">MetaMorphosis behaviour with different values of rho</a></li>
+<li class="toctree-l3"><a class="reference internal" href="toyExample_weightedMetamorphosis.html">Weighted metamorphosis with time evolving mask.</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../2_kernels/index.html">Kernel examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../3_utils/index.html">Utility functions examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Demeter documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../advanced_users.html">For advanced users</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Demeter_metamorphosis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Gallery of examples</a></li>
+          <li class="breadcrumb-item"><a href="index.html">Registration examples</a></li>
+      <li class="breadcrumb-item active">MetaMorphosis behaviour with different values of rho</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/auto_examples/1_registration/simpleToyExample_metamorphosis.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-auto-examples-1-registration-simpletoyexample-metamorphosis-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code.</p>
+</div>
+<section class="sphx-glr-example-title" id="metamorphosis-behaviour-with-different-values-of-rho">
+<span id="plot-simpletoyexample-metamorphosis"></span><span id="sphx-glr-auto-examples-1-registration-simpletoyexample-metamorphosis-py"></span><h1>MetaMorphosis behaviour with different values of rho<a class="headerlink" href="#metamorphosis-behaviour-with-different-values-of-rho" title="Link to this heading"></a></h1>
+<p>This example shows how the MetaMorphosis behaves with different values of rho.</p>
+<p>Let <span class="math notranslate nohighlight">\(\rho \in [0,1]\)</span>, we define the evolution of the image over time as:</p>
+<div class="math notranslate nohighlight">
+\[\dot{I_{t}} = - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z.\]</div>
+<p>Note: The square roots may seem surprising, but the reason will become clear at the end.</p>
+<p>We define the Hamiltonian:</p>
+<div class="math notranslate nohighlight">
+\[H(I,p,v,z) = - (p |\dot{ I}) - \frac{1}{2} (Lv|v)_{2} - \frac{1}{2}(z,z)_{2}.\]</div>
+<p>By calculating the optimal trajectories we obtain the system:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\left\{     \begin{array}{rl} v &amp;= - \sqrt{ \rho } K_{V} (p \nabla I)\\ \dot{p} &amp;= -\sqrt{ \rho } \nabla \cdot (pv) \\ z &amp;= \sqrt{ 1 - \rho } p \\  \dot{I} &amp;=  - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z.\end{array} \right.\end{split}\]</div>
+<p>We notice that we can rewrite:</p>
+<div class="math notranslate nohighlight">
+\[\dot{ I_{t}} = - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z = -  \rho K_{V}(p_{t}\nabla I) \cdot \nabla I_{t} +  (1-\rho) p_{t}.\]</div>
+<p>This means that the optimal dynamics is the weighted average between the
+creation of the field and the photometric addition controlled by the momentum <span class="math notranslate nohighlight">\(p\)</span>.</p>
+<p>Import the necessary packages</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span><span class="o">,</span><span class="w"> </span><span class="nn">os</span>
+    <span class="c1"># add the parent directory to the path</span>
+    <span class="n">base_path</span>  <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)),</span><span class="s1">&#39;..&#39;</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">base_path</span><span class="p">)</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">__init__</span>
+
+<span class="k">except</span> <span class="ne">NameError</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">demeter</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.reproducing_kernels</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">rk</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.metamorphosis</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.torchbox</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tb</span>
+</pre></div>
+</div>
+<p>Open and visualise images before registration. The source and target are ‘C’ shapes.
+The source is a ‘C’ shape that is deformed. The target is a ‘C’ shape that was
+cut in half changing its topology and a point was added. The goal is to register
+the source to the target by deforming the ‘C’ shape and accounting the cut
+and the point as intensity additions.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;ROOT_DIRECTORY : &quot;</span><span class="p">,</span><span class="n">ROOT_DIRECTORY</span><span class="p">)</span>
+<span class="n">source_name</span><span class="p">,</span><span class="n">target_name</span> <span class="o">=</span> <span class="s1">&#39;m0t&#39;</span><span class="p">,</span> <span class="s1">&#39;m1c&#39;</span>
+<span class="c1"># other suggestion of images to try</span>
+<span class="c1"># source_name,target_name = &#39;17&#39;,&#39;20&#39;        # easy, only deformation</span>
+<span class="c1"># source_name,target_name = &#39;08&#39;,&#39;m1c&#39;  # hard, big deformation !</span>
+<span class="n">size</span> <span class="o">=</span> <span class="p">(</span><span class="mi">300</span><span class="p">,</span><span class="mi">300</span><span class="p">)</span>
+
+<span class="n">S</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">reg_open</span><span class="p">(</span><span class="n">source_name</span><span class="p">,</span><span class="n">size</span> <span class="o">=</span> <span class="n">size</span><span class="p">)</span>
+<span class="n">T</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">reg_open</span><span class="p">(</span><span class="n">target_name</span><span class="p">,</span><span class="n">size</span> <span class="o">=</span> <span class="n">size</span><span class="p">)</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">S</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span><span class="o">**</span><span class="n">DLT_KW_IMAGE</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;source&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span><span class="o">**</span><span class="n">DLT_KW_IMAGE</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;target&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">tb</span><span class="o">.</span><span class="n">imCmp</span><span class="p">(</span><span class="n">S</span><span class="p">,</span><span class="n">T</span><span class="p">,</span><span class="s1">&#39;seg&#39;</span><span class="p">),</span><span class="n">origin</span><span class="o">=</span><span class="s1">&#39;lower&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;superposition of S and T&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_simpleToyExample_metamorphosis_001.png" srcset="../../_images/sphx_glr_simpleToyExample_metamorphosis_001.png" alt="source, target, superposition of S and T" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>ROOT_DIRECTORY :  /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis
+</pre></div>
+</div>
+<p>Before choosing the optimisation method, we need to define a
+reproducing kernel and choose a good sigma. The simpler reproducing
+kernel is the Gaussian kernel. To choose the sigma, we can use the
+helper functions. <cite>get_sigma_from_img_ratio</cite> and <cite>plot_kernel_on_image</cite>.
+The first one will compute a good sigma to match the level of details desired.
+A big sigma will produce a smoother deformation field that will register better
+big structures. A smaller sigma will register better small details. The subdivisions
+is basically in how many parts we want to divide the image to get the size
+of wanted details. The second function will plot the kernel on the image to
+help us validate our choice of sigma.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">image_subdivisions</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">sigma</span> <span class="o">=</span> <span class="n">rk</span><span class="o">.</span><span class="n">get_sigma_from_img_ratio</span><span class="p">(</span><span class="n">T</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span><span class="n">subdiv</span> <span class="o">=</span> <span class="n">image_subdivisions</span><span class="p">)</span>
+
+<span class="n">kernelOperator</span> <span class="o">=</span> <span class="n">rk</span><span class="o">.</span><span class="n">GaussianRKHS</span><span class="p">(</span><span class="n">sigma</span><span class="p">,</span><span class="n">kernel_reach</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+
+<span class="n">rk</span><span class="o">.</span><span class="n">plot_kernel_on_image</span><span class="p">(</span><span class="n">kernelOperator</span><span class="p">,</span><span class="n">image</span><span class="o">=</span> <span class="n">T</span><span class="p">,</span><span class="n">subdiv</span><span class="o">=</span><span class="n">image_subdivisions</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_simpleToyExample_metamorphosis_002.png" srcset="../../_images/sphx_glr_simpleToyExample_metamorphosis_002.png" alt="sigma = (32.189490394340204, 32.189490394340204), subdiv = 10" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>kernel shape: torch.Size([1, 257, 257])
+kernel shape: 257 257
+/opt/hostedtoolcache/Python/3.12.9/x64/lib/python3.12/site-packages/torch/functional.py:513: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at ../aten/src/ATen/native/TensorShape.cpp:3609.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+x, y torch.Size([257, 257]) torch.Size([257, 257])
+</pre></div>
+</div>
+<p>Perform a first Metamorphosis registration</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+    <span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cuda:0&#39;</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cpu&#39;</span>
+<span class="n">S</span> <span class="o">=</span> <span class="n">S</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="n">T</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="n">dx_convention</span> <span class="o">=</span> <span class="s1">&#39;square&#39;</span>
+<span class="c1"># dx_convention = &#39;pixel&#39;</span>
+
+<span class="n">rho</span> <span class="o">=</span> <span class="mf">0.05</span>
+<span class="c1">#</span>
+<span class="c1"># data_cost = mt.Ssd_normalized(T)</span>
+<span class="n">data_cost</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">Ssd</span><span class="p">(</span><span class="n">T</span><span class="p">)</span>
+
+<span class="n">mr</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">metamorphosis</span><span class="p">(</span><span class="n">S</span><span class="p">,</span><span class="n">T</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span>
+                      <span class="n">rho</span><span class="p">,</span>
+                      <span class="n">cost_cst</span><span class="o">=</span><span class="mf">.001</span><span class="p">,</span> <span class="c1"># If the end result is far from the target, try decreasing the cost constant (reduce regularisation)</span>
+                      <span class="n">kernelOperator</span><span class="o">=</span><span class="n">kernelOperator</span><span class="p">,</span>
+                      <span class="n">integration_steps</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>   <span class="c1"># If the deformation is big or complex, try increasing the number of integration steps</span>
+                      <span class="n">n_iter</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>   <span class="c1">#   If the optimisation did not converge, try increasing the number of iterations</span>
+                      <span class="n">grad_coef</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># if the optimisation diverged, try decreasing the gradient coefficient</span>
+                      <span class="n">dx_convention</span><span class="o">=</span><span class="n">dx_convention</span><span class="p">,</span>
+                    <span class="n">data_term</span><span class="o">=</span><span class="n">data_cost</span><span class="p">,</span>
+                    <span class="n">hamiltonian_integration</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># Set to true if you want to have control over the intermediate steps of the optimisation</span>
+                      <span class="p">)</span>
+<span class="c1"># mr.save(f&#39;round_to_mot_rho{rho}&#39;,light_save = True)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Progress: [#---------]  13.33%  (Ssd : ,802.5087).
+Progress: [##--------]  20.00%  (Ssd : ,163.6530).
+Progress: [###-------]  26.67%  (Ssd : , 89.7214).
+Progress: [###-------]  33.33%  (Ssd : , 71.7436).
+Progress: [####------]  40.00%  (Ssd : , 64.0281).
+Progress: [#####-----]  46.67%  (Ssd : , 56.8949).
+Progress: [#####-----]  53.33%  (Ssd : , 52.6968).
+Progress: [######----]  60.00%  (Ssd : , 49.6450).
+Progress: [#######---]  66.67%  (Ssd : , 46.6622).
+Progress: [#######---]  73.33%  (Ssd : , 44.5396).
+Progress: [########--]  80.00%  (Ssd : , 42.8393).
+Progress: [#########-]  86.67%  (Ssd : , 41.6330).
+Progress: [#########-]  93.33%  (Ssd : , 40.6257).
+Progress: [##########] 100.00% Done...
+ (Ssd : , 39.3657).
+Computation of forward done in  0:01:55s and 0.071cents  s
+
+Computation of metamorphosis done in  0:01:55s and 0.072cents  s
+</pre></div>
+</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">_</span><span class="p">,</span> <span class="n">fig_ax</span> <span class="o">=</span> <span class="n">mr</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="n">fig_cmp</span> <span class="o">=</span> <span class="n">fig_ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">fig_def</span> <span class="o">=</span> <span class="n">mr</span><span class="o">.</span><span class="n">plot_deform</span><span class="p">()</span>
+<span class="n">mr</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+<ul class="sphx-glr-horizontal">
+<li><img src="../../_images/sphx_glr_simpleToyExample_metamorphosis_003.png" srcset="../../_images/sphx_glr_simpleToyExample_metamorphosis_003.png" alt="Lambda = 0.001 rho = 0.05" class = "sphx-glr-multi-img"/></li>
+<li><img src="../../_images/sphx_glr_simpleToyExample_metamorphosis_004.png" srcset="../../_images/sphx_glr_simpleToyExample_metamorphosis_004.png" alt="source, target, Integrated source image, comparaison deformed image with target" class = "sphx-glr-multi-img"/></li>
+<li><img src="../../_images/sphx_glr_simpleToyExample_metamorphosis_005.png" srcset="../../_images/sphx_glr_simpleToyExample_metamorphosis_005.png" alt="diffeo = tensor(True)" class = "sphx-glr-multi-img"/></li>
+<li><img src="../../_images/sphx_glr_simpleToyExample_metamorphosis_006.png" srcset="../../_images/sphx_glr_simpleToyExample_metamorphosis_006.png" alt="t = 0.0, diffeo = tensor(True), t = 0.2, diffeo = tensor(True), t = 0.4, diffeo = tensor(True), t = 0.7, diffeo = tensor(True), t = 1.0, diffeo = tensor(True)" class = "sphx-glr-multi-img"/></li>
+</ul>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.24801728129386902..1.3701016902923584].
+
+(&lt;Figure size 1500x2500 with 25 Axes&gt;, array([[&lt;Axes: title={&#39;center&#39;: &#39;t = 0.0&#39;}&gt;, &lt;Axes: &gt;,
+        &lt;Axes: title={&#39;center&#39;: &#39;diffeo = tensor(True)&#39;}&gt;],
+       [&lt;Axes: title={&#39;center&#39;: &#39;t = 0.2&#39;}&gt;, &lt;Axes: &gt;,
+        &lt;Axes: title={&#39;center&#39;: &#39;diffeo = tensor(True)&#39;}&gt;],
+       [&lt;Axes: title={&#39;center&#39;: &#39;t = 0.4&#39;}&gt;, &lt;Axes: &gt;,
+        &lt;Axes: title={&#39;center&#39;: &#39;diffeo = tensor(True)&#39;}&gt;],
+       [&lt;Axes: title={&#39;center&#39;: &#39;t = 0.7&#39;}&gt;, &lt;Axes: &gt;,
+        &lt;Axes: title={&#39;center&#39;: &#39;diffeo = tensor(True)&#39;}&gt;],
+       [&lt;Axes: title={&#39;center&#39;: &#39;t = 1.0&#39;}&gt;, &lt;Axes: &gt;,
+        &lt;Axes: title={&#39;center&#39;: &#39;diffeo = tensor(True)&#39;}&gt;]], dtype=object))
+</pre></div>
+</div>
+<blockquote>
+<div><p>optimisation for the values of rho in the files listed in list_optim.
+Feel free to try yourselves If you want to recompute them by setting
+recompute to True. The number of rho to test is set by n_plot.</p>
+</div></blockquote>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">list_optim</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;2D_23_01_2025_simpleToyExample_rho_0.00_000.pk1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;2D_23_01_2025_simpleToyExample_rho_0.11_000.pk1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;2D_23_01_2025_simpleToyExample_rho_0.22_000.pk1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;2D_23_01_2025_simpleToyExample_rho_0.33_000.pk1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;2D_23_01_2025_simpleToyExample_rho_0.44_000.pk1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;2D_23_01_2025_simpleToyExample_rho_0.56_000.pk1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;2D_23_01_2025_simpleToyExample_rho_0.67_000.pk1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;2D_23_01_2025_simpleToyExample_rho_0.78_000.pk1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;2D_23_01_2025_simpleToyExample_rho_0.89_000.pk1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;2D_23_01_2025_simpleToyExample_rho_1.00_000.pk1&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">recompute</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">n_plot</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">rho_list</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="n">n_plot</span><span class="p">)</span>
+
+<span class="n">fig</span><span class="p">,</span><span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="n">n_plot</span><span class="p">,</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
+
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">rho</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">rho_list</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">rho = </span><span class="si">{</span><span class="n">rho</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">n_plot</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">recompute</span><span class="p">:</span>
+        <span class="n">mr</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">metamorphosis</span><span class="p">(</span><span class="n">S</span><span class="p">,</span><span class="n">T</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span>
+                          <span class="n">rho</span><span class="p">,</span>
+                          <span class="n">cost_cst</span><span class="o">=</span><span class="mf">.001</span><span class="p">,</span>
+                          <span class="n">kernelOperator</span><span class="o">=</span><span class="n">kernelOperator</span><span class="p">,</span>
+                          <span class="n">integration_steps</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                          <span class="n">n_iter</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+                          <span class="n">grad_coef</span><span class="o">=</span><span class="mf">.1</span><span class="p">,</span>
+                          <span class="n">dx_convention</span><span class="o">=</span><span class="n">dx_convention</span><span class="p">,</span>
+                          <span class="n">data_term</span><span class="o">=</span><span class="n">data_cost</span><span class="p">,</span>
+                          <span class="n">hamiltonian_integration</span><span class="o">=</span><span class="kc">True</span>
+                          <span class="p">)</span>
+        <span class="n">mr</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;simpleToyExample_rho_</span><span class="si">{</span><span class="n">rho</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span><span class="n">light_save</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">mr</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">load_optimize_geodesicShooting</span><span class="p">(</span><span class="n">list_optim</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+    <span class="c1"># mr.plot_cost()</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;rho = </span><span class="si">{</span><span class="n">rho</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">mr</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">image</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="o">**</span><span class="n">DLT_KW_IMAGE</span><span class="p">)</span>
+    <span class="n">deform</span> <span class="o">=</span> <span class="n">mr</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">get_deformator</span><span class="p">()</span>
+    <span class="n">img_deform</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">imgDeform</span><span class="p">(</span><span class="n">S</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="n">deform</span><span class="p">,</span><span class="n">dx_convention</span><span class="o">=</span><span class="n">dx_convention</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img_deform</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="o">**</span><span class="n">DLT_KW_IMAGE</span><span class="p">)</span>
+
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># sphinx_gallery_thumbnail_number = 3</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_simpleToyExample_metamorphosis_007.png" srcset="../../_images/sphx_glr_simpleToyExample_metamorphosis_007.png" alt="rho = 0.00, rho = 0.11, rho = 0.22, rho = 0.33, rho = 0.44, rho = 0.56, rho = 0.67, rho = 0.78, rho = 0.89, rho = 1.00" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>rho = 0.0, 1/10
+DT: None
+New optimiser loaded (2D_23_01_2025_simpleToyExample_rho_0.00_000.pk1) :
+ Metamorphosis_Shooting(cost_parameters : {,
+                rho =0.0,
+                lambda =0.001
+        },
+        geodesic integrator : Metamorphosis_integrator(
+  (kernelOperator): GaussianRKHS,2D
+        filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
+        kernel_size :(1, 225, 225)
+        kernel_reach :7
+        normalized :True
+)
+        integration method : _step_full_semiLagrangian
+        optimisation method : LBFGS_torch
+        # geodesic steps =10
+)
+
+rho = 0.1111111119389534, 2/10
+DT: None
+New optimiser loaded (2D_23_01_2025_simpleToyExample_rho_0.11_000.pk1) :
+ Metamorphosis_Shooting(cost_parameters : {,
+                rho =0.1111111119389534,
+                lambda =0.001
+        },
+        geodesic integrator : Metamorphosis_integrator(
+  (kernelOperator): GaussianRKHS,2D
+        filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
+        kernel_size :(1, 225, 225)
+        kernel_reach :7
+        normalized :True
+)
+        integration method : _step_full_semiLagrangian
+        optimisation method : LBFGS_torch
+        # geodesic steps =10
+)
+
+rho = 0.2222222238779068, 3/10
+DT: None
+New optimiser loaded (2D_23_01_2025_simpleToyExample_rho_0.22_000.pk1) :
+ Metamorphosis_Shooting(cost_parameters : {,
+                rho =0.2222222238779068,
+                lambda =0.001
+        },
+        geodesic integrator : Metamorphosis_integrator(
+  (kernelOperator): GaussianRKHS,2D
+        filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
+        kernel_size :(1, 225, 225)
+        kernel_reach :7
+        normalized :True
+)
+        integration method : _step_full_semiLagrangian
+        optimisation method : LBFGS_torch
+        # geodesic steps =10
+)
+
+rho = 0.3333333432674408, 4/10
+DT: None
+New optimiser loaded (2D_23_01_2025_simpleToyExample_rho_0.33_000.pk1) :
+ Metamorphosis_Shooting(cost_parameters : {,
+                rho =0.3333333432674408,
+                lambda =0.001
+        },
+        geodesic integrator : Metamorphosis_integrator(
+  (kernelOperator): GaussianRKHS,2D
+        filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
+        kernel_size :(1, 225, 225)
+        kernel_reach :7
+        normalized :True
+)
+        integration method : _step_full_semiLagrangian
+        optimisation method : LBFGS_torch
+        # geodesic steps =10
+)
+
+rho = 0.4444444477558136, 5/10
+DT: None
+New optimiser loaded (2D_23_01_2025_simpleToyExample_rho_0.44_000.pk1) :
+ Metamorphosis_Shooting(cost_parameters : {,
+                rho =0.4444444477558136,
+                lambda =0.001
+        },
+        geodesic integrator : Metamorphosis_integrator(
+  (kernelOperator): GaussianRKHS,2D
+        filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
+        kernel_size :(1, 225, 225)
+        kernel_reach :7
+        normalized :True
+)
+        integration method : _step_full_semiLagrangian
+        optimisation method : LBFGS_torch
+        # geodesic steps =10
+)
+
+rho = 0.5555555820465088, 6/10
+DT: None
+New optimiser loaded (2D_23_01_2025_simpleToyExample_rho_0.56_000.pk1) :
+ Metamorphosis_Shooting(cost_parameters : {,
+                rho =0.5555555820465088,
+                lambda =0.001
+        },
+        geodesic integrator : Metamorphosis_integrator(
+  (kernelOperator): GaussianRKHS,2D
+        filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
+        kernel_size :(1, 225, 225)
+        kernel_reach :7
+        normalized :True
+)
+        integration method : _step_full_semiLagrangian
+        optimisation method : LBFGS_torch
+        # geodesic steps =10
+)
+
+rho = 0.6666666865348816, 7/10
+DT: None
+New optimiser loaded (2D_23_01_2025_simpleToyExample_rho_0.67_000.pk1) :
+ Metamorphosis_Shooting(cost_parameters : {,
+                rho =0.6666666865348816,
+                lambda =0.001
+        },
+        geodesic integrator : Metamorphosis_integrator(
+  (kernelOperator): GaussianRKHS,2D
+        filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
+        kernel_size :(1, 225, 225)
+        kernel_reach :7
+        normalized :True
+)
+        integration method : _step_full_semiLagrangian
+        optimisation method : LBFGS_torch
+        # geodesic steps =10
+)
+
+rho = 0.7777777910232544, 8/10
+DT: None
+New optimiser loaded (2D_23_01_2025_simpleToyExample_rho_0.78_000.pk1) :
+ Metamorphosis_Shooting(cost_parameters : {,
+                rho =0.7777777910232544,
+                lambda =0.001
+        },
+        geodesic integrator : Metamorphosis_integrator(
+  (kernelOperator): GaussianRKHS,2D
+        filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
+        kernel_size :(1, 225, 225)
+        kernel_reach :7
+        normalized :True
+)
+        integration method : _step_full_semiLagrangian
+        optimisation method : LBFGS_torch
+        # geodesic steps =10
+)
+
+rho = 0.8888888955116272, 9/10
+DT: None
+New optimiser loaded (2D_23_01_2025_simpleToyExample_rho_0.89_000.pk1) :
+ Metamorphosis_Shooting(cost_parameters : {,
+                rho =0.8888888955116272,
+                lambda =0.001
+        },
+        geodesic integrator : Metamorphosis_integrator(
+  (kernelOperator): GaussianRKHS,2D
+        filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
+        kernel_size :(1, 225, 225)
+        kernel_reach :7
+        normalized :True
+)
+        integration method : _step_full_semiLagrangian
+        optimisation method : LBFGS_torch
+        # geodesic steps =10
+)
+
+rho = 1.0, 10/10
+DT: None
+New optimiser loaded (2D_23_01_2025_simpleToyExample_rho_1.00_000.pk1) :
+ Metamorphosis_Shooting(cost_parameters : {,
+                rho =1.0,
+                lambda =0.001
+        },
+        geodesic integrator : Metamorphosis_integrator(
+  (kernelOperator): GaussianRKHS,2D
+        filter :fft_filter, sigma :(32.189490394340204, 32.189490394340204)
+        kernel_size :(1, 225, 225)
+        kernel_reach :7
+        normalized :True
+)
+        integration method : _step_full_semiLagrangian
+        optimisation method : LBFGS_torch
+        # geodesic steps =10
+)
+</pre></div>
+</div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 59.922 seconds)</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-1-registration-simpletoyexample-metamorphosis-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/2594b7e4170b7e297e8fc78e1e17e36e/simpleToyExample_metamorphosis.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">simpleToyExample_metamorphosis.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/3c4e9db6ab0c77512ec5c746b4808a7e/simpleToyExample_metamorphosis.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">simpleToyExample_metamorphosis.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-zip docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/908140f3f11da40cffa393a7d28a704b/simpleToyExample_metamorphosis.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">simpleToyExample_metamorphosis.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="semiLagrangian_scheme.html" class="btn btn-neutral float-left" title="Why we should use semi-Lagrangian scheme?" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="toyExample_weightedMetamorphosis.html" class="btn btn-neutral float-right" title="Weighted metamorphosis with time evolving mask." accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Anton François.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

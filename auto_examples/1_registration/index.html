@@ -52,16 +52,18 @@
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Gallery of examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html#registration-examples">Registration examples</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../index.html#kernel-examples">Kernel examples</a><ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html#kernel-examples">Kernel examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html#utility-functions-examples">Utility functions examples</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Registration examples</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="data_cost_mutualInformation.html">Data cost variation example:: Mutual Information</a></li>
 <li class="toctree-l3"><a class="reference internal" href="metamorphosis_3D.html">Metamorphosis on 3D images</a></li>
-<li class="toctree-l3"><a class="reference internal" href="plot_simpleToyExample_metamorphosis.html">MetaMorphosis behaviour with different values of rho</a></li>
-<li class="toctree-l3"><a class="reference internal" href="toyExample_grayScott_constrainedMetamorphosis.html"># #%%</a></li>
-<li class="toctree-l3"><a class="reference internal" href="toyExample_grayScott_constrainedMetamorphosis.html#id4">#%%</a></li>
+<li class="toctree-l3"><a class="reference internal" href="semiLagrangian_scheme.html">Why we should use semi-Lagrangian scheme?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simpleToyExample_metamorphosis.html">MetaMorphosis behaviour with different values of rho</a></li>
+<li class="toctree-l3"><a class="reference internal" href="toyExample_weightedMetamorphosis.html">Weighted metamorphosis with time evolving mask.</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../2_kernels/index.html">Kernel examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../3_utils/index.html">Utility functions examples</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../modules.html">Demeter documentation</a></li>
@@ -97,16 +99,19 @@
 <span id="examples-gallery"></span><span id="sphx-glr-auto-examples-1-registration"></span><h1>Registration examples<a class="headerlink" href="#registration-examples" title="Link to this heading"></a></h1>
 <p>The examples below shows how to make simple registrations with Demeter-Metamorphosis.</p>
 <div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="This example demonstrates how to change the data cost for the registration. We will build a simple toy example mimicking situations we can encounter in medical imaging where the shapes to match are clode in geometry but have different intensity distributions. There are plenty other data costs in the literature for every specific purpose, and we will focus on the mutual information."><img alt="" src="../../_images/sphx_glr_data_cost_mutualInformation_thumb.png" />
-<p><span class="xref std std-ref">sphx_glr_auto_examples_1_registration_data_cost_mutualInformation.py</span></p>
+<p><a class="reference internal" href="data_cost_mutualInformation.html#sphx-glr-auto-examples-1-registration-data-cost-mutualinformation-py"><span class="std std-ref">Data cost variation example:: Mutual Information</span></a></p>
   <div class="sphx-glr-thumbnail-title">Data cost variation example:: Mutual Information</div>
 </div><div class="sphx-glr-thumbcontainer" tooltip="In this file we apply the metamorphosis algorithm to 3D images."><img alt="" src="../../_images/sphx_glr_metamorphosis_3D_thumb.png" />
 <p><a class="reference internal" href="metamorphosis_3D.html#sphx-glr-auto-examples-1-registration-metamorphosis-3d-py"><span class="std std-ref">Metamorphosis on 3D images</span></a></p>
   <div class="sphx-glr-thumbnail-title">Metamorphosis on 3D images</div>
-</div><div class="sphx-glr-thumbcontainer" tooltip="This example shows how the MetaMorphosis behaves with different values of rho."><img alt="" src="../../_images/sphx_glr_plot_simpleToyExample_metamorphosis_thumb.png" />
-<p><a class="reference internal" href="plot_simpleToyExample_metamorphosis.html#sphx-glr-auto-examples-1-registration-plot-simpletoyexample-metamorphosis-py"><span class="std std-ref">MetaMorphosis behaviour with different values of rho</span></a></p>
+</div><div class="sphx-glr-thumbcontainer" tooltip=" In this example I will try to demonstrate to you why we should use the semi-Lagrangian scheme during geodesic integration rather than Eulerian. Obviously, we could use even more developed schemes like Runge-Kutta, but semi-Lagrangian is a good compromise between speed and accuracy."><img alt="" src="../../_images/sphx_glr_semiLagrangian_scheme_thumb.png" />
+<p><a class="reference internal" href="semiLagrangian_scheme.html#sphx-glr-auto-examples-1-registration-semilagrangian-scheme-py"><span class="std std-ref">Why we should use semi-Lagrangian scheme?</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Why we should use semi-Lagrangian scheme?</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="This example shows how the MetaMorphosis behaves with different values of rho."><img alt="" src="../../_images/sphx_glr_simpleToyExample_metamorphosis_thumb.png" />
+<p><a class="reference internal" href="simpleToyExample_metamorphosis.html#sphx-glr-auto-examples-1-registration-simpletoyexample-metamorphosis-py"><span class="std std-ref">MetaMorphosis behaviour with different values of rho</span></a></p>
   <div class="sphx-glr-thumbnail-title">MetaMorphosis behaviour with different values of rho</div>
-</div><div class="sphx-glr-thumbcontainer" tooltip="import matplotlib.pyplot as plt"><img alt="" src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_thumb.png" />
-<p><span class="xref std std-ref">sphx_glr_auto_examples_1_registration_toyExample_grayScott_constrainedMetamorphosis.py</span></p>
+</div><div class="sphx-glr-thumbcontainer" tooltip="This toy example was build to simulate a cancer growth in a brain."><img alt="" src="../../_images/sphx_glr_toyExample_weightedMetamorphosis_thumb.png" />
+<p><span class="xref std std-ref">sphx_glr_auto_examples_1_registration_toyExample_weightedMetamorphosis.py</span></p>
   <div class="sphx-glr-thumbnail-title">This toy example was build to simulate a cancer growth in a brain.</div>
 </div></div><div class="toctree-wrapper compound">
 </div>

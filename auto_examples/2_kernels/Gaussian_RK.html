@@ -52,13 +52,15 @@
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Gallery of examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html#registration-examples">Registration examples</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../index.html#kernel-examples">Kernel examples</a><ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html#kernel-examples">Kernel examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html#utility-functions-examples">Utility functions examples</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../1_registration/index.html">Registration examples</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="index.html">Kernel examples</a><ul class="current">
 <li class="toctree-l3 current"><a class="current reference internal" href="#">A Gaussian Reproducing Kernel</a></li>
 <li class="toctree-l3"><a class="reference internal" href="multi_scale_gaussianRKHS.html">A multiscale Gaussian Reproducing Kernel</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../3_utils/index.html">Utility functions examples</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../modules.html">Demeter documentation</a></li>
@@ -111,11 +113,9 @@ being the pixel intensity. As a result, there is a large number of closely space
 <p>In metamorphosis, the RK is used to parameterize the space of acceptable vector fields <span class="math notranslate nohighlight">\(V\)</span>
 through its norm, and is used to compute the vector field from the momentum.</p>
 <div class="math notranslate nohighlight">
-\[v = - K_{\sigma} ( p\]</div>
-<p>abla I)</p>
+\[v = - K_{\sigma} ( p \nabla I)\]</div>
 <p>where <span class="math notranslate nohighlight">\(p\)</span> is the momentum, <span class="math notranslate nohighlight">\(I\)</span> the image and <span class="math notranslate nohighlight">\(K_{\sigma}\)</span> the Gaussian RK operator.
-we also call <span class="math notranslate nohighlight">\(p
-abla I\)</span> the field momentum.</p>
+we also call <span class="math notranslate nohighlight">\(p \nabla I\)</span> the field momentum.</p>
 <p>Importing the necessary libraries</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
@@ -171,9 +171,7 @@ visualize its effect on a synthetic vector field.</p>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<img src="../../_images/sphx_glr_Gaussian_RK_002.png" srcset="../../_images/sphx_glr_Gaussian_RK_002.png" alt="Gaussian RK" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/2_kernels/Gaussian_RK.py:1: SyntaxWarning: invalid escape sequence &#39;\s&#39;
-  &quot;&quot;&quot;
-ic| Gaussian_RK.py:74 in &lt;module&gt;
+<img src="../../_images/sphx_glr_Gaussian_RK_002.png" srcset="../../_images/sphx_glr_Gaussian_RK_002.png" alt="Gaussian RK" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>ic| Gaussian_RK.py:74 in &lt;module&gt;
     field.shape: torch.Size([1, 30, 30, 2])
     smoothed_field.shape: torch.Size([1, 30, 30, 2])
 </pre></div>
@@ -253,9 +251,9 @@ Progress: [########--]  80.00%  (Ssd : ,115.2220).
 Progress: [#########-]  90.00%  (Ssd : ,104.2477).
 Progress: [##########] 100.00% Done...
  (Ssd : , 97.9167).
-Computation of forward done in  0:00:26s and 0.853cents  s
+Computation of forward done in  0:00:27s and 0.109cents  s
 
-Computation of lddmm done in  0:00:26s and 0.853cents  s
+Computation of lddmm done in  0:00:27s and 0.109cents  s
 </pre></div>
 </div>
 <p>Integration and convergence plot. Then we compare the source, target
@@ -281,7 +279,7 @@ deformed image.</p>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<img src="../../_images/sphx_glr_Gaussian_RK_006.png" srcset="../../_images/sphx_glr_Gaussian_RK_006.png" alt="diffeo = tensor(True)" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 29.083 seconds)</p>
+<img src="../../_images/sphx_glr_Gaussian_RK_006.png" srcset="../../_images/sphx_glr_Gaussian_RK_006.png" alt="diffeo = tensor(True)" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 29.337 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-2-kernels-gaussian-rk-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/20162e0384388e4d6fd9a65ecd01c683/Gaussian_RK.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">Gaussian_RK.ipynb</span></code></a></p>
