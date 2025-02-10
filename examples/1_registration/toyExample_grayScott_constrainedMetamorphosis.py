@@ -251,9 +251,10 @@ else:
 
 
 residuals_mask = mr_mask_residuals.mp.image_stock.clone()
-# residuals_mask *= 1.3
+residuals_mask[residuals_mask > 0.01] = 1
+# residuals_mask *= 1.5
 residuals_mask = 1 - residuals_mask
-residuals_mask = torch.ones_like(residuals_mask)
+# residuals_mask = torch.ones_like(residuals_mask) *0
 
 # residuals_mask = segs.repeat((n_steps,1,1,1))
 # pos = residuals_mask > 0.1
@@ -264,8 +265,8 @@ residuals_mask = torch.ones_like(residuals_mask)
 
 
 
-# orienting_field = mr_mask_orienting.mp.field_stock.clone()
-orienting_field = mr_mask_residuals.mp.field_stock.clone() / n_steps
+orienting_field = -mr_mask_orienting.mp.field_stock.clone() / n_steps
+# orienting_field = -mr_mask_residuals.mp.field_stock.clone() / n_steps
 # In this case we though best to set the orienting mask as
 # at constant value
 # orienting_mask = torch.ones(residuals_mask.shape)
@@ -277,7 +278,7 @@ orienting_field = mr_mask_residuals.mp.field_stock.clone() / n_steps
 # if w is zero give back power to v
 norm_2_on_w  = torch.sqrt((orienting_field**2).sum(dim = -1))
 orienting_mask = norm_2_on_w[:,None]/ norm_2_on_w.max()
-o_max = 1
+o_max = .01
 orienting_mask[orienting_mask > o_max] = o_max
 # orienting_mask = torch.zeros(orienting_mask.shape)
 # orienting_mask[]
@@ -368,7 +369,7 @@ plt.show()
 
 #%%
 mr_cm.plot_imgCmp()
-# plt.show()
+plt.show()
 
 #%%
 
@@ -395,5 +396,4 @@ for i,ll in enumerate(L):
 
 plt.show()
 
-plt.show()
 
