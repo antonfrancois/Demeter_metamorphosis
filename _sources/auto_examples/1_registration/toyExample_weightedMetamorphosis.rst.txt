@@ -23,29 +23,28 @@
 This toy example was build to simulate a cancer growth in a brain.
 This is a simple example of how to use the weighted metamorphosis to register two images.
 .
+This example is part of an exercise, it has been troncated to make you complete it.
 
-.. GENERATED FROM PYTHON SOURCE LINES 9-10
+.. GENERATED FROM PYTHON SOURCE LINES 10-11
 
 Import the necessary packages
 
-.. GENERATED FROM PYTHON SOURCE LINES 10-40
+.. GENERATED FROM PYTHON SOURCE LINES 11-38
 
 .. code-block:: Python
 
     import matplotlib.pyplot as plt
 
-
     try:
         import sys, os
+
         # add the parent directory to the path
-        base_path  = os.path.join(os.path.dirname(os.path.abspath(__file__)),'..')
-        sys.path.insert(0,base_path)
+        base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+        sys.path.insert(0, base_path)
         import __init__
 
     except NameError:
         pass
-
-
 
     from demeter.constants import *
     import torch
@@ -65,7 +64,6 @@ Import the necessary packages
 
 
 
-
 .. rst-class:: sphx-glr-script-out
 
  .. code-block:: none
@@ -75,25 +73,25 @@ Import the necessary packages
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 41-42
+.. GENERATED FROM PYTHON SOURCE LINES 39-40
 
 Load the images
 
-.. GENERATED FROM PYTHON SOURCE LINES 42-77
+.. GENERATED FROM PYTHON SOURCE LINES 40-72
 
 .. code-block:: Python
 
 
-    size = (300,300)
-    source_name,target_name = '23','24'
-    S = tb.reg_open(source_name,size = size).to(device)   # Small oval with gray dots
-    T = tb.reg_open(target_name,size = size).to(device)   # Big circle with deformed gray dots
-    seg = tb.reg_open('21_seg',size=size).to(device)      # rounded triangle
+    size = (300, 300)
+    source_name, target_name = '23', '24'
+    S = tb.reg_open(source_name, size=size).to(device)  # Small oval with gray dots
+    T = tb.reg_open(target_name, size=size).to(device)  # Big circle with deformed gray dots
+    seg = tb.reg_open('21_seg', size=size).to(device)  # rounded triangle
 
     ## Construct the target image
-    ini_ball,_ = tb.make_ball_at_shape_center(seg,overlap_threshold=.1,verbose=True)
+    ini_ball, _ = tb.make_ball_at_shape_center(seg, overlap_threshold=.1, verbose=True)
     ini_ball = ini_ball.to(device)
-    T[seg>0] = 0.5                                       # Add the rounded triangle to the target
+    T[seg > 0] = 0.5  # Add the rounded triangle to the target
 
     source = S
     target = T
@@ -102,20 +100,17 @@ Load the images
     source_name = 'oval_w_round'
     target_name = 'round_w_triangle_p_rd'
 
-    kw_img = dict(cmap='gray',vmin=0,vmax=1)
-    plt.rcParams["figure.figsize"] = (20,20)
-    fig,ax = plt.subplots(2,2)
-    ax[0,0].imshow(source[0,0,:,:].cpu().numpy(),**kw_img)
-    ax[0,0].set_title('source')
-    ax[0,1].imshow(target[0,0,:,:].cpu().numpy(),**kw_img)
-    ax[0,1].set_title('target')
-    ax[1,0].imshow(tb.imCmp(source,target),vmin=0,vmax=1)
-    ax[1,1].imshow(seg[0,0].cpu().numpy(),**kw_img)
-    ax[1,1].set_title('segmentation')
+    kw_img = dict(cmap='gray', vmin=0, vmax=1)
+    plt.rcParams["figure.figsize"] = (20, 20)
+    fig, ax = plt.subplots(2, 2)
+    ax[0, 0].imshow(source[0, 0, :, :].cpu().numpy(), **kw_img)
+    ax[0, 0].set_title('source')
+    ax[0, 1].imshow(target[0, 0, :, :].cpu().numpy(), **kw_img)
+    ax[0, 1].set_title('target')
+    ax[1, 0].imshow(tb.imCmp(source, target), vmin=0, vmax=1)
+    ax[1, 1].imshow(seg[0, 0].cpu().numpy(), **kw_img)
+    ax[1, 1].set_title('segmentation')
     # plt.show()
-
-
-
 
 
 
@@ -137,20 +132,20 @@ Load the images
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 78-79
+.. GENERATED FROM PYTHON SOURCE LINES 73-74
 
 Define the kernel operator
 
-.. GENERATED FROM PYTHON SOURCE LINES 79-85
+.. GENERATED FROM PYTHON SOURCE LINES 74-80
 
 .. code-block:: Python
 
 
-    sigma= [(5,5),(15,15)]
-    kernelOp = rk.Multi_scale_GaussianRKHS(sigma, normalized = False)
+    sigma = [(5, 5), (15, 15)]
+    kernelOp = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
     kernelOp.plot()
-    rk.plot_kernel_on_image(kernelOp,image = target.cpu())
-    print("sigma",sigma)
+    rk.plot_kernel_on_image(kernelOp, image=target.cpu())
+    print("sigma", sigma)
 
 
 
@@ -188,32 +183,32 @@ Define the kernel operator
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 86-88
+.. GENERATED FROM PYTHON SOURCE LINES 81-83
 
 ####################################################################
   Classic metamorphosis
 
-.. GENERATED FROM PYTHON SOURCE LINES 88-108
+.. GENERATED FROM PYTHON SOURCE LINES 83-103
 
 .. code-block:: Python
 
 
     rho = 0.7
-    momentum_ini =0
-    mr = mt.metamorphosis(source,target,momentum_ini,
-        kernelOperator=kernelOp,
-        rho=rho,
-        integration_steps=10,
-        cost_cst=1e-2,
-        n_iter=20,
-        grad_coef=1,
-         dx_convention='pixel',
-    )
+    momentum_ini = 0
+    mr = mt.metamorphosis(source, target, momentum_ini,
+                          kernelOperator=kernelOp,
+                          rho=rho,
+                          integration_steps=10,
+                          cost_cst=1e-2,
+                          n_iter=20,
+                          grad_coef=1,
+                          dx_convention='pixel',
+                          )
     mr.plot()
     mr.plot_deform()
     mr.mp.plot()
     plt.show()
-    mr.save_to_gif("image deformation",f"simpleCancer_Meta_rho{rho}_image",
+    mr.save_to_gif("image deformation", f"simpleCancer_Meta_rho{rho}_image",
                    folder="simpleCancer_Meta")
 
     # plt.show()
@@ -328,9 +323,9 @@ Define the kernel operator
 
     Progress: [#---------]  10.00%  (Ssd : ,350.1366).    Progress: [##--------]  15.00%  (Ssd : , 91.3460).    Progress: [##--------]  20.00%  (Ssd : , 72.6602).    Progress: [##--------]  25.00%  (Ssd : , 63.5695).    Progress: [###-------]  30.00%  (Ssd : , 58.9446).    Progress: [####------]  35.00%  (Ssd : , 53.5088).    Progress: [####------]  40.00%  (Ssd : , 49.1567).    Progress: [####------]  45.00%  (Ssd : , 46.0708).    Progress: [#####-----]  50.00%  (Ssd : , 43.7511).    Progress: [######----]  55.00%  (Ssd : , 40.8513).    Progress: [######----]  60.00%  (Ssd : , 38.6410).    Progress: [######----]  65.00%  (Ssd : , 37.4236).    Progress: [#######---]  70.00%  (Ssd : , 36.5052).    Progress: [########--]  75.00%  (Ssd : , 35.0647).    Progress: [########--]  80.00%  (Ssd : , 33.3091).    Progress: [########--]  85.00%  (Ssd : , 32.4722).    Progress: [#########-]  90.00%  (Ssd : , 31.8397).    Progress: [##########]  95.00%  (Ssd : , 30.9987).    Progress: [##########] 100.00% Done...
      (Ssd : , 30.7090).
-    Computation of forward done in  0:01:18s and 0.538cents  s
+    Computation of forward done in  0:01:17s and 0.847cents  s
 
-    Computation of metamorphosis done in  0:01:18s and 0.539cents  s
+    Computation of metamorphosis done in  0:01:17s and 0.848cents  s
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.1042790487408638..1.2210246324539185].
     convert -delay 40 -loop 0 /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer_Meta/simpleCancer_Meta_rho0.7_image_\d3.png /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer_Meta/simpleCancer_Meta_rho0.7_image.gif
             Cleaning saved files.
@@ -340,7 +335,7 @@ Define the kernel operator
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 109-114
+.. GENERATED FROM PYTHON SOURCE LINES 104-110
 
 ####################################################################
   Weighted metamorphosis with time constant mask.
@@ -348,27 +343,28 @@ Define the kernel operator
  inverse the mask to have M(x) = 0 where we want to add
  intensity.
 
-.. GENERATED FROM PYTHON SOURCE LINES 114-136
+
+.. GENERATED FROM PYTHON SOURCE LINES 110-132
 
 .. code-block:: Python
 
 
     print("\n\nComputing weighted metamorphosis - time constant mask")
-    print("="* 20)
+    print("=" * 20)
 
-    cst_mask = 1 - seg.repeat(10,1,1,1) * .5
-    lamb= .0001
-    n_iter,grad_coef = (20,.1)
+    cst_mask = 1 - seg.repeat(10, 1, 1, 1) * .5
+    lamb = .0001
+    n_iter, grad_coef = (20, .1)
     momentum_ini = 0
-    mr_wm = mt.weighted_metamorphosis(source,target,momentum_ini,cst_mask,
-                        kernelOperator=kernelOp,
-                        cost_cst=lamb,
-                        n_iter=n_iter,
-                        grad_coef=grad_coef,
-                        safe_mode=False,
-                        dx_convention='pixel',
-                        optimizer_method='LBFGS_torch'
-    )
+    mr_wm = mt.weighted_metamorphosis(source, target, momentum_ini, cst_mask,
+                                      kernelOperator=kernelOp,
+                                      cost_cst=lamb,
+                                      n_iter=n_iter,
+                                      grad_coef=grad_coef,
+                                      safe_mode=False,
+                                      dx_convention='pixel',
+                                      optimizer_method='LBFGS_torch'
+                                      )
 
     mr_wm.plot()
     mr_wm.plot_deform()
@@ -413,98 +409,52 @@ Define the kernel operator
     plop
     not oriented
     Weighted
-    Progress: [#---------]  10.00%  (Ssd : ,390.9550).    Progress: [##--------]  15.00%  (Ssd : ,141.4998).    Progress: [##--------]  20.00%  (Ssd : ,106.5434).    Progress: [##--------]  25.00%  (Ssd : , 89.9974).    Progress: [###-------]  30.00%  (Ssd : , 78.1236).    Progress: [####------]  35.00%  (Ssd : , 68.8127).    Progress: [####------]  40.00%  (Ssd : , 60.8570).    Progress: [####------]  45.00%  (Ssd : , 55.0437).    Progress: [#####-----]  50.00%  (Ssd : , 50.4887).    Progress: [######----]  55.00%  (Ssd : , 47.9175).    Progress: [######----]  60.00%  (Ssd : , 46.8294).    Progress: [######----]  65.00%  (Ssd : , 45.5413).    Progress: [#######---]  70.00%  (Ssd : , 44.5117).    Progress: [########--]  75.00%  (Ssd : , 43.9820).    Progress: [########--]  80.00%  (Ssd : , 43.4689).    Progress: [########--]  85.00%  (Ssd : , 43.0661).    Progress: [#########-]  90.00%  (Ssd : , 42.5815).    Progress: [##########]  95.00%  (Ssd : , 41.7998).    Progress: [##########] 100.00% Done...
-     (Ssd : , 40.5602).
-    Computation of forward done in  0:01:39s and 0.404cents  s
+    Progress: [#---------]  10.00%  (Ssd : ,401.9724).    Progress: [##--------]  15.00%  (Ssd : ,176.6749).    Progress: [##--------]  20.00%  (Ssd : ,124.5189).    Progress: [##--------]  25.00%  (Ssd : ,103.7301).    Progress: [###-------]  30.00%  (Ssd : , 90.9061).    Progress: [####------]  35.00%  (Ssd : , 80.7103).    Progress: [####------]  40.00%  (Ssd : , 70.0310).    Progress: [####------]  45.00%  (Ssd : , 61.9525).    Progress: [#####-----]  50.00%  (Ssd : , 56.9847).    Progress: [######----]  55.00%  (Ssd : , 53.1277).    Progress: [######----]  60.00%  (Ssd : , 51.4168).    Progress: [######----]  65.00%  (Ssd : , 50.1670).    Progress: [#######---]  70.00%  (Ssd : , 49.6573).    Progress: [########--]  75.00%  (Ssd : , 48.5550).    Progress: [########--]  80.00%  (Ssd : , 48.0538).    Progress: [########--]  85.00%  (Ssd : , 47.5863).    Progress: [#########-]  90.00%  (Ssd : , 46.6465).    Progress: [##########]  95.00%  (Ssd : , 45.7702).    Progress: [##########] 100.00% Done...
+     (Ssd : , 44.6144).
+    Computation of forward done in  0:01:39s and 0.898cents  s
 
-    Computation of weighted_metamorphosis done in  0:01:39s and 0.404cents  s
-    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.1221727132797241].
-
-
+    Computation of weighted_metamorphosis done in  0:01:39s and 0.898cents  s
+    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.140936255455017].
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 137-141
 
-Weighted metamorphosis with time evolving mask.
+
+.. GENERATED FROM PYTHON SOURCE LINES 133-140
+
+Why the result is not as expected? What can you do to improve it?
+
+ Weighted metamorphosis with time evolving mask.
 =============================================================================
 
-Mask making
+Your mission is to model a smart evolving mask that will guide the
+registration process.
 
-.. GENERATED FROM PYTHON SOURCE LINES 141-172
+.. GENERATED FROM PYTHON SOURCE LINES 140-155
 
 .. code-block:: Python
 
     print("\n\n Weighted metamorphosis - evolving mask")
-    print("="* 20)
+    print("=" * 20)
     print("\tComputing evolving mask")
 
-    residuals = 0
-    # sigma = [8,10]
+    mask = torch.rand_like(mr.mp.image_stock)
 
-    mr = mt.lddmm(ini_ball,seg,residuals,kernelOp,.0001,
-                        integration_steps=15,n_iter=10,grad_coef=1,
-                        safe_mode=False,
-                      dx_convention='pixel',
-                  optimizer_method='LBFGS_torch'
-                  )
-    mr.plot()
-    mr.plot_deform()
-    mr.mp.plot()
-    plt.show()
-    mask = mr.mp.image_stock  # Saving the succession of images.
-
-    mask = mr.mp.image_stock  # Saving the succession of images.
-    # %matplotlib qt
-    mask = 1 - .5*mask
-
-    L = [0,2,8,-1]
-    fig,ax = plt.subplots(1,len(L),figsize=(len(L)*5,10),constrained_layout=True)
+    # display the mask at different time
+    L = [0, 2, 8, -1]
+    fig, ax = plt.subplots(1, len(L), figsize=(len(L) * 5, 10), constrained_layout=True)
     ax[0].set_title('orienting mask')
     ax[0].set_title('residuals mask')
-    for i,ll in enumerate(L):
-        ax[i].imshow(mask[ll,0].cpu(),cmap='gray',vmin=0, vmax = 1,origin = "lower")
+    for i, ll in enumerate(L):
+        ax[i].imshow(mask[ll, 0].cpu(), cmap='gray', vmin=0, vmax=1, origin="lower")
 
     plt.show()
 
 
 
-.. rst-class:: sphx-glr-horizontal
-
-
-    *
-
-      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_021.png
-         :alt: Lambda = 0.0001 rho = 1.0
-         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_021.png
-         :class: sphx-glr-multi-img
-
-    *
-
-      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_022.png
-         :alt: source, target, Integrated source image, comparaison deformed image with target
-         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_022.png
-         :class: sphx-glr-multi-img
-
-    *
-
-      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_023.png
-         :alt: diffeo = tensor(True)
-         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_023.png
-         :class: sphx-glr-multi-img
-
-    *
-
-      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_024.png
-         :alt: t = 0.0, diffeo = tensor(True), t = 0.2, diffeo = tensor(True), t = 0.5, diffeo = tensor(True), t = 0.7, diffeo = tensor(True), t = 1.0, diffeo = tensor(True)
-         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_024.png
-         :class: sphx-glr-multi-img
-
-    *
-
-      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_025.png
-         :alt: residuals mask
-         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_025.png
-         :class: sphx-glr-multi-img
+.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_021.png
+   :alt: residuals mask
+   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_021.png
+   :class: sphx-glr-single-img
 
 
 .. rst-class:: sphx-glr-script-out
@@ -516,40 +466,37 @@ Mask making
      Weighted metamorphosis - evolving mask
     ====================
             Computing evolving mask
-    Progress: [##--------]  20.00%  (Ssd : , 44.2237).    Progress: [###-------]  30.00%  (Ssd : , 23.4098).    Progress: [####------]  40.00%  (Ssd : , 22.4012).    Progress: [#####-----]  50.00%  (Ssd : , 21.7866).    Progress: [######----]  60.00%  (Ssd : , 21.2686).    Progress: [#######---]  70.00%  (Ssd : , 20.7728).    Progress: [########--]  80.00%  (Ssd : , 20.2475).    Progress: [#########-]  90.00%  (Ssd : , 19.9452).    Progress: [##########] 100.00% Done...
-     (Ssd : , 19.3586).
-    Computation of forward done in  0:00:28s and 0.913cents  s
-
-    Computation of lddmm done in  0:00:28s and 0.914cents  s
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 173-174
+.. GENERATED FROM PYTHON SOURCE LINES 156-157
 
 ####################################################################
 
-.. GENERATED FROM PYTHON SOURCE LINES 176-196
+.. GENERATED FROM PYTHON SOURCE LINES 159-181
 
 .. code-block:: Python
 
 
     print("\n\tComputing weighted metamorphosis")
-    n_iter= 15
+    n_iter = 15
     grad_coef = 1
-    cost_cst= .0001
+    cost_cst = .0001
     residuals = 0
     mask = mask.to(device)
     # residuals = mr_wm.to_analyse[0].clone().to(device)
-    mr_wm = mt.weighted_metamorphosis(source,target,residuals,mask,
-                        kernelOp,cost_cst,
-                        n_iter,grad_coef,
-                        safe_mode=False,
-                        dx_convention='pixel',
-                        optimizer_method='LBFGS_torch'
-                        # optimizer_method='adadelta'
+    mr_wm = mt.weighted_metamorphosis(source, target, residuals,
+                                      mask,
+                                      kernelOp,
+                                      cost_cst,
+                                      n_iter,
+                                      grad_coef,
+                                      safe_mode=False,
+                                      dx_convention='pixel',
+                                      optimizer_method='LBFGS_torch'
+                                      # optimizer_method='adadelta'
                                       )
-
 
     mr_wm.plot()
     plt.show()
@@ -561,16 +508,16 @@ Mask making
 
     *
 
-      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_026.png
+      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_022.png
          :alt: Lambda = 0.0001
-         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_026.png
+         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_022.png
          :class: sphx-glr-multi-img
 
     *
 
-      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_027.png
+      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_023.png
          :alt: source, target, Integrated source image, comparaison deformed image with target
-         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_027.png
+         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_023.png
          :class: sphx-glr-multi-img
 
 
@@ -583,17 +530,17 @@ Mask making
     plop
     not oriented
     Weighted
-    Progress: [#---------]  13.33%  (Ssd : ,399.7340).    Progress: [##--------]  20.00%  (Ssd : ,161.5565).    Progress: [###-------]  26.67%  (Ssd : ,125.7210).    Progress: [###-------]  33.33%  (Ssd : ,104.8609).    Progress: [####------]  40.00%  (Ssd : , 87.5565).    Progress: [#####-----]  46.67%  (Ssd : , 73.6878).    Progress: [#####-----]  53.33%  (Ssd : , 65.4743).    Progress: [######----]  60.00%  (Ssd : , 61.6891).    Progress: [#######---]  66.67%  (Ssd : , 58.5389).    Progress: [#######---]  73.33%  (Ssd : , 56.3414).    Progress: [########--]  80.00%  (Ssd : , 54.9665).    Progress: [#########-]  86.67%  (Ssd : , 53.3864).    Progress: [#########-]  93.33%  (Ssd : , 51.5325).    Progress: [##########] 100.00% Done...
-     (Ssd : , 50.2708).
-    Computation of forward done in  0:01:03s and 0.523cents  s
+    Progress: [#---------]  13.33%  (Ssd : ,102.9901).    Progress: [##--------]  20.00%  (Ssd : , 65.0502).    Progress: [###-------]  26.67%  (Ssd : , 53.6253).    Progress: [###-------]  33.33%  (Ssd : , 47.4641).    Progress: [####------]  40.00%  (Ssd : , 43.6838).    Progress: [#####-----]  46.67%  (Ssd : , 41.1160).    Progress: [#####-----]  53.33%  (Ssd : , 39.0233).    Progress: [######----]  60.00%  (Ssd : , 37.5993).    Progress: [#######---]  66.67%  (Ssd : , 36.5419).    Progress: [#######---]  73.33%  (Ssd : , 35.6712).    Progress: [########--]  80.00%  (Ssd : , 35.0117).    Progress: [#########-]  86.67%  (Ssd : , 34.4830).    Progress: [#########-]  93.33%  (Ssd : , 33.9663).    Progress: [##########] 100.00% Done...
+     (Ssd : , 33.3948).
+    Computation of forward done in  0:00:40s and 0.954cents  s
 
-    Computation of weighted_metamorphosis done in  0:01:03s and 0.523cents  s
-    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.1337158679962158].
-
-
+    Computation of weighted_metamorphosis done in  0:00:40s and 0.954cents  s
+    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.17927035689353943..1.2343635559082031].
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 197-199
+
+
+.. GENERATED FROM PYTHON SOURCE LINES 182-184
 
 .. code-block:: Python
 
@@ -602,16 +549,16 @@ Mask making
 
 
 
-.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_028.png
-   :alt: diffeo = tensor(True)
-   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_028.png
+.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_024.png
+   :alt: diffeo = tensor(False)
+   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_024.png
    :class: sphx-glr-single-img
 
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 200-204
+.. GENERATED FROM PYTHON SOURCE LINES 185-188
 
 .. code-block:: Python
 
@@ -621,10 +568,9 @@ Mask making
 
 
 
-
-.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_029.png
-   :alt: t = 0.0, diffeo = tensor(True), t = 0.2, diffeo = tensor(True), t = 0.5, diffeo = tensor(True), t = 0.7, diffeo = tensor(True), t = 1.0, diffeo = tensor(True)
-   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_029.png
+.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_025.png
+   :alt: t = 0.0, diffeo = tensor(False), t = 0.2, diffeo = tensor(False), t = 0.4, diffeo = tensor(False), t = 0.7, diffeo = tensor(False), t = 1.0, diffeo = tensor(False)
+   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_025.png
    :class: sphx-glr-single-img
 
 
@@ -634,7 +580,7 @@ Mask making
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (4 minutes 51.643 seconds)
+   **Total running time of the script:** (3 minutes 56.996 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_toyExample_weightedMetamorphosis.py:
