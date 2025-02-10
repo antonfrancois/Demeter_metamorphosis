@@ -178,7 +178,7 @@ if recompute:
     mr_mask_orienting.save(f"mask_tE_gs_CM_{dx_convention}_n_step{n_steps}_orienting")
 else:
     # file = "2D_23_01_2025_mask_tE_gs_CM_square_n_step20_orienting_000.pk1"
-    file = "2D_10_02_2025_mask_tE_gs_CM_pixel_n_step10_orienting_000.pk1"
+    file = "2D_11_02_2025_mask_tE_gs_CM_pixel_n_step10_orienting_000.pk1"
 
     mr_mask_orienting = mt.load_optimize_geodesicShooting(file)
 
@@ -204,7 +204,7 @@ if recompute:
                        dx_convention=dx_convention,)
     mr_mask_residuals.save(f"mask_tE_gs_CM_{dx_convention}_n_step{n_steps}_residuals")
 else:
-    file = "2D_10_02_2025_mask_tE_gs_CM_pixel_n_step10_residuals_000.pk1"
+    file = "2D_11_02_2025_mask_tE_gs_CM_pixel_n_step10_residuals_000.pk1"
 
     mr_mask_residuals = mt.load_optimize_geodesicShooting(file)
 
@@ -315,23 +315,27 @@ print(kernelOp)
 
 
 print("\n==== Constrained Metamorphosis ====")
-momentum_ini = 0
-ic.disable()
-mr_cm = mt.constrained_metamorphosis(S,T,momentum_ini,
-                                     orienting_mask,
-                                     orienting_field,
-                                     residuals_mask,
-                                     kernelOperator=kernelOp,
-                                     cost_cst=1e-10,
-                                     grad_coef=.1,
-                                    n_iter=20,
-                                     dx_convention=dx_convention,
-                                        # optimizer_method='adadelta',
-                                     )
+if recompute:
+    momentum_ini = 0
+    ic.disable()
+    mr_cm = mt.constrained_metamorphosis(S,T,momentum_ini,
+                                         orienting_mask,
+                                         orienting_field,
+                                         residuals_mask,
+                                         kernelOperator=kernelOp,
+                                         cost_cst=1e-10,
+                                         grad_coef=.1,
+                                        n_iter=20,
+                                         dx_convention=dx_convention,
+                                            # optimizer_method='adadelta',
+                                         )
 
-mr_cm.compute_landmark_dist(source_landmarks,target_landmarks)
-mr_cm.plot_cost()
-plt.show()
+    mr_cm.compute_landmark_dist(source_landmarks,target_landmarks)
+    mr_cm.plot_cost()
+    plt.show()
+    mr_cm.save(f"toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}")
+else:
+    mr_cm = mt.load_optimize_geodesicShooting("2D_11_02_2025_toyExample_grayScott_CM_pixel_n_step10_000.pk1")
 
 
 #%%
@@ -344,8 +348,13 @@ mr_cm.plot_deform()
 #%%
 mr_cm.mp.plot()
 plt.show()
+
+# mr_cm.save_to_gif("image",f"toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}_image",
+#                folder='toyExample_grayScott')
+mr_cm.save_to_gif("residual",f"toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}_residual",
+               folder='toyExample_grayScott')
+
 #%%
-# mr_cm.save(f"TEST_toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}")
 
 #%%
 
