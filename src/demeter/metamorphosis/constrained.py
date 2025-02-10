@@ -1,14 +1,20 @@
-import torch
-import warnings
-import matplotlib.pyplot as plt
+r"""
+This module contains the classes for the constrained metamorphosis framework.
+The constrained metamorphosis framework is a generalisation of the metamorphosis framework
+that allows to add two types of constraints:
+- One on the residual by controlling locally the amount of deformation versus the amount of photometric changes at given pixels.
+- One on the field by adding a prior orienting field that will guide the deformation.
+"""
+
+
 from math import prod
 
-from abc import ABC, abstractmethod
+
 from .abstract import Geodesic_integrator,Optimize_geodesicShooting
 
-from ..utils.constants import *
-from ..utils import torchbox as tb
-from ..utils import cost_functions as cf
+from demeter.constants import *
+import demeter.utils. torchbox as tb
+import  demeter.utils.cost_functions as cf
 
 
 # ==========================================================================
@@ -19,8 +25,33 @@ from ..utils import cost_functions as cf
 
 
 class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
+    r"""
+    This class is an extension of the Geodesic_integrator class. It allows to
+    integrate a geodesic with a constraint on the residual and the field using prior
+    masks and fields.
 
-    def __init__(self, residual_mask: torch.Tensor = None | int | float,
+    priors one can add are:
+    - a residual mask: $M: \Omega \times t \rightarrow [0,1]$ a mask that for each time and pixel will control
+    the amount of deformation versus the amount of photometric changes.
+    - an orienting field: $w: \Omega \times t \rightarrow \mathbb{R}^d$ a field that will guide the deformation
+    - an orienting mask: $Q: \Omega \times t \rightarrow [0,1]$ a mask that will control the
+    prevalence of the orienting field over the deformation field.
+    The image evolution is given by the following equation
+    $$\dot{ I}_{t} = - \sqrt{ M_{t} } \left( ((1 - Q_{t}) v_{t} + Q_{t} w_{t}) \nabla I_{t} \right) + \sqrt{ 1 - M_{t} } z_{t} $$
+
+
+    .. math::
+
+        \begin{array}{rl}
+             v_{t} &= -\sqrt{ M }(1 - Q_{t}) K_{V}( p\nabla I)\\
+             \dot{p_{t}} &= -\sqrt{ M_t } \nabla \cdot [p_{t}( (1 - Q_{t}) v_{t} + Q_{t}w_{t})] \\
+             z_{t} &= \sqrt{ 1 - M_t } p_{t} \\
+             \dot{I_{t}} &= - \sqrt{ M_{t} } \left( ((1 - Q_{t}) v_{t} + Q_{t} w_{t}) \nabla I_{t} \right) + \sqrt{ 1 - M_{t} } z_{t}.
+        \end{array}
+        \right.
+    """
+
+    def __init__(self, residual_mask: torch.Tensor  | int | float,
                  orienting_field: torch.Tensor = None,
                  orienting_mask: torch.Tensor = None,
                  sharp = False,
@@ -37,8 +68,9 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
             self.orienting_mask = orienting_mask
             self.orienting_field = orienting_field
             self.n_step = orienting_mask.shape[0]
-        if (residual_mask is None
-                or isinstance(residual_mask,int) or isinstance(residual_mask,float)):
+        if residual_mask is None:
+            raise ValueError("You must set a residual_mask")
+        if (isinstance(residual_mask,int | float)):
             self.flag_W = False
             if not self.flag_O:
                 raise ValueError("You did not set any mask, did you want to use classical Metamorphosis ?")
@@ -89,29 +121,37 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
         return self.__class__.__name__ + f"({mode})\n" \
                                          f"\t {param}\n\t{self.kernelOperator.__repr__()} "
 
+    def _get_rho_(self):
+        return 0
 
     def step(self):
+        mask = self.residual_mask[self._i,0]
+
         if self.flag_O or self.flag_W:
+            print("Field oriented")
             self._update_field_oriented_weighted_()
         else:
             self._update_field_()
+            self.field *=  torch.sqrt(mask[...,None])
+        assert self.field.isnan().any() == False, f"iter: {self._i}, field is nan"
 
 
-        mask = self.residual_mask[self._i,0]
-        deform = (self.id_grid -
-                        torch.sqrt(mask[...,None]) * self.field / self.n_step)
+        deform = (self.id_grid - self.field / self.n_step)
         resi_to_add = (1 - mask) * self.momentum
 
         self._update_image_weighted_semiLagrangian_(deform,resi_to_add,sharp=False)
+
+        assert self.image.isnan().any() == False, f"iter: {self._i}, image is nan"
         # self._update_momentum_semiLagrangian_(deform)
         self.momentum  = self._compute_div_momentum_semiLagrangian_(
             deform,
             self.momentum,
             torch.sqrt(mask)
         )
+        assert self.momentum.isnan().any() == False, f"iter: {self._i}, momentum is nan"
 
         return (self.image,
-                torch.sqrt(mask)[...,None] * self.field,
+                 self.field,
                 resi_to_add)
 
 
@@ -188,19 +228,34 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
 
 
 class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
+    r"""
+    This class is an extension of the Optimize_geodesicShooting class. It allows to
+    optimise a geodesic with constraints on the residual and the field using prior
+    masks and fields.
+
+    It implements and optiimise over the following cost function:
+    $$H(I,p,v,z) = D(I_1,T) - \frac{1}{2} (Lv|v)_{2} - \frac{1}{2}|z|_{2} - \langle v,Qw\rangle_{2}. $$
+
+    with:
+        - $D(I_1,T)$ the data term given by the user.
+        - I_1 is obtained by integrating the geodesics over the geodesic equation using the provided integrator class.
+        - $\|v_0\|^2_V = (Lv,v)_2$ the RKHS norm of the velocity field parametrized by L^{-1} = K_\sigma$  that we call the kernel operator
+        - $\|z_0\|^2_{L_2} =\frac{1}{\# \Omega} \sum z_0^2$ the $L_2$ norm of the momentum field, with $\# \Omega$ the number of pixels in the image.
+        - $\langle v,Qw\rangle_{2} = \frac{1}{\# \Omega} \sum v \cdot Qw$ the scalar product between the velocity field $v$ and the orienting field $w$ weighted by the orienting mask $Q$.
+
+    """
 
     def __init__(self, source, target, geodesic, cost_cst,data_term=None, optimizer_method='adadelta',**kwargs):
         super().__init__(source, target, geodesic, cost_cst,data_term, optimizer_method)
         self._cost_saving_ = self._oriented_cost_saving_
 
 
-    def get_all_parameters(self):
-        return {
-            'lambda':self.cost_cst,
-            'sigma_v':self.mp.sigma_v,
-            'n_step':self.mp.n_step,
-            'sharp':self.mp.flag_sharp,
+    def get_all_arguments(self):
+        params_all  = super().get_all_arguments()
+        params_const = {
+             'sharp':self.mp.flag_sharp
         }
+        return {**params_all,**params_const}
 
     # TODO : change cost saving to fill a dictionnary
     def _oriented_cost_saving_(self, i, loss_stock):
@@ -241,7 +296,11 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
     def cost(self, momentum_ini: torch.Tensor) -> torch.Tensor:
         lamb = self.cost_cst
 
-        self.mp.forward(self.source, momentum_ini, save=False, plot=0)
+        self.mp.forward(self.source, momentum_ini,
+                        save=False,
+                        plot=0,
+                        # hamiltonian_integration=self.flag_hamiltonian_integration
+                        )
 
         # Compute the data_term. Default is the Ssd
         self.data_loss = self.data_term()
@@ -267,15 +326,10 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
         if self.mp.flag_O:
             self.scaprod_v_w = (tb.im2grid(field) * self.mp.orienting_field[0][None]).sum(dim=-1)
             self.scaprod_v_w *= self.mp.orienting_mask[0]
-            self.scaprod_v_w = self.scaprod_v_w.sum()/prod(self.source.shape[2:])
+            self.scaprod_v_w = self.scaprod_v_w.sum()#/prod(self.source.shape[2:])
 
             self.total_cost += lamb * self.scaprod_v_w
 
-        return self.total_cost
-
-
-
-        # print('ssd :',self.ssd,' norm_v :',self.norm_v_2)
         return self.total_cost
 
 
@@ -333,6 +387,8 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
         ax1[0].legend()
         ax1[1].legend()
         ax1[0].set_title("Lambda = " + str(self.cost_cst))
+
+        return fig1,ax1
 
 
 class Reduce_field_Optim(Optimize_geodesicShooting):
