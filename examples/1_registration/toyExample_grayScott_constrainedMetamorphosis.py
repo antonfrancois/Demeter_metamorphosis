@@ -4,7 +4,11 @@
 This toy example was build to simulate a cancer growth in a brain.
 The gray scott texture as been used to add intricate patterns to the
 brain background.
+"""
 
+
+#####################################################################
+# Import the necessary packages
 import matplotlib.pyplot as plt
 
 
@@ -19,8 +23,6 @@ except NameError:
     pass
 
 
-#####################################################################
-# Import the necessary packages
 
 from demeter.constants import *
 import torch
@@ -49,23 +51,7 @@ forDice_target = tb.reg_open('teGS_mbs_segTdice',size=size)
 seg_necrosis = tb.reg_open('teGS_mbs_segNec',size=size).to(device)
 seg_oedeme = tb.reg_open('te_o_seg',size=size)
 
-# S = torch.zeros_like(S)
-# T = torch.zeros_like(T)
 
-# fig,ax = plt.subplots(2,2,figsize=(10,10))
-# ax[0,0].imshow(S[0,0].cpu(),**DLT_KW_IMAGE)
-# ax[0,0].set_title('source')
-# ax[0,1].imshow(T[0,0].cpu(),**DLT_KW_IMAGE)
-# ax[0,1].set_title('target')
-# ax[1,0].imshow(tb.imCmp(S,T,'seg'),origin='lower')
-# ax[1,0].set_title('superposition of S and T')
-# ax[1,1].imshow(tb.imCmp(forDice_source,seg_oedeme,'seg'),origin='lower')
-# ax[1,1].set_title('segmentations')
-# # ax[2,0].imshow(tb.imCmp(seg_oedeme,forDice_target))
-# # ax[2,1].imshow(tb.imCmp(ini_ball,seg_necrosis))
-# plt.show()
-
-#####################################################################
 # Put some landmarks on the images to assess registration quality
 
 source_landmarks = torch.Tensor([
@@ -159,6 +145,7 @@ ax[2].imshow(tb.imCmp(ini_ball_on,segs,'seg'),origin='lower')
 ax[2].set_title('superposition')
 ax[3].imshow(tb.imCmp(ini_ball_on,S,'seg'),origin='lower')
 plt.show()
+
 #%%
 #####################################################################
 # Register the prior masks to the source and target images using LDDMM:
@@ -170,10 +157,10 @@ plt.show()
 sigma = [(10,10),(15,15)]
 # sigma = [(10,10)]
 kernelOp = rk.Multi_scale_GaussianRKHS(sigma,normalized=True)
-rk.plot_kernel_on_image(kernelOp,subdiv=10,image=T.cpu())
+# rk.plot_kernel_on_image(kernelOp,subdiv=10,image=T.cpu())
 plt.show()
 print(kernelOp)
-dx_convention = 'square'
+dx_convention = 'pixel'
 n_steps= 10
 
 #%%
@@ -191,7 +178,7 @@ if recompute:
     mr_mask_orienting.save(f"mask_tE_gs_CM_{dx_convention}_n_step{n_steps}_orienting")
 else:
     # file = "2D_23_01_2025_mask_tE_gs_CM_square_n_step20_orienting_000.pk1"
-    file = "2D_09_02_2025_mask_tE_gs_CM_square_n_step10_orienting_006.pk1"
+    file = "2D_10_02_2025_mask_tE_gs_CM_pixel_n_step10_orienting_000.pk1"
 
     mr_mask_orienting = mt.load_optimize_geodesicShooting(file)
 
@@ -217,32 +204,16 @@ if recompute:
                        dx_convention=dx_convention,)
     mr_mask_residuals.save(f"mask_tE_gs_CM_{dx_convention}_n_step{n_steps}_residuals")
 else:
-    # file = "2D_23_01_2025_mask_tE_gs_CM_square_necrosisOnly_000.pk1"
-    # file ="2D_23_01_2025_mask_tE_gs_CM_square_n_step20_necrosisOnly_000.pk1"
-    file = "2D_09_02_2025_mask_tE_gs_CM_square_n_step10_residuals_006.pk1"
-    # 2D_23_01_2025_mask_tE_gs_CM_square_n_step20_necrosisOnly_001.pk1
+    file = "2D_10_02_2025_mask_tE_gs_CM_pixel_n_step10_residuals_000.pk1"
 
     mr_mask_residuals = mt.load_optimize_geodesicShooting(file)
 
-# mr_mask_residuals.plot_imgCmp()
-# plt.show()
+mr_mask_residuals.plot_imgCmp()
+plt.show()
 #%%
 # mr_mask_residuals.mp.plot()
 # plt.show()
-# #%%
-# # file  ="2D_23_01_2025_mask_tE_gs_CM_square_000.pk1"
-# # file = "2D_23_01_2025_mask_tE_gs_CM_square_all_000.pk1"
-# file = "2D_23_01_2025_mask_tE_gs_CM_square_n_step20_necrosisOnly_000.pk1"
-# mr_mask_oedeme = mt.load_optimize_geodesicShooting(file)
-# mr_mask_oedeme.plot_imgCmp()
-# plt.show()
-# #%%
-# # file  ="2D_23_01_2025_mask_tE_gs_CM_square_necrosisOnly_000.pk1"
-# file = "2D_23_01_2025_mask_tE_gs_CM_square_n_step20all_000.pk1"
-# mr_mask_necrosis = mt.load_optimize_geodesicShooting(file)
-# mr_mask_necrosis.compute_landmark_dist(source_landmarks,target_landmarks)
-# mr_mask_necrosis.plot_imgCmp()
-# plt.show()
+
 
 #%%
 #####################################################################
@@ -254,7 +225,7 @@ residuals_mask = mr_mask_residuals.mp.image_stock.clone()
 residuals_mask[residuals_mask > 0.01] = 1
 # residuals_mask *= 1.5
 residuals_mask = 1 - residuals_mask
-# residuals_mask = torch.ones_like(residuals_mask) *0
+# residuals_mask = torch.ones_like(residuals_mask) *0.5
 
 # residuals_mask = segs.repeat((n_steps,1,1,1))
 # pos = residuals_mask > 0.1
@@ -278,7 +249,7 @@ orienting_field = -mr_mask_orienting.mp.field_stock.clone() / n_steps
 # if w is zero give back power to v
 norm_2_on_w  = torch.sqrt((orienting_field**2).sum(dim = -1))
 orienting_mask = norm_2_on_w[:,None]/ norm_2_on_w.max()
-o_max = .01
+o_max = .02
 orienting_mask[orienting_mask > o_max] = o_max
 # orienting_mask = torch.zeros(orienting_mask.shape)
 # orienting_mask[]
@@ -294,7 +265,9 @@ fig,ax = plt.subplots(2,len(L),figsize=(len(L)*5,10))
 ax[0,0].set_title('orienting mask')
 ax[1,0].set_title('residuals mask')
 for i,ll in enumerate(L):
-    ax[0,i].imshow(orienting_mask[ll,0].cpu(),cmap='gray',vmin=0, vmax = 1,origin = "lower")
+    ax[0,i].imshow(orienting_mask[ll,0].cpu(),cmap='gray',origin = "lower",
+                   # vmin=0, vmax = 1,
+                   )
     tb.quiver_plot(orienting_mask[ll,0][...,None].cpu() * orienting_field[ll][None].cpu(),
                    ax[0,i],
                    step = 10,color='C3',dx_convention=dx_convention)
@@ -317,23 +290,18 @@ plt.show()
 
 
 #%%
-# sigma = [(5,5),(20,20),(30,30)]
-# kernelOp = rk.Multi_scale_GaussianRKHS(sigma,normalized=True)
 
 sigma = [(5,5),(10,10),(15,15)]
 # sigma = [(10,10)]
 kernelOp = rk.Multi_scale_GaussianRKHS(sigma,normalized=False)
 # kernelOp.kernel = kernelOp.kernel / kernelOp.kernel.max()
 kernelOp.plot()
-# sigma = (10,10)
-# kernelOp = rk.GaussianRKHS(sigma)
-# rk.plot_kernel_on_image(kernelOp,subdiv=10,image=T.cpu())
+
 plt.show()
 print(kernelOp)
-print(kernelOp.kernel.max())
 
 
-print(kernelOp)
+
 
 #%%
 #####################################################################
@@ -348,15 +316,14 @@ print(kernelOp)
 
 print("\n==== Constrained Metamorphosis ====")
 momentum_ini = 0
-# momentum_ini = mr_cm.to_analyse[0]
 ic.disable()
 mr_cm = mt.constrained_metamorphosis(S,T,momentum_ini,
                                      orienting_mask,
                                      orienting_field,
                                      residuals_mask,
                                      kernelOperator=kernelOp,
-                                     cost_cst=1e-5,
-                                     grad_coef=.0001,
+                                     cost_cst=1e-10,
+                                     grad_coef=.1,
                                     n_iter=20,
                                      dx_convention=dx_convention,
                                         # optimizer_method='adadelta',
@@ -369,13 +336,10 @@ plt.show()
 
 #%%
 mr_cm.plot_imgCmp()
-plt.show()
 
 #%%
 
 mr_cm.plot_deform()
-plt.show()
-
 
 #%%
 mr_cm.mp.plot()
@@ -397,4 +361,3 @@ for i,ll in enumerate(L):
 plt.show()
 
 
-"""
