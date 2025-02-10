@@ -39,10 +39,8 @@ At the moment, demeter-metamorphosis is available on linux and macOS only.
 Windows user can use the [WSL](https://learn.microsoft.com/en-us/windows/wsl/about) to install the package.
 
 ### From pip
-The last stable version of demeter_metamorphosis can be installed directly from pip with
-```bash
-pip install demeter
-```
+To be announced
+
 ### From source
 If you want the development version or consider contributing to the codebase,
 you can also install scikit-shapes locally from a clone of the repository. 
