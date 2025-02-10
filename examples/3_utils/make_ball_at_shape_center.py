@@ -5,6 +5,7 @@ A utility function to create a ball at the center of a shape in an image.
 Can be useful to initialise a mask for a guided registration task.
 """
 
+
 try:
     import sys, os
     # add the parent directory to the path
@@ -15,20 +16,19 @@ try:
 except NameError:
     pass
 
-import vedo.pyplot
 
 # import __init__
 import torch
+from demeter.constants import ROOT_DIRECTORY
 from demeter.utils.torchbox import make_ball_at_shape_center,reg_open, imCmp
 import matplotlib.pyplot as plt
-import demeter.utils.image_3d_visu_vedo as i3v
+import demeter.utils.image_3d_plotter as i3p
 
 #%%
 print(f"2D Example :")
 img = reg_open('m0t')
 
 ball, info = make_ball_at_shape_center(img,
-                                       shape_value=img.max(),
                                        overlap_threshold=.1,
                                        verbose=True)
 centre_x,centre_y,r = info
@@ -41,19 +41,16 @@ plt.show()
 
 #%%
 # _ = input("Press for 3D example :")
-# img = torch.load("im3Dbank/unmooned.pt")
-img = torch.load("im3Dbank/segmentation_3D_toyExample.pt")
-
+img = torch.load(ROOT_DIRECTORY+"/examples/im3Dbank/hanse_w_ball.pt")
 
 
 ball, info = make_ball_at_shape_center(img,
-                                       shape_value=img.max(),
+                                       # shape_binarization=img == img.max(),
                                        overlap_threshold=.1,
                                        # force_r=50,
                                        verbose=True)
 centre_x,centre_y,centre_z,r = info
-cmp = i3v.compare_3D_images_vedo(ball,img,close=False)
-pt = vedo.Point([centre_x,centre_y,centre_z],r=15).c('red').alpha(1)
-cmp.plotter.show(pt,at=0)
-cmp.plotter.show(pt,at=1)
-cmp.plotter.show(interactive=True).close()
+
+img_cmp = imCmp(img,ball)
+i3p.imshow_3d_slider(img_cmp)
+plt.show()
