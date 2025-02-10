@@ -44,28 +44,33 @@ To be announced
 ### From source
 If you want the development version or consider contributing to the codebase,
 you can also install scikit-shapes locally from a clone of the repository. 
-First clone the repository with one of the github provided methods. For
-example, with ssh:
-```bash
-git clone git@github.com:antonfrancois/Demeter_metamorphosis.git
-```
-I advise you to create a fresh virtual environment with conda or venv. With venv [more...](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#create-and-use-virtual-environments):
-conda
+First I advise you to create a fresh virtual environment with conda or venv. With venv [more...](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#create-and-use-virtual-environments):
+
 ```bash
 conda create -n demeter_env python=3.12
 conda activate demeter_env
 ```
-OR
+OR conda
 ```bash
 python3.12 -m venv "demeter_env"
 source "demeter_env"/bin/activate
 ```
-Then activate it and navigate to the cloned repository. You can install the package with
+The last line activate the virtual environment. Please ensure that you are in the
+virtual environment when you are using the package.
+
+Then clone the repository with one of the github provided methods. For
+example, with html:
+```bash
+git clone https://github.com/antonfrancois/Demeter_metamorphosis.git
+```
+
+Finally navigate to the cloned repository and install the package with
 ```bash
 cd Your/path/to/Demeter_metamorphosis
 pip install -e .
 ```
-It can take up to 10 minutes depending on your internet connection, mainly because of torch and nvidia driver installation. 
+The whole process can take up to 10 minutes depending on your internet connection,
+mainly because of the torch and nvidia driver installation. 
 
 
 ## Jupyter Notebooks and examples.
