@@ -42,12 +42,13 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
 
     .. math::
 
-        \begin{array}{rl}
-             v_{t} &= -\sqrt{ M }(1 - Q_{t}) K_{V}( p\nabla I)\\
-             \dot{p_{t}} &= -\sqrt{ M_t } \nabla \cdot [p_{t}( (1 - Q_{t}) v_{t} + Q_{t}w_{t})] \\
-             z_{t} &= \sqrt{ 1 - M_t } p_{t} \\
-             \dot{I_{t}} &= - \sqrt{ M_{t} } \left( ((1 - Q_{t}) v_{t} + Q_{t} w_{t}) \nabla I_{t} \right) + \sqrt{ 1 - M_{t} } z_{t}.
-        \end{array}
+        \left\{
+            \begin{array}{rl}
+                 v_{t} &= - K_{V} (\sqrt{ M_{t} } p_{t} \nabla I_{t} + Q_{t} w_{t})\\
+                 \dot{p_{t}} &= -\sqrt{ M_t } \nabla \cdot (p_{t}v_{t}) \\
+                 z_{t} &= \sqrt{ 1 - M_t } p_{t} \\
+                 \dot{I_{t}} &=  - \sqrt{ M_t } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-M_t } z_{t}.
+            \end{array}
         \right.
     """
 
@@ -135,7 +136,7 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
         assert self.field.isnan().any() == False, f"iter: {self._i}, field is nan"
 
 
-        deform = (self.id_grid - self.field / self.n_step)
+        deform = (self.id_grid - torch.sqrt(mask)[...,None]* self.field / self.n_step)
         resi_to_add = (1 - mask) * self.momentum
 
         self._update_image_weighted_semiLagrangian_(deform,resi_to_add,sharp=False)
@@ -150,7 +151,7 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
         assert self.momentum.isnan().any() == False, f"iter: {self._i}, momentum is nan"
 
         return (self.image,
-                 self.field,
+                 torch.sqrt(mask)[...,None]*self.field,
                 resi_to_add)
 
 

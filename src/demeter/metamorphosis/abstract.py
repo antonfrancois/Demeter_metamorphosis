@@ -412,7 +412,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         """
         if field is None:
             field = self.field
-        div_v_times_z = cst * (
+        div_v_times_p = cst * (
             momentum
             * tb.Field_divergence(dx_convention=self.dx_convention)(field)[0, 0]
         )
@@ -420,7 +420,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             tb.imgDeform(
                 momentum, deformation, dx_convention=self.dx_convention, clamp=False
             )
-            - div_v_times_z / self.n_step
+            - div_v_times_p / self.n_step
         )
         return momentum
 
@@ -533,11 +533,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
             oriented_field = (self.orienting_field[self._i][None]
                                     * self.orienting_mask[self._i][..., None])
-        try:
-            print("fre_field",free_field.min().item(),free_field.max().item(),"\n oriented_field",
-            oriented_field.min().item(),oriented_field.max().item())
-        except AttributeError:
-            pass
+
         self.field = -tb.im2grid(
             self.kernelOperator(tb.grid2im(free_field + oriented_field))
         )
@@ -546,6 +542,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         # TODO: completer ça
         try:
             self.image = self.image.to(device)
+            self.id_grid = self.id_grid.to(device)
         except AttributeError:
             pass
 

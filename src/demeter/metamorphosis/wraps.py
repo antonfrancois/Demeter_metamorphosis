@@ -218,39 +218,35 @@ def oriented_metamorphosis(
     source,
     target,
     momentum_ini,
-    mp_orienting,
+    orienting_mask,
+    orienting_field,
     kernelOperator,
     cost_cst,
     n_iter,
     grad_coef,
     dx_convention="pixel",
+    hamiltonian_integration=False,
     safe_mode=True,
 ):
-    warn("This function has not been updated. Use `constrained_metamorphosis` instead.")
-    mask = mp_orienting.image_stock.to(source.device)
-    orienting_field = mp_orienting.field_stock.to(source.device)
+    if hamiltonian_integration:
+        raise NotImplementedError("Hamiltonian integration is not implemented yet for this function.")
+
     if type(momentum_ini) == int:
         momentum_ini = torch.zeros(source.shape)
     momentum_ini.requires_grad = True
 
     # start = time.time()
     mp_orient = cn.ConstrainedMetamorphosis_integrator(
-        orienting_mask=mask,
+        orienting_mask=orienting_mask,
         orienting_field=orienting_field,
-        mu=mu,
-        rho=rho,
-        gamma=gamma,
-        sigma_v=(sigma,) * len(momentum_ini.shape),
+        residual_mask=1,
+        kernelOperator=kernelOperator,
         dx_convention=dx_convention,
         # n_step=20 # n_step is defined from mask.shape[0]
     )
     mr_orient = cn.ConstrainedMetamorphosis_Shooting(
-        source,
-        target,
-        mp_orient,
-        cost_cst=cost_cst,
-        # optimizer_method='LBFGS_torch')
-        optimizer_method="adadelta",
+        source, target, mp_orient, cost_cst=cost_cst, optimizer_method="LBFGS_torch",
+                hamiltonian_integration=hamiltonian_integration,
     )
     mr_orient = _commun_after(mr_orient, momentum_ini, safe_mode, n_iter, grad_coef)
     return mr_orient
@@ -275,6 +271,9 @@ def constrained_metamorphosis(
     hamiltonian_integration=False,
 
 ):
+    if hamiltonian_integration:
+        raise NotImplementedError("Hamiltonian integration is not implemented yet for this function.")
+
     momentum_ini = _commun_before(momentum_ini, source)
 
     # start = time.time()
