@@ -1694,6 +1694,7 @@ def find_binary_center(bool_img):
             torch.div(max_index_1 + min_index_1,2,rounding_mode='floor'),
         )
     return centre
+
 def make_ball_at_shape_center(img,
                               shape_binarization=None,
                               overlap_threshold=0.1,

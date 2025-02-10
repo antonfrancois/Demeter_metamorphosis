@@ -1612,7 +1612,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         ax[1, 0].imshow(self.mp.image[0, 0].detach().cpu().numpy(), **image_kw)
         ax[1, 0].set_title("Integrated source image", fontsize=25)
         tb.quiver_plot(
-            self.mp.get_deformation().detach().cpu() - self.id_grid,
+            self.mp.get_deformation().detach().cpu() - self.mp.id_grid,
             ax=ax[1, 1],
             step=15,
             color=GRIDDEF_YELLOW,

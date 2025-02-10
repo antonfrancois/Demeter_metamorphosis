@@ -272,7 +272,10 @@ def test_check_csv_after_save(setup_lddmm):
 def test_save_load(setup_lddmm, light_save):
     mr, landmarks_source, landmarks_target = setup_lddmm
 
-    file_name, file_path = mr.save("test_lddmm", light_save=light_save)
+    file_name, file_path = mr.save("test_lddmm_delete_me", light_save=light_save)
+
+
+
     mr_2 = mt.load_optimize_geodesicShooting(file_name)
     fig_ax_c, fig_ax_i = mr_2.plot()
     fig_c, ax_c = fig_ax_c
