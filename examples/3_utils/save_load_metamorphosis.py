@@ -35,10 +35,10 @@ print("Performing simple optimisation and saving it")
 
 size = (200,200)
 
-source_name,target_name = 'te_s','te_t'
+source_name,target_name = '20','17'
 S = tb.reg_open(source_name,size = size).to(device) #,location='bartlett')
 T = tb.reg_open(target_name,size = size).to(device)
-seg = tb.reg_open('te_c_seg',size=size).to(device)
+# seg = tb.reg_open('te_c_seg',size=size).to(device)
 
 fig, ax = plt.subplots(1,3,figsize=(15,5))
 ax[0].imshow(S[0,0,...].detach().cpu().numpy(),**DLT_KW_IMAGE)

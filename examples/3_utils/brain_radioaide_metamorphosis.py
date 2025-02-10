@@ -1,5 +1,5 @@
 """
-.. _brain_radioaide_metamorphosis:
+
 
 VIsualize Metamorphosis on 3D brain MRI
 ================================================
@@ -99,6 +99,8 @@ kernelOp = rk.GaussianRKHS((8,8,8), normalized= True)
 # even with a GPU. If you have access to a server with a GPU with vram, you can try to
 # run the following code (adapting the path to the server's file system)
 # If not, I provide the results of an optimization for you enjoy the visualisation.
+# You need to download the files from the following link :
+
 
 recompute = False
 saved_lddmm_optim = "3D_30_01_2025_PSL_001_M01_to_M26_FLAIR3D_LDDMM_meso_000.pk1"
@@ -132,13 +134,18 @@ if recompute:
     mr_lddmm.save('PSL_001_M01_to_M26_FLAIR3D_LDDMM',light_save= True)
     mr_lddmm.to_device('cpu')
 else:
-    mr_lddmm = mt.load_optimize_geodesicShooting(saved_lddmm_optim)
+    try:
+        mr_lddmm = mt.load_optimize_geodesicShooting(saved_lddmm_optim)
+        loaded = True
+    except FileNotFoundError:
+        loaded = False
 
-deformation = mr_lddmm.mp.get_deformation()
+if loaded:
+    deformation = mr_lddmm.mp.get_deformation()
 
-# We provide some visualisation tools :
-i3p.Visualize_GeodesicOptim_plt(mr_lddmm,name="PSL_001_M01_to_M26_FLAIR3D_LDDMM")
-plt.show()
+    # We provide some visualisation tools :
+    i3p.Visualize_GeodesicOptim_plt(mr_lddmm,name="PSL_001_M01_to_M26_FLAIR3D_LDDMM")
+    plt.show()
 
 
 
@@ -166,14 +173,19 @@ if recompute:
     mr_meta.plot_cost()
     mr_meta.save('PSL_001_M01_to_M26_FLAIR3D_Metamorphosis',light_save= True)
 else:
-    mr_meta = mt.load_optimize_geodesicShooting(saved_meta_optim)
+    try:
+        mr_meta = mt.load_optimize_geodesicShooting(saved_meta_optim)
+        loaded = True
+    except FileNotFoundError:
+        loaded = False
 
-i3p.Visualize_GeodesicOptim_plt(mr_meta,name="PSL_001_M01_to_M26_FLAIR3D_Metamorphosis")
-# # you can get the deformation grid with mr_meta.mp.get_deformation()
-image_deformed = tb.imgDeform(S.cpu(),mr_meta.mp.get_deformator(),dx_convention=dx_convention)
-imdef_target = tb.imCmp(image_deformed,T,method = 'compose')
-sl = i3p.imshow_3d_slider(imdef_target, title = 'Metamorphosis only deformation')
-plt.show()
+if loaded:
+    i3p.Visualize_GeodesicOptim_plt(mr_meta,name="PSL_001_M01_to_M26_FLAIR3D_Metamorphosis")
+    # # you can get the deformation grid with mr_meta.mp.get_deformation()
+    image_deformed = tb.imgDeform(S.cpu(),mr_meta.mp.get_deformator(),dx_convention=dx_convention)
+    imdef_target = tb.imCmp(image_deformed,T,method = 'compose')
+    sl = i3p.imshow_3d_slider(imdef_target, title = 'Metamorphosis only deformation')
+    plt.show()
 
 
 

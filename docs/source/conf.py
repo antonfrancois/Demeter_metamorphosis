@@ -33,8 +33,8 @@ ignore_files = [
     'visualize_geodesicOptim.py',
     'weightedMetamorphosis_3D.py',
     'toyExample_grayScott_JoinedMetamorphosis.py',
-    'toyExample_grayScott_constrainedMetamorphosis.py'
-    'save_load_metamorphosis.py'
+    'toyExample_grayScott_constrainedMetamorphosis.py',
+    'brain_radioaide_metamorphosis.py',
 ]
 
 # Générer le motif ignore_pattern
