@@ -1,5 +1,8 @@
 """
-Il faut retravailler ça
+.. _make_ball_at_shape_center:
+
+A utility function to create a ball at the center of a shape in an image.
+Can be useful to initialise a mask for a guided registration task.
 """
 
 try:
@@ -37,7 +40,7 @@ ax[1].imshow(imCmp(img,ball),origin='lower')
 plt.show()
 
 #%%
-_ = input("Press for 3D example :")
+# _ = input("Press for 3D example :")
 # img = torch.load("im3Dbank/unmooned.pt")
 img = torch.load("im3Dbank/segmentation_3D_toyExample.pt")
 
