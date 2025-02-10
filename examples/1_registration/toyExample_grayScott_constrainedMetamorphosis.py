@@ -1,5 +1,5 @@
 """
-.. _toyExample_grayScott_JoinedMetamorphosis:
+.. _toyExample_grayScott_constrainedMetamorphosis:
 
 This toy example was build to simulate a cancer growth in a brain.
 The gray scott texture as been used to add intricate patterns to the
@@ -135,8 +135,8 @@ segs[seg_necrosis > 0] = val_n
 # plt.imshow(segs[0,0],vmin=0,vmax=1,cmap='gray')
 
 # make source image
-center_o = (160,155)
-center_n = (167,163)
+center_o = (160,145)
+center_n = (167,153)
 ini_ball_n,_ = tb.make_ball_at_shape_center(
     seg_necrosis,verbose=True,force_r=12,force_center=center_n
 )
@@ -167,20 +167,20 @@ plt.show()
 
 ## Build temporal masks
 
-sigma = [(5,5),(10,10),(15,15)]
+sigma = [(10,10),(15,15)]
 # sigma = [(10,10)]
 kernelOp = rk.Multi_scale_GaussianRKHS(sigma,normalized=True)
 rk.plot_kernel_on_image(kernelOp,subdiv=10,image=T.cpu())
 plt.show()
 print(kernelOp)
 dx_convention = 'square'
-n_steps= 20
+n_steps= 10
 
 #%%
 #####################################################################
 # Register the orienting mask to the source and target images using LDDMM:
 print(">>>> Mask for orienting field <<<<")
-recompute = True
+recompute = False
 if recompute:
     momentum_ini = 0
     mr_mask_orienting = mt.lddmm(ini_ball_n.to(device),seg_necrosis,momentum_ini,
@@ -190,17 +190,19 @@ if recompute:
                        dx_convention=dx_convention,)
     mr_mask_orienting.save(f"mask_tE_gs_CM_{dx_convention}_n_step{n_steps}_orienting")
 else:
-    file = "2D_23_01_2025_mask_tE_gs_CM_square_n_step20_orienting_000.pk1"
+    # file = "2D_23_01_2025_mask_tE_gs_CM_square_n_step20_orienting_000.pk1"
+    file = "2D_09_02_2025_mask_tE_gs_CM_square_n_step10_orienting_006.pk1"
 
     mr_mask_orienting = mt.load_optimize_geodesicShooting(file)
 
 mr_mask_orienting.compute_landmark_dist(source_landmarks,target_landmarks)
-mr_mask_orienting.plot_imgCmp()
-plt.show()
-# #%%
+
+# mr_mask_orienting.plot_imgCmp()
+# # plt.show()
+# # #%%
 # mr_mask_orienting.plot_deform()
-mr_mask_orienting.mp.plot()
-plt.show()
+# mr_mask_orienting.mp.plot()
+# plt.show()
 #%%
 #####################################################################
 # Register the residual mask to the source and target images using LDDMM:
@@ -210,22 +212,23 @@ if recompute:
     momentum_ini = 0
     mr_mask_residuals = mt.lddmm(ini_ball_on.to(device),segs,momentum_ini,
                        kernelOperator=kernelOp,cost_cst=1e-5,integration_steps=n_steps,
-                       n_iter=10,grad_coef=1,
+                       n_iter=15,grad_coef=1,
                        optimizer_method='LBFGS_torch',
                        dx_convention=dx_convention,)
     mr_mask_residuals.save(f"mask_tE_gs_CM_{dx_convention}_n_step{n_steps}_residuals")
 else:
     # file = "2D_23_01_2025_mask_tE_gs_CM_square_necrosisOnly_000.pk1"
-    file ="2D_23_01_2025_mask_tE_gs_CM_square_n_step20_necrosisOnly_000.pk1"
+    # file ="2D_23_01_2025_mask_tE_gs_CM_square_n_step20_necrosisOnly_000.pk1"
+    file = "2D_09_02_2025_mask_tE_gs_CM_square_n_step10_residuals_006.pk1"
     # 2D_23_01_2025_mask_tE_gs_CM_square_n_step20_necrosisOnly_001.pk1
 
     mr_mask_residuals = mt.load_optimize_geodesicShooting(file)
 
-mr_mask_residuals.plot_imgCmp()
-plt.show()
+# mr_mask_residuals.plot_imgCmp()
+# plt.show()
 #%%
-mr_mask_residuals.mp.plot()
-plt.show()
+# mr_mask_residuals.mp.plot()
+# plt.show()
 # #%%
 # # file  ="2D_23_01_2025_mask_tE_gs_CM_square_000.pk1"
 # # file = "2D_23_01_2025_mask_tE_gs_CM_square_all_000.pk1"
@@ -247,32 +250,44 @@ plt.show()
 # and tweak them to our linking.
 
 
-residuals_mask = mr_mask_residuals.mp.image_stock.clone() #* .5
-# residuals_mask *= 1.3
+residuals_mask = mr_mask_residuals.mp.image_stock.clone()
+residuals_mask[residuals_mask > 0.01] = 1
+# residuals_mask *= 1.5
 residuals_mask = 1 - residuals_mask
-# residuals_mask = torch.ones(residuals_mask.shape)
+# residuals_mask = torch.ones_like(residuals_mask) *0
+
+# residuals_mask = segs.repeat((n_steps,1,1,1))
+# pos = residuals_mask > 0.1
+# residuals_mask *= .1
+# residuals_mask[pos] += .9
+# residuals_mask = 1 - residuals_mask
+# residuals_mask = torch.ones(residuals_mask.shape) #* .15
 
 
 
-orienting_field = mr_mask_orienting.mp.field_stock.clone()
+orienting_field = -mr_mask_orienting.mp.field_stock.clone() / n_steps
+# orienting_field = -mr_mask_residuals.mp.field_stock.clone() / n_steps
 # In this case we though best to set the orienting mask as
 # at constant value
-orienting_mask = torch.ones(residuals_mask.shape)
-orienting_mask *= .5
-# # but you can try with different types of masks, like the one below
+# orienting_mask = torch.ones(residuals_mask.shape)
+# orienting_mask *= 1/n_steps
+# but you can try with different types of masks, like the one below
 # orienting_mask = mr_mask_residuals.mp.image_stock.clone()
 # orienting_mask[orienting_mask>.5] =.7
 
 # if w is zero give back power to v
-# norm_2_on_w  = torch.sqrt((orienting_field**2).sum(dim = -1))
-# orienting_mask = norm_2_on_w[:,None]/ norm_2_on_w.max()
+norm_2_on_w  = torch.sqrt((orienting_field**2).sum(dim = -1))
+orienting_mask = norm_2_on_w[:,None]/ norm_2_on_w.max()
+o_max = .01
+orienting_mask[orienting_mask > o_max] = o_max
+# orienting_mask = torch.zeros(orienting_mask.shape)
 # orienting_mask[]
 
 
-# sig = 5 # blur the mask to avoid sharp transitions
-# residuals_mask = flt.gaussian_blur2d(residuals_mask,(int(6*sig)+1,int(6*sig)+1),(sig,sig))
+sig = 5 # blur the mask to avoid sharp transitions
+residuals_mask = flt.gaussian_blur2d(residuals_mask,(int(6*sig)+1,int(6*sig)+1),(sig,sig))
 # sig = 5
-# orienting_mask = flt.gaussian_blur2d(orienting_mask,(int(6*sig)+1,int(6*sig)+1),(sig,sig))
+orienting_mask = flt.gaussian_blur2d(orienting_mask,(int(6*sig)+1,int(6*sig)+1),(sig,sig))
 
 L = [0,2,8,-1]
 fig,ax = plt.subplots(2,len(L),figsize=(len(L)*5,10))
@@ -305,13 +320,14 @@ plt.show()
 # sigma = [(5,5),(20,20),(30,30)]
 # kernelOp = rk.Multi_scale_GaussianRKHS(sigma,normalized=True)
 
-sigma = [(5,5),(10,10),(15,15),(25,25)]
+sigma = [(5,5),(10,10),(15,15)]
 # sigma = [(10,10)]
 kernelOp = rk.Multi_scale_GaussianRKHS(sigma,normalized=False)
-
-sigma = (10,10)
-kernelOp = rk.GaussianRKHS(sigma)
-rk.plot_kernel_on_image(kernelOp,subdiv=10,image=T.cpu())
+# kernelOp.kernel = kernelOp.kernel / kernelOp.kernel.max()
+kernelOp.plot()
+# sigma = (10,10)
+# kernelOp = rk.GaussianRKHS(sigma)
+# rk.plot_kernel_on_image(kernelOp,subdiv=10,image=T.cpu())
 plt.show()
 print(kernelOp)
 print(kernelOp.kernel.max())
@@ -339,9 +355,9 @@ mr_cm = mt.constrained_metamorphosis(S,T,momentum_ini,
                                      orienting_field,
                                      residuals_mask,
                                      kernelOperator=kernelOp,
-                                     cost_cst=1e-10,
-                                     grad_coef=.1,
-                                    n_iter=30,
+                                     cost_cst=1e-5,
+                                     grad_coef=.0001,
+                                    n_iter=20,
                                      dx_convention=dx_convention,
                                         # optimizer_method='adadelta',
                                      )
@@ -365,7 +381,7 @@ plt.show()
 mr_cm.mp.plot()
 plt.show()
 #%%
-mr_cm.save(f"TEST_toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}")
+# mr_cm.save(f"TEST_toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}")
 
 #%%
 
@@ -375,8 +391,9 @@ ax[0].set_title('orienting mask')
 for i,ll in enumerate(L):
     ax[i].imshow(mr_cm.mp.image_stock[ll,0].cpu(),cmap='gray',vmin=0, vmax = 1,origin = "lower")
     ax[i].imshow(1-residuals_mask[ll,0].cpu(),cmap='Oranges',vmin=0, vmax = 1,origin = "lower",alpha = .5)
+    # ax[i].imshow(orienting_mask[ll,0].cpu(),cmap='Blues',vmin=0, vmax = 1,origin = "lower",alpha = .5)
+
 
 plt.show()
 
-plt.show()
 

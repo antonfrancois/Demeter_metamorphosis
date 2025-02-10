@@ -13,8 +13,8 @@ from math import prod
 from .abstract import Geodesic_integrator,Optimize_geodesicShooting
 
 from demeter.constants import *
-from ..utils import torchbox as tb
-from ..utils import cost_functions as cf
+import demeter.utils. torchbox as tb
+import  demeter.utils.cost_functions as cf
 
 
 # ==========================================================================
@@ -125,35 +125,32 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
         return 0
 
     def step(self):
-        self._update_field_()
-        # self.field *= torch.sqrt(self.residual_mask[self._i,0])[...,None]
-        # self.field *= (1 - self.orienting_mask[self._i,0])[...,None]
-        r_mask = self.residual_mask[self._i,0][...,None]
-        if self.flag_O:
-            ic(self.flag_O)
-            o_mask = self.orienting_mask[self._i,0][...,None]
-            composite_field = (1 - o_mask) * self.field + o_mask * self.orienting_field[self._i]
-        # o_mask = self.orienting_mask[self._i,0][...,None]
+        mask = self.residual_mask[self._i,0]
+
+        if self.flag_O or self.flag_W:
+            self._update_field_oriented_weighted_()
         else:
-            ic(self.flag_O)
-            composite_field = self.field
-        deform = (self.id_grid -
-                        r_mask * composite_field / self.n_step)
-        resi_to_add = (1 - r_mask[...,0]) * self.momentum
+            self._update_field_()
+            self.field *=  torch.sqrt(mask[...,None])
+        assert self.field.isnan().any() == False, f"iter: {self._i}, field is nan"
 
 
-        self._update_image_semiLagrangian_(deform,resi_to_add,sharp=False)
+        deform = (self.id_grid - self.field / self.n_step)
+        resi_to_add = (1 - mask) * self.momentum
+
+        self._update_image_weighted_semiLagrangian_(deform,resi_to_add,sharp=False)
+
+        assert self.image.isnan().any() == False, f"iter: {self._i}, image is nan"
         # self._update_momentum_semiLagrangian_(deform)
         self.momentum  = self._compute_div_momentum_semiLagrangian_(
             deform,
             self.momentum,
-            torch.sqrt(r_mask)[...,0],
-            field = composite_field
+            torch.sqrt(mask)
         )
+        assert self.momentum.isnan().any() == False, f"iter: {self._i}, momentum is nan"
 
-        #Note:  we do not return the field like usual but the fields that genrate the deformations
         return (self.image,
-                r_mask * composite_field,
+                 self.field,
                 resi_to_add)
 
 
@@ -278,8 +275,8 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
         loss_stock[i, 1] = self.norm_v_2.detach()
 
         loss_stock[i, 2] = self.norm_l2_on_z.detach()
-        # if self.mp.flag_O:
-        #     loss_stock[i, 3] = self.scaprod_v_w.detach()
+        if self.mp.flag_O:
+            loss_stock[i, 3] = self.scaprod_v_w.detach()
 
 
         return loss_stock
@@ -295,34 +292,42 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
 
         return total_cost
 
-    def _get_rho_(self):
-        return "Weighted"
-
     def cost(self, momentum_ini: torch.Tensor) -> torch.Tensor:
         lamb = self.cost_cst
 
-        self.mp.forward(self.source, momentum_ini, save=False, plot=0)
+        self.mp.forward(self.source, momentum_ini,
+                        save=False,
+                        plot=0,
+                        # hamiltonian_integration=self.flag_hamiltonian_integration
+                        )
 
         # Compute the data_term. Default is the Ssd
         self.data_loss = self.data_term()
 
         # Norm V
+        grad_source = tb.spatialGradient(self.source, dx_convention=self.dx_convention)
+        field_momentum = (grad_source * momentum_ini.unsqueeze(2)).sum(dim=1) #/ C
+        field = self.mp.kernelOperator(field_momentum)
 
-        # grad_source = tb.spatialGradient(self.source, dx_convention=self.dx_convention)
-        # field_momentum = (grad_source * momentum_ini.unsqueeze(2)).sum(dim=1) #/ C
-        # field = self.mp.kernelOperator(field_momentum)
-
-        # self.norm_v_2 = .5 * (field_momentum * field).sum() #* prod(self.dx)
-        self.norm_v_2 = self._compute_V_norm_(momentum_ini,self.source)
+        self.norm_v_2 = .5 * (field_momentum * field).sum() #* prod(self.dx)
 
         # Norm on the residuals only
         self.norm_l2_on_z = .5 * (momentum_ini**2).sum()/prod(self.source.shape[2:])
 
 
         self.total_cost = (self.data_loss +
-                           lamb * (self.norm_v_2+ self.norm_l2_on_z)
+                           lamb * (
+                                   self.norm_v_2
+                                   + self.norm_l2_on_z
+                        )
         )
+        # Oriented field norm
+        if self.mp.flag_O:
+            self.scaprod_v_w = (tb.im2grid(field) * self.mp.orienting_field[0][None]).sum(dim=-1)
+            self.scaprod_v_w *= self.mp.orienting_mask[0]
+            self.scaprod_v_w = self.scaprod_v_w.sum()#/prod(self.source.shape[2:])
 
+            self.total_cost += lamb * self.scaprod_v_w
 
         return self.total_cost
 
@@ -382,7 +387,7 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
         ax1[1].legend()
         ax1[0].set_title("Lambda = " + str(self.cost_cst))
 
-        return fig1, ax1
+        return fig1,ax1
 
 
 class Reduce_field_Optim(Optimize_geodesicShooting):

@@ -210,7 +210,7 @@ def test_landmark_computation(setup_lddmm):
 
     assert torch.abs(my_dist - land_dist) < 1e-6, (
         "There might be a problem with the landmark computation:"
-        f"mr.dit = {land_dist} and dist computed here is {land_dist}"
+        f"mr.dist = {land_dist} and dist computed here is {my_dist}"
     )
 
     if plot:

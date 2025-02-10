@@ -99,7 +99,8 @@ class Metamorphosis_integrator(Geodesic_integrator):
         self.momentum = self._compute_div_momentum_semiLagrangian_(
             deformation,
             self.momentum,
-            sqrt(self.rho)
+            sqrt(self.rho),
+            sqrt(self.rho) * self.field
         )
         # self.momentum *= sqrt(self.rho)
 

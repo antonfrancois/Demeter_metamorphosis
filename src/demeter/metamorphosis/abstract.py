@@ -29,9 +29,13 @@ $$E(p_0) = D_T(I_1) + \frac \lambda2 \int_{0}^1 \left( \|v_t\|_V^2 +\|z_t\|_Z^2 
 The $I_{t},v_t,z_{t}$ are still deduced from $p_0$. It is possible to switch between the two in the code using the `hamiltonian_integration` option in the children of `Optimize_geodesicShooting`.
 """
 
+
+import torch
+import matplotlib.pyplot as plt
 import warnings
 from math import prod, sqrt
 import pickle
+import os, sys, csv  # , time
 from icecream import ic
 
 from datetime import datetime
@@ -350,7 +354,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         # self.field *= self._field_cst_mult()
         # self.field *= sqrt(self.rho)
 
-
     # Done
     def _update_momentum_Eulerian_(self):
         momentum_dt = -tb.Field_divergence(dx_convention=self.dx_convention)(
@@ -379,7 +382,12 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             - div_v_times_z / self.n_step
         )
 
-    def _compute_div_momentum_semiLagrangian_(self, deformation, momentum, cst, field = None):
+    def _compute_div_momentum_semiLagrangian_(self,
+                                              deformation,
+                                              momentum,
+                                              cst,
+                                              field = None
+                                              ):
         r"""
         Compute the divergence of the momentum in the semiLagrangian scheme
         meaning
@@ -402,13 +410,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         -------
         tensor array of shape [1,1,H,W] or [1,1,D,H,W]
         """
-        # ic(deformation.shape
-        #    ,momentum.shape
-        #    )
-        # try:
-        #     ic(cst.shape,field.shape)
-        # except AttributeError:
-        #     pass
         if field is None:
             field = self.field
         div_v_times_z = cst * (
@@ -421,7 +422,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             )
             - div_v_times_z / self.n_step
         )
-        # ic(momentum.shape,div_v_times_z.shape)
         return momentum
 
     def _compute_sharp_intermediary_residuals_(self):
@@ -450,12 +450,9 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     def _update_image_Eulerian_(self):
         # Warning, in classical metamorphosis, the momentum (p) is proportional to the residual (z)
         # with the relation z = (1 - rho) * p. Here we use the momentum as the residual
-        ic(self.image.min().item(), self.image.max().item())
         self.image = self._image_Eulerian_integrator_(
             self.image, self.field, 1 / self.n_step, 1
         )
-        ic(self.image.min().item(), self.image.max().item())
-
         # z = sqrt(1 - rho) * p and I = v gradI + sqrt(1-rho) * z
         residuals = (1 - self.rho) * self.momentum
         self.image = (sqrt(self.rho) * self.image + residuals) / self.n_step
@@ -526,7 +523,24 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         # plt.colorbar(p)
         # plt.show()
 
+    def _update_field_oriented_weighted_(self):
+        grad_image = tb.spatialGradient(self.image, dx_convention=self.dx_convention)
+        free_field = tb.im2grid(
+            (self.momentum * grad_image[0]) * torch.sqrt(self.residual_mask[self._i])
+        )
+        oriented_field = 0
+        if self.flag_O:
 
+            oriented_field = (self.orienting_field[self._i][None]
+                                    * self.orienting_mask[self._i][..., None])
+        try:
+            print("fre_field",free_field.min().item(),free_field.max().item(),"\n oriented_field",
+            oriented_field.min().item(),oriented_field.max().item())
+        except AttributeError:
+            pass
+        self.field = -tb.im2grid(
+            self.kernelOperator(tb.grid2im(free_field + oriented_field))
+        )
 
     def to_device(self, device):
         # TODO: completer ça
@@ -1156,6 +1170,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             verbose=True,
             round = False
     ):
+        # from scipy.interpolate import interpn
+        # import numpy as np
+        # compute deformed landmarks
         if forward:
             deformation = self.mp.get_deformation()
         else:
@@ -1390,13 +1407,13 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         if "image" in object and "deformation" in object:
             # source image
             fig, ax = plt.subplots()
-            ax.imshow(self.source[0].cpu().numpy(), **DLT_KW_IMAGE)
+            ax.imshow(self.source[0,0].cpu().numpy(), **DLT_KW_IMAGE)
             tb.gridDef_plot_2d(self.id_grid,ax=ax,step=10,color="#E5BB5F",linewidth=3)
 
             image_list_for_gif = [fig_to_image(fig, ax)]
             image_kw = dict()
             for n in range(self.mp.n_step):
-                deformation = self.mp.get_deformation(n).cpu()
+                deformation = self.mp.get_deformation(to_t=n+1).cpu()
                 img = self.mp.image_stock[n, 0].cpu().numpy()
                 fig, ax = plt.subplots()
                 ax.imshow(img, **DLT_KW_IMAGE)
@@ -1594,14 +1611,12 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         ax[1, 1].set_title("comparaison deformed image with target", fontsize=25)
         ax[1, 0].imshow(self.mp.image[0, 0].detach().cpu().numpy(), **image_kw)
         ax[1, 0].set_title("Integrated source image", fontsize=25)
-
         tb.quiver_plot(
-            self.mp.get_deformation().detach().cpu(),
+            self.mp.get_deformation().detach().cpu() - self.id_grid,
             ax=ax[1, 1],
             step=15,
             color=GRIDDEF_YELLOW,
             dx_convention=self.dx_convention,
-            remove_grid=True,
         )
 
         try:
@@ -1638,6 +1653,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             ax[1, 1].legend()
             text_score += f"landmark : {self.get_landmark_dist():.2f},"
         ax[1, 1].text(10, 10, text_score, c="white", size=25)
+
         return fig, ax
 
     def plot_deform(self, temporal_nfigs=0):

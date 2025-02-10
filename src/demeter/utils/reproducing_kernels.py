@@ -264,15 +264,20 @@ def plot_gaussian_kernel_1d(
     dist_from_center = float(kernel_size)/2
     x = torch.linspace(-dist_from_center,dist_from_center,kernel_size)
 
-    kw = {'color':'gray','linestyle':'--'}
-    line_1_x = [-sigma,-sigma]
-    line_1_y = [0,kernel[0,x > -sigma][0]]
-    line_1_kw = kw.copy()
-    line_1_kw['label'] = f"K(sigma) ~= {kernel[0,x > -sigma][0]:.3f}"
-    line_2_x = [sigma,sigma]
-    line_2_y = [0,kernel[0,x < sigma][-1]]
-    line_3_x = [x[0],x[-1]]
-    line_3_y = [kernel[0,x > -sigma][0],kernel[0,x < sigma][-1]]
+    try:
+        kw = {'color':'gray','linestyle':'--'}
+        line_1_x = [-sigma,-sigma]
+        line_1_y = [0,kernel[0,x > -sigma][0]]
+        line_1_kw = kw.copy()
+        line_1_kw['label'] = f"K(sigma) ~= {kernel[0,x > -sigma][0]:.3f}"
+        line_2_x = [sigma,sigma]
+        line_2_y = [0,kernel[0,x < sigma][-1]]
+        line_3_x = [x[0],x[-1]]
+        line_3_y = [kernel[0,x > -sigma][0],kernel[0,x < sigma][-1]]
+        plot_lines= True
+    except TypeError:
+        print("sigma is not a float, I suspect that the kernel is not purly gaussian.")
+        plot_lines = False
 
 
     if ax is None:
@@ -280,16 +285,18 @@ def plot_gaussian_kernel_1d(
     ax.set_title(f'kernel sigma: {sigma}')
     if rotated:
         ax.plot(kernel[0].numpy(),x)
-        ax.plot(line_1_y,line_1_x,**line_1_kw)
-        ax.plot(line_2_y,line_2_x,**kw)
-        ax.plot(line_3_y,line_3_x,**kw)
+        if plot_lines:
+            ax.plot(line_1_y,line_1_x,**line_1_kw)
+            ax.plot(line_2_y,line_2_x,**kw)
+            ax.plot(line_3_y,line_3_x,**kw)
         ax.set_xlabel('K')
         ax.set_ylabel('x')
     else:
         ax.plot(x,kernel[0].numpy())
-        ax.plot(line_1_x,line_1_y,**line_1_kw)
-        ax.plot(line_2_x,line_2_y,**kw)
-        ax.plot(line_3_x,line_3_y,**kw)
+        if plot_lines:
+            ax.plot(line_1_x,line_1_y,**line_1_kw)
+            ax.plot(line_2_x,line_2_y,**kw)
+            ax.plot(line_3_x,line_3_y,**kw)
         ax.set_xlabel('x')
         ax.set_ylabel('K')
     ax.legend()
@@ -774,28 +781,31 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
     Example:
     --------
 
-    >>>import __init__
-    >>>import demeter.utils.reproducing_kernels as rk
-    >>>import demeter.utils.torchbox as tb
-    >>>import matplotlib.pyplot as plt
-    >>>import torch
-    >>>
-    >>>sigma= [(5,5),(7,7),(10,10)]
-    >>>kernelOp = rk.Multi_scale_GaussianRKHS(sigma)
-    >>>
-    >>>image = tb.RandomGaussianImage((100,100),5,'pixel').image()
-    >>>image_b = kernelOp(image)
-    >>>
-    >>>fig, ax = plt.subplots(2,2,figsize=(10,5))
-    >>>ax[0,0].imshow(kernelOp.kernel[0])
-    >>>ax[0,0].set_title('kernel 1')
-    >>>ax[0,1].plot(kernelOp.kernel[0][kernelOp.kernel[0].shape[0]//2])
-    >>>
-    >>>ax[1,0].imshow(image[0,0])
-    >>>ax[1,0].set_title('image')
-    >>>ax[1,1].imshow(image_b[0,0])
-    >>>ax[1,1].set_title('image_b')
-    >>>plt.show()
+    .. code-block:: python
+
+        import __init__
+        import demeter.utils.reproducing_kernels as rk
+        import demeter.utils.torchbox as tb
+        import matplotlib.pyplot as plt
+        import torch
+
+        sigma= [(5,5),(7,7),(10,10)]
+        kernelOp = rk.Multi_scale_GaussianRKHS(sigma)
+
+        image = tb.RandomGaussianImage((100,100),5,'pixel').image()
+        image_b = kernelOp(image)
+
+        fig, ax = plt.subplots(2,2,figsize=(10,5))
+        ax[0,0].imshow(kernelOp.kernel[0])
+        ax[0,0].set_title('kernel 1')
+        ax[0,1].plot(kernelOp.kernel[0][kernelOp.kernel[0].shape[0]//2])
+
+        ax[1,0].imshow(image[0,0])
+        ax[1,0].set_title('image')
+        ax[1,1].imshow(image_b[0,0])
+        ax[1,1].set_title('image_b')
+        plt.show()
+
     """
 
     def __init__(self, list_sigmas,
@@ -836,9 +846,9 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
                 kernel_f(sigma,kernel_size=kernel_size, normalized=normalized)[None]
              for sigma in list_sigmas
             ]
-        ).sum(dim=0) / len(list_sigmas)
-        # if normalized:
-        #     self.kernel /= len(list_sigmas)
+        ).sum(dim=0)
+        if normalized:
+            self.kernel /= len(list_sigmas)
         #     self.kernel /= self.kernel.sum()
 
 
