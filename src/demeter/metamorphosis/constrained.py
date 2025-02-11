@@ -36,9 +36,7 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
     - an orienting field: $w: \Omega \times t \rightarrow \mathbb{R}^d$ a field that will guide the deformation
     - an orienting mask: $Q: \Omega \times t \rightarrow [0,1]$ a mask that will control the
     prevalence of the orienting field over the deformation field.
-    The image evolution is given by the following equation
-    $$\dot{ I}_{t} = - \sqrt{ M_{t} } \left( ((1 - Q_{t}) v_{t} + Q_{t} w_{t}) \nabla I_{t} \right) + \sqrt{ 1 - M_{t} } z_{t} $$
-
+    The geodesic equation is then given by:
 
     .. math::
 
@@ -239,7 +237,7 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
     with:
         - $D(I_1,T)$ the data term given by the user.
         - I_1 is obtained by integrating the geodesics over the geodesic equation using the provided integrator class.
-        - $\|v_0\|^2_V = (Lv,v)_2$ the RKHS norm of the velocity field parametrized by L^{-1} = K_\sigma$  that we call the kernel operator
+        - $\|v_0\|^2_V = (Lv,v)_2$ the RKHS norm of the velocity field parametrized by $L^{-1} = K_\sigma$  that we call the kernel operator
         - $\|z_0\|^2_{L_2} =\frac{1}{\# \Omega} \sum z_0^2$ the $L_2$ norm of the momentum field, with $\# \Omega$ the number of pixels in the image.
         - $\langle v,Qw\rangle_{2} = \frac{1}{\# \Omega} \sum v \cdot Qw$ the scalar product between the velocity field $v$ and the orienting field $w$ weighted by the orienting mask $Q$.
 

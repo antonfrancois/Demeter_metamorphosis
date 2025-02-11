@@ -787,6 +787,7 @@ def deformation_show(deformation, step=2,
 
     Parameters
     ----------
+
     deformation : torch.Tensor
         2D grid tensor of shape (1,H,W,2)
     step, int
@@ -801,6 +802,7 @@ def deformation_show(deformation, step=2,
 
     Returns
     -------
+
     None
 
     Example :
@@ -1024,7 +1026,9 @@ class RandomGaussianImage:
      to the parameters of the gaussians.
 
      self.a[i] * torch.exp(- ((self.X - self.c[i])**2).sum(-1) / (2*self.b[i]**2))
-     $$ I = \sum_{i=1}^{N} a_i \exp(- \frac{||X - c_i||^2}{2b_i^2})$$
+
+     .. math::
+         I = \sum_{i=1}^{N} a_i \exp(- \frac{||X - c_i||^2}{2b_i^2})
 
     Parameters:
     -----------
@@ -1043,9 +1047,11 @@ class RandomGaussianImage:
 
     Example:
     --------
-    >>>RGI = RandomGaussianImage((100,100),5,'pixel')
-    >>> image = RGI.image()
-    >>> derivative = RGI.derivative()
+
+    .. code-block:: python
+        RGI = RandomGaussianImage((100,100),5,'pixel')
+         image = RGI.image()
+         derivative = RGI.derivative()
 
     """
 
@@ -1684,6 +1690,7 @@ def im2grid(image):
             count += (image_3D[i,1,...] == image_3D_as_grid[i,...,1]).sum()
             count += (image_3D[i,2,...] == image_3D_as_grid[i,...,2]).sum()
         print('count is equal to ',count/(T*H*W*D*3.0),'and should be equal to 1')
+
     """
 
     # No batch
@@ -1716,7 +1723,7 @@ def make_regular_grid(deformation_shape,
     --------------
     deformation_shape: tuple
         tuple such as (H,W) or (n,H,W,2) for 2D grid
-        (D,H,W) or (n,D,H,W,3) for 3D grid
+        (D,H,W) or (n,D,H,W,3) for 3D gridim2
     device: torch.device
         device for selecting cpu or cuda usage
 

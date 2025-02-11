@@ -96,13 +96,14 @@ class Ssd(DataCost):
     Examples
     --------
 
+    .. code-block:: python
 
-    >>>target = torch.rand(1,1,100,100)
-    >>>data_term = dt.Ssd(target)
-    >>>mt.lddmm(source,target,geodesic,
-    >>>    optimizer_method='adadelta',
-    >>>    data_term = data_term
-    >>>)
+        target = torch.rand(1,1,100,100)
+        data_term = dt.Ssd(target)
+        mt.lddmm(source,target,geodesic,
+            optimizer_method='adadelta',
+            data_term = data_term
+        )
     """
 
     def __init__(self, target, **kwargs):

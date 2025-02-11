@@ -102,9 +102,12 @@ def get_gaussian_kernel1d(sigma,
                           dtype=torch.float):
     r"""Function that returns Gaussian filter coefficients.
 
-    $$ g(x) = \exp\left(\frac{-x^2}{2 \sigma^2}\right) $$
+    .. math::
+        g(x) = \exp\left(\frac{-x^2}{2 \sigma^2}\right)
+
     Parameters:
-    -----------
+    --------------
+
     kernel_size (int)
         the size of the kernel.
     dx (float)
@@ -123,7 +126,9 @@ def get_gaussian_kernel1d(sigma,
         the desired data type of the kernel.
 
     Returns:
-        torch.Tensor: 1D tensor with the filter coefficients.
+    ________
+
+    torch.Tensor: 1D tensor with the filter coefficients.
 
     Shape:
         - Output: :math:`(K,)`
@@ -460,9 +465,11 @@ class GaussianRKHS(torch.nn.Module):
     r""" Is equivalent to a gaussian blur. This function support 2d and 3d images in the
     PyTorch convention
 
-    $$ \mathrm{kernel} = \exp\left(\frac{-x^2}{2 \sigma^2}\right) $$
+    .. math::
+        \mathrm{kernel} = \exp\left(\frac{-x^2}{2 \sigma^2}\right)
+
     if normalised is True, the kernel will be L1 normalised: `kernel = kernel / kernel.sum()`
-    making it equivalent to a divisino by $\frac{1}{2 \pi}$ but less sensitive to the
+    making it equivalent to factorizing by $\frac{1}{2 \pi}$ but less sensitive to the
     discretisation choices..
 
     Parameters:
@@ -613,7 +620,7 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
 
     Let $\sigma=(\sigma_h)_{1\leq h\leq d}$ be the standard deviation along the different coordinate in $\R^d$ and $B=B(0,1)$ the closed ball of radius $1$.  We denote $D=\text{diag}(\sigma_h^2)$ and we consider the kernel
 
-    $$K(x,y)=\frac{1}{\Vol(\Dh B)}\exp\left(-\frac{1}{2}\la D^{-1}(x-y),(x-y)\ra\right)D\,.$$
+    $$K(x,y)=\frac{1}{\mathrm{Vol}(D^{1/2} B)}\exp\left(-\frac{1}{2}\langle D^{-1}(x-y),(x-y)\rangle\right)D\,.$$
 
     call the \emph{anisotropic volume normalized gaussian kernel} (AVNG kernel).
 
@@ -944,17 +951,18 @@ def _get_sigma_monodim(X,nx,c=.1):
 def get_sigma_from_img_ratio(img_shape,subdiv,c=.1):
     r"""The function get_sigma_from_img_ratio calculates the ideal
     $sigma$ values for a Gaussian kernel based on the desired grid
-     granularity. Given an image $I$ of size $(H, W)$, the goal is to
+    granularity. Given an image $I$ of size $(H, W)$, the goal is to
     divide the image into a grid of $n_h$ (in the H direction) and
-     $n_w$ (in the W direction). Suppose $x$ is at the center of a
+    $n_w$ (in the W direction). Suppose $x$ is at the center of a
     square in this $n_h \times n_w$ grid. We want to choose
     $\sigma = (\sigma_h, \sigma_w)$
-     such that the Gaussian centered at $x$ is negligible outside
-      the grid square.
+    such that the Gaussian centered at $x$ is negligible outside
+    the grid square.
 
     In other words, we want to find $\sigma$ such that:
 
-    $$ e^{\frac{ -\left(\frac{H}{n_h}\right)^2}{2 \sigma^2}} < c; \qquad c \in \mathbb{R} $$
+    .. math::
+        e^{\frac{ -\left(\frac{H}{n_h}\right)^2}{2 \sigma^2}} < c; \qquad c \in \mathbb{R}
 
      where $c$ is the negligibility constant.
 

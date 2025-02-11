@@ -2,12 +2,20 @@ r"""
 This module contains the classical Metamorphosis algorithm. Defined as follows:
 
 We define the Hamiltonian:
-$$H(I,p,v,z) = - (p |\dot{ I}) - \frac{1}{2} (Lv|v)_{2} - \frac{1}{2}(z,z)_{2}. $$
+
+.. math::
+    H(I,p,v,z) = - (p |\dot{ I}) - \frac{1}{2} (Lv|v)_{2} - \frac{1}{2}(z,z)_{2}.
+
 By calculating the optimal trajectories we obtain the system:
-$$\left\{ 	\begin{array}{rl} v &= - \sqrt{ \rho } K_{V} (p \nabla I)\\ \dot{p} &= -\sqrt{ \rho } \nabla \cdot (pv) \\ z &= \sqrt{ 1 - \rho } p \\  \dot{I} &=  - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z.\end{array} \right. $$
+
+.. math::
+    \left\{ 	\begin{array}{rl} v &= - \sqrt{ \rho } K_{V} (p \nabla I)\\ \dot{p} &= -\sqrt{ \rho } \nabla \cdot (pv) \\ z &= \sqrt{ 1 - \rho } p \\  \dot{I} &=  - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z.\end{array} \right.
 
 In practice we minimize the Energy function:
-$$E(p_0) = D(I_1,T) + \lambda \Big[ \|v_0\|^2_V + \|z_0\|^2_{L_2} \Big]$$
+
+.. math::
+    E(p_0) = D(I_1,T) + \lambda \Big[ \|v_0\|^2_V + \|z_0\|^2_{L_2} \Big]
+
 with $D(I_1,T)$ the data term given by the user, $\|v_0\|^2_V = (Lv,v)_2$ the RKHS norm of the velocity field parametrized
 by L^{-1} = K_\sigma$  that we call the kernel operator and $\|z_0\|^2_{L_2}$ the $L_2$ norm of the momentum field.
 
