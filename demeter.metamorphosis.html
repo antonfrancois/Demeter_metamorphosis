@@ -500,18 +500,17 @@ if True, the images used to create the gif are deleted.</p></li>
 <section id="module-demeter.metamorphosis.classic">
 <span id="demeter-metamorphosis-classic-module"></span><h2>demeter.metamorphosis.classic module<a class="headerlink" href="#module-demeter.metamorphosis.classic" title="Link to this heading"></a></h2>
 <p>This module contains the classical Metamorphosis algorithm. Defined as follows:</p>
-<p>We define the Hamiltonian:
-$$H(I,p,v,z) = - (p <a href="#id1"><span class="problematic" id="id2">|</span></a>\dot{ I}) - \frac{1}{2} (Lv|v)_{2} - \frac{1}{2}(z,z)_{2}. <div class="math notranslate nohighlight">
-\[
-By calculating the optimal trajectories we obtain the system:
-\]</div>
-\left\{       \begin{array}{rl} v &amp;= - \sqrt{ \rho } K_{V} (p \nabla I)\ \dot{p} &amp;= -\sqrt{ \rho } \nabla \cdot (pv) \ z &amp;= \sqrt{ 1 - \rho } p \  \dot{I} &amp;=  - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z.\end{array} \right. $$</p>
-<p>In practice we minimize the Energy function:
+<p>We define the Hamiltonian:</p>
+<div class="math notranslate nohighlight">
+\[H(I,p,v,z) = - (p |\dot{ I}) - \frac{1}{2} (Lv|v)_{2} - \frac{1}{2}(z,z)_{2}.\]</div>
+<p>By calculating the optimal trajectories we obtain the system:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\left\{     \begin{array}{rl} v &amp;= - \sqrt{ \rho } K_{V} (p \nabla I)\\ \dot{p} &amp;= -\sqrt{ \rho } \nabla \cdot (pv) \\ z &amp;= \sqrt{ 1 - \rho } p \\  \dot{I} &amp;=  - \sqrt{ \rho } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-\rho } z.\end{array} \right.\end{split}\]</div>
+<p>In practice we minimize the Energy function:</p>
 <div class="math notranslate nohighlight">
 \[E(p_0) = D(I_1,T) + \lambda \Big[ \|v_0\|^2_V + \|z_0\|^2_{L_2} \Big]\]</div>
-
-with <span class="math notranslate nohighlight">\(D(I_1,T)\)</span> the data term given by the user, <span class="math notranslate nohighlight">\(\|v_0\|^2_V = (Lv,v)_2\)</span> the RKHS norm of the velocity field parametrized
-by L^{-1} = <a href="#id6"><span class="problematic" id="id7">K_</span></a>\sigma$  that we call the kernel operator and <span class="math notranslate nohighlight">\(\|z_0\|^2_{L_2}\)</span> the <span class="math notranslate nohighlight">\(L_2\)</span> norm of the momentum field.</p>
+<p>with <span class="math notranslate nohighlight">\(D(I_1,T)\)</span> the data term given by the user, <span class="math notranslate nohighlight">\(\|v_0\|^2_V = (Lv,v)_2\)</span> the RKHS norm of the velocity field parametrized
+by L^{-1} = <a href="#id4"><span class="problematic" id="id5">K_</span></a>\sigma$  that we call the kernel operator and <span class="math notranslate nohighlight">\(\|z_0\|^2_{L_2}\)</span> the <span class="math notranslate nohighlight">\(L_2\)</span> norm of the momentum field.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="demeter.metamorphosis.classic.Metamorphosis_Shooting">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.metamorphosis.classic.</span></span><span class="sig-name descname"><span class="pre">Metamorphosis_Shooting</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geodesic</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.classic.Metamorphosis_Shooting" title="Link to this definition"></a></dt>
@@ -524,7 +523,7 @@ over the energy function:</p>
 <dt>with:</dt><dd><ul class="simple">
 <li><p><span class="math notranslate nohighlight">\(D(I_1,T)\)</span> the data term given by the user.</p></li>
 <li><p>I_1 is obtained by integrating the geodesics over the geodesic equation using the provided integrator class.</p></li>
-<li><p><span class="math notranslate nohighlight">\(\|v_0\|^2_V = (Lv,v)_2\)</span> the RKHS norm of the velocity field parametrized by L^{-1} = <a href="#id8"><span class="problematic" id="id9">K_</span></a>sigma$  that we call the kernel operator</p></li>
+<li><p><span class="math notranslate nohighlight">\(\|v_0\|^2_V = (Lv,v)_2\)</span> the RKHS norm of the velocity field parametrized by L^{-1} = <a href="#id6"><span class="problematic" id="id7">K_</span></a>sigma$  that we call the kernel operator</p></li>
 <li><p><span class="math notranslate nohighlight">\(\|z_0\|^2_{L_2} =\frac{1}{\# \Omega} \sum z_0^2\)</span> the <span class="math notranslate nohighlight">\(L_2\)</span> norm of the momentum field, with <span class="math notranslate nohighlight">\(\# \Omega\)</span> the number of pixels in the image.</p></li>
 </ul>
 </dd>
@@ -615,7 +614,7 @@ masks and fields.</p>
 <dt>with:</dt><dd><ul class="simple">
 <li><p><span class="math notranslate nohighlight">\(D(I_1,T)\)</span> the data term given by the user.</p></li>
 <li><p>I_1 is obtained by integrating the geodesics over the geodesic equation using the provided integrator class.</p></li>
-<li><p><span class="math notranslate nohighlight">\(\|v_0\|^2_V = (Lv,v)_2\)</span> the RKHS norm of the velocity field parametrized by L^{-1} = <a href="#id10"><span class="problematic" id="id11">K_</span></a>sigma$  that we call the kernel operator</p></li>
+<li><p><span class="math notranslate nohighlight">\(\|v_0\|^2_V = (Lv,v)_2\)</span> the RKHS norm of the velocity field parametrized by $L^{-1} = <a href="#id8"><span class="problematic" id="id9">K_</span></a>sigma$  that we call the kernel operator</p></li>
 <li><p><span class="math notranslate nohighlight">\(\|z_0\|^2_{L_2} =\frac{1}{\# \Omega} \sum z_0^2\)</span> the <span class="math notranslate nohighlight">\(L_2\)</span> norm of the momentum field, with <span class="math notranslate nohighlight">\(\# \Omega\)</span> the number of pixels in the image.</p></li>
 <li><p><span class="math notranslate nohighlight">\(\langle v,Qw\rangle_{2} = \frac{1}{\# \Omega} \sum v \cdot Qw\)</span> the scalar product between the velocity field <span class="math notranslate nohighlight">\(v\)</span> and the orienting field <span class="math notranslate nohighlight">\(w\)</span> weighted by the orienting mask <span class="math notranslate nohighlight">\(Q\)</span>.</p></li>
 </ul>
@@ -676,10 +675,7 @@ the amount of deformation versus the amount of photometric changes.
 - an orienting field: <span class="math notranslate nohighlight">\(w: \Omega \times t \rightarrow \mathbb{R}^d\)</span> a field that will guide the deformation
 - an orienting mask: <span class="math notranslate nohighlight">\(Q: \Omega \times t \rightarrow [0,1]\)</span> a mask that will control the
 prevalence of the orienting field over the deformation field.
-The image evolution is given by the following equation
-<div class="math notranslate nohighlight">
-\[\dot{ I}_{t} = - \sqrt{ M_{t} } \left( ((1 - Q_{t}) v_{t} + Q_{t} w_{t}) \nabla I_{t} \right) + \sqrt{ 1 - M_{t} } z_{t} \]</div>
-</p>
+The geodesic equation is then given by:</p>
 <div class="math notranslate nohighlight">
 \[\begin{split}\left\{
     \begin{array}{rl}
@@ -836,8 +832,8 @@ used at the optimizer initialisation.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="id3">
-<span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -848,7 +844,7 @@ used at the optimizer initialisation.</p>
 <dd><p>Bases: <a class="reference internal" href="#demeter.metamorphosis.data_cost.DataCost" title="demeter.metamorphosis.data_cost.DataCost"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataCost</span></code></a></p>
 <dl>
 <dt>This class is used to compute the data</dt><dd><dl>
-<dt>attachment term for longitudinal data. It takes</dt><dd><p>as a parameter an object inherited from <a href="#id4"><span class="problematic" id="id5">`</span></a>DataCost’
+<dt>attachment term for longitudinal data. It takes</dt><dd><p>as a parameter an object inherited from <a href="#id2"><span class="problematic" id="id3">`</span></a>DataCost’
 and apply the sum of the data attachment term over</p>
 <blockquote>
 <div><p>the list of target images.</p>
@@ -1006,12 +1002,14 @@ the target image.
 </dd>
 </dl>
 <p class="rubric">Examples</p>
-<p>&gt;&gt;&gt;target = torch.rand(1,1,100,100)
-&gt;&gt;&gt;data_term = dt.Ssd(target)
-&gt;&gt;&gt;mt.lddmm(source,target,geodesic,
-&gt;&gt;&gt;    optimizer_method=’adadelta’,
-&gt;&gt;&gt;    data_term = data_term
-&gt;&gt;&gt;)</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">target</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">100</span><span class="p">,</span><span class="mi">100</span><span class="p">)</span>
+<span class="n">data_term</span> <span class="o">=</span> <span class="n">dt</span><span class="o">.</span><span class="n">Ssd</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+<span class="n">mt</span><span class="o">.</span><span class="n">lddmm</span><span class="p">(</span><span class="n">source</span><span class="p">,</span><span class="n">target</span><span class="p">,</span><span class="n">geodesic</span><span class="p">,</span>
+    <span class="n">optimizer_method</span><span class="o">=</span><span class="s1">&#39;adadelta&#39;</span><span class="p">,</span>
+    <span class="n">data_term</span> <span class="o">=</span> <span class="n">data_term</span>
+<span class="p">)</span>
+</pre></div>
+</div>
 <dl class="py method">
 <dt class="sig sig-object py" id="demeter.metamorphosis.data_cost.Ssd.to_device">
 <span class="sig-name descname"><span class="pre">to_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.data_cost.Ssd.to_device" title="Link to this definition"></a></dt>

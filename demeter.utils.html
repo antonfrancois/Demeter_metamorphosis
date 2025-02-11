@@ -488,9 +488,10 @@ padding and stride for convolutions, where users may only provide an integer.</p
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
 <p>Is equivalent to a gaussian blur. This function support 2d and 3d images in the
 PyTorch convention</p>
-<p>$$ mathrm{kernel} = expleft(frac{-x^2}{2 sigma^2}right) $$
-if normalised is True, the kernel will be L1 normalised: <cite>kernel = kernel / kernel.sum()</cite>
-making it equivalent to a divisino by <span class="math notranslate nohighlight">\(\frac{1}{2 \pi}\)</span> but less sensitive to the
+<div class="math notranslate nohighlight">
+\[\mathrm{kernel} = \exp\left(\frac{-x^2}{2 \sigma^2}\right)\]</div>
+<p>if normalised is True, the kernel will be L1 normalised: <cite>kernel = kernel / kernel.sum()</cite>
+making it equivalent to factorizing by <span class="math notranslate nohighlight">\(\frac{1}{2 \pi}\)</span> but less sensitive to the
 discretisation choices..</p>
 <section id="parameters">
 <h3>Parameters:<a class="headerlink" href="#parameters" title="Link to this heading"></a></h3>
@@ -658,7 +659,7 @@ else, <span class="math notranslate nohighlight">\(k\)</span> is equal to 1.</p>
 <p>A kernel that preserves the value of the norm <span class="math notranslate nohighlight">\(V\)</span> for different images resolution.</p>
 <p>Let <span class="math notranslate nohighlight">\(\sigma=(\sigma_h)_{1\leq h\leq d}\)</span> be the standard deviation along the different coordinate in <span class="math notranslate nohighlight">\(\R^d\)</span> and <span class="math notranslate nohighlight">\(B=B(0,1)\)</span> the closed ball of radius <span class="math notranslate nohighlight">\(1\)</span>.  We denote <span class="math notranslate nohighlight">\(D=\text{diag}(\sigma_h^2)\)</span> and we consider the kernel</p>
 <p><div class="math notranslate nohighlight">
-\[K(x,y)=\frac{1}{\Vol(\Dh B)}\exp\left(-\frac{1}{2}\la D^{-1}(x-y),(x-y)\ra\right)D\,.\]</div>
+\[K(x,y)=\frac{1}{\mathrm{Vol}(D^{1/2} B)}\exp\left(-\frac{1}{2}\langle D^{-1}(x-y),(x-y)\rangle\right)D\,.\]</div>
 </p>
 <p>call the emph{anisotropic volume normalized gaussian kernel} (AVNG kernel).</p>
 <section id="id4">
@@ -765,14 +766,13 @@ as the input.</p>
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.get_gaussian_kernel1d">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">get_gaussian_kernel1d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_reach</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.get_gaussian_kernel1d" title="Link to this definition"></a></dt>
 <dd><p>Function that returns Gaussian filter coefficients.</p>
-<p>$$ g(x) = expleft(frac{-x^2}{2 sigma^2}right) $$
-Parameters:
-———–
-kernel_size (int)</p>
-<blockquote>
-<div><p>the size of the kernel.</p>
-</div></blockquote>
+<div class="math notranslate nohighlight">
+\[g(x) = \exp\left(\frac{-x^2}{2 \sigma^2}\right)\]</div>
+<section id="id8">
+<h3>Parameters:<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
 <dl class="simple">
+<dt>kernel_size (int)</dt><dd><p>the size of the kernel.</p>
+</dd>
 <dt>dx (float)</dt><dd><p>the spacing between the kernel points.</p>
 </dd>
 <dt>normalized (bool)</dt><dd><p>if True, the kernel will be L1 normalized. (divided by the sum of its elements)</p>
@@ -788,28 +788,25 @@ the closer we are to an actual gaussian kernel. (default = 6)</p>
 <dt>dtype (torch.dtype)</dt><dd><p>the desired data type of the kernel.</p>
 </dd>
 </dl>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>1D tensor with the filter coefficients.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>torch.Tensor</p>
-</dd>
-</dl>
+<section id="id9">
+<h4>Returns:<a class="headerlink" href="#id9" title="Link to this heading"></a></h4>
+<p>torch.Tensor: 1D tensor with the filter coefficients.</p>
 <dl class="simple">
 <dt>Shape:</dt><dd><ul class="simple">
 <li><p>Output: <span class="math notranslate nohighlight">\((K,)\)</span></p></li>
 </ul>
 </dd>
 </dl>
+</section>
+</section>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.get_gaussian_kernel2d">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">get_gaussian_kernel2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_reach</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.get_gaussian_kernel2d" title="Link to this definition"></a></dt>
 <dd><p>Function that returns Gaussian filter coefficients.</p>
-<section id="id8">
-<h3>Parameters:<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<section id="id10">
+<h3>Parameters:<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>sigma (Tuple[float, float] or torch.Tensor):</dt><dd><p>the standard deviation of the kernel.</p>
 </dd>
@@ -839,8 +836,8 @@ the closer we are to an actual gaussian kernel. (default = 6)</p>
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.get_gaussian_kernel3d">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">get_gaussian_kernel3d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1.0,</span> <span class="pre">1.0,</span> <span class="pre">1.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kernel_reach</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.get_gaussian_kernel3d" title="Link to this definition"></a></dt>
 <dd><p>Function that returns Gaussian filter coefficients.</p>
-<section id="id9">
-<h3>Parameters:<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<section id="id11">
+<h3>Parameters:<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>sigma (Tuple[float, float, float] or torch.Tensor):</dt><dd><p>the standard deviation of the kernel.</p>
 </dd>
@@ -854,8 +851,8 @@ the closer we are to an actual gaussian kernel. (default = 6)</p>
 </dd>
 </dl>
 </section>
-<section id="id10">
-<h3>Returns:<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<section id="id12">
+<h3>Returns:<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
 <p>torch.Tensor: 3D tensor with the filter coefficients.</p>
 </section>
 </dd></dl>
@@ -864,27 +861,17 @@ the closer we are to an actual gaussian kernel. (default = 6)</p>
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.get_sigma_from_img_ratio">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">get_sigma_from_img_ratio</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img_shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subdiv</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.get_sigma_from_img_ratio" title="Link to this definition"></a></dt>
 <dd><p>The function get_sigma_from_img_ratio calculates the ideal
-<span class="math notranslate nohighlight">\(sigma\)</span> values for a Gaussian kernel based on the desired grid</p>
-<blockquote>
-<div><p>granularity. Given an image <span class="math notranslate nohighlight">\(I\)</span> of size <span class="math notranslate nohighlight">\((H, W)\)</span>, the goal is to</p>
-</div></blockquote>
-<dl class="simple">
-<dt>divide the image into a grid of <span class="math notranslate nohighlight">\(n_h\)</span> (in the H direction) and</dt><dd><p><span class="math notranslate nohighlight">\(n_w\)</span> (in the W direction). Suppose <span class="math notranslate nohighlight">\(x\)</span> is at the center of a</p>
-</dd>
-</dl>
-<p>square in this <span class="math notranslate nohighlight">\(n_h \times n_w\)</span> grid. We want to choose
-<span class="math notranslate nohighlight">\(\sigma = (\sigma_h, \sigma_w)\)</span></p>
-<blockquote>
-<div><dl class="simple">
-<dt>such that the Gaussian centered at <span class="math notranslate nohighlight">\(x\)</span> is negligible outside</dt><dd><p>the grid square.</p>
-</dd>
-</dl>
-</div></blockquote>
+<span class="math notranslate nohighlight">\(sigma\)</span> values for a Gaussian kernel based on the desired grid
+granularity. Given an image <span class="math notranslate nohighlight">\(I\)</span> of size <span class="math notranslate nohighlight">\((H, W)\)</span>, the goal is to
+divide the image into a grid of <span class="math notranslate nohighlight">\(n_h\)</span> (in the H direction) and
+<span class="math notranslate nohighlight">\(n_w\)</span> (in the W direction). Suppose <span class="math notranslate nohighlight">\(x\)</span> is at the center of a
+square in this <span class="math notranslate nohighlight">\(n_h \times n_w\)</span> grid. We want to choose
+<span class="math notranslate nohighlight">\(\sigma = (\sigma_h, \sigma_w)\)</span>
+such that the Gaussian centered at <span class="math notranslate nohighlight">\(x\)</span> is negligible outside
+the grid square.</p>
 <p>In other words, we want to find <span class="math notranslate nohighlight">\(\sigma\)</span> such that:</p>
-<p>$$ e^{frac{ -left(frac{H}{n_h}right)^2}{2 sigma^2}} &lt; c; qquad c in mathbb{R} $$</p>
-<blockquote>
-<div><p>where <span class="math notranslate nohighlight">\(c\)</span> is the negligibility constant.</p>
-</div></blockquote>
+<div class="math notranslate nohighlight">
+\[ \begin{align}\begin{aligned}e^{\frac{ -\left(\frac{H}{n_h}\right)^2}{2 \sigma^2}} &lt; c; \qquad c \in \mathbb{R}\\where $c$ is the negligibility constant.\end{aligned}\end{align} \]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -920,8 +907,8 @@ we simply apply the ‘int case’ to each element of the list.</p>
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.plot_gaussian_kernel_1d">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">plot_gaussian_kernel_1d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rotated</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.plot_gaussian_kernel_1d" title="Link to this definition"></a></dt>
 <dd><p>Function that plots a 1D Gaussian kernel.</p>
-<section id="id11">
-<h3>Parameters:<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<section id="id13">
+<h3>Parameters:<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>kernel (torch.Tensor):</dt><dd><p>the kernel to be plotted.</p>
 </dd>
@@ -933,8 +920,8 @@ we simply apply the ‘int case’ to each element of the list.</p>
 </dd>
 </dl>
 </section>
-<section id="id12">
-<h3>Returns:<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<section id="id14">
+<h3>Returns:<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
 <p>matplotlib.axes.Axes: the axes where the kernel was plotted.</p>
 </section>
 </dd></dl>
@@ -943,8 +930,8 @@ we simply apply the ‘int case’ to each element of the list.</p>
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.plot_gaussian_kernel_2d">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">plot_gaussian_kernel_2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.plot_gaussian_kernel_2d" title="Link to this definition"></a></dt>
 <dd><p>Function that plots a 2D Gaussian kernel.</p>
-<section id="id13">
-<h3>Parameters:<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<section id="id15">
+<h3>Parameters:<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>kernel (torch.Tensor):</dt><dd><p>the kernel to be plotted.</p>
 </dd>
@@ -954,8 +941,8 @@ we simply apply the ‘int case’ to each element of the list.</p>
 </dd>
 </dl>
 </section>
-<section id="id14">
-<h3>Returns:<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<section id="id16">
+<h3>Returns:<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
 <p>matplotlib.axes.Axes: the axes where the kernel was plotted.</p>
 </section>
 </dd></dl>
@@ -964,8 +951,8 @@ we simply apply the ‘int case’ to each element of the list.</p>
 <dt class="sig sig-object py" id="demeter.utils.reproducing_kernels.plot_gaussian_kernel_3d">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.reproducing_kernels.</span></span><span class="sig-name descname"><span class="pre">plot_gaussian_kernel_3d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.reproducing_kernels.plot_gaussian_kernel_3d" title="Link to this definition"></a></dt>
 <dd><p>Function that plots a 3D Gaussian kernel.</p>
-<section id="id15">
-<h3>Parameters:<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<section id="id17">
+<h3>Parameters:<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>kernel (torch.Tensor):</dt><dd><p>the kernel to be plotted.</p>
 </dd>
@@ -1139,8 +1126,8 @@ making it possible to compute theoretical values. It uses the function RandomGau
 <p>If <span class="math notranslate nohighlight">\(v : \Omega \mapsto \mathbb{R}^d\)</span> for all <span class="math notranslate nohighlight">\(n &lt; d\)</span></p>
 <div class="math notranslate nohighlight">
 \[v_n = \sum_{i=1}^{N} a_i \exp(- \frac{||X - c_i||^2}{2b_i^2})\]</div>
-<section id="id16">
-<h3>Parameters:<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<section id="id18">
+<h3>Parameters:<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>size: tuple</dt><dd><dl class="simple">
 <dt>tuple with the image dimensions to create (H,W) will create a 2d field  of shape (H,W,2),</dt><dd><p>((D,H,W,3) in 3d)</p>
@@ -1179,11 +1166,12 @@ making it possible to compute theoretical values. It uses the function RandomGau
 and compute the derivative of the image with respect</p>
 <blockquote>
 <div><p>to the parameters of the gaussians.</p>
-<p>self.a[i] * torch.exp(- ((self.X - self.c[i])**2).sum(-1) / (2*self.b[i]**2))
-$$ I = sum_{i=1}^{N} a_i exp(- frac{||X - c_i||^2}{2b_i^2})$$</p>
+<p>self.a[i] * torch.exp(- ((self.X - self.c[i])**2).sum(-1) / (2*self.b[i]**2))</p>
+<div class="math notranslate nohighlight">
+\[I = \sum_{i=1}^{N} a_i \exp(- \frac{||X - c_i||^2}{2b_i^2})\]</div>
 </div></blockquote>
-<section id="id17">
-<h3>Parameters:<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<section id="id19">
+<h3>Parameters:<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>size: tuple</dt><dd><p>tuple with the image dimensions to create</p>
 </dd>
@@ -1199,11 +1187,8 @@ $$ I = sum_{i=1}^{N} a_i exp(- frac{||X - c_i||^2}{2b_i^2})$$</p>
 </dd>
 </dl>
 </section>
-<section id="id18">
-<h3>Example:<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
-<p>&gt;&gt;&gt;RGI = RandomGaussianImage((100,100),5,’pixel’)
-&gt;&gt;&gt; image = RGI.image()
-&gt;&gt;&gt; derivative = RGI.derivative()</p>
+<section id="id20">
+<h3>Example:<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
 <dl class="py method">
 <dt class="sig sig-object py" id="demeter.utils.torchbox.RandomGaussianImage.derivative">
 <span class="sig-name descname"><span class="pre">derivative</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.RandomGaussianImage.derivative" title="Link to this definition"></a></dt>
@@ -1287,7 +1272,7 @@ green is for positive determinant and red for negative.</p></li>
 <p>H,W = 100,150
 # vector defomation generation
 v = mbs.field2D_bspline(cms,(H,W),dim_stack=2).unsqueeze(0)
-v <a href="#id19"><span class="problematic" id="id20">*</span></a>= 0.5</p>
+v <a href="#id21"><span class="problematic" id="id22">*</span></a>= 0.5</p>
 <p>deform_diff = vff.FieldIntegrator(method=’fast_exp’)(v.clone(),forward= True)</p>
 <p>deformation_show(deform_diff,step=4,check_diffeo=True)</p>
 </li>
@@ -1354,12 +1339,12 @@ axes[x][d].set_title(str((x,d)))</p>
 <dt class="sig sig-object py" id="demeter.utils.torchbox.field_2d_jacobian">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">field_2d_jacobian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.field_2d_jacobian" title="Link to this definition"></a></dt>
 <dd><p>compute the jacobian of the field</p>
-<section id="id21">
-<h3>parameters:<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<section id="id23">
+<h3>parameters:<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
 <p>field: field.size (b,h,w,2)</p>
 </section>
-<section id="id22">
-<h3>returns:<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<section id="id24">
+<h3>returns:<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
 <p>jacobian of the field.size = (b,2,2,h,w)</p>
 <dl class="field-list simple">
 <dt class="field-odd">example<span class="colon">:</span></dt>
@@ -1396,22 +1381,22 @@ axes[x][d].set_title(str((x,d)))</p>
 <div class="math notranslate nohighlight">
 \[div(I(p)) = \sum_{i=1}^C \frac{\partial I(p)_i}{\partial x_i}\]</div>
 </p>
-<section id="id23">
-<h3>Parameters:<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
+<section id="id25">
+<h3>Parameters:<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>field: torch.Tensor</dt><dd><p>of shape (B,H,W,2) or (B,D,H,W,3)</p>
 </dd>
 </dl>
 </section>
-<section id="id24">
-<h3>Returns:<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<section id="id26">
+<h3>Returns:<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>div: torch.Tensor</dt><dd><p>of shape (B,2,2H,W) or (B,3,3,D,H,W)</p>
 </dd>
 </dl>
 </section>
-<section id="id25">
-<h3>Example:<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
+<section id="id27">
+<h3>Example:<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cms</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>  <span class="c1"># control matrices</span>
 <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
  <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
@@ -1746,7 +1731,7 @@ to create the ball. If None, the shape is defined by the pixels having the</p>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>deformation_shape</strong> (<em>tuple</em>) – tuple such as (H,W) or (n,H,W,2) for 2D grid
-(D,H,W) or (n,D,H,W,3) for 3D grid</p></li>
+(D,H,W) or (n,D,H,W,3) for 3D gridim2</p></li>
 <li><p><strong>device</strong> (<em>torch.device</em>) – device for selecting cpu or cuda usage</p></li>
 </ul>
 </dd>
@@ -2111,14 +2096,14 @@ they have a time dimension stored in the first dimension.</p>
 <dd class="field-even"><p></p>
 </dd>
 </dl>
-<section id="id26">
-<h3>Example :<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<section id="id28">
+<h3>Example :<a class="headerlink" href="#id28" title="Link to this heading"></a></h3>
 <p>&gt;&gt;&gt;cms = mbs.getCMS_allcombinaision()
 &gt;&gt;&gt;
 &gt;&gt;&gt;H,W = 100,150
 &gt;&gt;&gt;# vector defomation generation
 &gt;&gt;&gt;v = mbs.field2D_bspline(cms,(H,W),dim_stack=2).unsqueeze(0)
-&gt;&gt;&gt;v <a href="#id27"><span class="problematic" id="id28">*</span></a>= 0.5
+&gt;&gt;&gt;v <a href="#id29"><span class="problematic" id="id30">*</span></a>= 0.5
 &gt;&gt;&gt;
 &gt;&gt;&gt;vectField_show(v,step=4,check_diffeo=True)</p>
 </section>

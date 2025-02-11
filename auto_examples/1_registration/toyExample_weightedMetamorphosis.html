@@ -192,7 +192,7 @@ Text(0.5, 1.0, &#39;segmentation&#39;)
 <li><img src="../../_images/sphx_glr_toyExample_weightedMetamorphosis_003.png" srcset="../../_images/sphx_glr_toyExample_weightedMetamorphosis_003.png" alt="sigma = [(5, 5), (15, 15)], subdiv = None" class = "sphx-glr-multi-img"/></li>
 </ul>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>sigma is not a float, I suspect that the kernel is not purly gaussian.
-/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/reproducing_kernels.py:302: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/reproducing_kernels.py:307: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
   ax.legend()
 sigma is not a float, I suspect that the kernel is not purly gaussian.
 kernel shape: torch.Size([1, 91, 91])
@@ -261,9 +261,9 @@ Progress: [#########-]  90.00%  (Ssd : , 31.8397).
 Progress: [##########]  95.00%  (Ssd : , 30.9987).
 Progress: [##########] 100.00% Done...
  (Ssd : , 30.7090).
-Computation of forward done in  0:01:17s and 0.585cents  s
+Computation of forward done in  0:01:23s and 0.270cents  s
 
-Computation of metamorphosis done in  0:01:17s and 0.586cents  s
+Computation of metamorphosis done in  0:01:23s and 0.271cents  s
 Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.1042790487408638..1.2210246324539185].
 convert -delay 40 -loop 0 /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer_Meta/simpleCancer_Meta_rho0.7_image_\d3.png /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer_Meta/simpleCancer_Meta_rho0.7_image.gif
         Cleaning saved files.
@@ -329,9 +329,9 @@ Progress: [#########-]  90.00%  (Ssd : , 46.6465).
 Progress: [##########]  95.00%  (Ssd : , 45.7702).
 Progress: [##########] 100.00% Done...
  (Ssd : , 44.6144).
-Computation of forward done in  0:01:39s and 0.835cents  s
+Computation of forward done in  0:01:45s and 0.626cents  s
 
-Computation of weighted_metamorphosis done in  0:01:39s and 0.835cents  s
+Computation of weighted_metamorphosis done in  0:01:45s and 0.627cents  s
 Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.140936255455017].
 </pre></div>
 </div>
@@ -397,25 +397,25 @@ plop
 not oriented
 Weighted
 
-Progress: [#---------]  13.33%  (Ssd : ,104.8801).
-Progress: [##--------]  20.00%  (Ssd : , 64.7843).
-Progress: [###-------]  26.67%  (Ssd : , 54.0049).
-Progress: [###-------]  33.33%  (Ssd : , 48.2667).
-Progress: [####------]  40.00%  (Ssd : , 44.7822).
-Progress: [#####-----]  46.67%  (Ssd : , 42.1162).
-Progress: [#####-----]  53.33%  (Ssd : , 39.9682).
-Progress: [######----]  60.00%  (Ssd : , 38.6748).
-Progress: [#######---]  66.67%  (Ssd : , 37.5956).
-Progress: [#######---]  73.33%  (Ssd : , 36.5827).
-Progress: [########--]  80.00%  (Ssd : , 35.6771).
-Progress: [#########-]  86.67%  (Ssd : , 34.9504).
-Progress: [#########-]  93.33%  (Ssd : , 34.2420).
+Progress: [#---------]  13.33%  (Ssd : ,101.9108).
+Progress: [##--------]  20.00%  (Ssd : , 65.1172).
+Progress: [###-------]  26.67%  (Ssd : , 54.3769).
+Progress: [###-------]  33.33%  (Ssd : , 48.9658).
+Progress: [####------]  40.00%  (Ssd : , 45.8659).
+Progress: [#####-----]  46.67%  (Ssd : , 43.5568).
+Progress: [#####-----]  53.33%  (Ssd : , 41.7197).
+Progress: [######----]  60.00%  (Ssd : , 40.3996).
+Progress: [#######---]  66.67%  (Ssd : , 39.2504).
+Progress: [#######---]  73.33%  (Ssd : , 38.3209).
+Progress: [########--]  80.00%  (Ssd : , 37.5259).
+Progress: [#########-]  86.67%  (Ssd : , 37.0538).
+Progress: [#########-]  93.33%  (Ssd : , 36.5568).
 Progress: [##########] 100.00% Done...
- (Ssd : , 33.7010).
-Computation of forward done in  0:00:41s and 0.136cents  s
+ (Ssd : , 36.1318).
+Computation of forward done in  0:00:43s and 0.151cents  s
 
-Computation of weighted_metamorphosis done in  0:00:41s and 0.136cents  s
-Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.22388134896755219..1.2540206909179688].
+Computation of weighted_metamorphosis done in  0:00:43s and 0.152cents  s
+Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.1794222891330719..1.2083046436309814].
 </pre></div>
 </div>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">mr_wm</span><span class="o">.</span><span class="n">plot_deform</span><span class="p">()</span>
@@ -426,7 +426,7 @@ Clipping input data to the valid range for imshow with RGB data ([0..1] for floa
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<img src="../../_images/sphx_glr_toyExample_weightedMetamorphosis_025.png" srcset="../../_images/sphx_glr_toyExample_weightedMetamorphosis_025.png" alt="t = 0.0, diffeo = tensor(False), t = 0.2, diffeo = tensor(False), t = 0.4, diffeo = tensor(False), t = 0.7, diffeo = tensor(False), t = 1.0, diffeo = tensor(False)" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (3 minutes 56.968 seconds)</p>
+<img src="../../_images/sphx_glr_toyExample_weightedMetamorphosis_025.png" srcset="../../_images/sphx_glr_toyExample_weightedMetamorphosis_025.png" alt="t = 0.0, diffeo = tensor(False), t = 0.2, diffeo = tensor(False), t = 0.4, diffeo = tensor(False), t = 0.7, diffeo = tensor(False), t = 1.0, diffeo = tensor(False)" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (4 minutes 11.069 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-1-registration-toyexample-weightedmetamorphosis-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/cb883a253bffcd0f6516838f0b12a884/toyExample_weightedMetamorphosis.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">toyExample_weightedMetamorphosis.ipynb</span></code></a></p>
