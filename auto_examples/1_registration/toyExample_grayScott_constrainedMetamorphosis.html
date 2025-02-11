@@ -1,0 +1,612 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Constrained Metamorphosis - simulated cancer growth &mdash; Demeter_metamorphosis 0.2.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=938c9ccc"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]]}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Weighted metamorphosis - simulated cancer growth" href="toyExample_weightedMetamorphosis.html" />
+    <link rel="prev" title="MetaMorphosis behaviour with different values of rho" href="simpleToyExample_metamorphosis.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Demeter_metamorphosis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Gallery of examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#registration-examples">Registration examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../index.html#kernel-examples">Kernel examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html#utility-functions-examples">Utility functions examples</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Registration examples</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="data_cost_mutualInformation.html">Data cost variation example: Mutual Information</a></li>
+<li class="toctree-l3"><a class="reference internal" href="metamorphosis_3D.html">Metamorphosis on 3D images</a></li>
+<li class="toctree-l3"><a class="reference internal" href="semiLagrangian_scheme.html">Why we should use semi-Lagrangian scheme?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simpleToyExample_metamorphosis.html">MetaMorphosis behaviour with different values of rho</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Constrained Metamorphosis - simulated cancer growth</a></li>
+<li class="toctree-l3"><a class="reference internal" href="toyExample_weightedMetamorphosis.html">Weighted metamorphosis - simulated cancer growth</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../2_kernels/index.html">Kernel examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../3_utils/index.html">Utility functions examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Demeter documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../advanced_users.html">For advanced users</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Demeter_metamorphosis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Gallery of examples</a></li>
+          <li class="breadcrumb-item"><a href="index.html">Registration examples</a></li>
+      <li class="breadcrumb-item active">Constrained Metamorphosis - simulated cancer growth</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/auto_examples/1_registration/toyExample_grayScott_constrainedMetamorphosis.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-auto-examples-1-registration-toyexample-grayscott-constrainedmetamorphosis-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code.</p>
+</div>
+<section class="sphx-glr-example-title" id="constrained-metamorphosis-simulated-cancer-growth">
+<span id="toyexample-grayscott-constrainedmetamorphosis"></span><span id="sphx-glr-auto-examples-1-registration-toyexample-grayscott-constrainedmetamorphosis-py"></span><h1>Constrained Metamorphosis - simulated cancer growth<a class="headerlink" href="#constrained-metamorphosis-simulated-cancer-growth" title="Link to this heading"></a></h1>
+<p>This toy example was build to simulate a cancer growth in a brain.
+The gray scott texture as been used to add intricate patterns to the
+brain background. This particular example is a very hard registration
+problem, this example shows how constrained metamorphosis can solve
+it.</p>
+<p>Here we will use the constrained metamorphosis to register two images.
+The constrained metamorphosis is a metamorphosis that can take into account
+some prior information to guide the registration. In this example we will
+use two masks and a prior field to guide the registration:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(M_t\)</span> : A mask that will control the amount of deformation vs photometric changes.</p></li>
+<li><p><span class="math notranslate nohighlight">\(Q_t\)</span> : A mask that will guide the deformation to match a precomputed vector field.</p></li>
+<li><p><span class="math notranslate nohighlight">\(w_t\)</span> : A field that will be used to guide the deformation.</p></li>
+</ul>
+<p>The metamorphosis model is defined as follows:
+Let the image evolution be</p>
+<div class="math notranslate nohighlight">
+\[\dot{I_{t}}=- \sqrt{ M_{t} } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-M_{t} } z_{t}.\]</div>
+<p>The Hamiltonian is defined as</p>
+<div class="math notranslate nohighlight">
+\[H(I,p,v,z) = -(p |\dot{ I}) - \frac{1}{2} (Lv|v)_{2} - \frac{1}{2}|z|_{2} - \langle v,Qw\rangle_{2}.\]</div>
+<p>and the deduced geodesic equations are</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\left\{
+    \begin{array}{rl}
+         v_{t} &amp;= - K_{V} (\sqrt{ M_{t} } p_{t} \nabla I_{t} + Q_{t} w_{t})\\
+         \dot{p_{t}} &amp;= -\sqrt{ M_t } \nabla \cdot (p_{t}v_{t}) \\
+         z_{t} &amp;= \sqrt{ 1 - M_t } p_{t} \\
+         \dot{I_{t}} &amp;=  - \sqrt{ M_t } v_{t} \cdot \nabla I_{t} + \sqrt{ 1-M_t } z_{t}.
+    \end{array}
+\right.\end{split}\]</div>
+<p>Import the necessary packages</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span><span class="o">,</span><span class="w"> </span><span class="nn">os</span>
+    <span class="c1"># add the parent directory to the path</span>
+    <span class="n">base_path</span>  <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)),</span><span class="s1">&#39;..&#39;</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">base_path</span><span class="p">)</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">__init__</span>
+
+<span class="k">except</span> <span class="ne">NameError</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">demeter.constants</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">kornia.filters</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">flt</span>
+<span class="c1"># %reload_ext autoreload</span>
+<span class="c1"># %autoreload 2</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.reproducing_kernels</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">rk</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.metamorphosis</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.torchbox</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tb</span>
+
+<span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cpu&#39;</span>
+<span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+    <span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cuda:0&#39;</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Used device: </span><span class="si">{</span><span class="n">device</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">size</span> <span class="o">=</span> <span class="p">(</span><span class="mi">300</span><span class="p">,</span><span class="mi">300</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Used device: cpu
+</pre></div>
+</div>
+<p>Open and visualise images before registration</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">source_name</span><span class="p">,</span><span class="n">target_name</span> <span class="o">=</span> <span class="s1">&#39;teGS_mbs_S&#39;</span><span class="p">,</span><span class="s1">&#39;teGS_mbs_T&#39;</span>
+
+<span class="n">S</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">reg_open</span><span class="p">(</span><span class="n">source_name</span><span class="p">,</span><span class="n">size</span> <span class="o">=</span> <span class="n">size</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="n">T</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">reg_open</span><span class="p">(</span><span class="n">target_name</span><span class="p">,</span><span class="n">size</span> <span class="o">=</span> <span class="n">size</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="n">forDice_source</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">reg_open</span><span class="p">(</span><span class="s1">&#39;te_s_v_seg&#39;</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
+<span class="n">forDice_target</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">reg_open</span><span class="p">(</span><span class="s1">&#39;teGS_mbs_segTdice&#39;</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
+<span class="n">seg_necrosis</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">reg_open</span><span class="p">(</span><span class="s1">&#39;teGS_mbs_segNec&#39;</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="n">seg_oedeme</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">reg_open</span><span class="p">(</span><span class="s1">&#39;te_o_seg&#39;</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
+
+
+<span class="c1"># Put some landmarks on the images to assess registration quality</span>
+
+<span class="n">source_landmarks</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="mi">187</span><span class="p">),</span><span class="nb">int</span><span class="p">(</span><span class="mi">145</span><span class="p">)],</span>
+    <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="mi">160</span><span class="p">),</span><span class="nb">int</span><span class="p">(</span><span class="mi">65</span><span class="p">)],</span>
+    <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="mi">140</span><span class="p">),</span><span class="nb">int</span><span class="p">(</span><span class="mi">84</span><span class="p">)],</span>
+    <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="mi">145</span><span class="p">),</span><span class="nb">int</span><span class="p">(</span><span class="mi">210</span><span class="p">)],</span>
+    <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="mi">170</span><span class="p">),</span><span class="nb">int</span><span class="p">(</span><span class="mi">180</span><span class="p">)],</span>
+    <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="mi">125</span><span class="p">),</span><span class="nb">int</span><span class="p">(</span><span class="mi">105</span><span class="p">)],</span>
+    <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="mi">117</span><span class="p">),</span><span class="nb">int</span><span class="p">(</span><span class="mi">175</span><span class="p">)]</span>
+<span class="p">])</span>
+<span class="n">target_landmarks</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="mi">212</span><span class="p">),</span><span class="nb">int</span><span class="p">(</span><span class="mi">144</span><span class="p">)],</span> <span class="c1"># ok</span>
+    <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="mi">167</span><span class="p">),</span><span class="nb">int</span><span class="p">(</span><span class="mi">65</span><span class="p">)],</span>
+    <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="mi">131</span><span class="p">),</span><span class="nb">int</span><span class="p">(</span><span class="mi">80</span><span class="p">)],</span> <span class="c1"># ok</span>
+    <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="mi">135</span><span class="p">),</span><span class="nb">int</span><span class="p">(</span><span class="mi">222</span><span class="p">)],</span> <span class="c1"># ok</span>
+    <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="mi">197</span><span class="p">),</span><span class="nb">int</span><span class="p">(</span><span class="mi">202</span><span class="p">)],</span> <span class="c1"># ok</span>
+    <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="mi">110</span><span class="p">),</span><span class="nb">int</span><span class="p">(</span><span class="mi">100</span><span class="p">)],</span> <span class="c1"># ok</span>
+    <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="mi">101</span><span class="p">),</span><span class="nb">int</span><span class="p">(</span><span class="mi">189</span><span class="p">)]</span> <span class="c1"># ok</span>
+<span class="p">])</span>
+
+<span class="n">id_grid</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">make_regular_grid</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+
+<span class="n">col1</span> <span class="o">=</span> <span class="s1">&#39;C1&#39;</span>
+<span class="n">col2</span> <span class="o">=</span> <span class="s1">&#39;C9&#39;</span>
+<span class="n">fig</span><span class="p">,</span><span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">S</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="o">**</span><span class="n">DLT_KW_IMAGE</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">source_landmarks</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span><span class="n">source_landmarks</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span><span class="s1">&#39;x&#39;</span><span class="p">,</span><span class="n">markersize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">c</span><span class="o">=</span><span class="n">col2</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="o">**</span><span class="n">DLT_KW_IMAGE</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">source_landmarks</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span><span class="n">source_landmarks</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span><span class="s1">&#39;x&#39;</span><span class="p">,</span><span class="n">markersize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">c</span><span class="o">=</span><span class="n">col2</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">target_landmarks</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span><span class="n">target_landmarks</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span><span class="s1">&#39;x&#39;</span><span class="p">,</span><span class="n">markersize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">c</span><span class="o">=</span><span class="n">col1</span><span class="p">)</span>
+
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">quiver</span><span class="p">(</span><span class="n">source_landmarks</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span><span class="n">source_landmarks</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span>
+             <span class="n">target_landmarks</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">source_landmarks</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span>
+             <span class="n">target_landmarks</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">source_landmarks</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span>
+             <span class="n">color</span><span class="o">=</span> <span class="n">GRIDDEF_YELLOW</span><span class="p">)</span>
+
+<span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">tb</span><span class="o">.</span><span class="n">imCmp</span><span class="p">(</span><span class="n">T</span><span class="p">,</span><span class="n">S</span><span class="p">,</span><span class="s1">&#39;seg&#39;</span><span class="p">),</span><span class="n">origin</span><span class="o">=</span><span class="s1">&#39;lower&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">source_landmarks</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span><span class="n">source_landmarks</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span><span class="s1">&#39;x&#39;</span><span class="p">,</span><span class="n">markersize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">c</span><span class="o">=</span><span class="n">col2</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">target_landmarks</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span><span class="n">target_landmarks</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span><span class="s1">&#39;x&#39;</span><span class="p">,</span><span class="n">markersize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">c</span><span class="o">=</span><span class="n">col1</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">source_landmarks</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">source_landmarks</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span><span class="n">target_landmarks</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">0</span><span class="p">]],</span>
+           <span class="p">[</span><span class="n">source_landmarks</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span><span class="n">target_landmarks</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">1</span><span class="p">]],</span><span class="s1">&#39;--&#39;</span><span class="p">,</span><span class="n">c</span><span class="o">=</span><span class="n">col1</span><span class="p">)</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_001.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_001.png" alt="toyExample grayScott constrainedMetamorphosis" class = "sphx-glr-single-img"/><p>Build masks for constrained metamorphosis. Constrained Metamorphosis
+can take tree elements as priors:
+- Residual_mask : a temporal mask with at each pixel a value between 0 and 1</p>
+<blockquote>
+<div><p>controlling the amount of deformation vs photometric changes.</p>
+</div></blockquote>
+<ul class="simple">
+<li><dl class="simple">
+<dt>orienting_field :a prior precomputed vector field that our deformation</dt><dd><p>will try to match.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>orienting_mask<span class="classifier">a mask that will be used to weight the orienting field.</span></dt><dd><p>for example, if we want to deform only a part, the rest
+we can indicate it with this mask.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>First we need to set source and target masks.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;`</span><span class="se">\n</span><span class="s2">==== Building temporal masks ====&quot;</span><span class="p">)</span>
+<span class="n">val_o</span><span class="p">,</span><span class="n">val_n</span> <span class="o">=</span> <span class="mf">.5</span><span class="p">,</span><span class="mi">1</span>
+<span class="n">segs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">seg_necrosis</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="n">segs</span><span class="p">[</span><span class="n">seg_oedeme</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">val_o</span>
+<span class="n">segs</span><span class="p">[</span><span class="n">seg_necrosis</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">val_n</span>
+<span class="c1"># plt.imshow(segs[0,0],vmin=0,vmax=1,cmap=&#39;gray&#39;)</span>
+
+<span class="c1"># make source image</span>
+<span class="n">center_o</span> <span class="o">=</span> <span class="p">(</span><span class="mi">160</span><span class="p">,</span><span class="mi">145</span><span class="p">)</span>
+<span class="n">center_n</span> <span class="o">=</span> <span class="p">(</span><span class="mi">167</span><span class="p">,</span><span class="mi">153</span><span class="p">)</span>
+<span class="n">ini_ball_n</span><span class="p">,</span><span class="n">_</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">make_ball_at_shape_center</span><span class="p">(</span>
+    <span class="n">seg_necrosis</span><span class="p">,</span><span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">force_r</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span><span class="n">force_center</span><span class="o">=</span><span class="n">center_n</span>
+<span class="p">)</span>
+<span class="n">ini_ball_o</span><span class="p">,</span><span class="n">_</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">make_ball_at_shape_center</span><span class="p">(</span>
+    <span class="n">seg_necrosis</span><span class="p">,</span><span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span><span class="n">force_r</span><span class="o">=</span><span class="mi">21</span><span class="p">,</span><span class="n">force_center</span><span class="o">=</span><span class="n">center_o</span>
+<span class="p">)</span>
+<span class="n">ini_ball_on</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">ini_ball_o</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="n">ini_ball_on</span><span class="p">[</span><span class="n">ini_ball_o</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">val_o</span>
+<span class="n">ini_ball_on</span><span class="p">[</span><span class="n">ini_ball_n</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">val_n</span>
+
+<span class="c1"># segs = torch.ones_like(segs) * .5</span>
+<span class="c1"># ini_ball_on = torch.ones_like(ini_ball_on) * .5</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span><span class="mi">5</span><span class="p">))</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">segs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span><span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span><span class="n">origin</span><span class="o">=</span><span class="s1">&#39;lower&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;segs&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">ini_ball_on</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span><span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span><span class="n">origin</span><span class="o">=</span><span class="s1">&#39;lower&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;ini_ball_on&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">tb</span><span class="o">.</span><span class="n">imCmp</span><span class="p">(</span><span class="n">ini_ball_on</span><span class="p">,</span><span class="n">segs</span><span class="p">,</span><span class="s1">&#39;seg&#39;</span><span class="p">),</span><span class="n">origin</span><span class="o">=</span><span class="s1">&#39;lower&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;superposition&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">tb</span><span class="o">.</span><span class="n">imCmp</span><span class="p">(</span><span class="n">ini_ball_on</span><span class="p">,</span><span class="n">S</span><span class="p">,</span><span class="s1">&#39;seg&#39;</span><span class="p">),</span><span class="n">origin</span><span class="o">=</span><span class="s1">&#39;lower&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_002.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_002.png" alt="segs, ini_ball_on, superposition" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>`
+==== Building temporal masks ====
+centre = (167, 153), r = 12 and the seg and ball have 364 pixels overlapping
+centre = (160, 145), r = 21 and the seg and ball have 1001 pixels overlapping
+</pre></div>
+</div>
+<blockquote>
+<div><p>fix other constants</p>
+</div></blockquote>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1">## Build temporal masks</span>
+
+<span class="n">sigma</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">),(</span><span class="mi">15</span><span class="p">,</span><span class="mi">15</span><span class="p">)]</span>
+<span class="c1"># sigma = [(10,10)]</span>
+<span class="n">kernelOp</span> <span class="o">=</span> <span class="n">rk</span><span class="o">.</span><span class="n">Multi_scale_GaussianRKHS</span><span class="p">(</span><span class="n">sigma</span><span class="p">,</span><span class="n">normalized</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="c1"># rk.plot_kernel_on_image(kernelOp,subdiv=10,image=T.cpu())</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">kernelOp</span><span class="p">)</span>
+<span class="n">dx_convention</span> <span class="o">=</span> <span class="s1">&#39;pixel&#39;</span>
+<span class="n">n_steps</span><span class="o">=</span> <span class="mi">10</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Multi_scale_GaussianRKHS(
+        sigma :[(10, 10), (15, 15)],
+        kernel size :(1, 91, 91)
+)
+</pre></div>
+</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&gt;&gt;&gt;&gt; Mask for orienting field &lt;&lt;&lt;&lt;&quot;</span><span class="p">)</span>
+<span class="n">recompute</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="k">if</span> <span class="n">recompute</span><span class="p">:</span>
+    <span class="n">momentum_ini</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">mr_mask_orienting</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">lddmm</span><span class="p">(</span><span class="n">ini_ball_n</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span><span class="n">seg_necrosis</span><span class="p">,</span><span class="n">momentum_ini</span><span class="p">,</span>
+                       <span class="n">kernelOperator</span><span class="o">=</span><span class="n">kernelOp</span><span class="p">,</span><span class="n">cost_cst</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span><span class="n">integration_steps</span><span class="o">=</span><span class="n">n_steps</span><span class="p">,</span>
+                       <span class="n">n_iter</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="n">grad_coef</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                       <span class="n">optimizer_method</span><span class="o">=</span><span class="s1">&#39;LBFGS_torch&#39;</span><span class="p">,</span>
+                       <span class="n">dx_convention</span><span class="o">=</span><span class="n">dx_convention</span><span class="p">,)</span>
+    <span class="n">mr_mask_orienting</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mask_tE_gs_CM_</span><span class="si">{</span><span class="n">dx_convention</span><span class="si">}</span><span class="s2">_n_step</span><span class="si">{</span><span class="n">n_steps</span><span class="si">}</span><span class="s2">_orienting&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+
+    <span class="n">file</span> <span class="o">=</span> <span class="s2">&quot;2D_10_02_2025_mask_tE_gs_CM_pixel_n_step10_orienting_000.pk1&quot;</span>
+
+    <span class="n">mr_mask_orienting</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">load_optimize_geodesicShooting</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+
+<span class="n">mr_mask_orienting</span><span class="o">.</span><span class="n">compute_landmark_dist</span><span class="p">(</span><span class="n">source_landmarks</span><span class="p">,</span><span class="n">target_landmarks</span><span class="p">)</span>
+
+<span class="c1"># mr_mask_orienting.plot_imgCmp()</span>
+<span class="c1"># # plt.show()</span>
+<span class="c1"># # #%%</span>
+<span class="c1"># mr_mask_orienting.plot_deform()</span>
+<span class="c1"># mr_mask_orienting.mp.plot()</span>
+<span class="c1"># plt.show()</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>&gt;&gt;&gt;&gt; Mask for orienting field &lt;&lt;&lt;&lt;
+DT: None
+New optimiser loaded (2D_10_02_2025_mask_tE_gs_CM_pixel_n_step10_orienting_000.pk1) :
+ Metamorphosis_Shooting(cost_parameters : {,
+                rho =1.0,
+                lambda =1e-05
+        },
+        geodesic integrator : Metamorphosis_integrator(
+  (kernelOperator): Multi_scale_GaussianRKHS(
+        sigma :[(10, 10), (15, 15)],
+        kernel size :(1, 91, 91)
+  )
+)
+        integration method : _step_full_semiLagrangian
+        optimisation method : LBFGS_torch
+        # geodesic steps =10
+)
+round False
+round False
+Landmarks:
+        Before : 11.928571701049805
+        After : 9.912918090820312
+
+(tensor([[185.8305, 147.8380],
+        [160.0000,  65.0000],
+        [139.8644,  83.6935],
+        [144.9612, 210.1375],
+        [178.6423, 200.7945],
+        [124.2631, 103.7234],
+        [116.8866, 175.0446]]), tensor(9.9129), tensor(11.9286))
+</pre></div>
+</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&gt;&gt;&gt;&gt; Mask for residuals field &lt;&lt;&lt;&lt;&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">recompute</span><span class="p">:</span>
+    <span class="n">momentum_ini</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">mr_mask_residuals</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">lddmm</span><span class="p">(</span><span class="n">ini_ball_on</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">),</span><span class="n">segs</span><span class="p">,</span><span class="n">momentum_ini</span><span class="p">,</span>
+                       <span class="n">kernelOperator</span><span class="o">=</span><span class="n">kernelOp</span><span class="p">,</span><span class="n">cost_cst</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span><span class="n">integration_steps</span><span class="o">=</span><span class="n">n_steps</span><span class="p">,</span>
+                       <span class="n">n_iter</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span><span class="n">grad_coef</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                       <span class="n">optimizer_method</span><span class="o">=</span><span class="s1">&#39;LBFGS_torch&#39;</span><span class="p">,</span>
+                       <span class="n">dx_convention</span><span class="o">=</span><span class="n">dx_convention</span><span class="p">,)</span>
+    <span class="n">mr_mask_residuals</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mask_tE_gs_CM_</span><span class="si">{</span><span class="n">dx_convention</span><span class="si">}</span><span class="s2">_n_step</span><span class="si">{</span><span class="n">n_steps</span><span class="si">}</span><span class="s2">_residuals&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">file</span> <span class="o">=</span> <span class="s2">&quot;2D_10_02_2025_mask_tE_gs_CM_pixel_n_step10_residuals_000.pk1&quot;</span>
+
+    <span class="n">mr_mask_residuals</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">load_optimize_geodesicShooting</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+
+<span class="n">mr_mask_residuals</span><span class="o">.</span><span class="n">plot_imgCmp</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_003.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_003.png" alt="source, target, Integrated source image, comparaison deformed image with target" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>&gt;&gt;&gt;&gt; Mask for residuals field &lt;&lt;&lt;&lt;
+DT: None
+New optimiser loaded (2D_10_02_2025_mask_tE_gs_CM_pixel_n_step10_residuals_000.pk1) :
+ Metamorphosis_Shooting(cost_parameters : {,
+                rho =1.0,
+                lambda =1e-05
+        },
+        geodesic integrator : Metamorphosis_integrator(
+  (kernelOperator): Multi_scale_GaussianRKHS(
+        sigma :[(10, 10), (15, 15)],
+        kernel size :(1, 91, 91)
+  )
+)
+        integration method : _step_full_semiLagrangian
+        optimisation method : LBFGS_torch
+        # geodesic steps =10
+)
+</pre></div>
+</div>
+<p>mr_mask_residuals.mp.plot()
+plt.show()</p>
+<blockquote>
+<div><p>The exercise here is too model the mask and tweak the masks to make
+the expected registration.
+Keep in mind that masks should be between 0 and 1</p>
+</div></blockquote>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">residuals_mask</span> <span class="o">=</span> <span class="n">mr_mask_residuals</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">image_stock</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+
+<span class="n">orienting_field</span> <span class="o">=</span> <span class="o">-</span><span class="n">mr_mask_orienting</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">field_stock</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span> <span class="o">/</span> <span class="n">n_steps</span>
+<span class="n">orienting_mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">residuals_mask</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+
+
+<span class="n">sig</span> <span class="o">=</span> <span class="mi">5</span> <span class="c1"># blur the mask to avoid sharp transitions</span>
+<span class="n">residuals_mask</span> <span class="o">=</span> <span class="n">flt</span><span class="o">.</span><span class="n">gaussian_blur2d</span><span class="p">(</span><span class="n">residuals_mask</span><span class="p">,(</span><span class="nb">int</span><span class="p">(</span><span class="mi">6</span><span class="o">*</span><span class="n">sig</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="nb">int</span><span class="p">(</span><span class="mi">6</span><span class="o">*</span><span class="n">sig</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">),(</span><span class="n">sig</span><span class="p">,</span><span class="n">sig</span><span class="p">))</span>
+<span class="c1"># sig = 5</span>
+<span class="n">orienting_mask</span> <span class="o">=</span> <span class="n">flt</span><span class="o">.</span><span class="n">gaussian_blur2d</span><span class="p">(</span><span class="n">orienting_mask</span><span class="p">,(</span><span class="nb">int</span><span class="p">(</span><span class="mi">6</span><span class="o">*</span><span class="n">sig</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="nb">int</span><span class="p">(</span><span class="mi">6</span><span class="o">*</span><span class="n">sig</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">),(</span><span class="n">sig</span><span class="p">,</span><span class="n">sig</span><span class="p">))</span>
+
+<span class="n">L</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">fig</span><span class="p">,</span><span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">L</span><span class="p">),</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">L</span><span class="p">)</span><span class="o">*</span><span class="mi">5</span><span class="p">,</span><span class="mi">10</span><span class="p">))</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;orienting mask&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;residuals mask&#39;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">ll</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">L</span><span class="p">):</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">orienting_mask</span><span class="p">[</span><span class="n">ll</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span><span class="n">origin</span> <span class="o">=</span> <span class="s2">&quot;lower&quot;</span><span class="p">,</span>
+                   <span class="c1"># vmin=0, vmax = 1,</span>
+                   <span class="p">)</span>
+    <span class="n">tb</span><span class="o">.</span><span class="n">quiver_plot</span><span class="p">(</span><span class="n">orienting_mask</span><span class="p">[</span><span class="n">ll</span><span class="p">,</span><span class="mi">0</span><span class="p">][</span><span class="o">...</span><span class="p">,</span><span class="kc">None</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span> <span class="o">*</span> <span class="n">orienting_field</span><span class="p">[</span><span class="n">ll</span><span class="p">][</span><span class="kc">None</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span>
+                   <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">i</span><span class="p">],</span>
+                   <span class="n">step</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;C3&#39;</span><span class="p">,</span><span class="n">dx_convention</span><span class="o">=</span><span class="n">dx_convention</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">residuals_mask</span><span class="p">[</span><span class="n">ll</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span><span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span><span class="n">origin</span> <span class="o">=</span> <span class="s2">&quot;lower&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_004.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_004.png" alt="orienting mask, residuals mask" class = "sphx-glr-single-img"/><div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">fig1</span><span class="p">,</span><span class="n">ax1</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">orienting_mask</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,:,</span><span class="mi">150</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;orienting_mask&quot;</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">residuals_mask</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">,:,</span><span class="mi">150</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="n">label</span><span class="o">=</span><span class="s2">&quot;residuals_mask&quot;</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;orienting and residuals masks profiles cut at x=150&#39;</span><span class="p">)</span>
+<span class="c1"># l = orienting_mask.shape[0]</span>
+<span class="c1"># L = range(l)</span>
+<span class="c1"># fig,ax = plt.subplots(l,1,figsize=(10,l*10))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_005.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_005.png" alt="orienting and residuals masks profiles cut at x=150" class = "sphx-glr-single-img"/><div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">sigma</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="p">),(</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">),(</span><span class="mi">15</span><span class="p">,</span><span class="mi">15</span><span class="p">)]</span>
+<span class="c1"># sigma = [(10,10)]</span>
+<span class="n">kernelOp</span> <span class="o">=</span> <span class="n">rk</span><span class="o">.</span><span class="n">Multi_scale_GaussianRKHS</span><span class="p">(</span><span class="n">sigma</span><span class="p">,</span><span class="n">normalized</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="c1"># kernelOp.kernel = kernelOp.kernel / kernelOp.kernel.max()</span>
+<span class="n">kernelOp</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">kernelOp</span><span class="p">)</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_006.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_006.png" alt="kernel sigma: (10, 10), Gaussian Kernel $\sigma$=[(5, 5), (10, 10), (15, 15)], kernel sigma: (5, 5)" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>sigma is not a float, I suspect that the kernel is not purly gaussian.
+/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/src/demeter/utils/reproducing_kernels.py:302: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  ax.legend()
+sigma is not a float, I suspect that the kernel is not purly gaussian.
+Multi_scale_GaussianRKHS(
+        sigma :[(5, 5), (10, 10), (15, 15)],
+        kernel size :(1, 91, 91)
+)
+</pre></div>
+</div>
+<blockquote>
+<div><p>orienting_mask = None
+you can also load the optimisation object from a file
+file = “2D_25_01_2025_TEST_toyExample_grayScott_CM_square_n_step20_000.pk1”
+mr = mt.load_optimize_geodesicShooting(file)</p>
+</div></blockquote>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">==== Constrained Metamorphosis ====&quot;</span><span class="p">)</span>
+<span class="n">momentum_ini</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">ic</span><span class="o">.</span><span class="n">disable</span><span class="p">()</span>
+<span class="n">mr_cm</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">constrained_metamorphosis</span><span class="p">(</span><span class="n">S</span><span class="p">,</span><span class="n">T</span><span class="p">,</span><span class="n">momentum_ini</span><span class="p">,</span>
+                                     <span class="n">orienting_mask</span><span class="p">,</span>
+                                     <span class="n">orienting_field</span><span class="p">,</span>
+                                     <span class="n">residuals_mask</span><span class="p">,</span>
+                                     <span class="n">kernelOperator</span><span class="o">=</span><span class="n">kernelOp</span><span class="p">,</span>
+                                     <span class="n">cost_cst</span><span class="o">=</span><span class="mf">1e-10</span><span class="p">,</span>
+                                     <span class="n">grad_coef</span><span class="o">=</span><span class="mf">.1</span><span class="p">,</span>
+                                    <span class="n">n_iter</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+                                     <span class="n">dx_convention</span><span class="o">=</span><span class="n">dx_convention</span><span class="p">,</span>
+                                        <span class="c1"># optimizer_method=&#39;adadelta&#39;,</span>
+                                     <span class="p">)</span>
+
+<span class="n">mr_cm</span><span class="o">.</span><span class="n">compute_landmark_dist</span><span class="p">(</span><span class="n">source_landmarks</span><span class="p">,</span><span class="n">target_landmarks</span><span class="p">)</span>
+<span class="n">mr_cm</span><span class="o">.</span><span class="n">plot_cost</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_007.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_007.png" alt="Lambda = 1e-10" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>==== Constrained Metamorphosis ====
+oriented
+Weighted
+
+Progress: [#---------]  10.00%  (Ssd : , 56.5612).
+Progress: [##--------]  15.00%  (Ssd : , 32.8259).
+Progress: [##--------]  20.00%  (Ssd : , 19.4591).
+Progress: [##--------]  25.00%  (Ssd : , 11.2553).
+Progress: [###-------]  30.00%  (Ssd : ,  8.9736).
+Progress: [####------]  35.00%  (Ssd : ,  7.5019).
+Progress: [####------]  40.00%  (Ssd : ,  6.5346).
+Progress: [####------]  45.00%  (Ssd : ,  5.9750).
+Progress: [#####-----]  50.00%  (Ssd : ,  5.5376).
+Progress: [######----]  55.00%  (Ssd : ,  5.1981).
+Progress: [######----]  60.00%  (Ssd : ,  5.0141).
+Progress: [######----]  65.00%  (Ssd : ,  4.8033).
+Progress: [#######---]  70.00%  (Ssd : ,  4.6341).
+Progress: [########--]  75.00%  (Ssd : ,  4.5225).
+Progress: [########--]  80.00%  (Ssd : ,  4.4007).
+Progress: [########--]  85.00%  (Ssd : ,  4.3040).
+Progress: [#########-]  90.00%  (Ssd : ,  4.1910).
+Progress: [##########]  95.00%  (Ssd : ,  4.0828).
+Progress: [##########] 100.00% Done...
+ (Ssd : ,  4.0118).
+Computation of forward done in  0:01:44s and 0.694cents  s
+
+Computation of constrained_metamorphosis done in  0:01:44s and 0.695cents  s
+round False
+round False
+Landmarks:
+        Before : 11.928571701049805
+        After : 14.568132400512695
+</pre></div>
+</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">mr_cm</span><span class="o">.</span><span class="n">plot_imgCmp</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_008.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_008.png" alt="source, target, Integrated source image, comparaison deformed image with target" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.007411721162497997..1.184751272201538].
+
+(&lt;Figure size 2000x2000 with 4 Axes&gt;, array([[&lt;Axes: title={&#39;center&#39;: &#39;source&#39;}&gt;,
+        &lt;Axes: title={&#39;center&#39;: &#39;target&#39;}&gt;],
+       [&lt;Axes: title={&#39;center&#39;: &#39;Integrated source image&#39;}&gt;,
+        &lt;Axes: title={&#39;center&#39;: &#39;comparaison deformed image with target&#39;}&gt;]],
+      dtype=object))
+</pre></div>
+</div>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">mr_cm</span><span class="o">.</span><span class="n">plot_deform</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_009.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_009.png" alt="diffeo = tensor(False)" class = "sphx-glr-single-img"/><div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">mr_cm</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_010.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_010.png" alt="t = 0.0, diffeo = tensor(True), t = 0.2, diffeo = tensor(True), t = 0.4, diffeo = tensor(True), t = 0.7, diffeo = tensor(False), t = 1.0, diffeo = tensor(False)" class = "sphx-glr-single-img"/><p>mr_cm.save(f”TEST_toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}”)</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">L</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">fig</span><span class="p">,</span><span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">L</span><span class="p">),</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">L</span><span class="p">)</span><span class="o">*</span><span class="mi">5</span><span class="p">,</span><span class="mi">10</span><span class="p">),</span> <span class="n">constrained_layout</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;orienting mask&#39;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">ll</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">L</span><span class="p">):</span>
+    <span class="n">ax</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">mr_cm</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">image_stock</span><span class="p">[</span><span class="n">ll</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span><span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span><span class="n">origin</span> <span class="o">=</span> <span class="s2">&quot;lower&quot;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">residuals_mask</span><span class="p">[</span><span class="n">ll</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;Oranges&#39;</span><span class="p">,</span><span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span><span class="n">origin</span> <span class="o">=</span> <span class="s2">&quot;lower&quot;</span><span class="p">,</span><span class="n">alpha</span> <span class="o">=</span> <span class="mf">.5</span><span class="p">)</span>
+    <span class="c1"># ax[i].imshow(orienting_mask[ll,0].cpu(),cmap=&#39;Blues&#39;,vmin=0, vmax = 1,origin = &quot;lower&quot;,alpha = .5)</span>
+
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_011.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_011.png" alt="orienting mask" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 50.816 seconds)</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-1-registration-toyexample-grayscott-constrainedmetamorphosis-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/c44a3968c0bda4f75a82c930e384eab9/toyExample_grayScott_constrainedMetamorphosis.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">toyExample_grayScott_constrainedMetamorphosis.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/4b0423c2e873af104d18843e1889171a/toyExample_grayScott_constrainedMetamorphosis.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">toyExample_grayScott_constrainedMetamorphosis.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-zip docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/c3c3f9b11f520e609795e13754ff573c/toyExample_grayScott_constrainedMetamorphosis.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">toyExample_grayScott_constrainedMetamorphosis.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="simpleToyExample_metamorphosis.html" class="btn btn-neutral float-left" title="MetaMorphosis behaviour with different values of rho" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="toyExample_weightedMetamorphosis.html" class="btn btn-neutral float-right" title="Weighted metamorphosis - simulated cancer growth" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Anton François.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

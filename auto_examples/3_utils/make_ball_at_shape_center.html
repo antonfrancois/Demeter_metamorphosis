@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>&lt;no title&gt; &mdash; Demeter_metamorphosis 0.2.0 documentation</title>
+  <title>Make Ball at Shape Center &mdash; Demeter_metamorphosis 0.2.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
@@ -46,12 +46,20 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Gallery of examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html#registration-examples">Registration examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html#kernel-examples">Kernel examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../index.html#utility-functions-examples">Utility functions examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html#utility-functions-examples">Utility functions examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../1_registration/index.html">Registration examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../2_kernels/index.html">Kernel examples</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Utility functions examples</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Make Ball at Shape Center</a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="../../modules.html">Demeter documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../advanced_users.html">For advanced users</a></li>
 </ul>
@@ -72,7 +80,7 @@
       <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../index.html">Gallery of examples</a></li>
           <li class="breadcrumb-item"><a href="index.html">Utility functions examples</a></li>
-      <li class="breadcrumb-item active">&lt;no title&gt;</li>
+      <li class="breadcrumb-item active">Make Ball at Shape Center</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../_sources/auto_examples/3_utils/make_ball_at_shape_center.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -87,7 +95,9 @@
 <p><a class="reference internal" href="#sphx-glr-download-auto-examples-3-utils-make-ball-at-shape-center-py"><span class="std std-ref">Go to the end</span></a>
 to download the full example code.</p>
 </div>
-<p class="sphx-glr-example-title" id="make-ball-at-shape-center"><span id="sphx-glr-auto-examples-3-utils-make-ball-at-shape-center-py"></span>A utility function to create a ball at the center of a shape in an image.
+<section class="sphx-glr-example-title" id="make-ball-at-shape-center">
+<span id="sphx-glr-auto-examples-3-utils-make-ball-at-shape-center-py"></span><span id="id1"></span><h1>Make Ball at Shape Center<a class="headerlink" href="#make-ball-at-shape-center" title="Link to this heading"></a></h1>
+<p>A utility function to create a ball at the center of a shape in an image.
 Can be useful to initialise a mask for a guided registration task.</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="p">:</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span><span class="o">,</span><span class="w"> </span><span class="nn">os</span>
@@ -143,14 +153,12 @@ centre = (tensor(350), tensor(351)), r = 143 and the seg and ball have 10061 pix
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<img src="../../_images/sphx_glr_make_ball_at_shape_center_002.png" srcset="../../_images/sphx_glr_make_ball_at_shape_center_002.png" alt="make ball at shape center" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/3_utils/make_ball_at_shape_center.py:44: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don&#39;t have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+<img src="../../_images/sphx_glr_make_ball_at_shape_center_002.png" srcset="../../_images/sphx_glr_make_ball_at_shape_center_002.png" alt="make ball at shape center" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/3_utils/make_ball_at_shape_center.py:47: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don&#39;t have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   img = torch.load(ROOT_DIRECTORY+&quot;/examples/im3Dbank/hanse_w_ball.pt&quot;)
 centre = (tensor(65), tensor(78), tensor(65)), r = 21 and the seg and ball have 38641 pixels overlapping
-ic| image_3d_plotter.py:516 in imshow_3d_slider()
-    image.shape: (133, 159, 133, 3)
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.611 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.590 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-3-utils-make-ball-at-shape-center-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/6d7857e33122e137e818705f274f1b19/make_ball_at_shape_center.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">make_ball_at_shape_center.ipynb</span></code></a></p>
@@ -163,6 +171,7 @@ ic| image_3d_plotter.py:516 in imshow_3d_slider()
 </div>
 </div>
 <p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
 
 
            </div>

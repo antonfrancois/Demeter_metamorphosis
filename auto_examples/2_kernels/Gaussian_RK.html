@@ -171,12 +171,7 @@ visualize its effect on a synthetic vector field.</p>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<img src="../../_images/sphx_glr_Gaussian_RK_002.png" srcset="../../_images/sphx_glr_Gaussian_RK_002.png" alt="Gaussian RK" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>ic| Gaussian_RK.py:74 in &lt;module&gt;
-    field.shape: torch.Size([1, 30, 30, 2])
-    smoothed_field.shape: torch.Size([1, 30, 30, 2])
-</pre></div>
-</div>
-<blockquote>
+<img src="../../_images/sphx_glr_Gaussian_RK_002.png" srcset="../../_images/sphx_glr_Gaussian_RK_002.png" alt="Gaussian RK" class = "sphx-glr-single-img"/><blockquote>
 <div><p>a tensor of shape (1,H,W,2) where H and W are the height and width of the image.
 You might find it strange that we pass the field in image representation to the
 kernel operator. This mostly for efficiency reasons, see <cite>pytorch stride &lt;https://discuss.pytorch.org/t/pytorch-tensor-stride-how-it-works/90537&gt;</cite>
@@ -251,9 +246,9 @@ Progress: [########--]  80.00%  (Ssd : ,115.2220).
 Progress: [#########-]  90.00%  (Ssd : ,104.2477).
 Progress: [##########] 100.00% Done...
  (Ssd : , 97.9167).
-Computation of forward done in  0:00:27s and 0.798cents  s
+Computation of forward done in  0:00:26s and 0.518cents  s
 
-Computation of lddmm done in  0:00:27s and 0.799cents  s
+Computation of lddmm done in  0:00:26s and 0.518cents  s
 </pre></div>
 </div>
 <p>Integration and convergence plot. Then we compare the source, target
@@ -279,7 +274,7 @@ deformed image.</p>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<img src="../../_images/sphx_glr_Gaussian_RK_006.png" srcset="../../_images/sphx_glr_Gaussian_RK_006.png" alt="diffeo = tensor(True)" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 30.052 seconds)</p>
+<img src="../../_images/sphx_glr_Gaussian_RK_006.png" srcset="../../_images/sphx_glr_Gaussian_RK_006.png" alt="diffeo = tensor(True)" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 28.718 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-2-kernels-gaussian-rk-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/20162e0384388e4d6fd9a65ecd01c683/Gaussian_RK.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">Gaussian_RK.ipynb</span></code></a></p>

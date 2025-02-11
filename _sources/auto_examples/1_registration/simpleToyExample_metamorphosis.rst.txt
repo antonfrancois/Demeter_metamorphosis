@@ -228,9 +228,9 @@ Perform a first Metamorphosis registration
 
     Progress: [#---------]  13.33%  (Ssd : ,802.5087).    Progress: [##--------]  20.00%  (Ssd : ,163.6530).    Progress: [###-------]  26.67%  (Ssd : , 89.7214).    Progress: [###-------]  33.33%  (Ssd : , 71.7436).    Progress: [####------]  40.00%  (Ssd : , 64.0281).    Progress: [#####-----]  46.67%  (Ssd : , 56.8949).    Progress: [#####-----]  53.33%  (Ssd : , 52.6968).    Progress: [######----]  60.00%  (Ssd : , 49.6450).    Progress: [#######---]  66.67%  (Ssd : , 46.6622).    Progress: [#######---]  73.33%  (Ssd : , 44.5396).    Progress: [########--]  80.00%  (Ssd : , 42.8393).    Progress: [#########-]  86.67%  (Ssd : , 41.6330).    Progress: [#########-]  93.33%  (Ssd : , 40.6257).    Progress: [##########] 100.00% Done...
      (Ssd : , 39.3657).
-    Computation of forward done in  0:01:55s and 0.182cents  s
+    Computation of forward done in  0:01:53s and 0.996cents  s
 
-    Computation of metamorphosis done in  0:01:55s and 0.182cents  s
+    Computation of metamorphosis done in  0:01:53s and 0.996cents  s
 
 
 
@@ -357,7 +357,7 @@ Perform a first Metamorphosis registration
 
     plt.show()
 
-    # sphinx_gallery_thumbnail_number = 3
+    # sphinx_gallery_thumbnail_number = 4
 
 
 .. image-sg:: /auto_examples/1_registration/images/sphx_glr_simpleToyExample_metamorphosis_007.png
@@ -567,7 +567,7 @@ Perform a first Metamorphosis registration
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (2 minutes 0.066 seconds)
+   **Total running time of the script:** (1 minutes 58.769 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_simpleToyExample_metamorphosis.py:

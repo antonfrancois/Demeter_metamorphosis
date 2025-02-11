@@ -18,7 +18,7 @@
 .. _sphx_glr_auto_examples_1_registration_semiLagrangian_scheme.py:
 
 
-.. _semiLagrangian_scheme:
+.. semiLagrangian_scheme:
 
 Why we should use semi-Lagrangian scheme?
 =========================================
@@ -6555,9 +6555,9 @@ Now we try to register the source to the target using the Eulerian scheme.
         self.field.min().item(): 0.0
         self.field.max().item(): 0.0
 
-    Computation of forward done in  0:00:16s and 0.545cents  s
+    Computation of forward done in  0:00:16s and 0.223cents  s
 
-    Computation of lddmm done in  0:00:16s and 0.545cents  s
+    Computation of lddmm done in  0:00:16s and 0.223cents  s
     ic| classic.py:77 in _step_fullEulerian()
         self.rho: 1
         self.field.min().item(): 0.0
@@ -6965,7 +6965,7 @@ Now we try to register the source to the target using the Eulerian scheme.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 20.905 seconds)
+   **Total running time of the script:** (0 minutes 20.544 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_semiLagrangian_scheme.py:

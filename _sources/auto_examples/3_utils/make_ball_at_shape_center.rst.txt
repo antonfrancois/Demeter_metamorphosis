@@ -20,10 +20,13 @@
 
 .. _make_ball_at_shape_center:
 
+Make Ball at Shape Center
+=========================
+
 A utility function to create a ball at the center of a shape in an image.
 Can be useful to initialise a mask for a guided registration task.
 
-.. GENERATED FROM PYTHON SOURCE LINES 7-27
+.. GENERATED FROM PYTHON SOURCE LINES 10-30
 
 .. code-block:: Python
 
@@ -54,7 +57,7 @@ Can be useful to initialise a mask for a guided registration task.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 28-42
+.. GENERATED FROM PYTHON SOURCE LINES 31-45
 
 .. code-block:: Python
 
@@ -91,11 +94,11 @@ Can be useful to initialise a mask for a guided registration task.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 43-44
+.. GENERATED FROM PYTHON SOURCE LINES 46-47
 
 _ = input("Press for 3D example :")
 
-.. GENERATED FROM PYTHON SOURCE LINES 44-56
+.. GENERATED FROM PYTHON SOURCE LINES 47-59
 
 .. code-block:: Python
 
@@ -124,11 +127,9 @@ _ = input("Press for 3D example :")
 
  .. code-block:: none
 
-    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/3_utils/make_ball_at_shape_center.py:44: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+    /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/3_utils/make_ball_at_shape_center.py:47: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
       img = torch.load(ROOT_DIRECTORY+"/examples/im3Dbank/hanse_w_ball.pt")
     centre = (tensor(65), tensor(78), tensor(65)), r = 21 and the seg and ball have 38641 pixels overlapping
-    ic| image_3d_plotter.py:516 in imshow_3d_slider()
-        image.shape: (133, 159, 133, 3)
 
 
 
@@ -136,7 +137,7 @@ _ = input("Press for 3D example :")
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.611 seconds)
+   **Total running time of the script:** (0 minutes 0.590 seconds)
 
 
 .. _sphx_glr_download_auto_examples_3_utils_make_ball_at_shape_center.py:

@@ -288,12 +288,12 @@ rho = 1  Pure geometric registration
     Apply Metamorphosis
     Progress: [#---------]  13.33%  (Ssd : ,405.9124).    Progress: [##--------]  20.00%  (Ssd : ,261.6039).    Progress: [###-------]  26.67%  (Ssd : ,199.3622).    Progress: [###-------]  33.33%  (Ssd : ,164.2235).    Progress: [####------]  40.00%  (Ssd : ,140.9712).    Progress: [#####-----]  46.67%  (Ssd : ,123.9041).    Progress: [#####-----]  53.33%  (Ssd : ,111.5133).    Progress: [######----]  60.00%  (Ssd : ,102.1032).    Progress: [#######---]  66.67%  (Ssd : , 95.1100).    Progress: [#######---]  73.33%  (Ssd : , 88.5401).    Progress: [########--]  80.00%  (Ssd : , 84.3062).    Progress: [#########-]  86.67%  (Ssd : , 80.0021).    Progress: [#########-]  93.33%  (Ssd : , 76.0086).    Progress: [##########] 100.00% Done...
      (Ssd : , 72.8988).
-    Computation of forward done in  0:08:33s and 0.019cents  s
+    Computation of forward done in  0:08:29s and 0.531cents  s
 
-    Computation of metamorphosis done in  0:08:33s and 0.019cents  s
-    ic| abstract.py:1304 in save()
+    Computation of metamorphosis done in  0:08:29s and 0.531cents  s
+    ic| abstract.py:1317 in save()
         path: '/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/saved_optim/'
-    Optimisation saved in /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/saved_optim/3D_10_02_2025_ball_for_hanse_hanse_w_ball_Metamorphosis_000.pk1
+    Optimisation saved in /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/saved_optim/3D_11_02_2025_ball_for_hanse_hanse_w_ball_Metamorphosis_000.pk1
 
     ic| image_3d_plotter.py:516 in imshow_3d_slider()
         image.shape: (45, 53, 45, 4)
@@ -314,7 +314,7 @@ rho = 1  Pure geometric registration
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (8 minutes 34.637 seconds)
+   **Total running time of the script:** (8 minutes 31.119 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_metamorphosis_3D.py:

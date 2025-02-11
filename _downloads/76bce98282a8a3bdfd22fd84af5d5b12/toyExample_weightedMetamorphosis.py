@@ -1,10 +1,12 @@
-"""
+r"""
 .. _toyExample_grayScott_weightedMetamorphosis:
 
+Weighted metamorphosis - simulated cancer growth
+================================================
+
 This toy example was build to simulate a cancer growth in a brain.
-This is a simple example of how to use the weighted metamorphosis to register two images.
-.
-This example is part of an exercise, it has been troncated to make you complete it.
+This is a simple example of how to use the weighted metamorphosis to register two images..
+This example is part of an exercise, it has been truncated to make you complete it.
 """
 #####################################################################
 # Import the necessary packages

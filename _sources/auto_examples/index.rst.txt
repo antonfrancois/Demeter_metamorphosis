@@ -6,6 +6,8 @@ Gallery of examples
 ===================
 
 The examples below shows functionalities of Demeter-Metamorphosis.
+(more example to come, don't esitate to ask for a specific functions or behavior, in
+the issue section of the repository)
 
 
 .. raw:: html
@@ -24,7 +26,7 @@ The examples below shows functionalities of Demeter-Metamorphosis.
 Registration examples
 =======================================================
 
-The examples below shows how to make simple registrations with Demeter-Metamorphosis.
+The examples below shows how to make various registrations tasks with Demeter-Metamorphosis.
 
 
 
@@ -47,7 +49,7 @@ The examples below shows how to make simple registrations with Demeter-Metamorph
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Data cost variation example:: Mutual Information</div>
+      <div class="sphx-glr-thumbnail-title">Data cost variation example: Mutual Information</div>
     </div>
 
 
@@ -104,7 +106,24 @@ The examples below shows how to make simple registrations with Demeter-Metamorph
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This toy example was build to simulate a cancer growth in a brain.">
+    <div class="sphx-glr-thumbcontainer" tooltip="This toy example was build to simulate a cancer growth in a brain. The gray scott texture as been used to add intricate patterns to the brain background. This particular example is a very hard registration problem, this example shows how constrained metamorphosis can solve it.">
+
+.. only:: html
+
+  .. image:: /auto_examples/1_registration/images/thumb/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_1_registration_toyExample_grayScott_constrainedMetamorphosis.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Constrained Metamorphosis - simulated cancer growth</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This toy example was build to simulate a cancer growth in a brain. This is a simple example of how to use the weighted metamorphosis to register two images.. This example is part of an exercise, it has been truncated to make you complete it.">
 
 .. only:: html
 
@@ -115,7 +134,7 @@ The examples below shows how to make simple registrations with Demeter-Metamorph
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">This toy example was build to simulate a cancer growth in a brain.</div>
+      <div class="sphx-glr-thumbnail-title">Weighted metamorphosis - simulated cancer growth</div>
     </div>
 
 
@@ -196,7 +215,7 @@ The examples below shows the utility functions available in Demeter-Metamorphosi
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="A utility function to create a ball at the center of a shape in an image.">
+    <div class="sphx-glr-thumbcontainer" tooltip="A utility function to create a ball at the center of a shape in an image. Can be useful to initialise a mask for a guided registration task.">
 
 .. only:: html
 
@@ -207,7 +226,7 @@ The examples below shows the utility functions available in Demeter-Metamorphosi
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">A utility function to create a ball at the center of a shape in an image.</div>
+      <div class="sphx-glr-thumbnail-title">Make Ball at Shape Center</div>
     </div>
 
 

@@ -1,7 +1,7 @@
 r"""
 .. _data_cost_mutualInformation:
 
-Data cost variation example:: Mutual Information
+Data cost variation example: Mutual Information
 ===============================================
 
 This example demonstrates how to change the data cost for the registration.

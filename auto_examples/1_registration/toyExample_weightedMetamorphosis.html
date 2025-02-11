@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>&lt;no title&gt; &mdash; Demeter_metamorphosis 0.2.0 documentation</title>
+  <title>Weighted metamorphosis - simulated cancer growth &mdash; Demeter_metamorphosis 0.2.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
@@ -24,7 +24,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="Kernel examples" href="../2_kernels/index.html" />
-    <link rel="prev" title="MetaMorphosis behaviour with different values of rho" href="simpleToyExample_metamorphosis.html" /> 
+    <link rel="prev" title="Constrained Metamorphosis - simulated cancer growth" href="toyExample_grayScott_constrainedMetamorphosis.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -46,12 +46,25 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Gallery of examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html#registration-examples">Registration examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html#kernel-examples">Kernel examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../index.html#utility-functions-examples">Utility functions examples</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html#utility-functions-examples">Utility functions examples</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Registration examples</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="data_cost_mutualInformation.html">Data cost variation example: Mutual Information</a></li>
+<li class="toctree-l3"><a class="reference internal" href="metamorphosis_3D.html">Metamorphosis on 3D images</a></li>
+<li class="toctree-l3"><a class="reference internal" href="semiLagrangian_scheme.html">Why we should use semi-Lagrangian scheme?</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simpleToyExample_metamorphosis.html">MetaMorphosis behaviour with different values of rho</a></li>
+<li class="toctree-l3"><a class="reference internal" href="toyExample_grayScott_constrainedMetamorphosis.html">Constrained Metamorphosis - simulated cancer growth</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Weighted metamorphosis - simulated cancer growth</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../2_kernels/index.html">Kernel examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../3_utils/index.html">Utility functions examples</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="../../modules.html">Demeter documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../advanced_users.html">For advanced users</a></li>
 </ul>
@@ -72,7 +85,7 @@
       <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../index.html">Gallery of examples</a></li>
           <li class="breadcrumb-item"><a href="index.html">Registration examples</a></li>
-      <li class="breadcrumb-item active">&lt;no title&gt;</li>
+      <li class="breadcrumb-item active">Weighted metamorphosis - simulated cancer growth</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../_sources/auto_examples/1_registration/toyExample_weightedMetamorphosis.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -87,10 +100,11 @@
 <p><a class="reference internal" href="#sphx-glr-download-auto-examples-1-registration-toyexample-weightedmetamorphosis-py"><span class="std std-ref">Go to the end</span></a>
 to download the full example code.</p>
 </div>
-<p class="sphx-glr-example-title" id="toyexample-grayscott-weightedmetamorphosis"><span id="sphx-glr-auto-examples-1-registration-toyexample-weightedmetamorphosis-py"></span>This toy example was build to simulate a cancer growth in a brain.
-This is a simple example of how to use the weighted metamorphosis to register two images.
-.
-This example is part of an exercise, it has been troncated to make you complete it.</p>
+<section class="sphx-glr-example-title" id="weighted-metamorphosis-simulated-cancer-growth">
+<span id="toyexample-grayscott-weightedmetamorphosis"></span><span id="sphx-glr-auto-examples-1-registration-toyexample-weightedmetamorphosis-py"></span><h1>Weighted metamorphosis - simulated cancer growth<a class="headerlink" href="#weighted-metamorphosis-simulated-cancer-growth" title="Link to this heading"></a></h1>
+<p>This toy example was build to simulate a cancer growth in a brain.
+This is a simple example of how to use the weighted metamorphosis to register two images..
+This example is part of an exercise, it has been truncated to make you complete it.</p>
 <p>Import the necessary packages</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 
@@ -239,9 +253,9 @@ Progress: [#########-]  90.00%  (Ssd : , 31.8397).
 Progress: [##########]  95.00%  (Ssd : , 30.9987).
 Progress: [##########] 100.00% Done...
  (Ssd : , 30.7090).
-Computation of forward done in  0:01:19s and 0.130cents  s
+Computation of forward done in  0:01:15s and 0.902cents  s
 
-Computation of metamorphosis done in  0:01:19s and 0.131cents  s
+Computation of metamorphosis done in  0:01:15s and 0.903cents  s
 Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.1042790487408638..1.2210246324539185].
 convert -delay 40 -loop 0 /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer_Meta/simpleCancer_Meta_rho0.7_image_\d3.png /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer_Meta/simpleCancer_Meta_rho0.7_image.gif
         Cleaning saved files.
@@ -307,9 +321,9 @@ Progress: [#########-]  90.00%  (Ssd : , 46.6465).
 Progress: [##########]  95.00%  (Ssd : , 45.7702).
 Progress: [##########] 100.00% Done...
  (Ssd : , 44.6144).
-Computation of forward done in  0:01:43s and 0.616cents  s
+Computation of forward done in  0:01:37s and 0.774cents  s
 
-Computation of weighted_metamorphosis done in  0:01:43s and 0.616cents  s
+Computation of weighted_metamorphosis done in  0:01:37s and 0.775cents  s
 Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.140936255455017].
 </pre></div>
 </div>
@@ -375,25 +389,25 @@ plop
 not oriented
 Weighted
 
-Progress: [#---------]  13.33%  (Ssd : ,107.3765).
-Progress: [##--------]  20.00%  (Ssd : , 65.8820).
-Progress: [###-------]  26.67%  (Ssd : , 53.4890).
-Progress: [###-------]  33.33%  (Ssd : , 47.7832).
-Progress: [####------]  40.00%  (Ssd : , 44.4819).
-Progress: [#####-----]  46.67%  (Ssd : , 41.9548).
-Progress: [#####-----]  53.33%  (Ssd : , 40.1583).
-Progress: [######----]  60.00%  (Ssd : , 38.6634).
-Progress: [#######---]  66.67%  (Ssd : , 37.4307).
-Progress: [#######---]  73.33%  (Ssd : , 36.4984).
-Progress: [########--]  80.00%  (Ssd : , 35.6156).
-Progress: [#########-]  86.67%  (Ssd : , 34.9909).
-Progress: [#########-]  93.33%  (Ssd : , 34.3780).
+Progress: [#---------]  13.33%  (Ssd : ,102.3998).
+Progress: [##--------]  20.00%  (Ssd : , 65.0072).
+Progress: [###-------]  26.67%  (Ssd : , 54.5017).
+Progress: [###-------]  33.33%  (Ssd : , 49.0870).
+Progress: [####------]  40.00%  (Ssd : , 45.6223).
+Progress: [#####-----]  46.67%  (Ssd : , 43.4760).
+Progress: [#####-----]  53.33%  (Ssd : , 41.6775).
+Progress: [######----]  60.00%  (Ssd : , 40.3326).
+Progress: [#######---]  66.67%  (Ssd : , 39.2516).
+Progress: [#######---]  73.33%  (Ssd : , 38.3505).
+Progress: [########--]  80.00%  (Ssd : , 37.5563).
+Progress: [#########-]  86.67%  (Ssd : , 36.8524).
+Progress: [#########-]  93.33%  (Ssd : , 36.2040).
 Progress: [##########] 100.00% Done...
- (Ssd : , 33.7928).
-Computation of forward done in  0:00:42s and 0.258cents  s
+ (Ssd : , 35.7415).
+Computation of forward done in  0:00:40s and 0.116cents  s
 
-Computation of weighted_metamorphosis done in  0:00:42s and 0.259cents  s
-Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.1615370213985443..1.2060126066207886].
+Computation of weighted_metamorphosis done in  0:00:40s and 0.117cents  s
+Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.1734710931777954..1.1559205055236816].
 </pre></div>
 </div>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">mr_wm</span><span class="o">.</span><span class="n">plot_deform</span><span class="p">()</span>
@@ -404,7 +418,7 @@ Clipping input data to the valid range for imshow with RGB data ([0..1] for floa
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<img src="../../_images/sphx_glr_toyExample_weightedMetamorphosis_025.png" srcset="../../_images/sphx_glr_toyExample_weightedMetamorphosis_025.png" alt="t = 0.0, diffeo = tensor(False), t = 0.2, diffeo = tensor(False), t = 0.4, diffeo = tensor(False), t = 0.7, diffeo = tensor(False), t = 1.0, diffeo = tensor(False)" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (4 minutes 3.733 seconds)</p>
+<img src="../../_images/sphx_glr_toyExample_weightedMetamorphosis_025.png" srcset="../../_images/sphx_glr_toyExample_weightedMetamorphosis_025.png" alt="t = 0.0, diffeo = tensor(False), t = 0.2, diffeo = tensor(False), t = 0.4, diffeo = tensor(False), t = 0.7, diffeo = tensor(False), t = 1.0, diffeo = tensor(False)" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (3 minutes 51.834 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-1-registration-toyexample-weightedmetamorphosis-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/cb883a253bffcd0f6516838f0b12a884/toyExample_weightedMetamorphosis.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">toyExample_weightedMetamorphosis.ipynb</span></code></a></p>
@@ -417,12 +431,13 @@ Clipping input data to the valid range for imshow with RGB data ([0..1] for floa
 </div>
 </div>
 <p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
 
 
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="simpleToyExample_metamorphosis.html" class="btn btn-neutral float-left" title="MetaMorphosis behaviour with different values of rho" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="toyExample_grayScott_constrainedMetamorphosis.html" class="btn btn-neutral float-left" title="Constrained Metamorphosis - simulated cancer growth" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="../2_kernels/index.html" class="btn btn-neutral float-right" title="Kernel examples" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

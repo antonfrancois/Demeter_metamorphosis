@@ -53,10 +53,12 @@
 <li class="toctree-l1"><a class="reference internal" href="../index.html#kernel-examples">Kernel examples</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../index.html#utility-functions-examples">Utility functions examples</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="index.html">Registration examples</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="data_cost_mutualInformation.html">Data cost variation example:: Mutual Information</a></li>
+<li class="toctree-l3"><a class="reference internal" href="data_cost_mutualInformation.html">Data cost variation example: Mutual Information</a></li>
 <li class="toctree-l3"><a class="reference internal" href="metamorphosis_3D.html">Metamorphosis on 3D images</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">Why we should use semi-Lagrangian scheme?</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simpleToyExample_metamorphosis.html">MetaMorphosis behaviour with different values of rho</a></li>
+<li class="toctree-l3"><a class="reference internal" href="toyExample_grayScott_constrainedMetamorphosis.html">Constrained Metamorphosis - simulated cancer growth</a></li>
+<li class="toctree-l3"><a class="reference internal" href="toyExample_weightedMetamorphosis.html">Weighted metamorphosis - simulated cancer growth</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../2_kernels/index.html">Kernel examples</a></li>
@@ -98,8 +100,8 @@
 <p><a class="reference internal" href="#sphx-glr-download-auto-examples-1-registration-semilagrangian-scheme-py"><span class="std std-ref">Go to the end</span></a>
 to download the full example code.</p>
 </div>
-<section class="sphx-glr-example-title" id="why-we-should-use-semi-lagrangian-scheme">
-<span id="semilagrangian-scheme"></span><span id="sphx-glr-auto-examples-1-registration-semilagrangian-scheme-py"></span><h1>Why we should use semi-Lagrangian scheme?<a class="headerlink" href="#why-we-should-use-semi-lagrangian-scheme" title="Link to this heading"></a></h1>
+<span class="target" id="sphx-glr-auto-examples-1-registration-semilagrangian-scheme-py"></span><section class="sphx-glr-example-title" id="why-we-should-use-semi-lagrangian-scheme">
+<h1>Why we should use semi-Lagrangian scheme?<a class="headerlink" href="#why-we-should-use-semi-lagrangian-scheme" title="Link to this heading"></a></h1>
 <p>In this example I will try to demonstrate to you why we should use the semi-Lagrangian
 scheme during geodesic integration rather than Eulerian. Obviously, we could
 use even more developed schemes like Runge-Kutta, but semi-Lagrangian is a good
@@ -6571,9 +6573,9 @@ ic| classic.py:77 in _step_fullEulerian()
     self.field.min().item(): 0.0
     self.field.max().item(): 0.0
 
-Computation of forward done in  0:00:16s and 0.545cents  s
+Computation of forward done in  0:00:16s and 0.223cents  s
 
-Computation of lddmm done in  0:00:16s and 0.545cents  s
+Computation of lddmm done in  0:00:16s and 0.223cents  s
 ic| classic.py:77 in _step_fullEulerian()
     self.rho: 1
     self.field.min().item(): 0.0
@@ -6976,7 +6978,7 @@ ic| classic.py:77 in _step_fullEulerian()
     self.field.max().item(): 0.0
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 20.905 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 20.544 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-1-registration-semilagrangian-scheme-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/36959ffca8e5931451b6ed16dbe2c7c3/semiLagrangian_scheme.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">semiLagrangian_scheme.ipynb</span></code></a></p>

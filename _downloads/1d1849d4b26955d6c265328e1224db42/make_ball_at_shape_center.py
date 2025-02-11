@@ -1,5 +1,8 @@
-"""
+r"""
 .. _make_ball_at_shape_center:
+
+Make Ball at Shape Center
+=========================
 
 A utility function to create a ball at the center of a shape in an image.
 Can be useful to initialise a mask for a guided registration task.
