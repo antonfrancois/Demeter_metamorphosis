@@ -1428,7 +1428,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         elif ("image" in object or "I" in object) and "quiver" in object:
             image_list_for_gif = []
             for n in range(self.n_step):
-                deformation = self.mp.get_deformation(n).cpu()
+                deformation = self.mp.get_deformation(to_t=n+1).cpu()
                 if n != 0:
                     deformation -= self.id_grid.cpu()
                 img = self.mp.image_stock[n, 0].cpu().numpy()
@@ -1479,7 +1479,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         elif "deformation" in object:
             image_list_for_gif = []
             for n in range(self.mp.n_step):
-                deformation = self.mp.get_deformation(n).cpu()
+                deformation = self.mp.get_deformation(to_t=n+1).cpu()
                 if n == 0:
                     deformation += self.id_grid.cpu()
                 fig, ax = plt.subplots()
@@ -1497,7 +1497,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         elif "quiver" in object:
             image_list_for_gif = []
             for n in range(self.mp.n_step):
-                deformation = self.mp.get_deformation(n).cpu()
+                deformation = self.mp.get_deformation(to_t=n+1).cpu()
                 if n != 0:
                     deformation -= self.id_grid.cpu()
                 fig, ax = plt.subplots()

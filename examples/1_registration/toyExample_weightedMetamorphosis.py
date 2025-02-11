@@ -86,52 +86,53 @@ print("sigma",sigma)
 #####################################################################
 #  Classic metamorphosis
 
-rho = 0.7
-momentum_ini =0
-mr = mt.metamorphosis(source,target,momentum_ini,
-    kernelOperator=kernelOp,
-    rho=rho,
-    integration_steps=10,
-    cost_cst=1e-2,
-    n_iter=20,
-    grad_coef=1,
-     dx_convention='pixel',
-)
-mr.plot()
-mr.plot_deform()
-mr.mp.plot()
-plt.show()
-mr.save_to_gif("image deformation",f"simpleCancer_Meta_rho{rho}_image",
-               folder="simpleCancer_Meta")
+# rho = 0.7
+# momentum_ini =0
+# mr = mt.metamorphosis(source,target,momentum_ini,
+#     kernelOperator=kernelOp,
+#     rho=rho,
+#     integration_steps=10,
+#     cost_cst=1e-2,
+#     n_iter=20,
+#     grad_coef=1,
+#      dx_convention='pixel',
+# )
+# mr.plot()
+# mr.plot_deform()
+# mr.mp.plot()
+# plt.show()
+# mr.save_to_gif("image deformation",f"simpleCancer_Meta_rho{rho}_image",
+#                folder="simpleCancer")
 
 # plt.show()
 #%%
 #####################################################################
 #  Weighted metamorphosis with time constant mask.
-# # =============================================================================
+# --------------------------------------------------------
+#
 # inverse the mask to have M(x) = 0 where we want to add
 # intensity.
 
-print("\n\nComputing weighted metamorphosis - time constant mask")
-print("="* 20)
-
-cst_mask = 1 - seg.repeat(10,1,1,1) * .5
-lamb= .0001
-n_iter,grad_coef = (20,.1)
-momentum_ini = 0
-mr_wm = mt.weighted_metamorphosis(source,target,momentum_ini,cst_mask,
-                    kernelOperator=kernelOp,
-                    cost_cst=lamb,
-                    n_iter=n_iter,
-                    grad_coef=grad_coef,
-                    safe_mode=False,
-                    dx_convention='pixel',
-                    optimizer_method='LBFGS_torch'
-)
-
-mr_wm.plot()
-mr_wm.plot_deform()
-plt.show()
+# print("\n\nComputing weighted metamorphosis - time constant mask")
+# print("="* 20)
+#
+# cst_mask = 1 - seg.repeat(10,1,1,1) * .5
+# lamb= .0001
+# n_iter,grad_coef = (20,.1)
+# momentum_ini = 0
+# mr_wm = mt.weighted_metamorphosis(source,target,momentum_ini,cst_mask,
+#                     kernelOperator=kernelOp,
+#                     cost_cst=lamb,
+#                     n_iter=n_iter,
+#                     grad_coef=grad_coef,
+#                     safe_mode=False,
+#                     dx_convention='pixel',
+#                     optimizer_method='LBFGS_torch'
+# )
+#
+# mr_wm.plot()
+# mr_wm.plot_deform()
+# plt.show()
 
 #####################################################################
 #  Weighted metamorphosis with time evolving mask.
@@ -175,7 +176,7 @@ plt.show()
 #%%
 
 print("\n\tComputing weighted metamorphosis")
-n_iter= 15
+n_iter= 20
 grad_coef = 1
 cost_cst= .0001
 residuals = 0
@@ -200,4 +201,10 @@ plt.show()
 
 mr_wm.mp.plot()
 plt.show()
+mr_wm.save_to_gif("image",f"simpleCancer_WM_image",
+                folder="simpleCancer")
+mr_wm.save_to_gif("deformation",f"simpleCancer_WM_deform",
+                folder="simpleCancer")
+mr_wm.save_to_gif("residual",f"simpleCancer_WM_residuals",
+                folder="simpleCancer")
 
