@@ -1,16 +1,5 @@
 import matplotlib.pyplot as plt
 import torch
-from matplotlib.collections import LineCollection
-from matplotlib.widgets import Slider
-from torch import is_tensor
-import warnings
-
-from vedo.examples.volumetric.read_volume1 import alpha
-
-# try:
-#     import vedo
-# except ModuleNotFoundError:
-#     warnings.warn("Vedo is not installed, the 3D visualisation will not work.")
 import numpy as np
 from numpy import newaxis
 import os

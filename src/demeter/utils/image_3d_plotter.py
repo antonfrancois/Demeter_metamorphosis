@@ -18,7 +18,6 @@ import demeter.utils.torchbox as tb
 from icecream import ic
 
 
-
 def grid_slice(grid, coord, dim):
     """return a line collection
 
@@ -46,22 +45,21 @@ class Visualize_GeodesicOptim_plt:
     """
 
     def __init__(
-        self,
-        geodesicOptim,
-        name: str,
-        path_save: str | None = None,
+            self,
+            geodesicOptim,
+            name: str,
+            path_save: str | None = None,
     ):
         # Constants:
         my_white = (0.7, 0.7, 0.7, 1)
         my_dark = (0.1, 0.1, 0.1, 1)
-        self.imcmp_method = "segh" # compose
+        self.imcmp_method = "segh"  # compose
 
         self.geodesicOptim = geodesicOptim  # .to_device("cpu")
         self.path = (
             "examples/results/plt_mr_visualization" if path_save is None else path_save
         )
         self.name = name
-
 
         # make fig, ax, sliders
         self.fig, self.ax = plt.subplots(1, 3, constrained_layout=False)
@@ -163,11 +161,12 @@ class Visualize_GeodesicOptim_plt:
         except AttributeError:
             def mult_clip(img, factor):
                 return torch.clip(img * factor, 0, 1)
+
             self.tmp_img_cmp_w_target = tb.temporal_img_cmp(
-                 # mult_clip(self.geodesicOptim.mp.image_stock, 1.5),
-                 # mult_clip(self.geodesicOptim.target, 1.5),
-                 self.geodesicOptim.mp.image_stock,
-                 self.geodesicOptim.target,
+                # mult_clip(self.geodesicOptim.mp.image_stock, 1.5),
+                # mult_clip(self.geodesicOptim.target, 1.5),
+                self.geodesicOptim.mp.image_stock,
+                self.geodesicOptim.target,
 
                 method=self.imcmp_method,
             )
@@ -215,34 +214,33 @@ class Visualize_GeodesicOptim_plt:
         print("... done")
 
     def _debug_flow(self):
-        self.vector_field = torch.ones_like( self.geodesicOptim.mp.get_deformator(save=True)) * 5
+        self.vector_field = torch.ones_like(self.geodesicOptim.mp.get_deformator(save=True)) * 5
 
-        #0
-        self.vector_field[0,...,0] *= 0
-        self.vector_field[0,..., 1] *= 0
-        #1
-        self.vector_field[1,...,0] *= 0
-        self.vector_field[1,..., 2] *= 0
-        #2
-        self.vector_field[2,...,1] *= 0
-        self.vector_field[2,..., 2] *= 0
-        #3
-        self.vector_field[3,...,0] *= 0
-        self.vector_field[3,..., 1] *= 0
-        self.vector_field[3,..., 2] *= -1
-        #4
-        self.vector_field[4,...,0] *= 0
-        self.vector_field[4,..., 1] *= -1
-        self.vector_field[4,..., 2] *= 0
-        #5
-        self.vector_field[5,...,0] *= -1
-        self.vector_field[5,..., 1] *= 0
-        self.vector_field[5,..., 2] *= 0
-        #6
-        self.vector_field[6,...,0] *= 0
-        self.vector_field[6,..., 1] *= 1
-        self.vector_field[6,..., 2] *= 0
-
+        # 0
+        self.vector_field[0, ..., 0] *= 0
+        self.vector_field[0, ..., 1] *= 0
+        # 1
+        self.vector_field[1, ..., 0] *= 0
+        self.vector_field[1, ..., 2] *= 0
+        # 2
+        self.vector_field[2, ..., 1] *= 0
+        self.vector_field[2, ..., 2] *= 0
+        # 3
+        self.vector_field[3, ..., 0] *= 0
+        self.vector_field[3, ..., 1] *= 0
+        self.vector_field[3, ..., 2] *= -1
+        # 4
+        self.vector_field[4, ..., 0] *= 0
+        self.vector_field[4, ..., 1] *= -1
+        self.vector_field[4, ..., 2] *= 0
+        # 5
+        self.vector_field[5, ..., 0] *= -1
+        self.vector_field[5, ..., 1] *= 0
+        self.vector_field[5, ..., 2] *= 0
+        # 6
+        self.vector_field[6, ..., 0] *= 0
+        self.vector_field[6, ..., 1] *= 1
+        self.vector_field[6, ..., 2] *= 0
 
     def _make_arrows(self, t_val, x_val, y_val, z_val):
 
@@ -271,12 +269,12 @@ class Visualize_GeodesicOptim_plt:
         vf = self.vector_field[0]
 
         for t in range(t_val):
-            pts_x = pts[ :, :, z_val, 1:].flip(-1)
-            vf_x = vf[ :, :, z_val, 1:].flip(-1)
-            pts_y = pts[ :, y_val, :, [0, -1]].flip(-1)
-            vf_y = vf[ :, y_val, :, [0, -1]].flip(-1)
-            pts_z = pts[ x_val, :, :, :-1].flip(-1)
-            vf_z = vf[ x_val, :, :, :-1].flip(-1)
+            pts_x = pts[:, :, z_val, 1:].flip(-1)
+            vf_x = vf[:, :, z_val, 1:].flip(-1)
+            pts_y = pts[:, y_val, :, [0, -1]].flip(-1)
+            vf_y = vf[:, y_val, :, [0, -1]].flip(-1)
+            pts_z = pts[x_val, :, :, :-1].flip(-1)
+            vf_z = vf[x_val, :, :, :-1].flip(-1)
 
             ic(pts_x.shape, vf_x.shape)
             ic(pts_y.shape, vf_y.shape)
@@ -452,11 +450,11 @@ class Visualize_GeodesicOptim_plt:
 
 
 def imshow_3d_slider(
-    image,
-    image_cmap="gray",
-    title="",
-    vmin=None,
-    vmax=None,
+        image,
+        image_cmap="gray",
+        title="",
+        vmin=None,
+        vmax=None,
 ):
     """Display a 3d image
 
@@ -643,18 +641,18 @@ def _grid2segments(deformation_slice, horizontal_sampler, vertical_sampler):
     print(deformation_slice.shape)
     print(horizontal_sampler)
     for i, nh in enumerate(horizontal_sampler):
-        hori_segments[int(i * (N_V)) : int(i * (N_V) + (N_V)), :, :] = _line2segment(
+        hori_segments[int(i * (N_V)): int(i * (N_V) + (N_V)), :, :] = _line2segment(
             deformation_slice[nh, :, 0], deformation_slice[nh, :, 1]
         )
     for i, nv in enumerate(vertical_sampler):
-        vert_segments[int(i * (N_H)) : int(i * (N_H)) + (N_H), :, :] = _line2segment(
+        vert_segments[int(i * (N_H)): int(i * (N_H)) + (N_H), :, :] = _line2segment(
             deformation_slice[:, nv, 0], deformation_slice[:, nv, 1]
         )
     return np.concatenate([hori_segments, vert_segments], axis=0)
 
 
 def gridDef_3d_slider(
-    deformation, add_grid: bool = False, n_line: int = 20, dx_convention="pixel"
+        deformation, add_grid: bool = False, n_line: int = 20, dx_convention="pixel"
 ):
     """Display a 3d grid with sliders
 

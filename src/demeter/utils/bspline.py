@@ -1,5 +1,5 @@
-
 import torch
+
 
 def memo(f):
     # Peter Norvig's
@@ -16,10 +16,9 @@ def memo(f):
         except TypeError:
             # some element of args can't be a dict key
             return f(*args)
+
     _f.cache = cache
     return _f
-
-
 
 
 @memo
@@ -31,8 +30,8 @@ def bspline_basis(c, n, degree):
     """
     # Create knot vector and a range of samples on the curve
     kv = torch.tensor([0] * degree + torch.arange(c - degree + 1).tolist() +
-                  [c - degree] * degree, dtype=torch.int)  # knot vector
-    u = torch.linspace(0, c - degree, n,dtype=torch.float)  # samples range
+                      [c - degree] * degree, dtype=torch.int)  # knot vector
+    u = torch.linspace(0, c - degree, n, dtype=torch.float)  # samples range
 
     # Cox - DeBoor recursive function to calculate basis
     def coxDeBoor(k, d):
@@ -53,14 +52,14 @@ def bspline_basis(c, n, degree):
         return term1 + term2
 
     # Compute basis for each point
-    b = torch.stack([coxDeBoor(k, degree) for k in range(c)],axis=1)
+    b = torch.stack([coxDeBoor(k, degree) for k in range(c)], axis=1)
 
     b[n - 1][-1] = 1
 
     return b
 
 
-def surf_bspline(cm,n_pts, degree = (1,1)):
+def surf_bspline(cm, n_pts, degree=(1, 1)):
     """ Generate a 2D surface from a control matrix
 
 
@@ -70,17 +69,18 @@ def surf_bspline(cm,n_pts, degree = (1,1)):
     :return:
     """
 
-    p,q = cm.shape
+    p, q = cm.shape
 
-    b_p = bspline_basis(p,n_pts[0],degree[0])
-    b_q = bspline_basis(q,n_pts[1],degree[1])
+    b_p = bspline_basis(p, n_pts[0], degree[0])
+    b_q = bspline_basis(q, n_pts[1], degree[1])
 
     Q_i = (b_p @ cm).T
     surf = (b_q @ Q_i)
 
     return surf
 
-def surf_bspline_3D(cm,n_pts, degree = (1,1,1)):
+
+def surf_bspline_3D(cm, n_pts, degree=(1, 1, 1)):
     """ Generate a 3D surface from a control matrix
 
     :param cm     = 3D matrix Control point Matrix
@@ -89,27 +89,28 @@ def surf_bspline_3D(cm,n_pts, degree = (1,1,1)):
     :return: 3D surface of shape (n_pts[0],n_pts[1],n_pts[2])
 
     test:
-    ```python
-    P_im = torch.rand((5,6,7),dtype=torch.float)
-    img = surf_bspline_3D(P_im,(100,200,300))
-    ```
+    .. code-block:: python
+
+        P_im = torch.rand((5,6,7),dtype=torch.float)
+        img = surf_bspline_3D(P_im,(100,200,300))
+
     """
 
-    p,q,r = cm.shape
+    p, q, r = cm.shape
 
-    b_p = bspline_basis(p,n_pts[0],degree[0])
-    b_q = bspline_basis(q,n_pts[1],degree[1])
-    b_r = bspline_basis(r,n_pts[2],degree[2])
+    b_p = bspline_basis(p, n_pts[0], degree[0])
+    b_q = bspline_basis(q, n_pts[1], degree[1])
+    b_r = bspline_basis(r, n_pts[2], degree[2])
 
     Q_i = torch.einsum('ij,jkl->ikl', b_p, cm)
     Q_ij = torch.einsum('ij,jkl->ikl', b_q, Q_i.transpose(0, 1)).transpose(0, 1)
     surf_3d = torch.einsum('ij,jkl->ikl', b_r, Q_ij.transpose(0, 2)).transpose(0, 2)
 
-
     return surf_3d
 
-def field2D_bspline(cms,n_pts,degree = (1,1),dim_stack =0):
-    """ Generate 2D fields from a 2D control matix
+
+def field2D_bspline(cms, n_pts, degree=(1, 1), dim_stack=0):
+    """ Generate 2D fields from a 2D control matrix
 
     :param cms: shape = (2,p,q) Control matricies
     :param n_pts: (tuple) grid dimension
@@ -117,12 +118,13 @@ def field2D_bspline(cms,n_pts,degree = (1,1),dim_stack =0):
     :return: vector field of shape (2,n_pts[0],n_pts[1])
     """
 
-    field_x = surf_bspline(cms[0],n_pts,degree)
-    field_y = surf_bspline(cms[1],n_pts,degree)
+    field_x = surf_bspline(cms[0], n_pts, degree)
+    field_y = surf_bspline(cms[1], n_pts, degree)
 
-    return torch.stack((field_x,field_y),dim=dim_stack)
+    return torch.stack((field_x, field_y), dim=dim_stack)
 
-def field3D_bspline(cms,n_pts,degree = (1,1,1),dim_stack =0):
+
+def field3D_bspline(cms, n_pts, degree=(1, 1, 1), dim_stack=0):
     """ Generate 3D fields from a 3D control matix
 
     :param cms: shape = (3,p,q,r) Control matricies
@@ -133,52 +135,53 @@ def field3D_bspline(cms,n_pts,degree = (1,1,1),dim_stack =0):
             vector field of shape (n_pts[0],n_pts[1],n_pts[2],3) if dim_stack = -1
     """
 
-    field_x = surf_bspline_3D(cms[0],n_pts,degree)
-    field_y = surf_bspline_3D(cms[1],n_pts,degree)
-    field_z = surf_bspline_3D(cms[2],n_pts,degree)
+    field_x = surf_bspline_3D(cms[0], n_pts, degree)
+    field_y = surf_bspline_3D(cms[1], n_pts, degree)
+    field_z = surf_bspline_3D(cms[2], n_pts, degree)
 
-    return torch.stack((field_x,field_y,field_z),dim=dim_stack)
+    return torch.stack((field_x, field_y, field_z), dim=dim_stack)
 
 
 # ===== CMS EXAMPLES +==================
 # some interesting field control matrices
 def getCMS_turn():
     cms = torch.tensor([  # control matrices
-    [[0, 0, 0, 0, 0],
-     [0, 1, 0, -1, 0],
-     [0, 0, 0, 0, 0],
-     [0, -0.25, 0, .25, 0],
-     [0, 0, 0, 0, 0]],
-    [[0, 0, 0, 0, 0],
-     [0, -.25, 0, .25, 0],#[0, .1, .5, .75, 0],
-     [0, 0, 0, 0, 0],#[0, .2, .75, 1, 0],
-     [0, 1, 0, -1, 0],#[0, .1, .5, .75, 0],
-     [0, 0, 0, 0, 0]]
+        [[0, 0, 0, 0, 0],
+         [0, 1, 0, -1, 0],
+         [0, 0, 0, 0, 0],
+         [0, -0.25, 0, .25, 0],
+         [0, 0, 0, 0, 0]],
+        [[0, 0, 0, 0, 0],
+         [0, -.25, 0, .25, 0],  # [0, .1, .5, .75, 0],
+         [0, 0, 0, 0, 0],  # [0, .2, .75, 1, 0],
+         [0, 1, 0, -1, 0],  # [0, .1, .5, .75, 0],
+         [0, 0, 0, 0, 0]]
     ])
     return cms
 
+
 def getCMS_allcombinaision():
     cms = torch.tensor([  # control matrices
-    [[0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, +1, 0, -1, 0, -1, 0, -1, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, +1, 0, -1, 0, +1, 0, +1, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, +1, 0, +1, 0, -1, 0, +1, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, -1, 0, -1, 0, -1, 0, +1, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
-     ],
-    [[0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, +1, 0, +1, 0, -1, 0, +1, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],#[0, .2, .75, 1, 0],
-     [0, -1, 0, -1, 0, -1, 0, +1, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, +1, 0, -1, 0, -1, 0, -1, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, +1, 0, -1, 0, +1, 0, +1, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0]]
-        ],dtype=torch.float)
+        [[0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, +1, 0, -1, 0, -1, 0, -1, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, +1, 0, -1, 0, +1, 0, +1, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, +1, 0, +1, 0, -1, 0, +1, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, -1, 0, -1, 0, -1, 0, +1, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0],
+         ],
+        [[0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, +1, 0, +1, 0, -1, 0, +1, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0],  # [0, .2, .75, 1, 0],
+         [0, -1, 0, -1, 0, -1, 0, +1, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, +1, 0, -1, 0, -1, 0, -1, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, +1, 0, -1, 0, +1, 0, +1, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0]]
+    ], dtype=torch.float)
     return cms
 
 
@@ -221,7 +224,7 @@ plt.plot(b)
 plt.title('basis functions')
 plt.show()
 """
-#%%
+# %%
 """
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D

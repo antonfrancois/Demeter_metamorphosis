@@ -973,10 +973,6 @@ def get_sigma_from_img_ratio(img_shape,subdiv,c=.1):
     :param c: float : value considered as negligible in the gaussian kernel
     """
 
-    # TODO : Ajouter un warning en disant que le sigma choisi va produire un kernel plus
-    #  grand que la taille de l'image ... ça n'as pas l'air grave.
-
-
 
     def _check_subdiv_tuple_size(subdiv_, dim):
         if len(subdiv_) != dim:

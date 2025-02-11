@@ -3,6 +3,7 @@
 (DiffEoMorphic METamorphic Regristration)
 
 Package status : alpha. see [Documentation](https://antonfrancois.github.io/Demeter_metamorphosis/)
+[slides](https://slides.com/antonfrancois/metamorphosis-presentation-inria)
 
 ![LDDMM visualisation on a 3D brain](assets/brain_lddmm_grid.png)
 
