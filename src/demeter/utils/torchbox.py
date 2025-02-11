@@ -1146,7 +1146,7 @@ class RandomGaussianImage:
 
 
 class RandomGaussianField:
-    """
+    r"""
     Generate a random field made from a sum of N gaussians
     and compute the theoretical divergence of the field. It is usefully
     for testing function on random generated fields with known expressions,
