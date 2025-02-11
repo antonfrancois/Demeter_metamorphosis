@@ -39,6 +39,7 @@ print(f"Used device: {device}")
 
 #####################################################################
 # Load the images
+# ----------------
 
 size = (300, 300)
 source_name, target_name = '23', '24'
@@ -82,6 +83,9 @@ print("sigma", sigma)
 # %%
 #####################################################################
 #  Classic metamorphosis
+# -----------------------
+#
+# We first compute the classic metamorphosis without any mask to compare results.
 
 rho = 0.7
 momentum_ini = 0
@@ -105,7 +109,8 @@ mr.save_to_gif("image deformation", f"simpleCancer_Meta_rho{rho}_image",
 # %%
 #####################################################################
 #  Weighted metamorphosis with time constant mask.
-# # =============================================================================
+# ---------------------------------------------------------
+#
 # inverse the mask to have M(x) = 0 where we want to add
 # intensity.
 #

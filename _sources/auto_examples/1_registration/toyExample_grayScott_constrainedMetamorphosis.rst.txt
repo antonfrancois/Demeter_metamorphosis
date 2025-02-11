@@ -622,9 +622,9 @@ plt.show()
     Weighted
     Progress: [#---------]  10.00%  (Ssd : , 56.5612).    Progress: [##--------]  15.00%  (Ssd : , 32.8259).    Progress: [##--------]  20.00%  (Ssd : , 19.4591).    Progress: [##--------]  25.00%  (Ssd : , 11.2553).    Progress: [###-------]  30.00%  (Ssd : ,  8.9736).    Progress: [####------]  35.00%  (Ssd : ,  7.5019).    Progress: [####------]  40.00%  (Ssd : ,  6.5346).    Progress: [####------]  45.00%  (Ssd : ,  5.9750).    Progress: [#####-----]  50.00%  (Ssd : ,  5.5376).    Progress: [######----]  55.00%  (Ssd : ,  5.1981).    Progress: [######----]  60.00%  (Ssd : ,  5.0141).    Progress: [######----]  65.00%  (Ssd : ,  4.8033).    Progress: [#######---]  70.00%  (Ssd : ,  4.6341).    Progress: [########--]  75.00%  (Ssd : ,  4.5225).    Progress: [########--]  80.00%  (Ssd : ,  4.4007).    Progress: [########--]  85.00%  (Ssd : ,  4.3040).    Progress: [#########-]  90.00%  (Ssd : ,  4.1910).    Progress: [##########]  95.00%  (Ssd : ,  4.0828).    Progress: [##########] 100.00% Done...
      (Ssd : ,  4.0118).
-    Computation of forward done in  0:01:44s and 0.694cents  s
+    Computation of forward done in  0:01:49s and 0.260cents  s
 
-    Computation of constrained_metamorphosis done in  0:01:44s and 0.695cents  s
+    Computation of constrained_metamorphosis done in  0:01:49s and 0.260cents  s
     round False
     round False
     Landmarks:
@@ -736,7 +736,7 @@ mr_cm.save(f"TEST_toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}")
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 50.816 seconds)
+   **Total running time of the script:** (1 minutes 55.533 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_toyExample_grayScott_constrainedMetamorphosis.py:

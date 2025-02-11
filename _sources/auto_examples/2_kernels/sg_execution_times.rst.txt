@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:29.131** total execution time for 2 files **from auto_examples/2_kernels**:
+**00:30.498** total execution time for 2 files **from auto_examples/2_kernels**:
 
 .. container::
 
@@ -33,8 +33,8 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_2_kernels_Gaussian_RK.py` (``Gaussian_RK.py``)
-     - 00:28.718
+     - 00:30.073
      - 0.0
    * - :ref:`sphx_glr_auto_examples_2_kernels_multi_scale_gaussianRKHS.py` (``multi_scale_gaussianRKHS.py``)
-     - 00:00.414
+     - 00:00.425
      - 0.0

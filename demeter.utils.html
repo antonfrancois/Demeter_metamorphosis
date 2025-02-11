@@ -24,7 +24,9 @@
       <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" /> 
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="For advanced users" href="advanced_users.html" />
+    <link rel="prev" title="demeter.metamorphosis package" href="demeter.metamorphosis.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -46,13 +48,27 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Gallery of examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#registration-examples">Registration examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#kernel-examples">Kernel examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html#utility-functions-examples">Utility functions examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="modules.html">Demeter documentation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">Demeter documentation</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="demeter.html">demeter package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="demeter.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="demeter.metamorphosis.html">demeter.metamorphosis package</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">demeter.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.html#module-demeter.constants">demeter.constants module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="demeter.html#module-demeter">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="advanced_users.html">For advanced users</a></li>
 </ul>
 
@@ -70,6 +86,8 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">Demeter documentation</a></li>
+          <li class="breadcrumb-item"><a href="demeter.html">demeter package</a></li>
       <li class="breadcrumb-item active">demeter.utils package</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/demeter.utils.rst.txt" rel="nofollow"> View page source</a>
@@ -95,7 +113,7 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="demeter.utils.bspline.field2D_bspline">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.bspline.</span></span><span class="sig-name descname"><span class="pre">field2D_bspline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cms</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_pts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degree</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1,</span> <span class="pre">1)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_stack</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.bspline.field2D_bspline" title="Link to this definition"></a></dt>
-<dd><p>Generate 2D fields from a 2D control matix</p>
+<dd><p>Generate 2D fields from a 2D control matrix</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -166,10 +184,11 @@ Then when called again with same args, we can just look it up.</p>
 :param degree = (tuple), degree of the spline in each direction
 :return: 3D surface of shape (n_pts[0],n_pts[1],n_pts[2])</p>
 <p>test:
-<code class="docutils literal notranslate"><span class="pre">`python</span>
-<span class="pre">P_im</span> <span class="pre">=</span> <span class="pre">torch.rand((5,6,7),dtype=torch.float)</span>
-<span class="pre">img</span> <span class="pre">=</span> <span class="pre">surf_bspline_3D(P_im,(100,200,300))</span>
-<span class="pre">`</span></code></p>
+.. code-block:: python</p>
+<blockquote>
+<div><p>P_im = torch.rand((5,6,7),dtype=torch.float)
+img = surf_bspline_3D(P_im,(100,200,300))</p>
+</div></blockquote>
 </dd></dl>
 
 </section>
@@ -1113,18 +1132,16 @@ not provided, use current axes or create a new one.  Optional.</p></li>
 <dt class="sig sig-object py" id="demeter.utils.torchbox.RandomGaussianField">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">RandomGaussianField</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_gaussian</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx_convention</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.RandomGaussianField" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<blockquote>
-<div><p>Generate a random field made from a sum of N gaussians
+<p>Generate a random field made from a sum of N gaussians
 and compute the theoretical divergence of the field. It is usefully
 for testing function on random generated fields with known expressions,
 making it possible to compute theoretical values. It uses the function RandomGaussianImage.</p>
 <p>If <span class="math notranslate nohighlight">\(v : \Omega \mapsto \mathbb{R}^d\)</span> for all <span class="math notranslate nohighlight">\(n &lt; d\)</span></p>
 <div class="math notranslate nohighlight">
-\[v_n = \sum_{i=1}^{N} a_i \exp(-\]</div>
-</div></blockquote>
-<p>rac{||X - c_i||^2}{2b_i^2})</p>
-<blockquote>
-<div><dl class="simple">
+\[v_n = \sum_{i=1}^{N} a_i \exp(- \frac{||X - c_i||^2}{2b_i^2})\]</div>
+<section id="id16">
+<h3>Parameters:<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<dl class="simple">
 <dt>size: tuple</dt><dd><dl class="simple">
 <dt>tuple with the image dimensions to create (H,W) will create a 2d field  of shape (H,W,2),</dt><dd><p>((D,H,W,3) in 3d)</p>
 </dd>
@@ -1139,7 +1156,6 @@ making it possible to compute theoretical values. It uses the function RandomGau
 <dt>c: list of float</dt><dd><p>list of the c parameters of the gaussians controlling the position</p>
 </dd>
 </dl>
-</div></blockquote>
 <dl class="py method">
 <dt class="sig sig-object py" id="demeter.utils.torchbox.RandomGaussianField.divergence">
 <span class="sig-name descname"><span class="pre">divergence</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.RandomGaussianField.divergence" title="Link to this definition"></a></dt>
@@ -1152,6 +1168,7 @@ making it possible to compute theoretical values. It uses the function RandomGau
 : return: torch.Tensor of shape [1,H,W,2] or [1,D,H,W,3]</p>
 </dd></dl>
 
+</section>
 </dd></dl>
 
 <dl class="py class">
@@ -1165,8 +1182,8 @@ and compute the derivative of the image with respect</p>
 <p>self.a[i] * torch.exp(- ((self.X - self.c[i])**2).sum(-1) / (2*self.b[i]**2))
 $$ I = sum_{i=1}^{N} a_i exp(- frac{||X - c_i||^2}{2b_i^2})$$</p>
 </div></blockquote>
-<section id="id16">
-<h3>Parameters:<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<section id="id17">
+<h3>Parameters:<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>size: tuple</dt><dd><p>tuple with the image dimensions to create</p>
 </dd>
@@ -1182,8 +1199,8 @@ $$ I = sum_{i=1}^{N} a_i exp(- frac{||X - c_i||^2}{2b_i^2})$$</p>
 </dd>
 </dl>
 </section>
-<section id="id17">
-<h3>Example:<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<section id="id18">
+<h3>Example:<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
 <p>&gt;&gt;&gt;RGI = RandomGaussianImage((100,100),5,’pixel’)
 &gt;&gt;&gt; image = RGI.image()
 &gt;&gt;&gt; derivative = RGI.derivative()</p>
@@ -1270,7 +1287,7 @@ green is for positive determinant and red for negative.</p></li>
 <p>H,W = 100,150
 # vector defomation generation
 v = mbs.field2D_bspline(cms,(H,W),dim_stack=2).unsqueeze(0)
-v <a href="#id18"><span class="problematic" id="id19">*</span></a>= 0.5</p>
+v <a href="#id19"><span class="problematic" id="id20">*</span></a>= 0.5</p>
 <p>deform_diff = vff.FieldIntegrator(method=’fast_exp’)(v.clone(),forward= True)</p>
 <p>deformation_show(deform_diff,step=4,check_diffeo=True)</p>
 </li>
@@ -1337,12 +1354,12 @@ axes[x][d].set_title(str((x,d)))</p>
 <dt class="sig sig-object py" id="demeter.utils.torchbox.field_2d_jacobian">
 <span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">field_2d_jacobian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.field_2d_jacobian" title="Link to this definition"></a></dt>
 <dd><p>compute the jacobian of the field</p>
-<section id="id20">
-<h3>parameters:<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<section id="id21">
+<h3>parameters:<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
 <p>field: field.size (b,h,w,2)</p>
 </section>
-<section id="id21">
-<h3>returns:<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<section id="id22">
+<h3>returns:<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
 <p>jacobian of the field.size = (b,2,2,h,w)</p>
 <dl class="field-list simple">
 <dt class="field-odd">example<span class="colon">:</span></dt>
@@ -1379,22 +1396,22 @@ axes[x][d].set_title(str((x,d)))</p>
 <div class="math notranslate nohighlight">
 \[div(I(p)) = \sum_{i=1}^C \frac{\partial I(p)_i}{\partial x_i}\]</div>
 </p>
-<section id="id22">
-<h3>Parameters:<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<section id="id23">
+<h3>Parameters:<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>field: torch.Tensor</dt><dd><p>of shape (B,H,W,2) or (B,D,H,W,3)</p>
 </dd>
 </dl>
 </section>
-<section id="id23">
-<h3>Returns:<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
+<section id="id24">
+<h3>Returns:<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>div: torch.Tensor</dt><dd><p>of shape (B,2,2H,W) or (B,3,3,D,H,W)</p>
 </dd>
 </dl>
 </section>
-<section id="id24">
-<h3>Example:<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<section id="id25">
+<h3>Example:<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cms</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>  <span class="c1"># control matrices</span>
 <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
  <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
@@ -2094,14 +2111,14 @@ they have a time dimension stored in the first dimension.</p>
 <dd class="field-even"><p></p>
 </dd>
 </dl>
-<section id="id25">
-<h3>Example :<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
+<section id="id26">
+<h3>Example :<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
 <p>&gt;&gt;&gt;cms = mbs.getCMS_allcombinaision()
 &gt;&gt;&gt;
 &gt;&gt;&gt;H,W = 100,150
 &gt;&gt;&gt;# vector defomation generation
 &gt;&gt;&gt;v = mbs.field2D_bspline(cms,(H,W),dim_stack=2).unsqueeze(0)
-&gt;&gt;&gt;v <a href="#id26"><span class="problematic" id="id27">*</span></a>= 0.5
+&gt;&gt;&gt;v <a href="#id27"><span class="problematic" id="id28">*</span></a>= 0.5
 &gt;&gt;&gt;
 &gt;&gt;&gt;vectField_show(v,step=4,check_diffeo=True)</p>
 </section>
@@ -2130,7 +2147,10 @@ they have a time dimension stored in the first dimension.</p>
 
            </div>
           </div>
-          <footer>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="demeter.metamorphosis.html" class="btn btn-neutral float-left" title="demeter.metamorphosis package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="advanced_users.html" class="btn btn-neutral float-right" title="For advanced users" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
 
   <hr/>
 

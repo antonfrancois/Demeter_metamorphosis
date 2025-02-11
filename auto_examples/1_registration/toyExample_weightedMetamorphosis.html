@@ -46,7 +46,8 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Gallery of examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../index.html#registration-examples">Registration examples</a></li>
@@ -58,7 +59,10 @@
 <li class="toctree-l3"><a class="reference internal" href="semiLagrangian_scheme.html">Why we should use semi-Lagrangian scheme?</a></li>
 <li class="toctree-l3"><a class="reference internal" href="simpleToyExample_metamorphosis.html">MetaMorphosis behaviour with different values of rho</a></li>
 <li class="toctree-l3"><a class="reference internal" href="toyExample_grayScott_constrainedMetamorphosis.html">Constrained Metamorphosis - simulated cancer growth</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">Weighted metamorphosis - simulated cancer growth</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Weighted metamorphosis - simulated cancer growth</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#load-the-images">Load the images</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../2_kernels/index.html">Kernel examples</a></li>
@@ -137,7 +141,8 @@ This example is part of an exercise, it has been truncated to make you complete 
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Used device: cpu
 </pre></div>
 </div>
-<p>Load the images</p>
+<section id="load-the-images">
+<h2>Load the images<a class="headerlink" href="#load-the-images" title="Link to this heading"></a></h2>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">size</span> <span class="o">=</span> <span class="p">(</span><span class="mi">300</span><span class="p">,</span> <span class="mi">300</span><span class="p">)</span>
 <span class="n">source_name</span><span class="p">,</span> <span class="n">target_name</span> <span class="o">=</span> <span class="s1">&#39;23&#39;</span><span class="p">,</span> <span class="s1">&#39;24&#39;</span>
 <span class="n">S</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">reg_open</span><span class="p">(</span><span class="n">source_name</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># Small oval with gray dots</span>
@@ -196,6 +201,9 @@ x, y torch.Size([91, 91]) torch.Size([91, 91])
 sigma [(5, 5), (15, 15)]
 </pre></div>
 </div>
+<blockquote>
+<div><p>We first compute the classic metamorphosis without any mask to compare results.</p>
+</div></blockquote>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">rho</span> <span class="o">=</span> <span class="mf">0.7</span>
 <span class="n">momentum_ini</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="n">mr</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">metamorphosis</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">momentum_ini</span><span class="p">,</span>
@@ -253,9 +261,9 @@ Progress: [#########-]  90.00%  (Ssd : , 31.8397).
 Progress: [##########]  95.00%  (Ssd : , 30.9987).
 Progress: [##########] 100.00% Done...
  (Ssd : , 30.7090).
-Computation of forward done in  0:01:15s and 0.902cents  s
+Computation of forward done in  0:01:17s and 0.585cents  s
 
-Computation of metamorphosis done in  0:01:15s and 0.903cents  s
+Computation of metamorphosis done in  0:01:17s and 0.586cents  s
 Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.1042790487408638..1.2210246324539185].
 convert -delay 40 -loop 0 /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer_Meta/simpleCancer_Meta_rho0.7_image_\d3.png /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer_Meta/simpleCancer_Meta_rho0.7_image.gif
         Cleaning saved files.
@@ -321,9 +329,9 @@ Progress: [#########-]  90.00%  (Ssd : , 46.6465).
 Progress: [##########]  95.00%  (Ssd : , 45.7702).
 Progress: [##########] 100.00% Done...
  (Ssd : , 44.6144).
-Computation of forward done in  0:01:37s and 0.774cents  s
+Computation of forward done in  0:01:39s and 0.835cents  s
 
-Computation of weighted_metamorphosis done in  0:01:37s and 0.775cents  s
+Computation of weighted_metamorphosis done in  0:01:39s and 0.835cents  s
 Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.140936255455017].
 </pre></div>
 </div>
@@ -389,25 +397,25 @@ plop
 not oriented
 Weighted
 
-Progress: [#---------]  13.33%  (Ssd : ,102.3998).
-Progress: [##--------]  20.00%  (Ssd : , 65.0072).
-Progress: [###-------]  26.67%  (Ssd : , 54.5017).
-Progress: [###-------]  33.33%  (Ssd : , 49.0870).
-Progress: [####------]  40.00%  (Ssd : , 45.6223).
-Progress: [#####-----]  46.67%  (Ssd : , 43.4760).
-Progress: [#####-----]  53.33%  (Ssd : , 41.6775).
-Progress: [######----]  60.00%  (Ssd : , 40.3326).
-Progress: [#######---]  66.67%  (Ssd : , 39.2516).
-Progress: [#######---]  73.33%  (Ssd : , 38.3505).
-Progress: [########--]  80.00%  (Ssd : , 37.5563).
-Progress: [#########-]  86.67%  (Ssd : , 36.8524).
-Progress: [#########-]  93.33%  (Ssd : , 36.2040).
+Progress: [#---------]  13.33%  (Ssd : ,104.8801).
+Progress: [##--------]  20.00%  (Ssd : , 64.7843).
+Progress: [###-------]  26.67%  (Ssd : , 54.0049).
+Progress: [###-------]  33.33%  (Ssd : , 48.2667).
+Progress: [####------]  40.00%  (Ssd : , 44.7822).
+Progress: [#####-----]  46.67%  (Ssd : , 42.1162).
+Progress: [#####-----]  53.33%  (Ssd : , 39.9682).
+Progress: [######----]  60.00%  (Ssd : , 38.6748).
+Progress: [#######---]  66.67%  (Ssd : , 37.5956).
+Progress: [#######---]  73.33%  (Ssd : , 36.5827).
+Progress: [########--]  80.00%  (Ssd : , 35.6771).
+Progress: [#########-]  86.67%  (Ssd : , 34.9504).
+Progress: [#########-]  93.33%  (Ssd : , 34.2420).
 Progress: [##########] 100.00% Done...
- (Ssd : , 35.7415).
-Computation of forward done in  0:00:40s and 0.116cents  s
+ (Ssd : , 33.7010).
+Computation of forward done in  0:00:41s and 0.136cents  s
 
-Computation of weighted_metamorphosis done in  0:00:40s and 0.117cents  s
-Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.1734710931777954..1.1559205055236816].
+Computation of weighted_metamorphosis done in  0:00:41s and 0.136cents  s
+Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.22388134896755219..1.2540206909179688].
 </pre></div>
 </div>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">mr_wm</span><span class="o">.</span><span class="n">plot_deform</span><span class="p">()</span>
@@ -418,7 +426,7 @@ Clipping input data to the valid range for imshow with RGB data ([0..1] for floa
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<img src="../../_images/sphx_glr_toyExample_weightedMetamorphosis_025.png" srcset="../../_images/sphx_glr_toyExample_weightedMetamorphosis_025.png" alt="t = 0.0, diffeo = tensor(False), t = 0.2, diffeo = tensor(False), t = 0.4, diffeo = tensor(False), t = 0.7, diffeo = tensor(False), t = 1.0, diffeo = tensor(False)" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (3 minutes 51.834 seconds)</p>
+<img src="../../_images/sphx_glr_toyExample_weightedMetamorphosis_025.png" srcset="../../_images/sphx_glr_toyExample_weightedMetamorphosis_025.png" alt="t = 0.0, diffeo = tensor(False), t = 0.2, diffeo = tensor(False), t = 0.4, diffeo = tensor(False), t = 0.7, diffeo = tensor(False), t = 1.0, diffeo = tensor(False)" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (3 minutes 56.968 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-1-registration-toyexample-weightedmetamorphosis-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/cb883a253bffcd0f6516838f0b12a884/toyExample_weightedMetamorphosis.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">toyExample_weightedMetamorphosis.ipynb</span></code></a></p>
@@ -431,6 +439,7 @@ Clipping input data to the valid range for imshow with RGB data ([0..1] for floa
 </div>
 </div>
 <p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
 </section>
 
 
