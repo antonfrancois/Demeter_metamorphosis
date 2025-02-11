@@ -1,7 +1,7 @@
 """
 
 
-VIsualize Metamorphosis on 3D brain MRI
+VVisualize Metamorphosis on 3D brain MRI
 ================================================
 
 In this file we apply the metamorphosis algorithm to 3D images. (or load the
@@ -12,16 +12,7 @@ And we visualize the results with a visualisation tool.
 
 ################################################################################
 # 1. Import necessary libraries
-# try:
-#     # sys.path.insert(0,os.path.join(base_path,'examples'))
-#     import sys, os
-#     # add the parent directory to the path
-#     base_path  = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-#     sys.path.insert(0,os.path.join(base_path,'src'))
-# except ImportError:
-#
-#     base_path = ROOT_DIRECTORY
-#     pass
+
 try:
     import sys, os
     # add the parent directory to the path
@@ -54,6 +45,7 @@ if device == 'cpu':
 
 ################################################################################
 # 2. Load the images and visualize them
+
 from nibabel import load
 ic(ROOT_DIRECTORY)
 base_path = ROOT_DIRECTORY
@@ -153,6 +145,7 @@ if loaded:
 # Metamorphosis
 # rho = 0  Pure photometric registration
 # rho = 1  Pure geometric registration
+
 rho = 0.2
 dx_convention = 'square'
 if recompute:

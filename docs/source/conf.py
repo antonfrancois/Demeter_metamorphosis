@@ -25,6 +25,7 @@ release = '0.2.0'
 # !! Important !!
 # Pour générer les fichiers .rst nécessaires dans le répertoire docs/source/.
 # sphinx-apidoc -o docs/source/ src/demeter
+#
 
 ignore_files = [
     '__init__.py',
@@ -33,7 +34,6 @@ ignore_files = [
     'visualize_geodesicOptim.py',
     'weightedMetamorphosis_3D.py',
     'toyExample_grayScott_JoinedMetamorphosis.py',
-    'toyExample_grayScott_constrainedMetamorphosis.py',
     'brain_radioaide_metamorphosis.py',
 ]
 
@@ -53,6 +53,8 @@ extensions = [
      'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',  # Pour supporter les docstrings Google et NumPy
     "sphinx_math_dollar",
+    # 'sphinx.ext.viewcode',
+    # 'sphinx.ext.todo',
     "sphinx.ext.mathjax",
     'sphinx_gallery.gen_gallery',
 ]

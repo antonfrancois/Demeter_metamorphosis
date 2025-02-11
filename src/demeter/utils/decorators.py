@@ -39,7 +39,9 @@ def deprecated(reason):
     source : https://stackoverflow.com/questions/2536307/decorators-in-the-python-standard-lib-deprecated-specifically
 
     Usage example :
+
     .. code-block:: python
+
         @deprecated("use another function")
         def some_old_function(x, y):
             return x + y

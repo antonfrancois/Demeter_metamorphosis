@@ -1,6 +1,6 @@
-.. _examples_gallery:
+.. _examples_gallery_reg:
 
 Registration examples
 =======================================================
 
-The examples below shows how to make simple registrations with Demeter-Metamorphosis.
+The examples below shows how to make various registrations tasks with Demeter-Metamorphosis.

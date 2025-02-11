@@ -1,14 +1,20 @@
-"""
+r"""
 .. _toyExample_grayScott_constrainedMetamorphosis:
+
+Constrained Metamorphosis - simulated cancer growth
+===================================================
 
 This toy example was build to simulate a cancer growth in a brain.
 The gray scott texture as been used to add intricate patterns to the
-brain background.
+brain background. This particular example is a very hard registration
+problem, this example shows how constrained metamorphosis can solve
+it.
 
 Here we will use the constrained metamorphosis to register two images.
 The constrained metamorphosis is a metamorphosis that can take into account
 some prior information to guide the registration. In this example we will
 use two masks and a prior field to guide the registration:
+
 - $M_t$ : A mask that will control the amount of deformation vs photometric changes.
 - $Q_t$ : A mask that will guide the deformation to match a precomputed vector field.
 - $w_t$ : A field that will be used to guide the deformation.

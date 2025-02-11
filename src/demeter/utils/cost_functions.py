@@ -82,14 +82,14 @@ class SoftHistogram1D(nn.Module):
     '''
     Differentiable 1D histogram calculation (supported via pytorch's autograd)
     inupt:
-          x     - N x D array, where N is the batch size and D is the length of each data series
-          bins  - Number of bins for the histogram
-          min   - Scalar min value to be included in the histogram
-          max   - Scalar max value to be included in the histogram
-          sigma - Scalar smoothing factor fir the bin approximation via sigmoid functions.
-                  Larger values correspond to sharper edges, and thus yield a more accurate approximation
+    x     - N x D array, where N is the batch size and D is the length of each data series
+    bins  - Number of bins for the histogram
+    min   - Scalar min value to be included in the histogram
+    max   - Scalar max value to be included in the histogram
+    sigma - Scalar smoothing factor fir the bin approximation via sigmoid functions.
+          Larger values correspond to sharper edges, and thus yield a more accurate approximation
     output:
-          N x bins array, where each row is a histogram
+    N x bins array, where each row is a histogram
     '''
 
     def __init__(self, bins=50, min=0, max=1, sigma=10):
@@ -117,19 +117,21 @@ class SoftHistogram1D(nn.Module):
 
 # Note: This is an extension to the 2D case of the previous code snippet
 class SoftHistogram2D(nn.Module):
-    '''
+    """
     Differentiable 1D histogram calculation (supported via pytorch's autograd)
-    inupt:
-          x, y  - N x D array, where N is the batch size and D is the length of each data series
-                 (i.e. vectorized image or vectorized 3D volume)
-          bins  - Number of bins for the histogram
-          min   - Scalar min value to be included in the histogram
-          max   - Scalar max value to be included in the histogram
-          sigma - Scalar smoothing factor fir the bin approximation via sigmoid functions.
-                  Larger values correspond to sharper edges, and thus yield a more accurate approximation
-    output:
-          N x bins array, where each row is a histogram
-    '''
+    Parameters:
+    -------------
+    x, y  - N x D array, where N is the batch size and D is the length of each data series
+         (i.e. vectorized image or vectorized 3D volume)
+    bins  - Number of bins for the histogram
+    min   - Scalar min value to be included in the histogram
+    max   - Scalar max value to be included in the histogram
+    sigma - Scalar smoothing factor fir the bin approximation via sigmoid functions.
+          Larger values correspond to sharper edges, and thus yield a more accurate approximation
+    Returns:
+    -------------
+        N x bins array, where each row is a histogram
+    """
 
     def __init__(self, bins=50, min=0, max=1, sigma=10):
         super(SoftHistogram2D, self).__init__()
@@ -158,14 +160,15 @@ class SoftHistogram2D(nn.Module):
 
 
 class Mutual_Information(nn.Module):
-    '''
+    r"""
     This class is a pytorch implementation of the mutual information (MI) calculation between two images.
     This is an approximation, as the images' histograms rely on differentiable approximations of rectangular windows.
 
+    .. math::
             I(X, Y) = H(X) + H(Y) - H(X, Y) = \sum(\sum(p(X, Y) * log(p(Y, Y)/(p(X) * p(Y)))))
 
-    where H(X) = -\sum(p(x) * log(p(x))) is the entropy
-    '''
+    where $H(X) = -\sum(p(x) * log(p(x)))$ is the entropy
+    """
 
     def __init__(self, bins=50, min=0, max=1, sigma=10, reduction='sum'):
         super(Mutual_Information, self).__init__()
@@ -187,13 +190,13 @@ class Mutual_Information(nn.Module):
         plt.show()
 
     def forward(self, im1, im2, plot=False):
-        '''
+        """
         Forward implementation of a differentiable MI estimator for batched images
         :param im1: N x ... tensor, where N is the batch size
                     ... dimensions can take any form, i.e. 2D images or 3D volumes.
         :param im2: N x ... tensor, where N is the batch size
         :return: N x 1 vector - the approximate MI values between the batched im1 and im2
-        '''
+        """
 
         # Check for valid inputs
         assert im1.size() == im2.size(), "(MI_pytorch) Inputs should have the same dimensions."

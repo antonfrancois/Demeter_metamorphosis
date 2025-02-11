@@ -1,5 +1,5 @@
 """
-.. _semiLagrangian_scheme:
+.. semiLagrangian_scheme:
 
 Why we should use semi-Lagrangian scheme?
 =========================================

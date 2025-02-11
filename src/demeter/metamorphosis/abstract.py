@@ -190,6 +190,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
              by default False
 
         """
+
         if len(momentum_ini.shape) not in [4, 5]:
             raise ValueError(
                 f"residual_ini must be of shape [B,C,H,W] or [B,C,D,H,W] got {momentum_ini.shape}"
@@ -287,6 +288,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
         :return: (tensor array) of shape [T,1,H,W] integrated with vector_field
         """
+
         dt = t_max / n_step
         for t in torch.linspace(0, t_max, n_step):
             grad_I = tb.spatialGradient(image, dx_convention=self.dx_convention)
@@ -301,6 +303,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         :param grad_image: (tensor array) of shape [B,C,2,H,W] or [B,C,3,D,H,W]
         :return: (tensor array) of shape [B,H,W,2]
         """
+
         # C = residuals.shape[1]
         field_momentum = -(momentum.unsqueeze(2) * grad_image).sum(dim=1)
         field =  self.kernelOperator(field_momentum)
@@ -318,6 +321,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         :param grad_image: (tensor array) of shape [B,C,2,H,W] or [B,C,3,D,H,W]
         :return: (tensor array) of shape [B,H,W,2]
         """
+
         wheigths = self.channel_weight.to(momentum.device)
         W = wheigths.sum()
         # ic(residuals.shape,self.channel_weight.shape)
@@ -410,6 +414,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         -------
         tensor array of shape [1,1,H,W] or [1,1,D,H,W]
         """
+
         if field is None:
             field = self.field
         div_v_times_p = cst * (
@@ -555,6 +560,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         :params: save : (bool) option to save the integration intermediary steps. If true, the return value will have its shape with T>1
         :return: deformation [T,H,W,2] or [T,H,W,D,3]
         """
+
         # if n_step == 0:
         #     return self.id_grid.detach().cpu() + self.field_stock[0][None].detach().cpu()/self.n_step
         # temporal_integrator = vff.FieldIntegrator(method='temporal',save=save)
@@ -599,6 +605,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         :params: save : (bool) option to save the integration intermediary steps. If true, the return value will have its shape with T>1
         :return: deformation [T,H,W,2] or [T,H,W,D,3]
         """
+
         temporal_integrator = vff.FieldIntegrator(
             method="temporal", save=save, dx_convention=self.dx_convention
         )
@@ -825,6 +832,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         :param cost_cst:
         :param optimizer_method:
         """
+
         super().__init__()
         self.mp = geodesic
         self.dx_convention = self.mp.dx_convention
@@ -1029,6 +1037,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         :param loss_stock:
         :return: updated `loss_stock`
         """
+
         # initialise loss_stock
         if loss_stock is None:
             d = 3
@@ -1065,6 +1074,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         :param verbose: (bool) display advancement
 
         """
+
         # self.source = self.source.to(z_0.device)
         # self.target = self.target.to(z_0.device)
         # self.mp.kernelOperator.kernel = self.mp.kernelOperator.kernel.to(z_0.device)
@@ -1149,6 +1159,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             dividing it by 10.
         :return:
         """
+
         try:
             self.forward(z_0, n_iter, grad_coef, verbose=verbose)
         except OverflowError:
@@ -1222,6 +1233,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         :param target_segmentation:
         :return: (float) DICE score.
         """
+
         # TODO : make the computation
         self.is_DICE_cmp = True
         deformator = self.mp.get_deformator() if forward else self.mp.get_deformation()
@@ -1296,6 +1308,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         path
             path of the file saved
         """
+
         if self.to_analyse == "Integration diverged":
             print("Can't save optimisation that didn't converged")
             return 0
@@ -1400,6 +1413,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         :param clean: bool
             if True, the images used to create the gif are deleted.
         """
+
         # prepare list of object
         if "image" in object and "deformation" in object:
             # source image
@@ -1549,6 +1563,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
     def plot_cost(self, y_log=False):
         """To display the evolution of cost during the optimisation."""
+
         fig1, ax1 = plt.subplots(1, 2, figsize=(10, 5))
         if y_log:
             ax1[0].set_yscale("log")
@@ -1593,6 +1608,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
     def plot_imgCmp(self):
         r"""Display and compare the deformed image $I_1$ with the target$"""
+
         fig, ax = plt.subplots(2, 2, figsize=(20, 20), constrained_layout=True)
         image_kw = dict(cmap="gray", origin="lower", vmin=0, vmax=1)
         set_ticks_off(ax)
@@ -1657,6 +1673,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         r"""Display the deformation of the source image to the target image and the source image deformed
         by the deformation field.
         """
+
         residuals = self.to_analyse[0]
         # print(residuals.device,self.source.device)
         self.mp.forward(self.source.clone(), residuals, save=True, plot=0)

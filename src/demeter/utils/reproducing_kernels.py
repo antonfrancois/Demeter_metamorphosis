@@ -348,6 +348,7 @@ def plot_gaussian_kernel_3d(kernel: torch.Tensor, sigma ):
         the standard deviation of the kernel.
 
     """
+
     fig = plt.figure(constrained_layout= True,figsize=(15,5))
     subfigs = fig.subfigures(1, 3)
 
@@ -456,7 +457,7 @@ def dx_convention_handler(dx_convention, dim):
 
 
 class GaussianRKHS(torch.nn.Module):
-    """ Is equivalent to a gaussian blur. This function support 2d and 3d images in the
+    r""" Is equivalent to a gaussian blur. This function support 2d and 3d images in the
     PyTorch convention
 
     $$ \mathrm{kernel} = \exp\left(\frac{-x^2}{2 \sigma^2}\right) $$
@@ -465,7 +466,7 @@ class GaussianRKHS(torch.nn.Module):
     discretisation choices..
 
     Parameters:
-    -----------
+    ---------------
     sigma (Tuple[float, float] or [float,float,float]):
         the standard deviation of the kernel.
     border_type (str):
@@ -480,24 +481,28 @@ class GaussianRKHS(torch.nn.Module):
         the closer we are to an actual gaussian kernel. (default = 6)
 
     Examples:
-    ---------
+    ------------
 
-    >>> import torch
-    >>> import demeter.utils.torchbox as tb
-    >>> import demeter.utils.reproducing_kernels as rk
-    >>>
-    >>>img_name = '01'           # simple disk
-    >>>img_name = 'sri24'      # slice of a brain
-    >>>img = tb.reg_open(img_name,size = (300,300))
-    >>>sigma = (3,5)
-    >>>kernelOp = rk.GaussianRKHS(sigma)
-    >>>print(kernelOp)
-    >>>blured = kernelOp(img_data)
-    >>>fig,ax = plt.subplots(1,2)
-    >>>ax[0].imshow(img_data[0,0])
-    >>>ax[1].imshow(blured[0,0])
-    >>>plt.show()
+    .. code-block:: python
+
+         import torch
+         import demeter.utils.torchbox as tb
+         import demeter.utils.reproducing_kernels as rk
+
+        img_name = '01'           # simple disk
+        img_name = 'sri24'      # slice of a brain
+        img = tb.reg_open(img_name,size = (300,300))
+        sigma = (3,5)
+        kernelOp = rk.GaussianRKHS(sigma)
+        print(kernelOp)
+        blured = kernelOp(img_data)
+        fig,ax = plt.subplots(1,2)
+        ax[0].imshow(img_data[0,0])
+        ax[1].imshow(blured[0,0])
+        plt.show()
+
     """
+
     def __init__(self,sigma : Tuple,
                  border_type: str = 'replicate',
                  normalized: bool = True,
@@ -535,6 +540,7 @@ class GaussianRKHS(torch.nn.Module):
 
         :return: dict
         """
+
         args = {
             "name": self.__class__.__name__,
             "sigma": self.sigma,
@@ -555,6 +561,7 @@ class GaussianRKHS(torch.nn.Module):
         image (torch.Tensor):
             the image to be convolved
         """
+
         if isinstance(self.sigma, tuple) and len(self.sigma) != len(image.shape[2:]) :
             raise ValueError(f"kernelOperator :{self.__class__.__name__}"
                              f"was initialised to be {len(self.sigma)}D"
@@ -585,6 +592,7 @@ class GaussianRKHS(torch.nn.Module):
         --------
         torch.Tensor: the convolved tensor of same size and numbers of channels as the input.
         """
+
         if (self._dim == 2 and len(input.shape) == 4) or (self._dim == 3 and len(input.shape) == 5):
             return self.filter(input,self.kernel,self.border_type)
         else:
@@ -600,14 +608,14 @@ class GaussianRKHS(torch.nn.Module):
 
 
 class VolNormalizedGaussianRKHS(torch.nn.Module):
-    """
+    r"""
     A kernel that preserves the value of the norm $V$ for different images resolution.
 
     Let $\sigma=(\sigma_h)_{1\leq h\leq d}$ be the standard deviation along the different coordinate in $\R^d$ and $B=B(0,1)$ the closed ball of radius $1$.  We denote $D=\text{diag}(\sigma_h^2)$ and we consider the kernel
 
     $$K(x,y)=\frac{1}{\Vol(\Dh B)}\exp\left(-\frac{1}{2}\la D^{-1}(x-y),(x-y)\ra\right)D\,.$$
 
-call the \emph{anisotropic volume normalized gaussian kernel} (AVNG kernel).
+    call the \emph{anisotropic volume normalized gaussian kernel} (AVNG kernel).
 
     Parameters:
     -------------
@@ -682,11 +690,11 @@ call the \emph{anisotropic volume normalized gaussian kernel} (AVNG kernel).
         #  We normalize the kernel to multiply by the product of
         # dx / sigma_continuous, which is equal to 1/sigma.
         # ic(prod(self.sigma_continuous))
-        # TODO : remplacer par sigma !!!
+
         self.kernel /=  prod(self.sigma_continuous)
         self.border_type = border_type
 
-        # TODO : define better the condition for using the fft filter
+
         # this filter works in 2d and 3d
         self.filter = flt.filter2d
         self.kwargs_filter = {'border_type':self.border_type,
@@ -732,12 +740,12 @@ call the \emph{anisotropic volume normalized gaussian kernel} (AVNG kernel).
         Convolve the input tensor with the Gaussian kernel.
 
         Args:
-        -----
+        -------
         input (torch.Tensor):
             the input tensor with shape of :math:`(B, C, H, W)` or :math:`(B, C, D, H, W)`
 
         Returns:
-        --------
+        -----------
         torch.Tensor: the convolved tensor of same size and numbers of channels as the input.
         """
 
@@ -762,24 +770,27 @@ call the \emph{anisotropic volume normalized gaussian kernel} (AVNG kernel).
 
 class Multi_scale_GaussianRKHS(torch.nn.Module):
     r"""
-    This class is a multi-scale Gaussian RKHS. It is equivalent to a
-    multi-scale Gaussian blur. This function support 2d and 3d images in the
+    This class is a multiscale Gaussian RKHS. It is equivalent to a
+    multiscale Gaussian blur. This function support 2d and 3d images in the
     PyTorch convention
 
     Let $\Gamma = { \sigma_1, \sigma_2, \ldots, \sigma_n}$ be a list of standard deviations.
-    $$ \mathrm{kernel}_\Gamma = \sum_{\sigma \in \Gamma} \frac {1}{nk_\sigma} \exp\left(\frac{-x^2}{2 \sigma^2}\right) $$
+
+    .. math:
+         \mathrm{kernel}_\Gamma = \sum_{\sigma \in \Gamma} \frac {1}{nk_\sigma} \exp\left(\frac{-x^2}{2 \sigma^2}\right)
+
     where $n$ is the number of elements in $\Gamma$.
     if normalised is True, $k$ is equal to:
     $$k_\sigma = \sum_{x \in Omega}  \exp\left(\frac{-x^2}{2 \sigma^2}\right) $$
     else, $k$ is equal to 1.
 
     Parameters:
-    -----------
+    --------------
     list_sigmas: List[Tuple[float,float] or Tuple[float,float,float]]
         the standard deviation of the kernel.
 
     Example:
-    --------
+    ------------
 
     .. code-block:: python
 
@@ -961,9 +972,9 @@ def get_sigma_from_img_ratio(img_shape,subdiv,c=.1):
                             we simply apply the 'int case' to each element of the list.
     :param c: float : value considered as negligible in the gaussian kernel
     """
+
     # TODO : Ajouter un warning en disant que le sigma choisi va produire un kernel plus
-    #  grand que la taille de l'image ... Ou voir pourquoi ce n'est pas possible et pourquoi
-    # ça le fait quand même.
+    #  grand que la taille de l'image ... ça n'as pas l'air grave.
 
 
 

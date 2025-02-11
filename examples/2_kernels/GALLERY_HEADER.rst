@@ -1,4 +1,4 @@
-.. _examples_gallery:
+.. _examples_gallery_kernels:
 
 Kernel examples
 =======================================================
