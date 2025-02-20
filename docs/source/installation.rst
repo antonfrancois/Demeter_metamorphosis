@@ -5,6 +5,30 @@ So far, demeter-metamorphosis is only available for linux and macOS, if you are 
 windows user, you can consider using
 `wsl <https://learn.microsoft.com/en-us/windows/wsl/about>`_.
 
+WSL setup (for Windows users):
+**********
+WSL is a compatibility layer for running Linux binary executables natively on Windows 10 and Windows Server 2019. It is a feature of the Windows operating system that allows you to run a Linux distribution directly on Windows without using a virtual machine or container.
+So first install WSL and then you can follow the Unix installation steps.
+
+Install wsl:
+
+.. code-block:: bash
+
+    wsl --install
+
+You might need to restart your computer to finish the installation process.
+
+Open a terminal wsl. After the installation is completed, open wsl, set up a password.
+
+.. code-block:: bash
+
+    sudo apt update
+    sudo apt install python3-pip
+    sudo apt install python3.12-venv
+
+For Unix systems, (Linux and macOS)
+*****************************************
+
 With pip
 --------
 

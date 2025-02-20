@@ -222,8 +222,8 @@ else:
 
 mr_mask_orienting.compute_landmark_dist(source_landmarks,target_landmarks)
 
-# mr_mask_orienting.plot_imgCmp()
-# # plt.show()
+mr_mask_orienting.plot_imgCmp()
+plt.show()
 # # #%%
 # mr_mask_orienting.plot_deform()
 # mr_mask_orienting.mp.plot()
@@ -262,9 +262,18 @@ plt.show()
 # Keep in mind that masks should be between 0 and 1
 
 residuals_mask = mr_mask_residuals.mp.image_stock.clone()
+residuals_mask = 1 - residuals_mask
 
 orienting_field = -mr_mask_orienting.mp.field_stock.clone() / n_steps
-orienting_mask = torch.zeros(residuals_mask.shape)
+
+norm_w_2 = (orienting_field ** 2).sum(dim= -1).sqrt()
+norm_w_2 = norm_w_2/norm_w_2.max()
+
+orienting_mask = norm_w_2.clone()[:,None]
+o_max = 0.02
+orienting_mask[orienting_mask > o_max] = o_max
+
+#%%
 
 
 
@@ -349,11 +358,13 @@ plt.show()
 
 #%%
 mr_cm.plot_imgCmp()
+plt.show()
 
 #%%
 
 mr_cm.plot_deform()
 
+plt.show()
 #%%
 mr_cm.mp.plot()
 plt.show()

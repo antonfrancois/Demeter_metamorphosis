@@ -39,10 +39,35 @@ but also follow a rapid introduction in the following slides:
 At the moment, demeter-metamorphosis is available on linux and macOS only.
 Windows user can use the [WSL](https://learn.microsoft.com/en-us/windows/wsl/about) to install the package.
 
-### From pip
-To be announced
+### WSL setup (for Windows users):
 
-### From source
+WSL is a compatibility layer for running Linux binary executables natively on Windows 10 and Windows Server 2019. It is a feature of the Windows operating system that allows you to run a Linux distribution directly on Windows without using a virtual machine or container.
+So first install WSL and then you can follow the Unix installation steps.
+
+Install wsl:
+```bash
+ wsl --install
+```
+
+You might need to restart your computer to finish the installation process.
+
+Open a terminal wsl. After the installation is completed, open wsl, set up a password. 
+ 
+```bash
+sudo apt update
+sudo apt install python3-pip
+sudo apt install python3.12-venv
+```
+
+### For Unix systems, (Linux and macOS)
+
+#### From pip
+
+```bash
+pip install demeter-metamorphosis
+```
+
+#### From source
 If you want the development version or consider contributing to the codebase,
 you can also install scikit-shapes locally from a clone of the repository. 
 First I advise you to create a fresh virtual environment with conda or venv. With venv [more...](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#create-and-use-virtual-environments):
@@ -74,9 +99,9 @@ The whole process can take up to 10 minutes depending on your internet connectio
 mainly because of the torch and nvidia driver installation. 
 
 
-## Jupyter Notebooks and examples.
+## Examples. and Jupyter Notebooks
 
-You can see results and usage exemples in the `examples` folder or at the [Example Gallery](https://antonfrancois.github.io/Demeter_metamorphosis/auto_examples/index.html:
+You can see results and usage examples in the `examples` folder or at the [Example Gallery](https://antonfrancois.github.io/Demeter_metamorphosis/auto_examples/index.html:
 
 
 ## Contact
