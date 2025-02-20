@@ -49,12 +49,14 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#with-pip">With pip</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#from-source">From source</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#basic-usage">Basic usage</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#for-developers">For developers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#wsl-setup-for-windows-users">WSL setup (for Windows users):</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#for-unix-systems-linux-and-macos">For Unix systems, (Linux and macOS)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#with-pip">With pip</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#from-source">From source</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#basic-usage">Basic usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#for-developers">For developers</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Gallery of examples</a></li>
@@ -94,12 +96,30 @@
 <p>So far, demeter-metamorphosis is only available for linux and macOS, if you are a
 windows user, you can consider using
 <a class="reference external" href="https://learn.microsoft.com/en-us/windows/wsl/about">wsl</a>.</p>
+<section id="wsl-setup-for-windows-users">
+<h2>WSL setup (for Windows users):<a class="headerlink" href="#wsl-setup-for-windows-users" title="Link to this heading"></a></h2>
+<p>WSL is a compatibility layer for running Linux binary executables natively on Windows 10 and Windows Server 2019. It is a feature of the Windows operating system that allows you to run a Linux distribution directly on Windows without using a virtual machine or container.
+So first install WSL and then you can follow the Unix installation steps.</p>
+<p>Install wsl:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>wsl<span class="w"> </span>--install
+</pre></div>
+</div>
+<p>You might need to restart your computer to finish the installation process.</p>
+<p>Open a terminal wsl. After the installation is completed, open wsl, set up a password.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt<span class="w"> </span>update
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>python3-pip
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>python3.12-venv
+</pre></div>
+</div>
+</section>
+<section id="for-unix-systems-linux-and-macos">
+<h2>For Unix systems, (Linux and macOS)<a class="headerlink" href="#for-unix-systems-linux-and-macos" title="Link to this heading"></a></h2>
 <section id="with-pip">
-<h2>With pip<a class="headerlink" href="#with-pip" title="Link to this heading"></a></h2>
+<h3>With pip<a class="headerlink" href="#with-pip" title="Link to this heading"></a></h3>
 <p>TBA</p>
 </section>
 <section id="from-source">
-<h2>From source<a class="headerlink" href="#from-source" title="Link to this heading"></a></h2>
+<h3>From source<a class="headerlink" href="#from-source" title="Link to this heading"></a></h3>
 <p>First, install <cite>demeter_metamorphosis</cite>, you need to clone the <a class="reference external" href="https://github.com/antonfrancois/Demeter_metamorphosis">GitHub repository</a>:.</p>
 <p>You can do this by running the following command on a terminal,
 navigate to the directory and run</p>
@@ -117,8 +137,10 @@ conda<span class="w"> </span>activate<span class="w"> </span>demeter_env
 <span class="nb">source</span><span class="w"> </span><span class="s2">&quot;demeter_env&quot;</span>/bin/activate
 </pre></div>
 </div>
+</section>
+</section>
 <section id="basic-usage">
-<h3>Basic usage<a class="headerlink" href="#basic-usage" title="Link to this heading"></a></h3>
+<h2>Basic usage<a class="headerlink" href="#basic-usage" title="Link to this heading"></a></h2>
 <p>To start using demeter not wanting to get do deep in the functionalities, you can install the package locally with pip.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>Your/path/to/Demeter_metamorphosis
 pip<span class="w"> </span>install<span class="w"> </span>.
@@ -126,7 +148,7 @@ pip<span class="w"> </span>install<span class="w"> </span>.
 </div>
 </section>
 <section id="for-developers">
-<h3>For developers<a class="headerlink" href="#for-developers" title="Link to this heading"></a></h3>
+<h2>For developers<a class="headerlink" href="#for-developers" title="Link to this heading"></a></h2>
 <p>If you want the development version or consider contributing to the codebase,
 you can install it with access to the source code.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>Your/path/to/Demeter_metamorphosis
@@ -134,7 +156,6 @@ pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </s
 </pre></div>
 </div>
 <p>It can take up to 10 minutes depending on your internet connection, mainly because of torch and nvidia driver installation.</p>
-</section>
 </section>
 </section>
 

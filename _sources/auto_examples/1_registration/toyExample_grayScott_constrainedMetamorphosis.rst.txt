@@ -330,14 +330,19 @@ First we need to set source and target masks.
 
     mr_mask_orienting.compute_landmark_dist(source_landmarks,target_landmarks)
 
-    # mr_mask_orienting.plot_imgCmp()
-    # # plt.show()
+    mr_mask_orienting.plot_imgCmp()
+    plt.show()
     # # #%%
     # mr_mask_orienting.plot_deform()
     # mr_mask_orienting.mp.plot()
     # plt.show()
 
 
+
+.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_003.png
+   :alt: source, target, Integrated source image, comparaison deformed image with target
+   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_003.png
+   :class: sphx-glr-single-img
 
 
 .. rst-class:: sphx-glr-script-out
@@ -367,13 +372,6 @@ First we need to set source and target masks.
             Before : 11.928571701049805
             After : 9.912918090820312
 
-    (tensor([[185.8305, 147.8380],
-            [160.0000,  65.0000],
-            [139.8644,  83.6935],
-            [144.9612, 210.1375],
-            [178.6423, 200.7945],
-            [124.2631, 103.7234],
-            [116.8866, 175.0446]]), tensor(9.9129), tensor(11.9286))
 
 
 
@@ -406,9 +404,9 @@ First we need to set source and target masks.
 
 
 
-.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_003.png
+.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_004.png
    :alt: source, target, Integrated source image, comparaison deformed image with target
-   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_003.png
+   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_004.png
    :class: sphx-glr-single-img
 
 
@@ -451,15 +449,34 @@ plt.show()
  the expected registration.
  Keep in mind that masks should be between 0 and 1
 
-.. GENERATED FROM PYTHON SOURCE LINES 263-292
+.. GENERATED FROM PYTHON SOURCE LINES 263-276
 
 .. code-block:: Python
 
 
     residuals_mask = mr_mask_residuals.mp.image_stock.clone()
+    residuals_mask = 1 - residuals_mask
 
     orienting_field = -mr_mask_orienting.mp.field_stock.clone() / n_steps
-    orienting_mask = torch.zeros(residuals_mask.shape)
+
+    norm_w_2 = (orienting_field ** 2).sum(dim= -1).sqrt()
+    norm_w_2 = norm_w_2/norm_w_2.max()
+
+    orienting_mask = norm_w_2.clone()[:,None]
+    o_max = 0.02
+    orienting_mask[orienting_mask > o_max] = o_max
+
+
+
+
+
+
+
+
+.. GENERATED FROM PYTHON SOURCE LINES 277-301
+
+.. code-block:: Python
+
 
 
 
@@ -487,16 +504,16 @@ plt.show()
 
 
 
-.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_004.png
+.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_005.png
    :alt: orienting mask, residuals mask
-   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_004.png
+   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_005.png
    :class: sphx-glr-single-img
 
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 293-305
+.. GENERATED FROM PYTHON SOURCE LINES 302-314
 
 .. code-block:: Python
 
@@ -515,16 +532,16 @@ plt.show()
 
 
 
-.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_005.png
+.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_006.png
    :alt: orienting and residuals masks profiles cut at x=150
-   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_005.png
+   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_006.png
    :class: sphx-glr-single-img
 
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 306-319
+.. GENERATED FROM PYTHON SOURCE LINES 315-328
 
 .. code-block:: Python
 
@@ -544,9 +561,9 @@ plt.show()
 
 
 
-.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_006.png
+.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_007.png
    :alt: kernel sigma: (10, 10), Gaussian Kernel $\sigma$=[(5, 5), (10, 10), (15, 15)], kernel sigma: (5, 5)
-   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_006.png
+   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_007.png
    :class: sphx-glr-single-img
 
 
@@ -566,7 +583,7 @@ plt.show()
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 320-327
+.. GENERATED FROM PYTHON SOURCE LINES 329-336
 
 ####################################################################
  We are now ready to perform the registration with the constrained metamorphosis
@@ -576,7 +593,7 @@ plt.show()
  file = "2D_25_01_2025_TEST_toyExample_grayScott_CM_square_n_step20_000.pk1"
  mr = mt.load_optimize_geodesicShooting(file)
 
-.. GENERATED FROM PYTHON SOURCE LINES 327-350
+.. GENERATED FROM PYTHON SOURCE LINES 336-359
 
 .. code-block:: Python
 
@@ -606,9 +623,9 @@ plt.show()
 
 
 
-.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_007.png
+.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_008.png
    :alt: Lambda = 1e-10
-   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_007.png
+   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_008.png
    :class: sphx-glr-single-img
 
 
@@ -620,32 +637,33 @@ plt.show()
     ==== Constrained Metamorphosis ====
     oriented
     Weighted
-    Progress: [#---------]  10.00%  (Ssd : , 56.5612).    Progress: [##--------]  15.00%  (Ssd : , 32.8259).    Progress: [##--------]  20.00%  (Ssd : , 19.4591).    Progress: [##--------]  25.00%  (Ssd : , 11.2553).    Progress: [###-------]  30.00%  (Ssd : ,  8.9736).    Progress: [####------]  35.00%  (Ssd : ,  7.5019).    Progress: [####------]  40.00%  (Ssd : ,  6.5346).    Progress: [####------]  45.00%  (Ssd : ,  5.9750).    Progress: [#####-----]  50.00%  (Ssd : ,  5.5376).    Progress: [######----]  55.00%  (Ssd : ,  5.1981).    Progress: [######----]  60.00%  (Ssd : ,  5.0141).    Progress: [######----]  65.00%  (Ssd : ,  4.8033).    Progress: [#######---]  70.00%  (Ssd : ,  4.6341).    Progress: [########--]  75.00%  (Ssd : ,  4.5225).    Progress: [########--]  80.00%  (Ssd : ,  4.4007).    Progress: [########--]  85.00%  (Ssd : ,  4.3040).    Progress: [#########-]  90.00%  (Ssd : ,  4.1910).    Progress: [##########]  95.00%  (Ssd : ,  4.0828).    Progress: [##########] 100.00% Done...
-     (Ssd : ,  4.0118).
-    Computation of forward done in  0:01:53s and 0.069cents  s
+    Progress: [#---------]  10.00%  (Ssd : ,159.3479).    Progress: [##--------]  15.00%  (Ssd : , 90.8015).    Progress: [##--------]  20.00%  (Ssd : , 65.3321).    Progress: [##--------]  25.00%  (Ssd : , 55.2068).    Progress: [###-------]  30.00%  (Ssd : , 50.6871).    Progress: [####------]  35.00%  (Ssd : , 47.5604).    Progress: [####------]  40.00%  (Ssd : , 44.8183).    Progress: [####------]  45.00%  (Ssd : , 42.6235).    Progress: [#####-----]  50.00%  (Ssd : , 41.5311).    Progress: [######----]  55.00%  (Ssd : , 40.0308).    Progress: [######----]  60.00%  (Ssd : , 39.1532).    Progress: [######----]  65.00%  (Ssd : , 38.6079).    Progress: [#######---]  70.00%  (Ssd : , 38.2486).    Progress: [########--]  75.00%  (Ssd : , 37.6764).    Progress: [########--]  80.00%  (Ssd : , 37.3379).    Progress: [########--]  85.00%  (Ssd : , 37.0065).    Progress: [#########-]  90.00%  (Ssd : , 36.6171).    Progress: [##########]  95.00%  (Ssd : , 36.3451).    Progress: [##########] 100.00% Done...
+     (Ssd : , 36.0992).
+    Computation of forward done in  0:01:43s and 0.837cents  s
 
-    Computation of constrained_metamorphosis done in  0:01:53s and 0.069cents  s
+    Computation of constrained_metamorphosis done in  0:01:43s and 0.838cents  s
     round False
     round False
     Landmarks:
             Before : 11.928571701049805
-            After : 14.568132400512695
+            After : 5.347609519958496
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 351-353
+.. GENERATED FROM PYTHON SOURCE LINES 360-363
 
 .. code-block:: Python
 
     mr_cm.plot_imgCmp()
+    plt.show()
 
 
 
 
-.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_008.png
+.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_009.png
    :alt: source, target, Integrated source image, comparaison deformed image with target
-   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_008.png
+   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_009.png
    :class: sphx-glr-single-img
 
 
@@ -653,36 +671,32 @@ plt.show()
 
  .. code-block:: none
 
-    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.007411721162497997..1.184751272201538].
-
-    (<Figure size 2000x2000 with 4 Axes>, array([[<Axes: title={'center': 'source'}>,
-            <Axes: title={'center': 'target'}>],
-           [<Axes: title={'center': 'Integrated source image'}>,
-            <Axes: title={'center': 'comparaison deformed image with target'}>]],
-          dtype=object))
+    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-2.3707757534907614e-08..1.1562880277633667].
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 354-357
+
+.. GENERATED FROM PYTHON SOURCE LINES 364-368
 
 .. code-block:: Python
 
 
     mr_cm.plot_deform()
 
+    plt.show()
 
 
 
-.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_009.png
-   :alt: diffeo = tensor(False)
-   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_009.png
+.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_010.png
+   :alt: diffeo = tensor(True)
+   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_010.png
    :class: sphx-glr-single-img
 
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 358-360
+.. GENERATED FROM PYTHON SOURCE LINES 369-371
 
 .. code-block:: Python
 
@@ -691,20 +705,20 @@ plt.show()
 
 
 
-.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_010.png
-   :alt: t = 0.0, diffeo = tensor(True), t = 0.2, diffeo = tensor(True), t = 0.4, diffeo = tensor(True), t = 0.7, diffeo = tensor(False), t = 1.0, diffeo = tensor(False)
-   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_010.png
+.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_011.png
+   :alt: t = 0.0, diffeo = tensor(True), t = 0.2, diffeo = tensor(True), t = 0.4, diffeo = tensor(True), t = 0.7, diffeo = tensor(True), t = 1.0, diffeo = tensor(True)
+   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_011.png
    :class: sphx-glr-single-img
 
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 361-362
+.. GENERATED FROM PYTHON SOURCE LINES 372-373
 
 mr_cm.save(f"TEST_toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}")
 
-.. GENERATED FROM PYTHON SOURCE LINES 364-377
+.. GENERATED FROM PYTHON SOURCE LINES 375-388
 
 .. code-block:: Python
 
@@ -724,9 +738,9 @@ mr_cm.save(f"TEST_toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}")
 
 
 
-.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_011.png
+.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_012.png
    :alt: orienting mask
-   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_011.png
+   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_012.png
    :class: sphx-glr-single-img
 
 
@@ -736,7 +750,7 @@ mr_cm.save(f"TEST_toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}")
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 59.687 seconds)
+   **Total running time of the script:** (1 minutes 50.633 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_toyExample_grayScott_constrainedMetamorphosis.py:

@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**18:12.680** total execution time for 9 files **from all galleries**:
+**17:24.046** total execution time for 9 files **from all galleries**:
 
 .. container::
 
@@ -33,29 +33,29 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_1_registration_metamorphosis_3D.py` (``../../examples/1_registration/metamorphosis_3D.py``)
-     - 08:46.403
+     - 08:31.484
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_registration_toyExample_weightedMetamorphosis.py` (``../../examples/1_registration/toyExample_weightedMetamorphosis.py``)
-     - 04:11.069
+     - 03:54.146
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_registration_simpleToyExample_metamorphosis.py` (``../../examples/1_registration/simpleToyExample_metamorphosis.py``)
-     - 02:01.958
+     - 01:58.297
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_registration_toyExample_grayScott_constrainedMetamorphosis.py` (``../../examples/1_registration/toyExample_grayScott_constrainedMetamorphosis.py``)
-     - 01:59.687
+     - 01:50.633
      - 0.0
    * - :ref:`sphx_glr_auto_examples_2_kernels_Gaussian_RK.py` (``../../examples/2_kernels/Gaussian_RK.py``)
-     - 00:31.185
+     - 00:29.322
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_registration_semiLagrangian_scheme.py` (``../../examples/1_registration/semiLagrangian_scheme.py``)
-     - 00:21.628
+     - 00:20.466
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_registration_data_cost_mutualInformation.py` (``../../examples/1_registration/data_cost_mutualInformation.py``)
-     - 00:19.673
+     - 00:18.670
      - 0.0
    * - :ref:`sphx_glr_auto_examples_3_utils_make_ball_at_shape_center.py` (``../../examples/3_utils/make_ball_at_shape_center.py``)
-     - 00:00.631
+     - 00:00.606
      - 0.0
    * - :ref:`sphx_glr_auto_examples_2_kernels_multi_scale_gaussianRKHS.py` (``../../examples/2_kernels/multi_scale_gaussianRKHS.py``)
-     - 00:00.446
+     - 00:00.421
      - 0.0

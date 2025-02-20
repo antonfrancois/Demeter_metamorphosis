@@ -171,9 +171,9 @@ Now we will create a mutual information data cost object and use it in the regis
 
     Progress: [#---------]  13.33%  (Mutual_Information : ,  3.8573).    Progress: [##--------]  20.00%  (Mutual_Information : ,  3.3919).    Progress: [###-------]  26.67%  (Mutual_Information : ,  3.3576).    Progress: [###-------]  33.33%  (Mutual_Information : ,  3.3550).    Progress: [####------]  40.00%  (Mutual_Information : ,  3.3538).    Progress: [#####-----]  46.67%  (Mutual_Information : ,  3.3525).    Progress: [#####-----]  53.33%  (Mutual_Information : ,  3.3514).    Progress: [######----]  60.00%  (Mutual_Information : ,  3.3507).    Progress: [#######---]  66.67%  (Mutual_Information : ,  3.3497).    Progress: [#######---]  73.33%  (Mutual_Information : ,  3.3489).    Progress: [########--]  80.00%  (Mutual_Information : ,  3.3481).    Progress: [#########-]  86.67%  (Mutual_Information : ,  3.3475).    Progress: [#########-]  93.33%  (Mutual_Information : ,  3.3468).    Progress: [##########] 100.00% Done...
      (Mutual_Information : ,  3.3463).
-    Computation of forward done in  0:00:15s and 0.985cents  s
+    Computation of forward done in  0:00:15s and 0.172cents  s
 
-    Computation of lddmm done in  0:00:15s and 0.985cents  s
+    Computation of lddmm done in  0:00:15s and 0.172cents  s
 
 
 
@@ -181,7 +181,7 @@ Now we will create a mutual information data cost object and use it in the regis
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 19.673 seconds)
+   **Total running time of the script:** (0 minutes 18.670 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_data_cost_mutualInformation.py:
