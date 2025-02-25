@@ -148,7 +148,8 @@ print("\n\n Weighted metamorphosis - evolving mask")
 print("=" * 20)
 print("\tComputing evolving mask")
 
-mask = torch.rand_like(mr.mp.image_stock)
+mask = mr.mp.image_stock  # Saving the succession of images.
+mask = 1 - .5*mask
 
 # display the mask at different time
 L = [0, 2, 8, -1]
@@ -165,7 +166,7 @@ plt.show()
 # %%
 
 print("\n\tComputing weighted metamorphosis")
-n_iter = 15
+n_iter= 20
 grad_coef = 1
 cost_cst = .0001
 residuals = 0
@@ -192,3 +193,9 @@ plt.show()
 
 mr_wm.mp.plot()
 plt.show()
+mr_wm.save_to_gif("image",f"simpleCancer_WM_image",
+                folder="simpleCancer")
+mr_wm.save_to_gif("deformation",f"simpleCancer_WM_deform",
+                folder="simpleCancer")
+mr_wm.save_to_gif("residual",f"simpleCancer_WM_residuals",
+                folder="simpleCancer")
