@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "demeter_metamorphosis"
-version = "0.2"
+version = "0.2.1"
 description = "Efficient and flexible optimization of metamorphoses in images"
 authors = [
     { name = "Anton François", email = "anton.francois@ens-paris-saclay.fr" }
