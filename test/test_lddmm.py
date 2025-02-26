@@ -201,6 +201,11 @@ def setup_lddmm():
 def test_landmark_computation(setup_lddmm):
     mr, landmarks_source, landmarks_target = setup_lddmm
     mr_def = mr.mp.get_deformation()
+    if mr.dx_convention== "square":
+        mr_def = tb.square_to_pixel_convention(mr_def,is_grid=True)
+    elif mr.dx_convention == "2square":
+        mr_def = tb.square2_to_pixel_convention(mr_def,is_grid=True)
+
     landmarks_reg = mr_def[0, landmarks_source[:, 1], landmarks_source[:, 0]]
     landmarks_reg_2, land_dist, _ = mr.compute_landmark_dist(
         landmarks_source, landmarks_target
