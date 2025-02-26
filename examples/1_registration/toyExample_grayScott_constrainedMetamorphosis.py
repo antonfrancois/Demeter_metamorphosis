@@ -61,7 +61,6 @@ except NameError:
     pass
 
 
-
 from demeter.constants import *
 import torch
 import kornia.filters as flt
@@ -76,6 +75,13 @@ if torch.cuda.is_available():
     device = 'cuda:0'
 print(f"Used device: {device}")
 size = (300,300)
+
+location = os.getcwd()
+print("IN example/tE_gS_CM.__init__.py")
+print(location)
+
+EXPL_SAVE_FOLDER  = os.path.join(location,"saved_optim/")
+print(EXPL_SAVE_FOLDER)
 
 #####################################################################
 # Open and visualise images before registration
@@ -218,7 +224,9 @@ else:
 
     file = "2D_10_02_2025_mask_tE_gs_CM_pixel_n_step10_orienting_000.pk1"
 
-    mr_mask_orienting = mt.load_optimize_geodesicShooting(file)
+    mr_mask_orienting = mt.load_optimize_geodesicShooting(file,
+                                                          path =EXPL_SAVE_FOLDER
+                                                          )
 
 mr_mask_orienting.compute_landmark_dist(source_landmarks,target_landmarks)
 
@@ -244,7 +252,7 @@ if recompute:
 else:
     file = "2D_11_02_2025_mask_tE_gs_CM_pixel_n_step10_residuals_000.pk1"
 
-    mr_mask_residuals = mt.load_optimize_geodesicShooting(file)
+    mr_mask_residuals = mt.load_optimize_geodesicShooting(file, path =EXPL_SAVE_FOLDER)
 
 mr_mask_residuals.plot_imgCmp()
 plt.show()
@@ -350,13 +358,15 @@ mr_cm = mt.constrained_metamorphosis(S,T,momentum_ini,
                                      dx_convention=dx_convention,
                                         # optimizer_method='adadelta',
                                      )
-
+if recompute:
     mr_cm.compute_landmark_dist(source_landmarks,target_landmarks)
     mr_cm.plot_cost()
     plt.show()
     mr_cm.save(f"toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}")
 else:
-    mr_cm = mt.load_optimize_geodesicShooting("2D_11_02_2025_toyExample_grayScott_CM_pixel_n_step10_000.pk1")
+    mr_cm = mt.load_optimize_geodesicShooting("2D_11_02_2025_toyExample_grayScott_CM_pixel_n_step10_000.pk1",
+                                              path =EXPL_SAVE_FOLDER
+                                              )
 
 
 #%%

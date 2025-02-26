@@ -1398,9 +1398,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             # print('No landmark detected')
             pass
 
-        with open(path + file_save, "wb") as f:
+        with open(os.path.join(path, file_save), "wb") as f:
             pickle.dump(dict_copy, f, pickle.HIGHEST_PROTOCOL)
-        print("Optimisation saved in " + path + file_save + "\n")
+        print(f"Optimisation saved in { os.path.join(path, file_save)} \n")
 
         return file_save, path
 
