@@ -106,6 +106,20 @@ mainly because of the torch and nvidia driver installation.
 
 You can see results and usage examples in the `examples` folder or at the [Example Gallery](https://antonfrancois.github.io/Demeter_metamorphosis/auto_examples/index.html:
 
+## Location where are stored the saved optimisation results
+
+Demeter allows you to save registration results as metamorphosis
+objects to be able to reuse, restart, visualize, or analyze the results later.
+By default, we store them in the `~/.local/share/Demeter_metamorphosis/`
+folder on linux (may wary on other platforms). You can change
+the default location by setting the `DEMETER_OPTIM_SAVE_DIR` environment variable.
+in the .env file. To locate it you can use the following commands: (in a python file 
+or in a ipython terminal) 
+
+```python
+import demeter
+demeter.display_env_help()
+```
 
 ## Contact
 

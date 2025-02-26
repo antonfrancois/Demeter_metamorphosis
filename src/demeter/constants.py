@@ -35,7 +35,7 @@ default_save_dir = appdirs.user_data_dir("Demeter_metamorphosis", "antonfrancois
 # Utiliser la variable d'environnement si elle est définie, sinon utiliser le répertoire par défaut
 OPTIM_SAVE_DIR = os.getenv('DEMETER_OPTIM_SAVE_DIR', default_save_dir)
 # OPTIM_SAVE_DIR = ROOT_DIRECTORY + '/saved_optim/'
-# OPTIM_SAVE_DIR  = os.path.join( OPTIM_SAVE_DIR ,  "saved_optim/")
+OPTIM_SAVE_DIR  = os.path.join( OPTIM_SAVE_DIR ,  "saved_optim/")
 DEFAULT_OPTIM_CSV = 'saves_overview.csv'
 DEFAULT_CSV_HEADER = [
         "time",
@@ -76,6 +76,36 @@ if not os.path.exists(OPTIM_SAVE_DIR):
 
 ic(OPTIM_SAVE_DIR, DEFAULT_OPTIM_CSV)
 
+def display_env_help():
+    env_var_name = 'DEMETER_OPTIM_SAVE_DIR'
+    current_value = os.getenv(env_var_name, 'Not defined')
+
+    help_message = f"""
+    The environment variable {env_var_name} is currently: {current_value}
+
+    To set this environment variable, you can follow these steps:
+
+    1. Open your terminal.
+    2. Add the following line to your `.env` file at the root of the
+    demeter project, which is located at:
+        {os.path.dirname(os.path.abspath(__file__))}
+        
+    add the following line into the .env file, you can follow the env.example file
+       {env_var_name}=/path/to/your/directory
+       
+
+    If you are using a shell like bash, you can also set this variable temporarily using:
+       export {env_var_name}=/path/to/your/directory
+
+    To verify that the variable is set, you can run the following command in your terminal:
+       echo ${env_var_name}
+    """
+
+    print(help_message)
+
+
+# # Call the function to display the help
+# display_env_help()
 
 # =====================================================
 # OTHER CONSTANTS

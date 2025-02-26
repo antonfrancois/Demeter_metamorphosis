@@ -1334,7 +1334,6 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             return (
                 n_dim
                 + date_time.strftime("_%Y%m%d_")
-                + "_"
                 + file_name
                 + "_{:03d}".format(id_num)
                 + ".pk1"

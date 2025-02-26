@@ -287,25 +287,6 @@ def test_save_load(setup_lddmm, light_save):
     remove_saved_files_and_csv_entry(os.path.join(file_path, file_name))
 
 
-# def test_save_load_light(setup_lddmm):
-#     mr, landmarks_source, landmarks_target = setup_lddmm
-#     new_file = mr.save('new_test','lddmm',light_save=True)
-#     file_name = new_file[0]
-#     mr_2 = mt.load_optimize_geodesicShooting(file_name)
-#     fig_ax_c, fig_ax_i = mr_2.plot()
-#     fig_c, ax_c = fig_ax_c
-#     fig_i, ax_i = fig_ax_i
-#     if plot:
-#         plt.show()
-#     assert isinstance(fig_c, plt.Figure)
-#     assert isinstance(ax_c, plt.Axes)
-#     assert isinstance(fig_i, plt.Figure)
-#     assert isinstance(ax_i, plt.Axes)
-#
-#     assert isinstance(mr_2.mp.kernelOperator, torch.nn.Module), \
-#         f"type {type(mr_2.mp.kernelOperator)} should be a torch.nn.Module"
-#
-#     remove_saved_files_and_csv_entry(file_name)
 
 
 # %%
