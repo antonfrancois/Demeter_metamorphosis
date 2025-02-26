@@ -5,7 +5,8 @@ import os
 import csv
 import torch
 
-from src.demeter import OPTIM_SAVE_DIR, default_optim_csv
+from src.demeter import *
+
 import src.demeter.utils.torchbox as tb
 import matplotlib.pyplot as plt
 import src.demeter.utils.bspline as bs
@@ -30,27 +31,7 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return "".join(random.choice(chars) for _ in range(size))
 
 
-csv_file = os.path.join(OPTIM_SAVE_DIR, default_optim_csv)
-DEFAULT_CSV_HEADER = [
-        "time",
-        "saved_file_name",
-        "n_dim",
-        "shape",
-        "meta_type",
-        "data_cost",
-        "kernelOperator",
-        "optimizer_method",
-        "hamiltonian_integration",
-        "dx_convention",
-        "final_loss",
-        "DICE",
-        "landmarks",
-        "rho",
-        "lamb",
-        "n_step",
-        "n_iter",
-        "message",
-    ]
+csv_file = os.path.join(OPTIM_SAVE_DIR, DEFAULT_OPTIM_CSV)
 
 # make wrapper around check_csv to catch the FileNotFoundError
 def catch_file_not_found_error(func):
@@ -107,6 +88,7 @@ def remove_saved_files_and_csv_entry(saved_file):
 
 @pytest.fixture()
 def setup_lddmm():
+    ic(ROOT_DIRECTORY)
     size = (100, 100)
     source = tb.reg_open("20", size=size)  # .to('cuda:0')
 

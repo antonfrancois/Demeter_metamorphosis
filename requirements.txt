@@ -1,4 +1,6 @@
 pytest
+appdirs
+dotenv
 icecream>=2.1.4
 kornia==0.7.1
 matplotlib==3.9.2

@@ -3,28 +3,83 @@ import os
 import matplotlib.pyplot as plt
 import torch
 import numpy as np
+import appdirs
+from dotenv import load_dotenv
+import csv
 
+from icecream import ic
 
-# ROOT_DIRECTORY = os.path.dirname(os.path.dirname(
-#     os.path.dirname(os.path.abspath(__file__))
-# ))
+# Charger les variables d'environnement à partir du fichier .env
+load_dotenv()
 
-ROOT_DIRECTORY = os.getcwd()
-while not ROOT_DIRECTORY.endswith("Demeter_metamorphosis"):
-    ROOT_DIRECTORY = os.path.dirname(ROOT_DIRECTORY)
-    if ROOT_DIRECTORY == '/': break
-if not ROOT_DIRECTORY.endswith('Demeter_metamorphosis'):
-    raise ValueError(f'ROOT_DIRECTORY should end with '
-                     f'Demeter_metamorphosis, got {ROOT_DIRECTORY}')
+ROOT_DIRECTORY = os.path.dirname(os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+))
 
-# used in saving metamorphosis saving
-OPTIM_SAVE_DIR = ROOT_DIRECTORY + '/saved_optim/'
+# ROOT_DIRECTORY = os.getcwd()
+# while not ROOT_DIRECTORY.endswith("Demeter_metamorphosis"):
+#     ROOT_DIRECTORY = os.path.dirname(ROOT_DIRECTORY)
+#     if ROOT_DIRECTORY == '/': break
+# if not ROOT_DIRECTORY.endswith('Demeter_metamorphosis'):
+#     raise ValueError(f'ROOT_DIRECTORY should end with '
+#                      f'Demeter_metamorphosis, got {ROOT_DIRECTORY}')
+
+ic(ROOT_DIRECTORY)
+
+# ====================================================
+# SAVE_DIR
+# used in saving metamorphosis optimisations
+# Define the default saving location with appdirs
+default_save_dir = appdirs.user_data_dir("Demeter_metamorphosis", "antonfrancois")
+
+# Utiliser la variable d'environnement si elle est définie, sinon utiliser le répertoire par défaut
+OPTIM_SAVE_DIR = os.getenv('DEMETER_OPTIM_SAVE_DIR', default_save_dir)
+# OPTIM_SAVE_DIR = ROOT_DIRECTORY + '/saved_optim/'
+# OPTIM_SAVE_DIR  = os.path.join( OPTIM_SAVE_DIR ,  "saved_optim/")
+DEFAULT_OPTIM_CSV = 'saves_overview.csv'
+DEFAULT_CSV_HEADER = [
+        "time",
+        "saved_file_name",
+        "n_dim",
+        "shape",
+        "meta_type",
+        "data_cost",
+        "kernelOperator",
+        "optimizer_method",
+        "hamiltonian_integration",
+        "dx_convention",
+        "final_loss",
+        "DICE",
+        "landmarks",
+        "rho",
+        "lamb",
+        "n_step",
+        "n_iter",
+        "message",
+    ]
 FIELD_TO_SAVE = [
             'mp',
             'source', 'target', 'cost_cst', 'optimizer_method_name','data_term',
             'parameter','ssd', 'norm_v_2', 'norm_l2_on_z',
             'total_cost', 'to_analyse','dice'
         ]
+
+# Vérifier que le répertoire existe, sinon le créer
+if not os.path.exists(OPTIM_SAVE_DIR):
+    os.makedirs(OPTIM_SAVE_DIR)
+    full_path = os.path.join(OPTIM_SAVE_DIR, DEFAULT_OPTIM_CSV)
+    with open(full_path, "w", newline="") as file:
+        writer = csv.writer(file, delimiter=";")
+        writer.writerow(
+            DEFAULT_CSV_HEADER
+        )
+
+ic(OPTIM_SAVE_DIR, DEFAULT_OPTIM_CSV)
+
+
+# =====================================================
+# OTHER CONSTANTS
+
 
 # Default arguments for plots in images and residuals
 DLT_KW_IMAGE = dict(cmap='gray',

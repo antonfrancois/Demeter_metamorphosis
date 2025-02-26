@@ -7,7 +7,8 @@ import csv
 from .. import metamorphosis as mt
 from demeter.constants import *
 
-DEFAULT_CSV_FILE,DEFAULT_PATH = 'saves_overview.csv', ROOT_DIRECTORY+'/saved_optim/'
+print(DEFAULT_OPTIM_CSV)
+DEFAULT_PATH = OPTIM_SAVE_DIR
 
 def rec(s):
     """remove_escape_characters"""
@@ -59,7 +60,7 @@ def _optim_to_state_dict_(optim,file_name,write_dict=None,message=None):
     return  {**write_dict , **state_dict}
 
 def _write_dict_to_csv(dict,csv_file = None,path=None):
-    if csv_file is None: csv_file = DEFAULT_CSV_FILE
+    if csv_file is None: csv_file = DEFAULT_OPTIM_CSV
     if path is None: path = DEFAULT_PATH
     if not os.path.isdir(path):
         os.mkdir(path)

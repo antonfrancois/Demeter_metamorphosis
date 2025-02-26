@@ -61,15 +61,6 @@ sudo apt install python3.12-venv
 
 ### For Unix systems, (Linux and macOS)
 
-#### From pip
-
-```bash
-pip install demeter-metamorphosis
-```
-
-#### From source
-If you want the development version or consider contributing to the codebase,
-you can also install scikit-shapes locally from a clone of the repository. 
 First I advise you to create a fresh virtual environment with conda or venv. With venv [more...](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#create-and-use-virtual-environments):
 
 ```bash
@@ -83,6 +74,18 @@ source "demeter_env"/bin/activate
 ```
 The last line activate the virtual environment. Please ensure that you are in the
 virtual environment when you are using the package.
+
+You are now ready to install the package.  For a direct usage of demeter you 
+can install the package with pip, if you want to have a 
+#### From pip
+
+```bash
+pip install demeter-metamorphosis
+```
+
+#### From source
+If you want the development version or consider contributing to the codebase,
+you can also install scikit-shapes locally from a clone of the repository. 
 
 Then clone the repository with one of the github provided methods. For
 example, with html:

@@ -1333,7 +1333,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         def file_name_maker_(id_num):
             return (
                 n_dim
-                + date_time.strftime("_%d_%m_%Y")
+                + date_time.strftime("_%Y%m%d_")
                 + "_"
                 + file_name
                 + "_{:03d}".format(id_num)
