@@ -1273,6 +1273,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
     def save(
         self,
         file_name,
+        save_path = None,
         light_save=False,
         message=None,
         destination=None,
@@ -1286,6 +1287,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         ---------------
         file_name  : str
             will appear in the file name
+        save_path : str
+            Path where to save the optimisation. by default the saving location is given by the
+            constant : `OPTIM_SAVE_DIR`. You can change it in your environment (file .env)
         light_save : bool
             if True, only the initial momentum is saved.
             If False all data, integration, source and target are saved. Setting it to True
@@ -1313,7 +1317,11 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             print("Can't save optimisation that didn't converged")
             return 0
         self.to_device("cpu")
-        path = OPTIM_SAVE_DIR
+        if save_path is None:
+            path = OPTIM_SAVE_DIR
+        else:
+            path = save_path
+
         ic(path)
         date_time = datetime.now()
 

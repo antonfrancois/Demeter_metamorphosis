@@ -24,7 +24,6 @@ ROOT_DIRECTORY = os.path.dirname(os.path.dirname(
 #     raise ValueError(f'ROOT_DIRECTORY should end with '
 #                      f'Demeter_metamorphosis, got {ROOT_DIRECTORY}')
 
-ic(ROOT_DIRECTORY)
 
 # ====================================================
 # SAVE_DIR
@@ -74,7 +73,6 @@ if not os.path.exists(OPTIM_SAVE_DIR):
             DEFAULT_CSV_HEADER
         )
 
-ic(OPTIM_SAVE_DIR, DEFAULT_OPTIM_CSV)
 
 def display_env_help():
     env_var_name = 'DEMETER_OPTIM_SAVE_DIR'
