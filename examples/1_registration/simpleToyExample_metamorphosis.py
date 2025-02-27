@@ -55,11 +55,10 @@ import demeter.metamorphosis as mt
 import demeter.utils.torchbox as tb
 
 location = os.getcwd()
-print("IN example/simpleToyExample.__init__.py")
-print(location)
+if 'runner' in location:
+    location = os.path.dirname(os.path.dirname(location))
 
 EXPL_SAVE_FOLDER  = os.path.join(location,"saved_optim/")
-print(EXPL_SAVE_FOLDER)
 
 #####################################################################
 # Open and visualise images before registration. The source and target are 'C' shapes.

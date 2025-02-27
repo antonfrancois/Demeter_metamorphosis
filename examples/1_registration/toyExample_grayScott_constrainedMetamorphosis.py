@@ -77,11 +77,10 @@ print(f"Used device: {device}")
 size = (300,300)
 
 location = os.getcwd()
-print("IN example/tE_gS_CM.__init__.py")
-print(location)
+if 'runner' in location:
+    location = os.path.dirname(os.path.dirname(location))
 
 EXPL_SAVE_FOLDER  = os.path.join(location,"saved_optim/")
-print(EXPL_SAVE_FOLDER)
 
 #####################################################################
 # Open and visualise images before registration
