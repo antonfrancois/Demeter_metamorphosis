@@ -28,8 +28,6 @@ jobs:
         run: |
           pwd & ls
           ls test/
-          ls runner/work/Demeter_metamorphosis/
-          ls runner/work/Demeter_metamorphosis/Demeter_metamorphosis/
           
 
       - name: Build documentation
