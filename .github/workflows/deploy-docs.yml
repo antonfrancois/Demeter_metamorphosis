@@ -28,7 +28,9 @@ jobs:
         run: |
           pwd & ls
           ls test/
-          pytest test/test_constant.py
+          ls runner/work/Demeter_metamorphosis/
+          ls runner/work/Demeter_metamorphosis/Demeter_metamorphosis/
+          
 
       - name: Build documentation
         run: |
