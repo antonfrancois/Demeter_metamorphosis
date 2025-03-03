@@ -27,7 +27,8 @@ jobs:
       - name: check where we are
         run: |
           pwd & ls
-          ls test/
+          echo "> saved optim:"
+          ls saved_optim/
           
 
       - name: Build documentation

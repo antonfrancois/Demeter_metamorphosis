@@ -221,7 +221,7 @@ if recompute:
     mr_mask_orienting.save(f"mask_tE_gs_CM_{dx_convention}_n_step{n_steps}_orienting")
 else:
 
-    file = "2D_10_02_2025_mask_tE_gs_CM_pixel_n_step10_orienting_000.pk1"
+    file = "2D_11_02_2025_mask_tE_gs_CM_pixel_n_step10_orienting_000.pk1"
 
     mr_mask_orienting = mt.load_optimize_geodesicShooting(file,
                                                           path =EXPL_SAVE_FOLDER
