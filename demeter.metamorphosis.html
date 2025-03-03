@@ -432,13 +432,16 @@ by the deformation field.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="demeter.metamorphosis.abstract.Optimize_geodesicShooting.save">
-<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">light_save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_csv</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.save" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">light_save</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">destination</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_csv</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.metamorphosis.abstract.Optimize_geodesicShooting.save" title="Link to this definition"></a></dt>
 <dd><p>Save an optimisation to be later loaded and write all sort of info
 in a csv file</p>
 <section id="parameters">
 <h3>Parameters:<a class="headerlink" href="#parameters" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>file_name<span class="classifier">str</span></dt><dd><p>will appear in the file name</p>
+</dd>
+<dt>save_path<span class="classifier">str</span></dt><dd><p>Path where to save the optimisation. by default the saving location is given by the
+constant : <cite>OPTIM_SAVE_DIR</cite>. You can change it in your environment (file .env)</p>
 </dd>
 <dt>light_save<span class="classifier">bool</span></dt><dd><p>if True, only the initial momentum is saved.
 If False all data, integration, source and target are saved. Setting it to True

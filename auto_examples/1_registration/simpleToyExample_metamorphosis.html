@@ -139,6 +139,12 @@ creation of the field and the photometric addition controlled by the momentum <s
 <span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.reproducing_kernels</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">rk</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">demeter.metamorphosis</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mt</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">demeter.utils.torchbox</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tb</span>
+
+<span class="n">location</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+<span class="k">if</span> <span class="s1">&#39;runner&#39;</span> <span class="ow">in</span> <span class="n">location</span><span class="p">:</span>
+    <span class="n">location</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">location</span><span class="p">))</span>
+
+<span class="n">EXPL_SAVE_FOLDER</span>  <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">location</span><span class="p">,</span><span class="s2">&quot;saved_optim/&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Open and visualise images before registration. The source and target are ‘C’ shapes.
@@ -239,9 +245,9 @@ Progress: [#########-]  86.67%  (Ssd : , 41.6330).
 Progress: [#########-]  93.33%  (Ssd : , 40.6257).
 Progress: [##########] 100.00% Done...
  (Ssd : , 39.3657).
-Computation of forward done in  0:01:53s and 0.488cents  s
+Computation of forward done in  0:01:54s and 0.588cents  s
 
-Computation of metamorphosis done in  0:01:53s and 0.488cents  s
+Computation of metamorphosis done in  0:01:54s and 0.589cents  s
 </pre></div>
 </div>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">_</span><span class="p">,</span> <span class="n">fig_ax</span> <span class="o">=</span> <span class="n">mr</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
@@ -309,7 +315,7 @@ recompute to True. The number of rho to test is set by n_plot.</p>
                           <span class="p">)</span>
         <span class="n">mr</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;simpleToyExample_rho_</span><span class="si">{</span><span class="n">rho</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span><span class="n">light_save</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">mr</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">load_optimize_geodesicShooting</span><span class="p">(</span><span class="n">list_optim</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">mr</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">load_optimize_geodesicShooting</span><span class="p">(</span><span class="n">list_optim</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="n">path</span> <span class="o">=</span><span class="n">EXPL_SAVE_FOLDER</span><span class="p">)</span>
 
     <span class="c1"># mr.plot_cost()</span>
     <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;rho = </span><span class="si">{</span><span class="n">rho</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
@@ -515,7 +521,7 @@ New optimiser loaded (2D_23_01_2025_simpleToyExample_rho_1.00_000.pk1) :
 )
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 58.297 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 59.464 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-1-registration-simpletoyexample-metamorphosis-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/2594b7e4170b7e297e8fc78e1e17e36e/simpleToyExample_metamorphosis.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">simpleToyExample_metamorphosis.ipynb</span></code></a></p>

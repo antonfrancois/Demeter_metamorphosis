@@ -54,7 +54,7 @@ creation of the field and the photometric addition controlled by the momentum $p
 
 Import the necessary packages
 
-.. GENERATED FROM PYTHON SOURCE LINES 38-59
+.. GENERATED FROM PYTHON SOURCE LINES 38-63
 
 .. code-block:: Python
 
@@ -77,6 +77,11 @@ Import the necessary packages
     import demeter.metamorphosis as mt
     import demeter.utils.torchbox as tb
 
+    location = os.getcwd()
+    if 'runner' in location:
+        location = os.path.dirname(os.path.dirname(location))
+
+    EXPL_SAVE_FOLDER  = os.path.join(location,"saved_optim/")
 
 
 
@@ -85,8 +90,7 @@ Import the necessary packages
 
 
 
-
-.. GENERATED FROM PYTHON SOURCE LINES 60-65
+.. GENERATED FROM PYTHON SOURCE LINES 64-69
 
 Open and visualise images before registration. The source and target are 'C' shapes.
 The source is a 'C' shape that is deformed. The target is a 'C' shape that was
@@ -94,7 +98,7 @@ cut in half changing its topology and a point was added. The goal is to register
 the source to the target by deforming the 'C' shape and accounting the cut
 and the point as intensity additions.
 
-.. GENERATED FROM PYTHON SOURCE LINES 65-84
+.. GENERATED FROM PYTHON SOURCE LINES 69-88
 
 .. code-block:: Python
 
@@ -135,7 +139,7 @@ and the point as intensity additions.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 85-95
+.. GENERATED FROM PYTHON SOURCE LINES 89-99
 
 Before choosing the optimisation method, we need to define a
 reproducing kernel and choose a good sigma. The simpler reproducing
@@ -148,7 +152,7 @@ is basically in how many parts we want to divide the image to get the size
 of wanted details. The second function will plot the kernel on the image to
 help us validate our choice of sigma.
 
-.. GENERATED FROM PYTHON SOURCE LINES 95-105
+.. GENERATED FROM PYTHON SOURCE LINES 99-109
 
 .. code-block:: Python
 
@@ -184,11 +188,11 @@ help us validate our choice of sigma.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 106-107
+.. GENERATED FROM PYTHON SOURCE LINES 110-111
 
 Perform a first Metamorphosis registration
 
-.. GENERATED FROM PYTHON SOURCE LINES 107-133
+.. GENERATED FROM PYTHON SOURCE LINES 111-137
 
 .. code-block:: Python
 
@@ -228,14 +232,14 @@ Perform a first Metamorphosis registration
 
     Progress: [#---------]  13.33%  (Ssd : ,802.5087).    Progress: [##--------]  20.00%  (Ssd : ,163.6530).    Progress: [###-------]  26.67%  (Ssd : , 89.7214).    Progress: [###-------]  33.33%  (Ssd : , 71.7436).    Progress: [####------]  40.00%  (Ssd : , 64.0281).    Progress: [#####-----]  46.67%  (Ssd : , 56.8949).    Progress: [#####-----]  53.33%  (Ssd : , 52.6968).    Progress: [######----]  60.00%  (Ssd : , 49.6450).    Progress: [#######---]  66.67%  (Ssd : , 46.6622).    Progress: [#######---]  73.33%  (Ssd : , 44.5396).    Progress: [########--]  80.00%  (Ssd : , 42.8393).    Progress: [#########-]  86.67%  (Ssd : , 41.6330).    Progress: [#########-]  93.33%  (Ssd : , 40.6257).    Progress: [##########] 100.00% Done...
      (Ssd : , 39.3657).
-    Computation of forward done in  0:01:53s and 0.488cents  s
+    Computation of forward done in  0:01:54s and 0.588cents  s
 
-    Computation of metamorphosis done in  0:01:53s and 0.488cents  s
-
-
+    Computation of metamorphosis done in  0:01:54s and 0.589cents  s
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 134-139
+
+
+.. GENERATED FROM PYTHON SOURCE LINES 138-143
 
 .. code-block:: Python
 
@@ -298,7 +302,7 @@ Perform a first Metamorphosis registration
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 140-146
+.. GENERATED FROM PYTHON SOURCE LINES 144-150
 
 ####################################################################
  We will test different values of rho to see how the registration behaves
@@ -307,7 +311,7 @@ Perform a first Metamorphosis registration
  Feel free to try yourselves If you want to recompute them by setting
  recompute to True. The number of rho to test is set by n_plot.
 
-.. GENERATED FROM PYTHON SOURCE LINES 146-192
+.. GENERATED FROM PYTHON SOURCE LINES 150-196
 
 .. code-block:: Python
 
@@ -345,7 +349,7 @@ Perform a first Metamorphosis registration
                               )
             mr.save(f'simpleToyExample_rho_{rho:.2f}',light_save = True)
         else:
-            mr = mt.load_optimize_geodesicShooting(list_optim[i])
+            mr = mt.load_optimize_geodesicShooting(list_optim[i],path =EXPL_SAVE_FOLDER)
 
         # mr.plot_cost()
         ax[0,i].set_title(f'rho = {rho:.2f}')
@@ -567,7 +571,7 @@ Perform a first Metamorphosis registration
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 58.297 seconds)
+   **Total running time of the script:** (1 minutes 59.464 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_simpleToyExample_metamorphosis.py:

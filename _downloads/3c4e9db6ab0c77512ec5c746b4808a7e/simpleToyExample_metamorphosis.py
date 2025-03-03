@@ -54,7 +54,11 @@ import demeter.utils.reproducing_kernels as rk
 import demeter.metamorphosis as mt
 import demeter.utils.torchbox as tb
 
+location = os.getcwd()
+if 'runner' in location:
+    location = os.path.dirname(os.path.dirname(location))
 
+EXPL_SAVE_FOLDER  = os.path.join(location,"saved_optim/")
 
 #####################################################################
 # Open and visualise images before registration. The source and target are 'C' shapes.
@@ -177,7 +181,7 @@ for i,rho in enumerate(rho_list):
                           )
         mr.save(f'simpleToyExample_rho_{rho:.2f}',light_save = True)
     else:
-        mr = mt.load_optimize_geodesicShooting(list_optim[i])
+        mr = mt.load_optimize_geodesicShooting(list_optim[i],path =EXPL_SAVE_FOLDER)
 
     # mr.plot_cost()
     ax[0,i].set_title(f'rho = {rho:.2f}')

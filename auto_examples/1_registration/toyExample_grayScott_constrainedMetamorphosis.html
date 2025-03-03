@@ -151,7 +151,6 @@ Let the image evolution be</p>
     <span class="k">pass</span>
 
 
-
 <span class="kn">from</span><span class="w"> </span><span class="nn">demeter.constants</span><span class="w"> </span><span class="kn">import</span> <span class="o">*</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">kornia.filters</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">flt</span>
@@ -166,6 +165,12 @@ Let the image evolution be</p>
     <span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cuda:0&#39;</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Used device: </span><span class="si">{</span><span class="n">device</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="n">size</span> <span class="o">=</span> <span class="p">(</span><span class="mi">300</span><span class="p">,</span><span class="mi">300</span><span class="p">)</span>
+
+<span class="n">location</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+<span class="k">if</span> <span class="s1">&#39;runner&#39;</span> <span class="ow">in</span> <span class="n">location</span><span class="p">:</span>
+    <span class="n">location</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">location</span><span class="p">))</span>
+
+<span class="n">EXPL_SAVE_FOLDER</span>  <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">location</span><span class="p">,</span><span class="s2">&quot;saved_optim/&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Used device: cpu
@@ -320,9 +325,11 @@ centre = (160, 145), r = 21 and the seg and ball have 1001 pixels overlapping
     <span class="n">mr_mask_orienting</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mask_tE_gs_CM_</span><span class="si">{</span><span class="n">dx_convention</span><span class="si">}</span><span class="s2">_n_step</span><span class="si">{</span><span class="n">n_steps</span><span class="si">}</span><span class="s2">_orienting&quot;</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
 
-    <span class="n">file</span> <span class="o">=</span> <span class="s2">&quot;2D_10_02_2025_mask_tE_gs_CM_pixel_n_step10_orienting_000.pk1&quot;</span>
+    <span class="n">file</span> <span class="o">=</span> <span class="s2">&quot;2D_11_02_2025_mask_tE_gs_CM_pixel_n_step10_orienting_000.pk1&quot;</span>
 
-    <span class="n">mr_mask_orienting</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">load_optimize_geodesicShooting</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+    <span class="n">mr_mask_orienting</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">load_optimize_geodesicShooting</span><span class="p">(</span><span class="n">file</span><span class="p">,</span>
+                                                          <span class="n">path</span> <span class="o">=</span><span class="n">EXPL_SAVE_FOLDER</span>
+                                                          <span class="p">)</span>
 
 <span class="n">mr_mask_orienting</span><span class="o">.</span><span class="n">compute_landmark_dist</span><span class="p">(</span><span class="n">source_landmarks</span><span class="p">,</span><span class="n">target_landmarks</span><span class="p">)</span>
 
@@ -336,7 +343,7 @@ centre = (160, 145), r = 21 and the seg and ball have 1001 pixels overlapping
 </div>
 <img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_003.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_003.png" alt="source, target, Integrated source image, comparaison deformed image with target" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>&gt;&gt;&gt;&gt; Mask for orienting field &lt;&lt;&lt;&lt;
 DT: None
-New optimiser loaded (2D_10_02_2025_mask_tE_gs_CM_pixel_n_step10_orienting_000.pk1) :
+New optimiser loaded (2D_11_02_2025_mask_tE_gs_CM_pixel_n_step10_orienting_000.pk1) :
  Metamorphosis_Shooting(cost_parameters : {,
                 rho =1.0,
                 lambda =1e-05
@@ -355,7 +362,7 @@ round False
 round False
 Landmarks:
         Before : 11.928571701049805
-        After : 9.912918090820312
+        After : 9.826631546020508
 </pre></div>
 </div>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&gt;&gt;&gt;&gt; Mask for residuals field &lt;&lt;&lt;&lt;&quot;</span><span class="p">)</span>
@@ -369,9 +376,9 @@ Landmarks:
                        <span class="n">dx_convention</span><span class="o">=</span><span class="n">dx_convention</span><span class="p">,)</span>
     <span class="n">mr_mask_residuals</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;mask_tE_gs_CM_</span><span class="si">{</span><span class="n">dx_convention</span><span class="si">}</span><span class="s2">_n_step</span><span class="si">{</span><span class="n">n_steps</span><span class="si">}</span><span class="s2">_residuals&quot;</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
-    <span class="n">file</span> <span class="o">=</span> <span class="s2">&quot;2D_10_02_2025_mask_tE_gs_CM_pixel_n_step10_residuals_000.pk1&quot;</span>
+    <span class="n">file</span> <span class="o">=</span> <span class="s2">&quot;2D_11_02_2025_mask_tE_gs_CM_pixel_n_step10_residuals_000.pk1&quot;</span>
 
-    <span class="n">mr_mask_residuals</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">load_optimize_geodesicShooting</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+    <span class="n">mr_mask_residuals</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">load_optimize_geodesicShooting</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">path</span> <span class="o">=</span><span class="n">EXPL_SAVE_FOLDER</span><span class="p">)</span>
 
 <span class="n">mr_mask_residuals</span><span class="o">.</span><span class="n">plot_imgCmp</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
@@ -379,7 +386,7 @@ Landmarks:
 </div>
 <img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_004.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_004.png" alt="source, target, Integrated source image, comparaison deformed image with target" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>&gt;&gt;&gt;&gt; Mask for residuals field &lt;&lt;&lt;&lt;
 DT: None
-New optimiser loaded (2D_10_02_2025_mask_tE_gs_CM_pixel_n_step10_residuals_000.pk1) :
+New optimiser loaded (2D_11_02_2025_mask_tE_gs_CM_pixel_n_step10_residuals_000.pk1) :
  Metamorphosis_Shooting(cost_parameters : {,
                 rho =1.0,
                 lambda =1e-05
@@ -490,51 +497,77 @@ mr = mt.load_optimize_geodesicShooting(file)</p>
                                      <span class="n">dx_convention</span><span class="o">=</span><span class="n">dx_convention</span><span class="p">,</span>
                                         <span class="c1"># optimizer_method=&#39;adadelta&#39;,</span>
                                      <span class="p">)</span>
-
-<span class="n">mr_cm</span><span class="o">.</span><span class="n">compute_landmark_dist</span><span class="p">(</span><span class="n">source_landmarks</span><span class="p">,</span><span class="n">target_landmarks</span><span class="p">)</span>
-<span class="n">mr_cm</span><span class="o">.</span><span class="n">plot_cost</span><span class="p">()</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">recompute</span><span class="p">:</span>
+    <span class="n">mr_cm</span><span class="o">.</span><span class="n">compute_landmark_dist</span><span class="p">(</span><span class="n">source_landmarks</span><span class="p">,</span><span class="n">target_landmarks</span><span class="p">)</span>
+    <span class="n">mr_cm</span><span class="o">.</span><span class="n">plot_cost</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="n">mr_cm</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;toyExample_grayScott_CM_</span><span class="si">{</span><span class="n">dx_convention</span><span class="si">}</span><span class="s2">_n_step</span><span class="si">{</span><span class="n">n_steps</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">mr_cm</span> <span class="o">=</span> <span class="n">mt</span><span class="o">.</span><span class="n">load_optimize_geodesicShooting</span><span class="p">(</span><span class="s2">&quot;2D_11_02_2025_toyExample_grayScott_CM_pixel_n_step10_000.pk1&quot;</span><span class="p">,</span>
+                                              <span class="n">path</span> <span class="o">=</span><span class="n">EXPL_SAVE_FOLDER</span>
+                                              <span class="p">)</span>
 </pre></div>
 </div>
-<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_008.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_008.png" alt="Lambda = 1e-10" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>==== Constrained Metamorphosis ====
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>==== Constrained Metamorphosis ====
 oriented
 Weighted
 
-Progress: [#---------]  10.00%  (Ssd : ,159.3479).
-Progress: [##--------]  15.00%  (Ssd : , 90.8015).
-Progress: [##--------]  20.00%  (Ssd : , 65.3321).
-Progress: [##--------]  25.00%  (Ssd : , 55.2068).
-Progress: [###-------]  30.00%  (Ssd : , 50.6871).
-Progress: [####------]  35.00%  (Ssd : , 47.5604).
-Progress: [####------]  40.00%  (Ssd : , 44.8183).
-Progress: [####------]  45.00%  (Ssd : , 42.6235).
-Progress: [#####-----]  50.00%  (Ssd : , 41.5311).
-Progress: [######----]  55.00%  (Ssd : , 40.0308).
-Progress: [######----]  60.00%  (Ssd : , 39.1532).
-Progress: [######----]  65.00%  (Ssd : , 38.6079).
-Progress: [#######---]  70.00%  (Ssd : , 38.2486).
-Progress: [########--]  75.00%  (Ssd : , 37.6764).
-Progress: [########--]  80.00%  (Ssd : , 37.3379).
-Progress: [########--]  85.00%  (Ssd : , 37.0065).
-Progress: [#########-]  90.00%  (Ssd : , 36.6171).
-Progress: [##########]  95.00%  (Ssd : , 36.3451).
+Progress: [#---------]  10.00%  (Ssd : ,187.2694).
+Progress: [##--------]  15.00%  (Ssd : , 99.0902).
+Progress: [##--------]  20.00%  (Ssd : , 67.8786).
+Progress: [##--------]  25.00%  (Ssd : , 55.3011).
+Progress: [###-------]  30.00%  (Ssd : , 48.4873).
+Progress: [####------]  35.00%  (Ssd : , 45.3169).
+Progress: [####------]  40.00%  (Ssd : , 42.4989).
+Progress: [####------]  45.00%  (Ssd : , 40.6994).
+Progress: [#####-----]  50.00%  (Ssd : , 39.1277).
+Progress: [######----]  55.00%  (Ssd : , 38.0623).
+Progress: [######----]  60.00%  (Ssd : , 37.1787).
+Progress: [######----]  65.00%  (Ssd : , 36.2048).
+Progress: [#######---]  70.00%  (Ssd : , 35.4607).
+Progress: [########--]  75.00%  (Ssd : , 34.8593).
+Progress: [########--]  80.00%  (Ssd : , 34.2708).
+Progress: [########--]  85.00%  (Ssd : , 33.9125).
+Progress: [#########-]  90.00%  (Ssd : , 33.5998).
+Progress: [##########]  95.00%  (Ssd : , 33.2848).
 Progress: [##########] 100.00% Done...
- (Ssd : , 36.0992).
-Computation of forward done in  0:01:43s and 0.837cents  s
+ (Ssd : , 32.9175).
+Computation of forward done in  0:01:45s and 0.129cents  s
 
-Computation of constrained_metamorphosis done in  0:01:43s and 0.838cents  s
+Computation of constrained_metamorphosis done in  0:01:45s and 0.129cents  s
+DT: None
 round False
 round False
 Landmarks:
         Before : 11.928571701049805
-        After : 5.347609519958496
+        After : 5.454163551330566
+New optimiser loaded (2D_11_02_2025_toyExample_grayScott_CM_pixel_n_step10_000.pk1) :
+ ConstrainedMetamorphosis_Shooting(cost_parameters : {,
+                rho =Weighted,
+                lambda =1e-10
+        },
+        geodesic integrator : ConstrainedMetamorphosis_integrator(Weighted &amp; Oriented)
+         n_step = 10
+        Multi_scale_GaussianRKHS(
+        sigma :[(5, 5), (10, 10), (15, 15)],
+        kernel size :(1, 91, 91)
+)
+        integration method : step
+        optimisation method : LBFGS_torch
+        # geodesic steps =10
+)
 </pre></div>
 </div>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">mr_cm</span><span class="o">.</span><span class="n">plot_imgCmp</span><span class="p">()</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_009.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_009.png" alt="source, target, Integrated source image, comparaison deformed image with target" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-2.3707757534907614e-08..1.1562880277633667].
+<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_008.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_008.png" alt="source, target, Integrated source image, comparaison deformed image with target" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.03132463991641998..1.1656873226165771].
+
+(&lt;Figure size 2000x2000 with 4 Axes&gt;, array([[&lt;Axes: title={&#39;center&#39;: &#39;source&#39;}&gt;,
+        &lt;Axes: title={&#39;center&#39;: &#39;target&#39;}&gt;],
+       [&lt;Axes: title={&#39;center&#39;: &#39;Integrated source image&#39;}&gt;,
+        &lt;Axes: title={&#39;center&#39;: &#39;comparaison deformed image with target&#39;}&gt;]],
+      dtype=object))
 </pre></div>
 </div>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">mr_cm</span><span class="o">.</span><span class="n">plot_deform</span><span class="p">()</span>
@@ -542,11 +575,22 @@ Landmarks:
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_010.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_010.png" alt="diffeo = tensor(True)" class = "sphx-glr-single-img"/><div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">mr_cm</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_009.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_009.png" alt="diffeo = tensor(True)" class = "sphx-glr-single-img"/><div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">mr_cm</span><span class="o">.</span><span class="n">mp</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="c1"># mr_cm.save_to_gif(&quot;image&quot;,f&quot;toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}_image&quot;,</span>
+<span class="c1">#                folder=&#39;toyExample_grayScott&#39;)</span>
+<span class="n">mr_cm</span><span class="o">.</span><span class="n">save_to_gif</span><span class="p">(</span><span class="s2">&quot;residual&quot;</span><span class="p">,</span><span class="sa">f</span><span class="s2">&quot;toyExample_grayScott_CM_</span><span class="si">{</span><span class="n">dx_convention</span><span class="si">}</span><span class="s2">_n_step</span><span class="si">{</span><span class="n">n_steps</span><span class="si">}</span><span class="s2">_residual&quot;</span><span class="p">,</span>
+               <span class="n">folder</span><span class="o">=</span><span class="s1">&#39;toyExample_grayScott&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_011.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_011.png" alt="t = 0.0, diffeo = tensor(True), t = 0.2, diffeo = tensor(True), t = 0.4, diffeo = tensor(True), t = 0.7, diffeo = tensor(True), t = 1.0, diffeo = tensor(True)" class = "sphx-glr-single-img"/><p>mr_cm.save(f”TEST_toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}”)</p>
+<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_010.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_010.png" alt="t = 0.0, diffeo = tensor(True), t = 0.2, diffeo = tensor(True), t = 0.4, diffeo = tensor(True), t = 0.7, diffeo = tensor(True), t = 1.0, diffeo = tensor(True)" class = "sphx-glr-single-img"/><div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>convert -delay 40 -loop 0 /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/toyExample_grayScott/toyExample_grayScott_CM_pixel_n_step10_residual_\d3.png /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/toyExample_grayScott/toyExample_grayScott_CM_pixel_n_step10_residual.gif
+        Cleaning saved files.
+Your gif was successfully saved at : /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/toyExample_grayScott/toyExample_grayScott_CM_pixel_n_step10_residual.gif
+
+(&#39;/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/toyExample_grayScott/&#39;, &#39;toyExample_grayScott_CM_pixel_n_step10_residual.gif&#39;)
+</pre></div>
+</div>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">L</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
 <span class="n">fig</span><span class="p">,</span><span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">L</span><span class="p">),</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">L</span><span class="p">)</span><span class="o">*</span><span class="mi">5</span><span class="p">,</span><span class="mi">10</span><span class="p">),</span> <span class="n">constrained_layout</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;orienting mask&#39;</span><span class="p">)</span>
@@ -559,7 +603,7 @@ Landmarks:
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
-<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_012.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_012.png" alt="orienting mask" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 50.633 seconds)</p>
+<img src="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_011.png" srcset="../../_images/sphx_glr_toyExample_grayScott_constrainedMetamorphosis_011.png" alt="orienting mask" class = "sphx-glr-single-img"/><p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (1 minutes 51.955 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-1-registration-toyexample-grayscott-constrainedmetamorphosis-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/c44a3968c0bda4f75a82c930e384eab9/toyExample_grayScott_constrainedMetamorphosis.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">toyExample_grayScott_constrainedMetamorphosis.ipynb</span></code></a></p>

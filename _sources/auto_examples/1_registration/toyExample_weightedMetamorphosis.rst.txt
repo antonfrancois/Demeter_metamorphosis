@@ -329,9 +329,9 @@ Define the kernel operator
 
     Progress: [#---------]  10.00%  (Ssd : ,350.1366).    Progress: [##--------]  15.00%  (Ssd : , 91.3460).    Progress: [##--------]  20.00%  (Ssd : , 72.6602).    Progress: [##--------]  25.00%  (Ssd : , 63.5695).    Progress: [###-------]  30.00%  (Ssd : , 58.9446).    Progress: [####------]  35.00%  (Ssd : , 53.5088).    Progress: [####------]  40.00%  (Ssd : , 49.1567).    Progress: [####------]  45.00%  (Ssd : , 46.0708).    Progress: [#####-----]  50.00%  (Ssd : , 43.7511).    Progress: [######----]  55.00%  (Ssd : , 40.8513).    Progress: [######----]  60.00%  (Ssd : , 38.6410).    Progress: [######----]  65.00%  (Ssd : , 37.4236).    Progress: [#######---]  70.00%  (Ssd : , 36.5052).    Progress: [########--]  75.00%  (Ssd : , 35.0647).    Progress: [########--]  80.00%  (Ssd : , 33.3091).    Progress: [########--]  85.00%  (Ssd : , 32.4722).    Progress: [#########-]  90.00%  (Ssd : , 31.8397).    Progress: [##########]  95.00%  (Ssd : , 30.9987).    Progress: [##########] 100.00% Done...
      (Ssd : , 30.7090).
-    Computation of forward done in  0:01:16s and 0.861cents  s
+    Computation of forward done in  0:01:17s and 0.540cents  s
 
-    Computation of metamorphosis done in  0:01:16s and 0.861cents  s
+    Computation of metamorphosis done in  0:01:17s and 0.540cents  s
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.1042790487408638..1.2210246324539185].
     convert -delay 40 -loop 0 /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer_Meta/simpleCancer_Meta_rho0.7_image_\d3.png /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer_Meta/simpleCancer_Meta_rho0.7_image.gif
             Cleaning saved files.
@@ -418,9 +418,9 @@ Define the kernel operator
     Weighted
     Progress: [#---------]  10.00%  (Ssd : ,401.9724).    Progress: [##--------]  15.00%  (Ssd : ,176.6749).    Progress: [##--------]  20.00%  (Ssd : ,124.5189).    Progress: [##--------]  25.00%  (Ssd : ,103.7301).    Progress: [###-------]  30.00%  (Ssd : , 90.9061).    Progress: [####------]  35.00%  (Ssd : , 80.7103).    Progress: [####------]  40.00%  (Ssd : , 70.0310).    Progress: [####------]  45.00%  (Ssd : , 61.9525).    Progress: [#####-----]  50.00%  (Ssd : , 56.9847).    Progress: [######----]  55.00%  (Ssd : , 53.1277).    Progress: [######----]  60.00%  (Ssd : , 51.4168).    Progress: [######----]  65.00%  (Ssd : , 50.1670).    Progress: [#######---]  70.00%  (Ssd : , 49.6573).    Progress: [########--]  75.00%  (Ssd : , 48.5550).    Progress: [########--]  80.00%  (Ssd : , 48.0538).    Progress: [########--]  85.00%  (Ssd : , 47.5863).    Progress: [#########-]  90.00%  (Ssd : , 46.6465).    Progress: [##########]  95.00%  (Ssd : , 45.7702).    Progress: [##########] 100.00% Done...
      (Ssd : , 44.6144).
-    Computation of forward done in  0:01:38s and 0.454cents  s
+    Computation of forward done in  0:01:39s and 0.927cents  s
 
-    Computation of weighted_metamorphosis done in  0:01:38s and 0.454cents  s
+    Computation of weighted_metamorphosis done in  0:01:39s and 0.928cents  s
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.140936255455017].
 
 
@@ -436,7 +436,7 @@ Why the result is not as expected? What can you do to improve it?
 Your mission is to model a smart evolving mask that will guide the
 registration process.
 
-.. GENERATED FROM PYTHON SOURCE LINES 147-162
+.. GENERATED FROM PYTHON SOURCE LINES 147-163
 
 .. code-block:: Python
 
@@ -444,7 +444,8 @@ registration process.
     print("=" * 20)
     print("\tComputing evolving mask")
 
-    mask = torch.rand_like(mr.mp.image_stock)
+    mask = mr.mp.image_stock  # Saving the succession of images.
+    mask = 1 - .5*mask
 
     # display the mask at different time
     L = [0, 2, 8, -1]
@@ -477,17 +478,17 @@ registration process.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 163-164
+.. GENERATED FROM PYTHON SOURCE LINES 164-165
 
 ####################################################################
 
-.. GENERATED FROM PYTHON SOURCE LINES 166-188
+.. GENERATED FROM PYTHON SOURCE LINES 167-189
 
 .. code-block:: Python
 
 
     print("\n\tComputing weighted metamorphosis")
-    n_iter = 15
+    n_iter= 20
     grad_coef = 1
     cost_cst = .0001
     residuals = 0
@@ -537,17 +538,17 @@ registration process.
     plop
     not oriented
     Weighted
-    Progress: [#---------]  13.33%  (Ssd : ,108.9679).    Progress: [##--------]  20.00%  (Ssd : , 68.2025).    Progress: [###-------]  26.67%  (Ssd : , 57.2934).    Progress: [###-------]  33.33%  (Ssd : , 52.4012).    Progress: [####------]  40.00%  (Ssd : , 48.5347).    Progress: [#####-----]  46.67%  (Ssd : , 45.8516).    Progress: [#####-----]  53.33%  (Ssd : , 43.5855).    Progress: [######----]  60.00%  (Ssd : , 41.8203).    Progress: [#######---]  66.67%  (Ssd : , 40.5551).    Progress: [#######---]  73.33%  (Ssd : , 39.4523).    Progress: [########--]  80.00%  (Ssd : , 38.4913).    Progress: [#########-]  86.67%  (Ssd : , 37.7798).    Progress: [#########-]  93.33%  (Ssd : , 37.1087).    Progress: [##########] 100.00% Done...
-     (Ssd : , 36.4462).
-    Computation of forward done in  0:00:40s and 0.559cents  s
+    Progress: [#---------]  10.00%  (Ssd : ,404.3592).    Progress: [##--------]  15.00%  (Ssd : ,149.7593).    Progress: [##--------]  20.00%  (Ssd : , 85.0564).    Progress: [##--------]  25.00%  (Ssd : , 60.8884).    Progress: [###-------]  30.00%  (Ssd : , 51.9768).    Progress: [####------]  35.00%  (Ssd : , 48.1022).    Progress: [####------]  40.00%  (Ssd : , 43.5306).    Progress: [####------]  45.00%  (Ssd : , 39.8305).    Progress: [#####-----]  50.00%  (Ssd : , 37.7006).    Progress: [######----]  55.00%  (Ssd : , 36.8883).    Progress: [######----]  60.00%  (Ssd : , 36.0506).    Progress: [######----]  65.00%  (Ssd : , 35.2744).    Progress: [#######---]  70.00%  (Ssd : , 34.7033).    Progress: [########--]  75.00%  (Ssd : , 34.1329).    Progress: [########--]  80.00%  (Ssd : , 33.7943).    Progress: [########--]  85.00%  (Ssd : , 33.5096).    Progress: [#########-]  90.00%  (Ssd : , 33.2561).    Progress: [##########]  95.00%  (Ssd : , 32.9616).    Progress: [##########] 100.00% Done...
+     (Ssd : , 32.7535).
+    Computation of forward done in  0:01:16s and 0.714cents  s
 
-    Computation of weighted_metamorphosis done in  0:00:40s and 0.560cents  s
-    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.18509350717067719..1.202865481376648].
-
-
+    Computation of weighted_metamorphosis done in  0:01:16s and 0.715cents  s
+    Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.0015080226585268974..1.114222764968872].
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 189-191
+
+
+.. GENERATED FROM PYTHON SOURCE LINES 190-192
 
 .. code-block:: Python
 
@@ -557,7 +558,7 @@ registration process.
 
 
 .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_024.png
-   :alt: diffeo = tensor(False)
+   :alt: diffeo = tensor(True)
    :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_024.png
    :class: sphx-glr-single-img
 
@@ -565,29 +566,118 @@ registration process.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 192-195
+.. GENERATED FROM PYTHON SOURCE LINES 193-202
 
 .. code-block:: Python
 
 
     mr_wm.mp.plot()
     plt.show()
+    mr_wm.save_to_gif("image",f"simpleCancer_WM_image",
+                    folder="simpleCancer")
+    mr_wm.save_to_gif("deformation",f"simpleCancer_WM_deform",
+                    folder="simpleCancer")
+    mr_wm.save_to_gif("residual",f"simpleCancer_WM_residuals",
+                    folder="simpleCancer")
 
 
 
-.. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_025.png
-   :alt: t = 0.0, diffeo = tensor(False), t = 0.2, diffeo = tensor(False), t = 0.4, diffeo = tensor(False), t = 0.7, diffeo = tensor(False), t = 1.0, diffeo = tensor(False)
-   :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_025.png
-   :class: sphx-glr-single-img
+.. rst-class:: sphx-glr-horizontal
 
 
+    *
+
+      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_025.png
+         :alt: t = 0.0, diffeo = tensor(True), t = 0.2, diffeo = tensor(True), t = 0.4, diffeo = tensor(True), t = 0.7, diffeo = tensor(True), t = 1.0, diffeo = tensor(True)
+         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_025.png
+         :class: sphx-glr-multi-img
+
+    *
+
+      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_026.png
+         :alt: toyExample weightedMetamorphosis
+         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_026.png
+         :class: sphx-glr-multi-img
+
+    *
+
+      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_027.png
+         :alt: toyExample weightedMetamorphosis
+         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_027.png
+         :class: sphx-glr-multi-img
+
+    *
+
+      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_028.png
+         :alt: toyExample weightedMetamorphosis
+         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_028.png
+         :class: sphx-glr-multi-img
+
+    *
+
+      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_029.png
+         :alt: toyExample weightedMetamorphosis
+         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_029.png
+         :class: sphx-glr-multi-img
+
+    *
+
+      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_030.png
+         :alt: toyExample weightedMetamorphosis
+         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_030.png
+         :class: sphx-glr-multi-img
+
+    *
+
+      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_031.png
+         :alt: toyExample weightedMetamorphosis
+         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_031.png
+         :class: sphx-glr-multi-img
+
+    *
+
+      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_032.png
+         :alt: toyExample weightedMetamorphosis
+         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_032.png
+         :class: sphx-glr-multi-img
+
+    *
+
+      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_033.png
+         :alt: toyExample weightedMetamorphosis
+         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_033.png
+         :class: sphx-glr-multi-img
+
+    *
+
+      .. image-sg:: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_034.png
+         :alt: toyExample weightedMetamorphosis
+         :srcset: /auto_examples/1_registration/images/sphx_glr_toyExample_weightedMetamorphosis_034.png
+         :class: sphx-glr-multi-img
+
+
+.. rst-class:: sphx-glr-script-out
+
+ .. code-block:: none
+
+    convert -delay 40 -loop 0 /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer/simpleCancer_WM_image_\d3.png /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer/simpleCancer_WM_image.gif
+            Cleaning saved files.
+    Your gif was successfully saved at : /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer/simpleCancer_WM_image.gif 
+    convert -delay 40 -loop 0 /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer/simpleCancer_WM_deform_\d3.png /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer/simpleCancer_WM_deform.gif
+            Cleaning saved files.
+    Your gif was successfully saved at : /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer/simpleCancer_WM_deform.gif 
+    convert -delay 40 -loop 0 /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer/simpleCancer_WM_residuals_\d3.png /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer/simpleCancer_WM_residuals.gif
+            Cleaning saved files.
+    Your gif was successfully saved at : /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer/simpleCancer_WM_residuals.gif 
+
+    ('/home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer/', 'simpleCancer_WM_residuals.gif')
 
 
 
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (3 minutes 54.146 seconds)
+   **Total running time of the script:** (4 minutes 36.724 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_toyExample_weightedMetamorphosis.py:
