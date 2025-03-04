@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**17:42.380** total execution time for 6 files **from auto_examples/1_registration**:
+**17:49.199** total execution time for 6 files **from auto_examples/1_registration**:
 
 .. container::
 
@@ -33,20 +33,20 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_1_registration_metamorphosis_3D.py` (``metamorphosis_3D.py``)
-     - 08:34.617
+     - 08:36.309
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_registration_toyExample_weightedMetamorphosis.py` (``toyExample_weightedMetamorphosis.py``)
-     - 04:36.724
+     - 04:38.711
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_registration_simpleToyExample_metamorphosis.py` (``simpleToyExample_metamorphosis.py``)
-     - 01:59.464
+     - 01:59.428
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_registration_toyExample_grayScott_constrainedMetamorphosis.py` (``toyExample_grayScott_constrainedMetamorphosis.py``)
-     - 01:51.955
+     - 01:55.206
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_registration_semiLagrangian_scheme.py` (``semiLagrangian_scheme.py``)
-     - 00:20.826
+     - 00:20.709
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_registration_data_cost_mutualInformation.py` (``data_cost_mutualInformation.py``)
-     - 00:18.795
+     - 00:18.835
      - 0.0

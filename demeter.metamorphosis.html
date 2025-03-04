@@ -457,6 +457,17 @@ computing it changed for any reason.</p>
 default is ‘saved_optim/saves_overview.csv’</p>
 </dd>
 </dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Demeter allows you to save registration results as metamorphosis
+objects to be able to reuse, restart, visualize, or analyze the results later.
+By default, we store them in the <cite>~/.local/share/Demeter_metamorphosis/</cite>
+folder on linux (may wary on other platforms). You can change
+the default location by setting the <cite>DEMETER_OPTIM_SAVE_DIR</cite> environment variable.
+in the .env file. To locate it you can use the following commands: (in a python file
+or in a ipython terminal)</p>
+<p><cite>demeter.display_env_help()</cite></p>
+</div>
 </section>
 <section id="returns">
 <h3>Returns:<a class="headerlink" href="#returns" title="Link to this heading"></a></h3>
