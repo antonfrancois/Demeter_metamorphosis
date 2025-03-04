@@ -1305,6 +1305,17 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             default is 'saved_optim/saves_overview.csv'
 
 
+        .. note ::
+            Demeter allows you to save registration results as metamorphosis
+            objects to be able to reuse, restart, visualize, or analyze the results later.
+            By default, we store them in the `~/.local/share/Demeter_metamorphosis/`
+            folder on linux (may wary on other platforms). You can change
+            the default location by setting the `DEMETER_OPTIM_SAVE_DIR` environment variable.
+            in the .env file. To locate it you can use the following commands: (in a python file
+            or in a ipython terminal)
+
+            `demeter.display_env_help()`
+
         Returns:
         ---------------
         file_save,
