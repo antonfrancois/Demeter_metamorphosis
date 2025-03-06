@@ -23,38 +23,12 @@ jobs:
           pip install -r requirements.txt
           pip install sphinx sphinx_rtd_theme sphinx-gallery sphinx-math-dollar
           pip install -e .
-          pip install bump2version
 
       - name: check where we are
         run: |
           pwd & ls
           echo "> saved optim:"
           ls saved_optim/
-
-      - name: Bump version
-        run: |
-          bump2version patch --allow-dirty
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Get new version
-        id: get_new_version
-        run: echo "new_version=$(bump2version --dry-run --list | grep new_version= | sed -r 's/^.*=//')" >> $GITHUB_ENV
-
-      - name: Update README version
-        run: |
-          python update_readme_version.py ${{ env.new_version }}
-
-      - name: Build package
-        run: python -m build
-
-      - name: Publish package
-        env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        run: |
-          python -m pip install twine
-          python -m twine upload dist/*
 
       - name: Build documentation
         run: |

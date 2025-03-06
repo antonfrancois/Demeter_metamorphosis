@@ -1,4 +1,4 @@
-# Demeter 0.2.1
+# Demeter 0.2.3
 ![](assets/demeter_logo_darkLight.png)
 (DiffEoMorphic METamorphic Regristration)
 
