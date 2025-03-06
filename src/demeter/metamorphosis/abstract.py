@@ -1278,6 +1278,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         message=None,
         destination=None,
         file_csv=None,
+        add_location_to_file = True
     ):
         """Save an optimisation to be later loaded and write all sort of info
         in a csv file
@@ -1303,7 +1304,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         file_csv : str
             name of the csv file to store the overview of the saved optimisation
             default is 'saved_optim/saves_overview.csv'
-
+        add_location_to_file : bool
+            add home name in saved file to track on which computer it has been computed. (default True)
 
         .. note ::
             Demeter allows you to save registration results as metamorphosis
@@ -1348,12 +1350,16 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         id_num = 0
 
+
         # build file name
+        location = os.getenv("HOME").split("/")[-1]
+        location = f"_{location}" if add_location_to_file else ''
         def file_name_maker_(id_num):
             return (
                 n_dim
                 + date_time.strftime("_%Y%m%d_")
                 + file_name
+                + location
                 + "_{:03d}".format(id_num)
                 + ".pk1"
             )
