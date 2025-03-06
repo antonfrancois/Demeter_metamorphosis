@@ -23,7 +23,7 @@ jobs:
           pip install -r requirements.txt
           pip install sphinx sphinx_rtd_theme sphinx-gallery sphinx-math-dollar
           pip install -e .
-          pip install -m build bump2version
+          pip install bump2version
 
       - name: check where we are
         run: |
