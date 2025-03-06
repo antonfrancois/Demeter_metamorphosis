@@ -145,6 +145,7 @@ class SoftHistogram2D(nn.Module):
 
     def forward(self, x, y):
         assert x.size() == y.size(), "(SoftHistogram2D) x and y sizes do not match"
+        self.centers.data = self.centers.data.to(x.device)
 
         # Replicate x and for each row remove center
         x = torch.unsqueeze(x, 1) - torch.unsqueeze(self.centers, 1)
