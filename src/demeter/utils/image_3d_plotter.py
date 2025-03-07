@@ -163,10 +163,10 @@ class Visualize_GeodesicOptim_plt:
 
         # add a button to save all images
         kw_button = {"color": my_white, "hovercolor": (0.8, 0.8, 0.8, 1)}
-        ax_button_save = plt.axes([0.8, 0.025, 0.1, 0.04])
-        ax_button_imgtype = plt.axes((0.1, 0.125, 0.1, 0.04))
-        ax_button_grid = plt.axes([0.1, 0.075, 0.04])
-        ax_button_quiver = plt.axes((0.1, 0.025, 0.1, 0.04))
+        ax_button_save = plt.axes(         (0.8, 0.025, 0.1, 0.04))
+        ax_button_imgtype = plt.axes(    (0.1,  0.125,  0.1, 0.04))
+        ax_button_grid = plt.axes(          (0.1,  0.075,  0.1, 0.04))
+        ax_button_quiver = plt.axes(       (0.1, 0.025,  0.1, 0.04))
         self.button_save = Button(ax_button_save, "Save All times", **kw_button)
         self.button_save.on_clicked(self.save_all_times)
 
