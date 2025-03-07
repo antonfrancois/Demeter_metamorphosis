@@ -36,12 +36,31 @@ def grid_slice(grid, coord, dim):
         return grid[0, :, :, coord, :]
 
 
+def set_size(w,h, ax=None):
+    """ w, h: width, height in inches """
+    if not ax: ax=plt.gca()
+    l = ax.figure.subplotpars.left
+    r = ax.figure.subplotpars.right
+    t = ax.figure.subplotpars.top
+    b = ax.figure.subplotpars.bottom
+    figw = float(w)/(r-l)
+    figh = float(h)/(t-b)
+    ax.figure.set_size_inches(figw, figh)
+
+
 class Visualize_GeodesicOptim_plt:
     """
     This class is a visualization tool for the geodesic optimisation. to replace the one using
     vedo. It is based on matplotlib and sliders to navigate through the 3D image.
 
     Je prevois de rajouter des fonctions pour
+
+    Parameters:
+    -------------
+
+    imgcmp_method: str
+        name of the method to compare image, must be in
+        {"compose", "segh", "segw"}
     """
 
     def __init__(
@@ -49,11 +68,14 @@ class Visualize_GeodesicOptim_plt:
             geodesicOptim,
             name: str,
             path_save: str | None = None,
+            imgcmp_method = 'compose'
     ):
         # Constants:
         my_white = (0.7, 0.7, 0.7, 1)
         my_dark = (0.1, 0.1, 0.1, 1)
-        self.imcmp_method = "segh"  # compose
+        # self.imcmp_method = "seg"  # compose
+        self.imcmp_method = imgcmp_method
+
 
         self.geodesicOptim = geodesicOptim  # .to_device("cpu")
         self.path = (
@@ -116,15 +138,21 @@ class Visualize_GeodesicOptim_plt:
         self.ax[1].set_xlabel("Y")
         self.ax[2].set_xlabel("Z")
 
+        self.ax[0].set_ylim(0, self.shown_image.shape[1] - 1)
+        self.ax[1].set_ylim(0,self.shown_image.shape[2] - 1)
+        self.ax[2].set_ylim(0, self.shown_image.shape[2] - 1)
+
+
         # add init lines
 
+
         line_color = "green"
-        self._l_x_v = self.ax[0].axvline(x=init_y_coord, color=line_color, alpha=0.6)
-        self._l_x_h = self.ax[0].axhline(y=init_z_coord, color=line_color, alpha=0.6)
-        self._l_y_v = self.ax[1].axvline(x=init_z_coord, color=line_color, alpha=0.6)
-        self._l_y_h = self.ax[1].axhline(y=init_x_coord, color=line_color, alpha=0.6)
+        self._l_x_v = self.ax[0].axvline(x=init_x_coord, color=line_color, alpha=0.6)
+        self._l_x_h = self.ax[0].axhline(y=init_y_coord, color=line_color, alpha=0.6)
+        self._l_y_v = self.ax[1].axvline(x=init_x_coord, color=line_color, alpha=0.6)
+        self._l_y_h = self.ax[1].axhline(y=init_z_coord, color=line_color, alpha=0.6)
         self._l_z_v = self.ax[2].axvline(x=init_y_coord, color=line_color, alpha=0.6)
-        self._l_z_h = self.ax[2].axhline(y=init_x_coord, color=line_color, alpha=0.6)
+        self._l_z_h = self.ax[2].axhline(y=init_z_coord, color=line_color, alpha=0.6)
 
         self.ax[0].margins(x=0)
 
@@ -136,8 +164,9 @@ class Visualize_GeodesicOptim_plt:
         # add a button to save all images
         kw_button = {"color": my_white, "hovercolor": (0.8, 0.8, 0.8, 1)}
         ax_button_save = plt.axes([0.8, 0.025, 0.1, 0.04])
-        ax_button_grid = plt.axes([0.1, 0.025, 0.1, 0.04])
-        ax_button_quiver = plt.axes((0.1, 0.125, 0.1, 0.04))
+        ax_button_imgtype = plt.axes((0.1, 0.125, 0.1, 0.04))
+        ax_button_grid = plt.axes([0.1, 0.075, 0.04])
+        ax_button_quiver = plt.axes((0.1, 0.025, 0.1, 0.04))
         self.button_save = Button(ax_button_save, "Save All times", **kw_button)
         self.button_save.on_clicked(self.save_all_times)
 
@@ -150,6 +179,17 @@ class Visualize_GeodesicOptim_plt:
         self.button_quiver.on_clicked(self._toggle_quiver)
         self.flow_was_init = False
         self.flag_quiver = False
+
+        self.button_img_type = Button(ax_button_imgtype, "compare", **kw_button)
+        self.button_img_type.on_clicked(self._toggle_imgcmp)
+        # will modify self.shown_image, self.shown_attribute
+        self.current_shown_attribute_index = 0
+        self.shown_attribute_list = [
+            self.temporal_image_cmp_with_target,
+            self.temporal_image,
+            self.target,
+            self.source,
+        ]
 
         # register the update function with each slider
         for slider in self.sliders:
@@ -173,13 +213,17 @@ class Visualize_GeodesicOptim_plt:
             return self.tmp_img_cmp_w_target
 
     def temporal_image(self):
-        return self.geodesicOptim.mp.image_stock
+        t_img =self.geodesicOptim.mp.image_stock
+        if t_img.shape[1] == 1:
+            return self.geodesicOptim.mp.image_stock[:,0]
+        else:
+            raise NotImplementedError(f"got multiChannel image:  {t_img.shape}")
 
     def target(self):
-        return self.geodesicOptim.target
+        return self.geodesicOptim.target[:,0]
 
     def source(self):
-        return self.geodesicOptim.source
+        return self.geodesicOptim.source[:,0]
 
     def _make_grid(self, t_val, x_val, y_val, z_val):
         t = t_val
@@ -233,14 +277,14 @@ class Visualize_GeodesicOptim_plt:
         self.vector_field[4, ..., 0] *= 0
         self.vector_field[4, ..., 1] *= -1
         self.vector_field[4, ..., 2] *= 0
-        # 5
-        self.vector_field[5, ..., 0] *= -1
-        self.vector_field[5, ..., 1] *= 0
-        self.vector_field[5, ..., 2] *= 0
-        # 6
-        self.vector_field[6, ..., 0] *= 0
-        self.vector_field[6, ..., 1] *= 1
-        self.vector_field[6, ..., 2] *= 0
+        # # 5
+        # self.vector_field[5, ..., 0] *= -1
+        # self.vector_field[5, ..., 1] *= 0
+        # self.vector_field[5, ..., 2] *= 0
+        # # 6
+        # self.vector_field[6, ..., 0] *= 0
+        # self.vector_field[6, ..., 1] *= 1
+        # self.vector_field[6, ..., 2] *= 0
 
     def _make_arrows(self, t_val, x_val, y_val, z_val):
 
@@ -302,9 +346,9 @@ class Visualize_GeodesicOptim_plt:
         if not self.grid_was_init:
             self.lines = self._make_grid(
                 self.sliders[3].val,
-                self.sliders[2].val,
-                self.sliders[1].val,
                 self.sliders[0].val,
+                self.sliders[1].val,
+                self.sliders[2].val,
             )
             self.grid_was_init = True
             self.flag_grid = True
@@ -321,9 +365,9 @@ class Visualize_GeodesicOptim_plt:
             self._debug_flow()
             self.arrows = self._make_arrows(
                 self.sliders[3].val,
-                self.sliders[2].val,
-                self.sliders[1].val,
                 self.sliders[0].val,
+                self.sliders[1].val,
+                self.sliders[2].val,
             )
             self.flow_was_init = True
             self.flag_quiver = True
@@ -333,6 +377,16 @@ class Visualize_GeodesicOptim_plt:
             for arr in self.arrows:
                 arr.set_visible(self.flag_quiver)
         self.fig.canvas.draw_idle()
+
+    def _toggle_imgcmp(self, event):
+        self.current_shown_attribute_index = (self.current_shown_attribute_index + 1) % len(self.shown_attribute_list)  # Incrément circulaire
+        self.shown_attribute = self.shown_attribute_list[self.current_shown_attribute_index]
+        # self.shown_image = self.shown_attribute()
+
+        self.button_img_type.label.set_text(self.shown_attribute.__name__)
+
+        self.update(0)
+        # self.fig.canvas.draw_idle()
 
     def _init_slider(self, init_x_coord, init_y_coord, init_z_coord):
         """Create sliders for the 3D image."""
@@ -362,15 +416,23 @@ class Visualize_GeodesicOptim_plt:
     def update(self, val):
         """Update the plot when the sliders change."""
         x_slider, y_slider, z_slider, t_slider = self.sliders
-        self.shown_image = self.temporal_image_cmp_with_target()[t_slider.val]
+        img_3D_to_show    = self.shown_attribute()
+        ic(self.shown_attribute.__name__, img_3D_to_show.shape)
+        t = t_slider.val if img_3D_to_show.shape[0] > 1 else 0
+        self.shown_image  = img_3D_to_show[t]
         ic(self.shown_image.shape, self.flag_grid)
 
         img = np.clip(self.shown_image, 0, 1)
 
-        tr_tpl = (1, 0, 2)
-        self.plt_img_x.set_data(tb.image_slice(img, z_slider.val, 2).transpose(tr_tpl))
-        self.plt_img_y.set_data(tb.image_slice(img, y_slider.val, 1).transpose(tr_tpl))
-        self.plt_img_z.set_data(tb.image_slice(img, x_slider.val, 0).transpose(tr_tpl))
+        tr_tpl = (1, 0, 2) if len(self.shown_image.shape) == 4 else (0,1)
+        slice = tb.image_slice(img, z_slider.val, 2)
+        ic(tr_tpl, slice.shape)
+        slice = slice.transpose(*tr_tpl)
+
+
+        self.plt_img_x.set_data(tb.image_slice(img, z_slider.val, 2).transpose(*tr_tpl))
+        self.plt_img_y.set_data(tb.image_slice(img, y_slider.val, 1).transpose(*tr_tpl))
+        self.plt_img_z.set_data(tb.image_slice(img, x_slider.val, 0).transpose(*tr_tpl))
 
         # update lines
         self._l_x_v.set_xdata([x_slider.val, x_slider.val])
