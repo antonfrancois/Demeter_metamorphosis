@@ -38,14 +38,20 @@ def reg_open(number, size=None, requires_grad=False, device='cpu'):
 
 
 def resize_image(image: torch.Tensor | list[torch.Tensor],
-                 scale_factor: float | int | Iterable
+                 scale_factor: float | int | Iterable = None,
+                 to_shape = None
                  ):
     """
-    Resize an image by a scale factor $s = (s1,s2,s3)$
+    Resize an image by a scale factor $s = (s1,s2,s3)$ or set it to
+    shape given by `to_shape`.
 
 
     :param image: list of tensors [B,C,H,W] or [B,C,D,H,W] torch tensor
     :param scale_factor: float or list or tuple of image dimension size
+    :param to_shape: Resize the image to the given shape. Tuple of image dimension size (nD,nH,nW)
+
+    .. note::
+        Please provide only scale_factor OR to_shape. If to_shape is not None, scale_factor will be ignored.
 
     : return: tensor of size [B,C,s1*H,s2*W] or [B,C,s1*D, s2*H, s3*W] or list
     containing tensors.
@@ -54,9 +60,16 @@ def resize_image(image: torch.Tensor | list[torch.Tensor],
         image = [image]
     device = image[0].device
     Ishape = image[0].shape[2:]
-    if isinstance(scale_factor, float | int):
-        scale_factor = (scale_factor,) * len(Ishape)
-    Ishape_D = tuple([int(s * f) for s, f in zip(Ishape, scale_factor)])
+
+    if to_shape is None:
+        if scale_factor is None:
+            raise ValueError("Please provide either scale_factor or to_shape")
+        if isinstance(scale_factor, float | int):
+            scale_factor = (scale_factor,) * len(Ishape)
+        Ishape_D = tuple([int(s * f) for s, f in zip(Ishape, scale_factor)])
+    else:
+        Ishape_D = to_shape
+
     id_grid = make_regular_grid(Ishape_D, dx_convention='2square').to(device).to(image[0].dtype)
     i_s = []
     for i in image:
@@ -66,6 +79,7 @@ def resize_image(image: torch.Tensor | list[torch.Tensor],
     if len(i_s) == 1:
         return i_s[0]
     return i_s
+
 
 
 def image_slice(I, coord, dim):
