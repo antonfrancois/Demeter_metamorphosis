@@ -32,10 +32,10 @@ import demeter.utils.reproducing_kernels as rk
 ######################################################################
 # Openning the source and target images
 
-
+device = 'cpu'
 size = (200,200)
-S = tb.reg_open('01',size=size)
-T = 1 -tb.reg_open('17',size=size)
+S = tb.reg_open('01',size=size).to(device)
+T = 1 -tb.reg_open('17',size=size).to(device)
 
 fig,ax = plt.subplots(1,2)
 ax[0].imshow(S[0,0].cpu(),**DLT_KW_IMAGE)

@@ -1855,16 +1855,22 @@ is removed  from <cite>field</cite> (default False)</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="demeter.utils.torchbox.resize_image">
-<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">resize_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">Tensor</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Iterable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.resize_image" title="Link to this definition"></a></dt>
-<dd><p>Resize an image by a scale factor <span class="math notranslate nohighlight">\(s = (s1,s2,s3)\)</span></p>
+<span class="sig-prename descclassname"><span class="pre">demeter.utils.torchbox.</span></span><span class="sig-name descname"><span class="pre">resize_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">Tensor</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Iterable</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#demeter.utils.torchbox.resize_image" title="Link to this definition"></a></dt>
+<dd><p>Resize an image by a scale factor <span class="math notranslate nohighlight">\(s = (s1,s2,s3)\)</span> or set it to
+shape given by <cite>to_shape</cite>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>image</strong> – list of tensors [B,C,H,W] or [B,C,D,H,W] torch tensor</p></li>
 <li><p><strong>scale_factor</strong> – float or list or tuple of image dimension size</p></li>
+<li><p><strong>to_shape</strong> – Resize the image to the given shape. Tuple of image dimension size (nD,nH,nW)</p></li>
 </ul>
 </dd>
 </dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Please provide only scale_factor OR to_shape. If to_shape is not None, scale_factor will be ignored.</p>
+</div>
 <p>: return: tensor of size [B,C,s1*H,s2*W] or [B,C,s1*D, s2*H, s3*W] or list
 containing tensors.</p>
 </dd></dl>

@@ -137,9 +137,10 @@ saves_overview.csv
 </pre></div>
 </div>
 <p>Openning the source and target images</p>
-<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">size</span> <span class="o">=</span> <span class="p">(</span><span class="mi">200</span><span class="p">,</span><span class="mi">200</span><span class="p">)</span>
-<span class="n">S</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">reg_open</span><span class="p">(</span><span class="s1">&#39;01&#39;</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
-<span class="n">T</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span><span class="n">tb</span><span class="o">.</span><span class="n">reg_open</span><span class="p">(</span><span class="s1">&#39;17&#39;</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="s1">&#39;cpu&#39;</span>
+<span class="n">size</span> <span class="o">=</span> <span class="p">(</span><span class="mi">200</span><span class="p">,</span><span class="mi">200</span><span class="p">)</span>
+<span class="n">S</span> <span class="o">=</span> <span class="n">tb</span><span class="o">.</span><span class="n">reg_open</span><span class="p">(</span><span class="s1">&#39;01&#39;</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="n">T</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span><span class="n">tb</span><span class="o">.</span><span class="n">reg_open</span><span class="p">(</span><span class="s1">&#39;17&#39;</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
 
 <span class="n">fig</span><span class="p">,</span><span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
 <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">S</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">(),</span><span class="o">**</span><span class="n">DLT_KW_IMAGE</span><span class="p">)</span>
@@ -196,12 +197,12 @@ Progress: [#########-]  86.67%  (Mutual_Information : ,  3.3475).
 Progress: [#########-]  93.33%  (Mutual_Information : ,  3.3468).
 Progress: [##########] 100.00% Done...
  (Mutual_Information : ,  3.3463).
-Computation of forward done in  0:00:15s and 0.022cents  s
+Computation of forward done in  0:00:15s and 0.744cents  s
 
-Computation of lddmm done in  0:00:15s and 0.023cents  s
+Computation of lddmm done in  0:00:15s and 0.744cents  s
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 18.834 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 20.101 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-1-registration-data-cost-mutualinformation-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/8a1ad42d484c122fd520bfef9e736249/data_cost_mutualInformation.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">data_cost_mutualInformation.ipynb</span></code></a></p>

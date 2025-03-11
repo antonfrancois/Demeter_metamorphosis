@@ -127,7 +127,7 @@ In this file we apply the metamorphosis algorithm to 3D images.
       S = torch.load(path+source_name+".pt").to(device)
     /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/1_registration/metamorphosis_3D.py:48: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
       T = torch.load(path+target_name+".pt").to(device)
-    ic| image_3d_plotter.py:514 in imshow_3d_slider()
+    ic| image_3d_plotter.py:576 in imshow_3d_slider()
         image.shape: (45, 53, 45, 4)
 
 
@@ -288,19 +288,19 @@ rho = 1  Pure geometric registration
     Apply Metamorphosis
     Progress: [#---------]  13.33%  (Ssd : ,405.9124).    Progress: [##--------]  20.00%  (Ssd : ,261.6039).    Progress: [###-------]  26.67%  (Ssd : ,199.3622).    Progress: [###-------]  33.33%  (Ssd : ,164.2235).    Progress: [####------]  40.00%  (Ssd : ,140.9712).    Progress: [#####-----]  46.67%  (Ssd : ,123.9041).    Progress: [#####-----]  53.33%  (Ssd : ,111.5133).    Progress: [######----]  60.00%  (Ssd : ,102.1032).    Progress: [#######---]  66.67%  (Ssd : , 95.1100).    Progress: [#######---]  73.33%  (Ssd : , 88.5401).    Progress: [########--]  80.00%  (Ssd : , 84.3062).    Progress: [#########-]  86.67%  (Ssd : , 80.0021).    Progress: [#########-]  93.33%  (Ssd : , 76.0086).    Progress: [##########] 100.00% Done...
      (Ssd : , 72.8988).
-    Computation of forward done in  0:08:34s and 0.876cents  s
+    Computation of forward done in  0:08:41s and 0.644cents  s
 
-    Computation of metamorphosis done in  0:08:34s and 0.876cents  s
+    Computation of metamorphosis done in  0:08:41s and 0.644cents  s
     ic| abstract.py:1338 in save()
         path: '/home/runner/.local/share/Demeter_metamorphosis/saved_optim/'
-    Optimisation saved in /home/runner/.local/share/Demeter_metamorphosis/saved_optim/3D_20250306_ball_for_hanse_hanse_w_ball_Metamorphosis_runner_000.pk1 
+    Optimisation saved in /home/runner/.local/share/Demeter_metamorphosis/saved_optim/3D_20250311_ball_for_hanse_hanse_w_ball_Metamorphosis_runner_000.pk1 
 
-    ic| image_3d_plotter.py:514 in imshow_3d_slider()
+    ic| image_3d_plotter.py:576 in imshow_3d_slider()
         image.shape: (45, 53, 45, 4)
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.1476253867149353..1.2024809122085571].
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.0920996367931366..1.2208189964294434].
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.16356849670410156..1.1930912733078003].
-    ic| image_3d_plotter.py:514 in imshow_3d_slider()
+    ic| image_3d_plotter.py:576 in imshow_3d_slider()
         image.shape: (45, 53, 45, 4)
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
@@ -314,7 +314,7 @@ rho = 1  Pure geometric registration
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (8 minutes 36.467 seconds)
+   **Total running time of the script:** (8 minutes 43.294 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_metamorphosis_3D.py:
