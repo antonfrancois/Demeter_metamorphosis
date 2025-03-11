@@ -618,7 +618,7 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
     r"""
     A kernel that preserves the value of the norm $V$ for different images resolution.
 
-    Let $\sigma=(\sigma_h)_{1\leq h\leq d}$ be the standard deviation along the different coordinate in $\R^d$ and $B=B(0,1)$ the closed ball of radius $1$.  We denote $D=\text{diag}(\sigma_h^2)$ and we consider the kernel
+    Let $\sigma=(\sigma_h)_{1\leq h\leq d}$ be the standard deviation along the different coordinate in $\mathbb R^d$ and $B=B(0,1)$ the closed ball of radius $1$.  We denote $D=\text{diag}(\sigma_h^2)$ and we consider the kernel
 
     $$K(x,y)=\frac{1}{\mathrm{Vol}(D^{1/2} B)}\exp\left(-\frac{1}{2}\langle D^{-1}(x-y),(x-y)\rangle\right)D\,.$$
 

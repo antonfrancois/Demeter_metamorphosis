@@ -910,8 +910,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         norm_v = (field_momentum * field).sum()
         if norm_v < 0:
-            warnings.warn(f"norm_v is negative : {norm_v}, increasing"
-                          f" kernel_reach in kernelOperator might help")
+            warnings.warn(f"norm_v is negative : {norm_v}, increasing kernel_reach in kernelOperator might help")
         return norm_v
 
     @abstractmethod
