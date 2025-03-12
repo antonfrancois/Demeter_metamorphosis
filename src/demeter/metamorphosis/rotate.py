@@ -10,7 +10,7 @@ from math import prod, sqrt
 
 from demeter.metamorphosis import Geodesic_integrator,Optimize_geodesicShooting
 
-from demeter.utils.constants import *
+from demeter.constants import *
 import demeter.utils.torchbox as tb
 
 
@@ -23,13 +23,19 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
     """
 
     """
-    def __init__(self,rho,n_step, **kwargs):
+    def __init__(self,rho,**kwargs):
         super().__init__(**kwargs)
         self.rho = rho
-        self.n_step = n_step
+        # self.n_step = n_step
 
     def _get_rho_(self):
         return float(self.rho)
+
+    def to_device(self,device):
+        try:
+            self.rot_mat = self.rot_mat.to(device)
+        except AttributeError:
+            pass
 
     def step(self):
         print("\n")
@@ -42,10 +48,12 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         ## 1. Compute the vector field
         ## 1.1 Compute the gradient of the image by finite differences
         grad_image = tb.spatialGradient(self.image, dx_convention = self.dx_convention)
-        self.field = self._compute_vectorField_(
+        self.field,_ = self._compute_vectorField_(
             momentum_I, grad_image)
-        self.field *= sqrt(self.rho)
+        # self.field *= 0
+        # self.field *= sqrt(self.rho)
         print('field min max',self.field.min(),self.field.max())
+        # ic(self.field.device)
         # 1.2 Compute the rotation
 
         # ic(grad_image.shape)
@@ -54,19 +62,18 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
 
         momIgradI_x = torch.einsum('ijkl,ijkm->ijklm', momI_gradI, self.id_grid)
         x_momIgradI = torch.einsum('ijkl,ijkm->ijklm',self.id_grid,momI_gradI)
-        mom_rot = momentum_R @ self.rot_mat.T
-        mom_rot =  (mom_rot - mom_rot.T) /2
+        mom_rotated = momentum_R @ self.rot_mat.T
+        mom_rotated =  (mom_rotated - mom_rotated.T) /2
         print("rot mat",self.rot_mat)
-        print("mom_rot",mom_rot)
-#         ic(gabon.shape)
+        print("mom_rot",mom_rotated)
+
         int_mom_I = .5 * sqrt(self.rho) * (momIgradI_x - x_momIgradI).sum(dim=[1,2])[0]
         print('int_mom_I',int_mom_I)
-#         ic(congo.shape)
-        self.d_rot = mom_rot - int_mom_I
+        self.d_rot = mom_rotated - int_mom_I
         if self._i == 0:
             self.d_rot_ini = self.d_rot.clone()
         print('d_rot',self.d_rot)
-
+#         ic(self.d_rot.device)
 
         # self.d_rot = (
         #         momentum_R * self.rot_mat
@@ -76,22 +83,20 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         #                   )
         #              )
         # self.rot_mat = self.rot_mat + self.d_rot @ self.rot_mat
-        self.rot_mat = torch.linalg.matrix_exp(self.d_rot/self.n_step) @ self.rot_mat
-        print('momentum_R',momentum_R)
-        print("rot mat",self.rot_mat)
+
 
         # -----------------------------------------------
         # 2. Compute the residuals
         self.residuals = (sqrt(1 - self.rho) *
                           momentum_I)
-
+#         ic(self.residuals.device)
         print("dx_convention",self.dx_convention)
         print("grid min max",self.id_grid.min().item(),self.id_grid.max().item())
 
         # -----------------------------------------------
         # 3. Update the image
         # id_rot = apply_rot_mat(self.id_grid, - sqrt(self.rho) * self.d_rot)
-        id_rot = self.id_grid - apply_rot_mat(self.id_grid,  self.d_rot)
+        id_rot = self.id_grid - apply_rot_mat(self.id_grid,  self.d_rot/self.n_step)
 
         deform_rot = id_rot - sqrt(self.rho) *  self.field/self.n_step
 
@@ -108,7 +113,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         # tb.gridDef_plot(deform_rot,ax=ax[2],step=10)
         # plt.show()
         self._update_image_semiLagrangian_(deform_rot,momentum=momentum_I)
-
+#         ic("image",self.image.device)
         # fig,ax = plt.subplots(1,3)
         # ax[0].imshow(self.image[0,0].detach().numpy())
         # ax[0].set_title('image AFTER, step = '+str(self._i))
@@ -121,13 +126,26 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         ## 4. Update momentums
         ## 4.1 Update image momentum
 
-        momentum_I = - sqrt(self.rho) * (
-            self._compute_div_momentum_semiLagrangian_(deform_rot,
-                                                       momentum_I)
+        momentum_I =  (
+            self._compute_div_momentum_semiLagrangian_(
+                deform_rot,
+                momentum_I,
+                cst = - sqrt(self.rho),
+                field = sqrt(self.rho) * self.field
+            )
         )
+#         ic(momentum_I.device)
         momentum_R = momentum_R + self.d_rot.T @ self.rot_mat / self.n_step
+#         ic(momentum_R.device)
         self.momenta['momentum_I'] = momentum_I.clone()
         self.momenta['momentum_R'] = momentum_R.clone()
+
+        self.rot_mat = torch.linalg.matrix_exp(self.d_rot/self.n_step) @ self.rot_mat
+
+        print("rot mat * rot mat.T",self.rot_mat @ self.rot_mat.T)
+
+        print('momentum_R',momentum_R)
+        print("rot mat",self.rot_mat)
 
         return (self.image,
                 sqrt(self.rho) * self.field,
@@ -142,8 +160,73 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         #     dtype=torch.float32)
         momentum_R = momenta['momentum_R'].clone()
         momenta['momentum_R'] =  (momentum_R - momentum_R.T) /2
+        self.to_device(momentum_R.device)
 
         return super().forward(image,momenta,**kwargs)
+
+    def plot(self, n_figs=5):
+        if n_figs == -1:
+            n_figs = self.n_step
+        plot_id = (
+            torch.quantile(
+                torch.arange(self.image_stock.shape[0], dtype=torch.float),
+                torch.linspace(0, 1, n_figs),
+            )
+            .round()
+            .int()
+        )
+
+        kw_image_args = dict(
+            cmap="gray", extent=[-1, 1, -1, 1], origin="lower", vmin=0, vmax=1
+        )
+        # v_abs_max = (self.residuals_stock.abs().max()).max()
+        # v_abs_max = torch.quantile(self.momenta.abs(), 0.99)
+        momentum =  self.momenta['momentum_I']
+        v_abs_max = torch.quantile(momentum.abs(), 0.99)
+        kw_residuals_args = dict(
+            cmap="RdYlBu_r",
+            extent=[-1, 1, -1, 1],
+            origin="lower",
+            vmin=-v_abs_max,
+            vmax=v_abs_max,
+        )
+        size_fig = 5
+        # C = self.momentum_stock.shape[1]
+        C = 1
+        fig, ax = plt.subplots(
+            n_figs,
+            2 + C,
+            constrained_layout=True,
+            figsize=(size_fig * 3, n_figs * size_fig),
+        )
+
+        for i, t in enumerate(plot_id):
+            i_s = ax[i, 0].imshow(
+                self.image_stock[t, :, :, :].detach().permute(1, 2, 0).numpy(),
+                **kw_image_args,
+            )
+            ax[i, 0].set_title("t = " + str((t / (self.n_step - 1)).item())[:3])
+            ax[i, 0].axis("off")
+            fig.colorbar(i_s, ax=ax[i, 0], fraction=0.046, pad=0.04)
+
+            # for j in range(C):
+            #     r_s = ax[i, j + 1].imshow(
+            #         self.momentum_stock[t, j].detach().numpy(), **kw_residuals_args
+            #     )
+            #     ax[i, j + 1].axis("off")
+
+            # fig.colorbar(r_s, ax=ax[i, -2], fraction=0.046, pad=0.04)
+
+            tb.gridDef_plot_2d(
+                self.get_deformation(to_t = t+1),
+                add_grid=False,
+                ax=ax[i, -1],
+                step=int(min(self.field_stock.shape[2:-1]) / 30),
+                check_diffeo=True,
+                dx_convention=self.dx_convention,
+            )
+
+        return fig, ax
 
 class RotatingMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
@@ -154,13 +237,26 @@ class RotatingMetamorphosis_Optimizer(Optimize_geodesicShooting):
     def _get_rho_(self):
         return float(self.mp.rho)
 
+    def get_all_arguments(self):
+        params_all  = super().get_all_arguments()
+        params_spe = {
+            'rho':self._get_rho_(),
+        }
+        return {**params_all,**params_spe}
+
     def get_all_parameters(self):
         pass
 
     def cost(self,momenta,**kwargs):
 
         rho = self._get_rho_()
-        self.mp.forward(self.source,momenta, save=False, plot=0)
+        self.to_device(momenta['momentum_I'].device)
+        ic("momentum_I",momenta['momentum_I'].device)
+        self.mp.forward(self.source,momenta,
+                        save=False,
+                        plot=0,
+                        hamiltonian_integration=self.flag_hamiltonian_integration,
+                        )
         # Compute the data_term. Default is the Ssd
         self.data_loss = self.data_term()
         ic(self.data_loss)
@@ -175,6 +271,7 @@ class RotatingMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
         # Norm L2 on R
         self.norm_l2_on_R = .5 * torch.trace( self.mp.d_rot_ini.T @ self.mp.d_rot_ini)
+        ic(self.norm_l2_on_R)
 
         self.total_cost = self.data_loss + \
                           self.cost_cst * (self.norm_v_2 + self.norm_l2_on_z + self.norm_l2_on_R)

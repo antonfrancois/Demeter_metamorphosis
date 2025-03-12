@@ -85,6 +85,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self.dx_convention = dx_convention
 
         self.kernelOperator = kernelOperator
+        self.n_step = n_step
 
         # Get sigma from the kernelOperator
         # self.sigma_v = self.kernelOperator.sigma_v
@@ -197,6 +198,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self.image = image.clone().to(device)
         self.momenta = momenta
         self.debug = debug
+        self.flag_hamiltonian_integration = hamiltonian_integration
         try:
             self.save = True if self._force_save else save
         except AttributeError:
@@ -609,6 +611,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         )
         # v_abs_max = (self.residuals_stock.abs().max()).max()
         v_abs_max = torch.quantile(self.momenta.abs(), 0.99)
+        # v_abs_max = torch.quantile(self.momenta['momentum_I'].abs(), 0.99)
         kw_residuals_args = dict(
             cmap="RdYlBu_r",
             extent=[-1, 1, -1, 1],
@@ -773,7 +776,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         geodesic: Geodesic_integrator,
         cost_cst,
         data_term=None,
-        optimizer_method: str = 'LBFGS_torch',,
+        optimizer_method: str = 'LBFGS_torch',
         hamiltonian_integration=False,
         **kwargs
     ):
@@ -1093,8 +1096,13 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         # self.parameter = self.parameter.to(device)
         self.id_grid = self.id_grid.to(device)
         self.data_term.to_device(device)
-        self.to_analyse = ({k: v.to(device) for k, v in self.to_analyse[0].items()},
-                           self.to_analyse[1].to(device))
+        try:
+            self.to_analyse = (
+                {k: v.to(device) for k, v in self.to_analyse[0].items()},
+                self.to_analyse[1].to(device)
+            )
+        except AttributeError:
+            pass
 
     def forward_safe_mode(self,
                           z_0,
