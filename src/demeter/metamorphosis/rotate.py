@@ -233,6 +233,7 @@ class RotatingMetamorphosis_Optimizer(Optimize_geodesicShooting):
     def __init__(self,**kwargs):
         print(kwargs.keys())
         super().__init__(**kwargs)
+        self._cost_saving_ = self._rotating_cost_saving_
 
     def _get_rho_(self):
         return float(self.mp.rho)
@@ -277,4 +278,49 @@ class RotatingMetamorphosis_Optimizer(Optimize_geodesicShooting):
                           self.cost_cst * (self.norm_v_2 + self.norm_l2_on_z + self.norm_l2_on_R)
 
         return self.total_cost
+
+    def _rotating_cost_saving_(self,i, loss_stock):
+        if loss_stock is None:
+            d = 4
+            return torch.zeros((i+1, d))
+
+        loss_stock[i, 0] = self.data_loss.detach()
+        loss_stock[i, 1] = self.norm_v_2.detach()
+        loss_stock[i, 2] = self.norm_l2_on_z.detach()
+        loss_stock[i, 3] = self.norm_l2_on_R.detach()
+
+        return loss_stock
+
+    def plot_cost(self,y_log=False):
+        fig1, ax1 = plt.subplots(1, 2,figsize=(10,10))
+        if y_log:
+            ax1[0].set_yscale('log')
+            ax1[1].set_yscale('log')
+        cost_stock = self.to_analyse[1].detach().numpy()
+
+        ssd_plot = cost_stock[:, 0]
+        ax1[0].plot(ssd_plot, "--", color='blue', label='ssd')
+        ax1[1].plot(ssd_plot, "--", color='blue', label='ssd')
+
+        normv_plot = self.cost_cst * cost_stock[:, 1]
+        ax1[0].plot(normv_plot, "--", color='green', label='normv')
+        ax1[1].plot(cost_stock[:, 1], "--", color='green', label='normv')
+        total_cost = ssd_plot + normv_plot
+
+        norm_l2_on_z = self.cost_cst * cost_stock[:, 2]
+        total_cost += norm_l2_on_z
+        ax1[0].plot(norm_l2_on_z, "--", color='orange', label='norm_l2_on_z')
+        ax1[1].plot(cost_stock[:, 2], "--", color='orange', label='norm_l2_on_z')
+
+        fields_diff_norm_v = self.cost_cst *  cost_stock[:, 3]
+        total_cost += fields_diff_norm_v
+        ax1[0].plot(fields_diff_norm_v, "--", color="purple", label='normL2_on_R')
+        ax1[1].plot(cost_stock[:, 3], "--", color='purple', label='normL2_on_R')
+
+        ax1[0].plot(total_cost, color='black', label=r'\Sigma')
+        ax1[0].legend()
+        ax1[1].legend()
+        ax1[0].set_title("Lambda = " + str(self.cost_cst))
+
+        return fig1,ax1
 
