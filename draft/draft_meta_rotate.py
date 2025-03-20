@@ -39,10 +39,10 @@ deform = torch.stack([xx,yy],dim = -1)
 deform = id_grid.clone()
 
 new_img = tb.imgDeform(img,deform,dx_convention='2square')
-fig,ax = plt.subplots(1,1)
-ax.imshow(new_img[0,0])
-tb.gridDef_plot(deform,ax = ax,step=30,dx_convention='2square',color='orange')
-plt.show()
+# fig,ax = plt.subplots(1,1)
+# ax.imshow(new_img[0,0])
+# tb.gridDef_plot(deform,ax = ax,step=30,dx_convention='2square',color='orange')
+# plt.show()
 
 ## %%
 theta = -torch.pi/3
@@ -54,11 +54,11 @@ newimg_r = tb.imgDeform(new_img,rot_grid,dx_convention='2square')
 
 # tb.gridDef_plot(rot_grid,step=30)
 # newimg_r += torch.randn_like(newimg_r)*0.1
-fig,ax = plt.subplots(1,3)
-ax[0].imshow(img[0,0])
-ax[1].imshow(new_img[0,0])
-ax[2].imshow(newimg_r[0,0])
-plt.show()
+# fig,ax = plt.subplots(1,3)
+# ax[0].imshow(img[0,0])
+# ax[1].imshow(new_img[0,0])
+# ax[2].imshow(newimg_r[0,0])
+# plt.show()
 
 #%%
 print("images made, starting metamorphosis")
@@ -75,15 +75,21 @@ print("images made, starting metamorphosis")
 #     )
 
 kernelOperator = rk.GaussianRKHS(sigma=(10,10),normalized=False)
+kernelOperator = rk.VolNormalizedGaussianRKHS(
+    sigma=(10,10),
+    sigma_convention='pixel',
+    dx=(1,1),
+)
 
 print(kernelOperator)
 
 class Rotation_Ssd_Cost(mt.DataCost):
 
-    def __init__(self, target, **kwargs):
+    def __init__(self, target, alpha, **kwargs):
 
         super(Rotation_Ssd_Cost, self).__init__(target)
         self.ssd = cf.SumSquaredDifference(target)
+        self.alpha = alpha
 
     def set_optimizer(self, optimizer):
         """
@@ -115,19 +121,19 @@ class Rotation_Ssd_Cost(mt.DataCost):
         rotated_image =  tb.imgDeform(self.optimizer.mp.image,rot_def,dx_convention='2square')
         ssd_rot = self.ssd(rotated_image)
 
-        return ssd_rot + ssd
+        return self.alpha * ssd_rot + (1-self.alpha) * ssd
 
 
 # datacost = mt.Ssd_normalized(newimg_r)
 # datacost =  None
-datacost = Rotation_Ssd_Cost(newimg_r.to('cuda:0'))
+datacost = Rotation_Ssd_Cost(newimg_r.to('cuda:0'), alpha=0.8)
 
 torch.autograd.set_detect_anomaly(True)
 # Metamorphosis params
 rho = 1
 dx_convention = '2square'
 
-r = 1
+r = 5
 # r = torch.tensor([r])
 momentum_I = torch.zeros(img.shape,
                          dtype=torch.float32,
@@ -136,14 +142,14 @@ momentum_I = torch.zeros(img.shape,
 # r.requires_grad = True
 momentum_I.requires_grad = True
 
-# momentum_R = torch.tensor(
-#     [[0,r],
-#      [-r,0]],
-#     dtype=torch.float32, device='cuda:0')
-momentum_R = torch.zeros((2,2),
-                        dtype=torch.float32,
-                        device='cuda:0'
-                        )
+momentum_R = torch.tensor(
+    [[0,r],
+     [-r,0]],
+    dtype=torch.float32, device='cuda:0')
+# momentum_R = torch.zeros((2,2),
+#                         dtype=torch.float32,
+#                         device='cuda:0'
+#                         )
 momentum_R.requires_grad = True
 momenta = {'momentum_I':momentum_I,
            # 'r':r,
@@ -151,30 +157,35 @@ momenta = {'momentum_I':momentum_I,
 
 # momenta = {k: v.to('cuda:0') for k, v in momenta.items()}
 
+n_steps =  5
 mp = mtrt.RotatingMetamorphosis_integrator(
     rho=rho,
-    n_step=10,
+    n_step=n_steps,
     kernelOperator=kernelOperator,
     dx_convention=dx_convention
 )
-# mp.forward(img,momenta, save=False, plot=0)
+mp.forward(img,momenta, save=False, plot=0)
 # p = mp.image.sum().backward()
 # ic(p.grad)
+
+fig, ax = plt.subplots(1,2)
+ax[0].imshow(mp.image[0,0].detach().cpu())
+plt.show()
 
 img =  img.to('cuda:0')
 newimg_r = newimg_r.to('cuda:0')
 
-mr = mtrt.RotatingMetamorphosis_Optimizer(
-    source= img,
-    target= newimg_r,
-    geodesic = mp,
-    cost_cst=.00000001,
-    data_term=datacost,
-    # optimizer_method="adadelta",
-)
-mr.forward(momenta, n_iter=5, grad_coef=1)
-mr.plot()
-mr.mp.plot(n_figs=3)
+# mr = mtrt.RotatingMetamorphosis_Optimizer(
+#     source= img,
+#     target= newimg_r,
+#     geodesic = mp,
+#     cost_cst=.001,
+#     data_term=datacost,
+#     # optimizer_method="adadelta",
+# )
+# mr.forward(momenta, n_iter=5, grad_coef=1)
+# mr.plot()
+# mr.mp.plot(n_figs=min(5,n_steps))
 
 # mp.forward(img,momenta, save=True, plot=0)
 
