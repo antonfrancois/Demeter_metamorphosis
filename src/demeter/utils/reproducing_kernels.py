@@ -760,7 +760,7 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
             view_sig = (1,-1) + (1,)*(len(input.shape)-2)
             # input *= self.sigma_continuous.to(input.device).view(view_sig)**2
             convol = self.filter(input,self.kernel,**self.kwargs_filter)
-            convol *= self.sigma.view(view_sig)**2
+            convol *= self.sigma.view(view_sig).to(input.device)**2
             return convol
         else:
             raise ValueError(f"{self.__class__.__name__} was initialized "
