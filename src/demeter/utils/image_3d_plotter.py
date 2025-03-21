@@ -4,16 +4,13 @@ import matplotlib.pyplot as plt
 import matplotlib
 import torch
 import numpy as np
-from kornia.augmentation.auto.autoaugment.ops import color
 from matplotlib.collections import LineCollection
 from matplotlib.widgets import Slider, Button
-from sphinx.writers.text import my_wrap
 from torch import is_tensor
 import warnings
 import os
 from PIL import Image
-from triton.language import dtype
-
+from skimage.color import hsv2rgb
 import demeter.utils.torchbox as tb
 from icecream import ic
 
@@ -47,6 +44,105 @@ def set_size(w,h, ax=None):
     figh = float(h)/(t-b)
     ax.figure.set_size_inches(figw, figh)
 
+
+def angle_average(angles, dim=None):
+    """
+    Compute the average angle of all angles in degrees assuming the angles are
+    on the $[0,1]$ periodical segment.
+
+    We compute the following equation:
+
+    .. math::
+        x =\frac{1}{2\pi} \mathrm{atan2}( \sum_i \sin( 2\pi \alpha_i), \sum_i \cos( 2\pi \alpha_i))
+
+    with $\alpha_i$ the angles. If $x < 0$ then we make it positive by applying $1 + x$
+
+    Parameters
+    ------------
+    angles : torch.Tensor
+    dim: dimention to perform the average along
+
+    Returns
+    ----------
+    torch.Tensor
+    """
+    angles *= 2 * np.pi
+    x = torch.atan2(
+        torch.sin(angles).nansum(axis=dim),
+        torch.cos(angles).nansum(axis=dim)
+    ) / (2 * np.pi)
+    x[x < 0] = 1 + x[x < 0]
+    return x
+
+
+class SimplexToHSV:
+    """
+    This class is used to convert a simplex image to an HSV image.
+
+    """
+
+    def __init__(self, image, is_last_background=True):
+        self.image = image
+        self.is_last_background = is_last_background
+        self.hsv_image = None
+        self.rgb_image = None
+
+    def prepare_hue(self):
+        """
+        Assign each channel to a given hue value.
+        The hue value is computed as the average angle of the channel values.
+
+        if is_last_background is True, the last channel is ignored.
+        """
+        b, c, h, w = self.image.shape
+        if self.is_last_background:
+            self.image = self.image[:, :-1]
+            b, c, h, w = self.image.shape
+
+        h_values = torch.linspace(0, 1, c + 1)
+        eps = 1e-1
+        self.image[self.image > eps] = 1
+        self.image[self.image < eps] = torch.nan
+        hue = angle_average(
+            self.image * h_values[:-1].view((1, c, 1, 1)),
+            dim=1
+        )
+        return hue[0]
+
+    def prepare_saturation(self):
+        """
+        Prepare the
+        """
+
+        image = self.image[:, :-1]
+        image[image > .5] = 0
+        sat = image.sum(dim=1)[0]
+        return 1 - (sat / sat.max()) ** 2
+
+    def prepare_value(self):
+        """
+        Prepare the value channel of the HSV image by taking the maximum value
+        of the image along the channel dimension.
+        """
+        if self.is_last_background:
+            return self.image[:, :-1].max(dim=1)[0]
+        return self.image.max(dim=1)[0]
+
+
+    def to_hsv(self):
+        b, c, h, w = self.image.shape
+        hsv_img = torch.zeros((h, w, 3))
+        hsv_img[:, :, 0] = self.prepare_hue()
+        hsv_img[:, :, 1] = self.prepare_saturation()
+        hsv_img[:, :, 2] = self.prepare_value()
+        self.hsv_image = hsv_img.cpu().numpy()
+        return self.hsv_image
+
+    def to_rgb(self):
+        if self.hsv_image is None:
+            self.to_hsv()
+        self.rgb_image = hsv2rgb(self.hsv_image)
+        return self.rgb_image
 
 class Visualize_GeodesicOptim_plt:
     """
