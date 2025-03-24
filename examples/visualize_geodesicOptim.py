@@ -9,12 +9,14 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button
 
 
-file = "3D_30_01_2025_PSL_001_M01_to_M26_FLAIR3D_LDDMM_meso_000.pk1"
+# file = "3D_30_01_2025_PSL_001_M01_to_M26_FLAIR3D_LDDMM_meso_000.pk1"
+file = "3D_20250313_lddmm_from_PSL_030_M03_to_PSL_030_M04_FLAIR3D_lddmm_francoisa_000.pk1"
+file = "3D_20250310_lddmm_from_PSL_030_M03_to_PSL_030_M04_FLAIR3D_lddmm_francoisa_000.pk1"
 
 # file = "3D_30_01_2025_ballforhance_LDDMM_000.pk1"
 # file = "3D_01_02_2025_ball_for_hanse_hanse_w_ball_Metamorphosis_000.pk1"
 # # file = "3D_02_12_2024_PSL_005_M06_to_PSL_005_M07_000.pk1"
-mr = mt.load_optimize_geodesicShooting(file)
+mr = mt.load_optimize_geodesicShooting(file, path='../RadioAide_Preprocessing/optim_meso/')
 name = file.split('.')[0]
 #
 # print(mr.mp.image_stock.shape)

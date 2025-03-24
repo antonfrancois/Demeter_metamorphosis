@@ -1097,7 +1097,10 @@ class RandomGaussianImage:
                     dim=1
                 )
             else:
-                self.c = torch.tensor(c)
+                if isinstance(c, torch.Tensor):
+                    self.c = c
+                else:
+                    self.c = torch.tensor(c)
             # self.c = torch.randn((n_gaussians, 2))
             # self.c[:,0] = (self.c[:,0] + 1) * size[0] / 2
             # self.c[:,1] = (self.c[:,1] + 1) * size[1] / 2

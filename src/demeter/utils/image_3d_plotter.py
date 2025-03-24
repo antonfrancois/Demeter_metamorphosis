@@ -46,7 +46,7 @@ def set_size(w,h, ax=None):
 
 
 def angle_average(angles, dim=None):
-    """
+    r"""
     Compute the average angle of all angles in degrees assuming the angles are
     on the $[0,1]$ periodical segment.
 
@@ -94,17 +94,18 @@ class SimplexToHSV:
 
         if is_last_background is True, the last channel is ignored.
         """
-        b, c, h, w = self.image.shape
         if self.is_last_background:
-            self.image = self.image[:, :-1]
-            b, c, h, w = self.image.shape
+            img = self.image.clone()[:, :-1]
+        else:
+            img = self.image.clone()
+        b, c, *dims = img.shape
 
         h_values = torch.linspace(0, 1, c + 1)
         eps = 1e-1
-        self.image[self.image > eps] = 1
-        self.image[self.image < eps] = torch.nan
+        img[img > eps] = 1
+        img[img < eps] = torch.nan
         hue = angle_average(
-            self.image * h_values[:-1].view((1, c, 1, 1)),
+            img * h_values[:-1].view((1, c, *([1] * len(dims)))),
             dim=1
         )
         return hue[0]
@@ -114,7 +115,7 @@ class SimplexToHSV:
         Prepare the
         """
 
-        image = self.image[:, :-1]
+        image = self.image.clone()[:, :-1]
         image[image > .5] = 0
         sat = image.sum(dim=1)[0]
         return 1 - (sat / sat.max()) ** 2
@@ -124,21 +125,27 @@ class SimplexToHSV:
         Prepare the value channel of the HSV image by taking the maximum value
         of the image along the channel dimension.
         """
-        if self.is_last_background:
-            return self.image[:, :-1].max(dim=1)[0]
-        return self.image.max(dim=1)[0]
+        ic(self.image.shape)
+        img = self.image[:, :-1] if self.is_last_background else self.image
+        img_max, _ = img.max(dim=1)
+        return img_max[0]
 
 
     def to_hsv(self):
-        b, c, h, w = self.image.shape
-        hsv_img = torch.zeros((h, w, 3))
-        hsv_img[:, :, 0] = self.prepare_hue()
-        hsv_img[:, :, 1] = self.prepare_saturation()
-        hsv_img[:, :, 2] = self.prepare_value()
+        if self.hsv_image is not None:
+            return self.hsv_image
+        b, c, *dims = self.image.shape
+        hsv_img = torch.zeros((*dims, 3))
+        ic(hsv_img.shape)
+        hsv_img[..., 0] = self.prepare_hue()
+        hsv_img[..., 1] = self.prepare_saturation()
+        hsv_img[..., 2] = self.prepare_value()
         self.hsv_image = hsv_img.cpu().numpy()
         return self.hsv_image
 
     def to_rgb(self):
+        if self.rgb_image is not None:
+            return self.rgb_image
         if self.hsv_image is None:
             self.to_hsv()
         self.rgb_image = hsv2rgb(self.hsv_image)
@@ -682,8 +689,11 @@ def imshow_3d_slider(
         T, H, W, D, C = image.shape
         # image = image.transpose(0, 1, 2, 3, 4)
 
+
     # Define initial parameters
-    init_x_coord, init_y_coord, init_z_coord = D // 2, W // 2, H // 2
+    # init_x_coord, init_y_coord, init_z_coord = D // 2, W // 2, H // 2
+    init_x_coord, init_y_coord, init_z_coord = H// 2, W // 2, D // 2
+
     t = max(T - 1, 0)
 
     vmin = image.min() if vmin is None else vmin
@@ -694,6 +704,8 @@ def imshow_3d_slider(
         cmap=image_cmap,
     )
     im_ini = image[0] if T > 1 else image
+    ic(im_ini.shape)
+    ic(init_x_coord,)
     tr_tpl = (1, 0, 2) if C > 1 else (1, 0)
     img_x = ax[0].imshow(
         tb.image_slice(im_ini, init_z_coord, dim=2).transpose(tr_tpl), **kw_image
@@ -715,12 +727,12 @@ def imshow_3d_slider(
     # add init lines
 
     line_color = "green"
-    l_x_v = ax[0].axvline(x=init_y_coord, color=line_color, alpha=0.6)
-    l_x_h = ax[0].axhline(y=init_z_coord, color=line_color, alpha=0.6)
-    l_y_v = ax[1].axvline(x=init_z_coord, color=line_color, alpha=0.6)
-    l_y_h = ax[1].axhline(y=init_x_coord, color=line_color, alpha=0.6)
+    l_x_v = ax[0].axvline(x=init_x_coord, color=line_color, alpha=0.6)
+    l_x_h = ax[0].axhline(y=init_y_coord, color=line_color, alpha=0.6)
+    l_y_v = ax[1].axvline(x=init_x_coord, color=line_color, alpha=0.6)
+    l_y_h = ax[1].axhline(y=init_z_coord, color=line_color, alpha=0.6)
     l_z_v = ax[2].axvline(x=init_y_coord, color=line_color, alpha=0.6)
-    l_z_h = ax[2].axhline(y=init_x_coord, color=line_color, alpha=0.6)
+    l_z_h = ax[2].axhline(y=init_z_coord, color=line_color, alpha=0.6)
 
     ax[0].margins(x=0)
 
