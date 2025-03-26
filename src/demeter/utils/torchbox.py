@@ -466,6 +466,22 @@ def get_sobel_kernel_3d():
 #            PLOT
 # =================================================
 def imCmp(I1, I2, method=None):
+    """
+    Stack two gray-scales images to compare them. The images must have the same
+    height and width and depth (for 3d).
+    Note: Images can NOT be temporal meaning that
+    they have a time dimension stored in the first dimension. For this usage see
+    `temporal_img_cmp`.
+
+    Parameters
+    ----------
+    I1 : torch.Tensor
+        [B,C,H,W] or [B,C,K,H,W] tensor C = 1, B = 1
+    I2 : torch.Tensor
+        [B,C,H,W] or [B,C,K,H,W] tensor C = 1, B = 1
+    method: str
+        method to compare the images, among {'compose','seg','segw','segh'}
+    """
     from numpy import concatenate, zeros, ones, maximum, exp
     if len(I1.shape) in [4, 5]:
         shape_to_fill = I1.shape[2:] + (1,)
@@ -500,6 +516,16 @@ def imCmp(I1, I2, method=None):
             rgb = np.clip(rgb, 0, 1)
             # print(f"r {r.min()};{r.max()}")
             return rgb
+        if 'k' in method:
+            return concatenate(
+                (
+                    I1[..., None],
+                    u + I2[..., None]*.5,
+                    I2[..., None],
+                    ones(shape_to_fill)
+                    # np.maximum(I2[:,:,None], I1[:, :, None])
+                ), axis=-1
+            )
         if 'h' in method:
             d = I1[..., None] - I2[..., None]
             # z = np.ones(d.shape)

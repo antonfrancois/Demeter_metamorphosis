@@ -161,9 +161,9 @@ if __name__ == '__main__':
     slice = tb.image_slice(rgb_image, 23, dim= 2)
     ic(slice.shape)
     # #%%
-    # fig, ax = plt.subplots(1,1)
-    # ax.imshow(rgb_image[:,:,12])
-    # plt.show()
-    #%%
-    i3p.imshow_3d_slider(rgb_image)
+    fig, ax = plt.subplots(1,1)
+    ax.imshow(rgb_image[0,:,:,12])
     plt.show()
+    #%%
+    # i3p.imshow_3d_slider(rgb_image)
+    # plt.show()

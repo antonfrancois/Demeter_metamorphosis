@@ -108,7 +108,7 @@ class SimplexToHSV:
             img * h_values[:-1].view((1, c, *([1] * len(dims)))),
             dim=1
         )
-        return hue[0]
+        return hue
 
     def prepare_saturation(self):
         """
@@ -117,7 +117,7 @@ class SimplexToHSV:
 
         image = self.image.clone()[:, :-1]
         image[image > .5] = 0
-        sat = image.sum(dim=1)[0]
+        sat = image.sum(dim=1)
         return 1 - (sat / sat.max()) ** 2
 
     def prepare_value(self):
@@ -128,14 +128,14 @@ class SimplexToHSV:
         ic(self.image.shape)
         img = self.image[:, :-1] if self.is_last_background else self.image
         img_max, _ = img.max(dim=1)
-        return img_max[0]
+        return img_max
 
 
     def to_hsv(self):
         if self.hsv_image is not None:
             return self.hsv_image
         b, c, *dims = self.image.shape
-        hsv_img = torch.zeros((*dims, 3))
+        hsv_img = torch.zeros((b,*dims, 3))
         ic(hsv_img.shape)
         hsv_img[..., 0] = self.prepare_hue()
         hsv_img[..., 1] = self.prepare_saturation()
@@ -200,6 +200,10 @@ class Visualize_GeodesicOptim_plt:
         self.shape = self.geodesicOptim.mp.image_stock.shape
         T, C, D, H, W = self.shape
         init_x_coord, init_y_coord, init_z_coord = D // 2, H // 2, W // 2
+        self.flag_simplex_visu = True if C > 1 else False
+        if self.flag_simplex_visu:
+            self._build_simplex_img()
+
         kw_image = dict(
             vmin=self.geodesicOptim.mp.image_stock.min(),
             vmax=self.geodesicOptim.mp.image_stock.max(),
@@ -223,6 +227,7 @@ class Visualize_GeodesicOptim_plt:
             )
 
         tr_tpl = (1, 0, 2)
+        ic(self.shown_image.shape)
         self.plt_img_x = self.ax[0].imshow(
             tb.image_slice(self.shown_image, init_z_coord, dim=2).transpose(tr_tpl),
             **kw_image,
@@ -298,6 +303,16 @@ class Visualize_GeodesicOptim_plt:
         for slider in self.sliders:
             slider.on_changed(self.update)
 
+    def _build_simplex_img(self):
+        self.splx_target = SimplexToHSV(self.geodesicOptim.target, is_last_background=True).to_rgb()
+        self.splx_img_stock = SimplexToHSV(self.geodesicOptim.mp.image_stock, is_last_background=True).to_rgb()
+        self.splx_source = SimplexToHSV(self.geodesicOptim.source, is_last_background=True).to_rgb()
+
+        print("splx_target", self.splx_target.shape)
+        print("splx_img_stock", self.splx_img_stock.shape)
+        print("splx_source", self.splx_source.shape)
+
+
     def temporal_image_cmp_with_target(self):
         try:
             return self.tmp_img_cmp_w_target
@@ -305,14 +320,25 @@ class Visualize_GeodesicOptim_plt:
             def mult_clip(img, factor):
                 return torch.clip(img * factor, 0, 1)
 
+            if self.flag_simplex_visu:
+                img_stk = self.geodesicOptim.mp.image_stock.argmax(dim=1)[:,None].to(torch.float32)
+                target = self.geodesicOptim.target.argmax(dim=1)[None].to(torch.float32)
+
+                img_stk /= self.shape[1]
+                target /= self.shape[1]
+            else:
+                img_stk = self.geodesicOptim.mp.image_stock
+                target = self.geodesicOptim.target
+
+
             self.tmp_img_cmp_w_target = tb.temporal_img_cmp(
                 # mult_clip(self.geodesicOptim.mp.image_stock, 1.5),
                 # mult_clip(self.geodesicOptim.target, 1.5),
-                self.geodesicOptim.mp.image_stock,
-                self.geodesicOptim.target,
-
+                img_stk,
+                target,
                 method=self.imcmp_method,
             )
+            print("tmp_img_cmp_w_target", self.tmp_img_cmp_w_target.shape)
             return self.tmp_img_cmp_w_target
 
     def temporal_image(self):
@@ -320,13 +346,19 @@ class Visualize_GeodesicOptim_plt:
         if t_img.shape[1] == 1:
             return self.geodesicOptim.mp.image_stock[:,0]
         else:
-            raise NotImplementedError(f"got multiChannel image:  {t_img.shape}")
+            return self.splx_img_stock
 
     def target(self):
-        return self.geodesicOptim.target[:,0]
+        if self.flag_simplex_visu:
+            return self.splx_target
+        else:
+            return self.geodesicOptim.target[:,0]
 
     def source(self):
-        return self.geodesicOptim.source[:,0]
+        if self.flag_simplex_visu:
+            return self.splx_source
+        else:
+            return self.geodesicOptim.source[:,0]
 
     def _make_grid(self, t_val, x_val, y_val, z_val):
         t = t_val
@@ -523,7 +555,7 @@ class Visualize_GeodesicOptim_plt:
         ic(self.shown_attribute.__name__, img_3D_to_show.shape)
         t = t_slider.val if img_3D_to_show.shape[0] > 1 else 0
         self.shown_image  = img_3D_to_show[t]
-        ic(self.shown_image.shape, self.flag_grid)
+        ic(self.shown_image.shape, self.flag_grid, t)
 
         img = np.clip(self.shown_image, 0, 1)
 
@@ -708,7 +740,7 @@ def imshow_3d_slider(
     ic(init_x_coord,)
     tr_tpl = (1, 0, 2) if C > 1 else (1, 0)
     img_x = ax[0].imshow(
-        tb.image_slice(im_ini, init_z_coord, dim=2).transpose(tr_tpl), **kw_image
+        tb.image_slice(im_ini, init_x_coord, dim=2).transpose(tr_tpl), **kw_image
     )
     img_y = ax[1].imshow(
         tb.image_slice(im_ini, init_y_coord, dim=1).transpose(tr_tpl),
@@ -716,7 +748,7 @@ def imshow_3d_slider(
         **kw_image,
     )
     img_z = ax[2].imshow(
-        tb.image_slice(im_ini, init_x_coord, dim=0).transpose(tr_tpl),
+        tb.image_slice(im_ini, init_z_coord, dim=0).transpose(tr_tpl),
         origin="lower",
         **kw_image,
     )
