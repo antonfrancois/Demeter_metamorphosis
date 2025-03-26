@@ -173,8 +173,11 @@ Warning : the computation will be slow, it is recommended to use a GPU
   S = torch.load(path+source_name+&quot;.pt&quot;).to(device)
 /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/1_registration/metamorphosis_3D.py:48: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don&#39;t have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   T = torch.load(path+target_name+&quot;.pt&quot;).to(device)
-ic| image_3d_plotter.py:576 in imshow_3d_slider()
+ic| image_3d_plotter.py:711 in imshow_3d_slider()
     image.shape: (45, 53, 45, 4)
+ic| image_3d_plotter.py:739 in imshow_3d_slider()
+    im_ini.shape: (45, 53, 45, 4)
+ic| image_3d_plotter.py:740 in imshow_3d_slider()- init_x_coord: 22
 </pre></div>
 </div>
 <p>Inititialize a kernel Operator</p>
@@ -284,20 +287,26 @@ Progress: [#########-]  86.67%  (Ssd : , 80.0021).
 Progress: [#########-]  93.33%  (Ssd : , 76.0086).
 Progress: [##########] 100.00% Done...
  (Ssd : , 72.8988).
-Computation of forward done in  0:08:41s and 0.644cents  s
+Computation of forward done in  0:08:32s and 0.409cents  s
 
-Computation of metamorphosis done in  0:08:41s and 0.644cents  s
+Computation of metamorphosis done in  0:08:32s and 0.410cents  s
 ic| abstract.py:1338 in save()
     path: &#39;/home/runner/.local/share/Demeter_metamorphosis/saved_optim/&#39;
-Optimisation saved in /home/runner/.local/share/Demeter_metamorphosis/saved_optim/3D_20250311_ball_for_hanse_hanse_w_ball_Metamorphosis_runner_000.pk1
+Optimisation saved in /home/runner/.local/share/Demeter_metamorphosis/saved_optim/3D_20250326_ball_for_hanse_hanse_w_ball_Metamorphosis_runner_000.pk1
 
-ic| image_3d_plotter.py:576 in imshow_3d_slider()
+ic| image_3d_plotter.py:711 in imshow_3d_slider()
     image.shape: (45, 53, 45, 4)
+ic| image_3d_plotter.py:739 in imshow_3d_slider()
+    im_ini.shape: (45, 53, 45, 4)
+ic| image_3d_plotter.py:740 in imshow_3d_slider()- init_x_coord: 22
 Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.1476253867149353..1.2024809122085571].
 Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.0920996367931366..1.2208189964294434].
 Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.16356849670410156..1.1930912733078003].
-ic| image_3d_plotter.py:576 in imshow_3d_slider()
+ic| image_3d_plotter.py:711 in imshow_3d_slider()
     image.shape: (45, 53, 45, 4)
+ic| image_3d_plotter.py:739 in imshow_3d_slider()
+    im_ini.shape: (45, 53, 45, 4)
+ic| image_3d_plotter.py:740 in imshow_3d_slider()- init_x_coord: 22
 Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
 Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
 Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.0000001192092896].
@@ -305,7 +314,7 @@ ic| metamorphosis_3D.py:142 in &lt;module&gt;
     mr_meta.mp.image_stock.shape: torch.Size([10, 1, 45, 53, 45])
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (8 minutes 43.294 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (8 minutes 34.208 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-1-registration-metamorphosis-3d-py">
 <div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
 <p><a class="reference download internal" download="" href="../../_downloads/211b9b1f8fd91b47bcd6d510071b6794/metamorphosis_3D.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">metamorphosis_3D.ipynb</span></code></a></p>

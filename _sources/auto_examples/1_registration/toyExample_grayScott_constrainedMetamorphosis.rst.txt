@@ -646,9 +646,9 @@ plt.show()
     Weighted
     Progress: [#---------]  10.00%  (Ssd : ,187.2694).    Progress: [##--------]  15.00%  (Ssd : , 99.0902).    Progress: [##--------]  20.00%  (Ssd : , 67.8786).    Progress: [##--------]  25.00%  (Ssd : , 55.3011).    Progress: [###-------]  30.00%  (Ssd : , 48.4873).    Progress: [####------]  35.00%  (Ssd : , 45.3169).    Progress: [####------]  40.00%  (Ssd : , 42.4989).    Progress: [####------]  45.00%  (Ssd : , 40.6994).    Progress: [#####-----]  50.00%  (Ssd : , 39.1277).    Progress: [######----]  55.00%  (Ssd : , 38.0623).    Progress: [######----]  60.00%  (Ssd : , 37.1787).    Progress: [######----]  65.00%  (Ssd : , 36.2048).    Progress: [#######---]  70.00%  (Ssd : , 35.4607).    Progress: [########--]  75.00%  (Ssd : , 34.8593).    Progress: [########--]  80.00%  (Ssd : , 34.2708).    Progress: [########--]  85.00%  (Ssd : , 33.9125).    Progress: [#########-]  90.00%  (Ssd : , 33.5998).    Progress: [##########]  95.00%  (Ssd : , 33.2848).    Progress: [##########] 100.00% Done...
      (Ssd : , 32.9175).
-    Computation of forward done in  0:01:47s and 0.972cents  s
+    Computation of forward done in  0:01:44s and 0.630cents  s
 
-    Computation of constrained_metamorphosis done in  0:01:47s and 0.973cents  s
+    Computation of constrained_metamorphosis done in  0:01:44s and 0.631cents  s
     DT: None
     round False
     round False
@@ -788,7 +788,7 @@ plt.show()
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 54.900 seconds)
+   **Total running time of the script:** (1 minutes 51.472 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_toyExample_grayScott_constrainedMetamorphosis.py:
