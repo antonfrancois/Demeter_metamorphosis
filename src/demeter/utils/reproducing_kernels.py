@@ -701,8 +701,10 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
 
         # this filter works in 2d and 3d
         self.filter = fft_filter
-        self.kwargs_filter = {'border_type':self.border_type,
-                              'behaviour': 'conv'}
+        self.kwargs_filter = {
+            'border_type':self.border_type,
+            # 'behaviour': 'conv'
+        }
 
         # kernel_size = self.kernel.shape[2:]
         # if max(kernel_size) > 7:
