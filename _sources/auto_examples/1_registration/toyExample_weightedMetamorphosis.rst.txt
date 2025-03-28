@@ -329,9 +329,9 @@ Define the kernel operator
 
     Progress: [#---------]  10.00%  (Ssd : ,350.1366).    Progress: [##--------]  15.00%  (Ssd : , 91.3460).    Progress: [##--------]  20.00%  (Ssd : , 72.6602).    Progress: [##--------]  25.00%  (Ssd : , 63.5695).    Progress: [###-------]  30.00%  (Ssd : , 58.9446).    Progress: [####------]  35.00%  (Ssd : , 53.5088).    Progress: [####------]  40.00%  (Ssd : , 49.1567).    Progress: [####------]  45.00%  (Ssd : , 46.0708).    Progress: [#####-----]  50.00%  (Ssd : , 43.7511).    Progress: [######----]  55.00%  (Ssd : , 40.8513).    Progress: [######----]  60.00%  (Ssd : , 38.6410).    Progress: [######----]  65.00%  (Ssd : , 37.4236).    Progress: [#######---]  70.00%  (Ssd : , 36.5052).    Progress: [########--]  75.00%  (Ssd : , 35.0647).    Progress: [########--]  80.00%  (Ssd : , 33.3091).    Progress: [########--]  85.00%  (Ssd : , 32.4722).    Progress: [#########-]  90.00%  (Ssd : , 31.8397).    Progress: [##########]  95.00%  (Ssd : , 30.9987).    Progress: [##########] 100.00% Done...
      (Ssd : , 30.7090).
-    Computation of forward done in  0:01:18s and 0.905cents  s
+    Computation of forward done in  0:01:18s and 0.134cents  s
 
-    Computation of metamorphosis done in  0:01:18s and 0.906cents  s
+    Computation of metamorphosis done in  0:01:18s and 0.135cents  s
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.1042790487408638..1.2210246324539185].
     convert -delay 40 -loop 0 /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer_Meta/simpleCancer_Meta_rho0.7_image_\d3.png /home/runner/work/Demeter_metamorphosis/Demeter_metamorphosis/examples/gifs/simpleCancer_Meta/simpleCancer_Meta_rho0.7_image.gif
             Cleaning saved files.
@@ -418,9 +418,9 @@ Define the kernel operator
     Weighted
     Progress: [#---------]  10.00%  (Ssd : ,401.9724).    Progress: [##--------]  15.00%  (Ssd : ,176.6749).    Progress: [##--------]  20.00%  (Ssd : ,124.5189).    Progress: [##--------]  25.00%  (Ssd : ,103.7301).    Progress: [###-------]  30.00%  (Ssd : , 90.9061).    Progress: [####------]  35.00%  (Ssd : , 80.7103).    Progress: [####------]  40.00%  (Ssd : , 70.0310).    Progress: [####------]  45.00%  (Ssd : , 61.9525).    Progress: [#####-----]  50.00%  (Ssd : , 56.9847).    Progress: [######----]  55.00%  (Ssd : , 53.1277).    Progress: [######----]  60.00%  (Ssd : , 51.4168).    Progress: [######----]  65.00%  (Ssd : , 50.1670).    Progress: [#######---]  70.00%  (Ssd : , 49.6573).    Progress: [########--]  75.00%  (Ssd : , 48.5550).    Progress: [########--]  80.00%  (Ssd : , 48.0538).    Progress: [########--]  85.00%  (Ssd : , 47.5863).    Progress: [#########-]  90.00%  (Ssd : , 46.6465).    Progress: [##########]  95.00%  (Ssd : , 45.7702).    Progress: [##########] 100.00% Done...
      (Ssd : , 44.6144).
-    Computation of forward done in  0:01:42s and 0.414cents  s
+    Computation of forward done in  0:01:40s and 0.636cents  s
 
-    Computation of weighted_metamorphosis done in  0:01:42s and 0.414cents  s
+    Computation of weighted_metamorphosis done in  0:01:40s and 0.637cents  s
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [0.0..1.140936255455017].
 
 
@@ -540,9 +540,9 @@ registration process.
     Weighted
     Progress: [#---------]  10.00%  (Ssd : ,404.3592).    Progress: [##--------]  15.00%  (Ssd : ,149.7593).    Progress: [##--------]  20.00%  (Ssd : , 85.0564).    Progress: [##--------]  25.00%  (Ssd : , 60.8884).    Progress: [###-------]  30.00%  (Ssd : , 51.9768).    Progress: [####------]  35.00%  (Ssd : , 48.1022).    Progress: [####------]  40.00%  (Ssd : , 43.5306).    Progress: [####------]  45.00%  (Ssd : , 39.8305).    Progress: [#####-----]  50.00%  (Ssd : , 37.7006).    Progress: [######----]  55.00%  (Ssd : , 36.8883).    Progress: [######----]  60.00%  (Ssd : , 36.0506).    Progress: [######----]  65.00%  (Ssd : , 35.2744).    Progress: [#######---]  70.00%  (Ssd : , 34.7033).    Progress: [########--]  75.00%  (Ssd : , 34.1329).    Progress: [########--]  80.00%  (Ssd : , 33.7943).    Progress: [########--]  85.00%  (Ssd : , 33.5096).    Progress: [#########-]  90.00%  (Ssd : , 33.2561).    Progress: [##########]  95.00%  (Ssd : , 32.9616).    Progress: [##########] 100.00% Done...
      (Ssd : , 32.7535).
-    Computation of forward done in  0:01:19s and 0.013cents  s
+    Computation of forward done in  0:01:18s and 0.826cents  s
 
-    Computation of weighted_metamorphosis done in  0:01:19s and 0.014cents  s
+    Computation of weighted_metamorphosis done in  0:01:18s and 0.827cents  s
     Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers). Got range [-0.0015080226585268974..1.114222764968872].
 
 
@@ -677,7 +677,7 @@ registration process.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (4 minutes 43.124 seconds)
+   **Total running time of the script:** (4 minutes 40.191 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_registration_toyExample_weightedMetamorphosis.py:
