@@ -685,11 +685,8 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
         # print("sigma_continuous : ",self.sigma_continuous)
         if self._dim == 2:
             self.kernel = get_gaussian_kernel2d(self.sigma ,kernel_reach=kernel_reach)#[None]
-
-            self.filter = flt.filter2d
         elif self._dim == 3:
             self.kernel = get_gaussian_kernel3d(self.sigma, kernel_reach=kernel_reach)#[None]
-            self.filter = fft_filter
         else:
             raise ValueError("Sigma is expected to be a tuple of size 2 or 3 same as the input dimension,"
                              +"len(sigma) == {}".format(len(sigma)))
@@ -703,7 +700,7 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
 
 
         # this filter works in 2d and 3d
-        self.filter = flt.filter2d
+        self.filter = fft_filter
         self.kwargs_filter = {'border_type':self.border_type,
                               'behaviour': 'conv'}
 
