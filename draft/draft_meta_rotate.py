@@ -36,7 +36,7 @@ xx -= .2* make_exp(xx,yy,(0.25,0.25),(0.1,0.1))
 yy -= (.2* make_exp(xx,yy,(0,-0.25),(0.15,0.15)))
 
 deform = torch.stack([xx,yy],dim = -1)
-deform = id_grid.clone()
+# deform = id_grid.clone()
 
 new_img = tb.imgDeform(img,deform,dx_convention='2square')
 # fig,ax = plt.subplots(1,1)
@@ -50,15 +50,17 @@ rot = create_rot_mat(theta)
 rot_grid = apply_rot_mat(id_grid,rot)
 newimg_r = tb.imgDeform(new_img,rot_grid,dx_convention='2square')
 
+
+
 #apply rot to id_grid
 
-# tb.gridDef_plot(rot_grid,step=30)
-# newimg_r += torch.randn_like(newimg_r)*0.1
-# fig,ax = plt.subplots(1,3)
-# ax[0].imshow(img[0,0])
-# ax[1].imshow(new_img[0,0])
-# ax[2].imshow(newimg_r[0,0])
-# plt.show()
+tb.gridDef_plot(rot_grid,step=30)
+newimg_r += torch.randn_like(newimg_r)*0.1
+fig,ax = plt.subplots(1,3)
+ax[0].imshow(img[0,0])
+ax[1].imshow(new_img[0,0])
+ax[2].imshow(newimg_r[0,0])
+plt.show()
 
 #%%
 print("images made, starting metamorphosis")
@@ -126,14 +128,14 @@ class Rotation_Ssd_Cost(mt.DataCost):
 
 # datacost = mt.Ssd_normalized(newimg_r)
 # datacost =  None
-datacost = Rotation_Ssd_Cost(newimg_r.to('cuda:0'), alpha=0.8)
+datacost = Rotation_Ssd_Cost(newimg_r.to('cuda:0'), alpha=0)
 
 torch.autograd.set_detect_anomaly(True)
 # Metamorphosis params
 rho = 1
 dx_convention = '2square'
-
-r = 5
+from math import pi
+r = 0
 # r = torch.tensor([r])
 momentum_I = torch.zeros(img.shape,
                          dtype=torch.float32,
@@ -143,8 +145,8 @@ momentum_I = torch.zeros(img.shape,
 momentum_I.requires_grad = True
 
 momentum_R = torch.tensor(
-    [[0,r],
-     [-r,0]],
+    [[0,-r],
+     [r,0]],
     dtype=torch.float32, device='cuda:0')
 # momentum_R = torch.zeros((2,2),
 #                         dtype=torch.float32,
@@ -157,38 +159,45 @@ momenta = {'momentum_I':momentum_I,
 
 # momenta = {k: v.to('cuda:0') for k, v in momenta.items()}
 
-n_steps =  5
+n_steps =  30
 mp = mtrt.RotatingMetamorphosis_integrator(
     rho=rho,
     n_step=n_steps,
     kernelOperator=kernelOperator,
     dx_convention=dx_convention
 )
-mp.forward(img,momenta, save=False, plot=0)
+# mp.forward(img,momenta, save=False, plot=0)
 # p = mp.image.sum().backward()
 # ic(p.grad)
 
-fig, ax = plt.subplots(1,2)
-ax[0].imshow(mp.image[0,0].detach().cpu())
-plt.show()
+# fig, ax = plt.subplots(1,2)
+# ax[0].imshow(mp.image[0,0].detach().cpu())
+# plt.show()
 
 img =  img.to('cuda:0')
 newimg_r = newimg_r.to('cuda:0')
 
-# mr = mtrt.RotatingMetamorphosis_Optimizer(
-#     source= img,
-#     target= newimg_r,
-#     geodesic = mp,
-#     cost_cst=.001,
-#     data_term=datacost,
-#     # optimizer_method="adadelta",
-# )
-# mr.forward(momenta, n_iter=5, grad_coef=1)
-# mr.plot()
-# mr.mp.plot(n_figs=min(5,n_steps))
+mr = mtrt.RotatingMetamorphosis_Optimizer(
+    source= img,
+    target= newimg_r,
+    geodesic = mp,
+    cost_cst=.001,
+    data_term=datacost,
+    # optimizer_method="adadelta",
+)
+mr.forward(momenta, n_iter=15, grad_coef=1)
+#%%
+mr.to_device('cpu')
+mr.plot_cost()
+plt.show()
+mr.plot_imgCmp()
+plt.show()
+mr.mp.plot(n_figs=min(5,n_steps))
 
 # mp.forward(img,momenta, save=True, plot=0)
 
 
 plt.show()
-
+#%%
+mr.plot_deform()
+plt.show()

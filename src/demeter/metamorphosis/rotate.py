@@ -44,13 +44,14 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         momentum_I = self.momenta['momentum_I'].clone()
         momentum_R = self.momenta['momentum_R'].clone()
         print('momentum_I',momentum_I.min().item(),momentum_I.max().item())
+        print("momentum_R",momentum_R)
         # -----------------------------------------------
         ## 1. Compute the vector field
         ## 1.1 Compute the gradient of the image by finite differences
         grad_image = tb.spatialGradient(self.image, dx_convention = self.dx_convention)
         self.field,_ = self._compute_vectorField_(
             momentum_I, grad_image)
-        self.field *= 0
+        # self.field *= 0
         # self.field *= sqrt(self.rho)
         print('field min max',self.field.min(),self.field.max())
         # ic(self.field.device)
@@ -65,7 +66,8 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         mom_rotated = momentum_R @ self.rot_mat.T
         mom_rotated =  (mom_rotated - mom_rotated.T) /2
         print("rot mat",self.rot_mat)
-        print("mom_rot",mom_rotated)
+        print("mom_rotated",mom_rotated)
+
 
         int_mom_I = .5 * sqrt(self.rho) * (momIgradI_x - x_momIgradI).sum(dim=[1,2])[0]
         print('int_mom_I',int_mom_I)
@@ -97,14 +99,15 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         # 3. Update the image
         # id_rot = apply_rot_mat(self.id_grid, - sqrt(self.rho) * self.d_rot)
         eye = torch.eye(2).to(self.image.device)
-        id_rot = self.id_grid - apply_rot_mat(self.id_grid, self.d_rot/self.n_step)
+        # id_rot = self.id_grid - apply_rot_mat(self.id_grid, self.d_rot/self.n_step)
+        id_rot = apply_rot_mat(self.id_grid, eye+ self.d_rot/self.n_step)
 
         deform_rot = id_rot - sqrt(self.rho) *  self.field/self.n_step
 
-        rot_img = tb.imgDeform(self.image,id_rot)
-        plt.figure()
-        plt.imshow(rot_img[0,0].detach().cpu())
-        plt.show()
+        # rot_img = tb.imgDeform(self.image,id_rot)
+        # plt.figure()
+        # plt.imshow(rot_img[0,0].detach().cpu())
+        # plt.show()
 
         # ic(self.id_grid.min().item(), self.id_grid.max().item(),
         #    id_rot.min().item(), id_rot.max().item(),
@@ -141,7 +144,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
             )
         )
 #         ic(momentum_I.device)
-        momentum_R = momentum_R + self.d_rot.T @ self.rot_mat #/ self.n_step
+        momentum_R = momentum_R - self.d_rot.T @ momentum_R  / self.n_step
 #         ic(momentum_R.device)
         self.momenta['momentum_I'] = momentum_I.clone()
         self.momenta['momentum_R'] = momentum_R.clone()

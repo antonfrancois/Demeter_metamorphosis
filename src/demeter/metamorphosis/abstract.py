@@ -228,7 +228,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             self.norm_v = 0
             self.norm_z = 0
 
-        for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step)):
+        for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step+1)):
             self._i = i
 
             _, field_to_stock, residuals_dt = self.step()
