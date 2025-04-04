@@ -1735,7 +1735,7 @@ def make_regular_grid(deformation_shape,
 
     Parameters
     --------------
-    deformation_shape: tuple
+    deformation_shape: Tuple | List
         tuple such as (H,W) or (n,H,W,2) for 2D grid
         (D,H,W) or (n,D,H,W,3) for 3D gridim2
     device: torch.device

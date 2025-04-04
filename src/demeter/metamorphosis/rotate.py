@@ -22,6 +22,7 @@ def apply_rot_mat(grid,rot_mat):
 class RotatingMetamorphosis_integrator(Geodesic_integrator):
     """
 
+
     """
     def __init__(self,rho,**kwargs):
         super().__init__(**kwargs)
@@ -104,33 +105,8 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
 
         deform_rot = id_rot - sqrt(self.rho) *  self.field/self.n_step
 
-        # rot_img = tb.imgDeform(self.image,id_rot)
-        # plt.figure()
-        # plt.imshow(rot_img[0,0].detach().cpu())
-        # plt.show()
 
-        # ic(self.id_grid.min().item(), self.id_grid.max().item(),
-        #    id_rot.min().item(), id_rot.max().item(),
-        #    deform_rot.min().item(), deform_rot.max().item()
-        #    )
-
-        # fig,ax = plt.subplots(1,3)
-        # ax[0].imshow(self.image[0,0].detach().numpy())
-        # ax[0].set_title('image BEFORE, step = '+str(self._i))
-        # ax[1].imshow(momentum_I[0,0].detach().numpy())
-        # ax[1].set_title('momentum_I, step = '+str(self._i))
-        # tb.gridDef_plot(deform_rot,ax=ax[2],step=10)
-        # plt.show()
         self._update_image_semiLagrangian_(deform_rot,momentum=momentum_I)
-#         ic("image",self.image.device)
-        # fig,ax = plt.subplots(1,3)
-        # ax[0].imshow(self.image[0,0].detach().numpy())
-        # ax[0].set_title('image AFTER, step = '+str(self._i))
-        # ax[1].imshow(momentum_I[0,0].detach().numpy())
-        # ax[1].set_title('momentum_I, step = '+str(self._i))
-        # tb.gridDef_plot(deform_rot,ax=ax[2],step=10)
-        # plt.show()
-
         # -----------------------------------------------
         ## 4. Update momentums
         ## 4.1 Update image momentum
@@ -242,6 +218,34 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
             )
 
         return fig, ax
+
+    def plot_rot(self):
+        fig, ax = plt.subplots(1,2)
+
+        shape = self.source.shape[2:]
+        id_grid = tb.make_regular_grid(shape, dx_convention = "2square")
+        rot = self.mp.rot_mat
+        rot_grid_end = apply_rot_mat(id_grid, rot)
+        ax[0].imshow(self.mp.image[0,0], cmap='gray', origin="lower")
+        tb.gridDef_plot_2d(rot_grid_end,
+                           ax=ax[0],
+                           step=25,
+                           dx_convention="2square",
+                           color='red')
+
+        source_rot = tb.imgDeform(self.source,rot_grid_end,dx_convention="2square")
+        ax[1].imshow(
+            tb.imCmp(
+                source_rot,
+                self.target,
+                method= "seg"
+            ),
+             cmap='gray', origin="lower"
+        )
+        ax[1].set_title("rotated_source vs target")
+
+
+        plt.show()
 
 class RotatingMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
