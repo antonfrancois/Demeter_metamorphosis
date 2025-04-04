@@ -45,25 +45,48 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         momentum_I = self.momenta['momentum_I'].clone()
         momentum_R = self.momenta['momentum_R'].clone()
         print('momentum_I',momentum_I.min().item(),momentum_I.max().item())
+        print("momentum_I", momentum_I.shape)
         print("momentum_R",momentum_R)
+
+        # ----------------------------------------------
+        ## 0 Contrainte
+        grad_image = tb.spatialGradient(self.image, dx_convention = self.dx_convention)
+        IgradI_x = torch.einsum('ijkl,ijkm->ijklm', tb.im2grid(grad_image[0]), self.id_grid)
+        x_IgradI = torch.einsum('ijkl,ijkm->ijklm',self.id_grid, tb.im2grid(grad_image[0]))
+
+        if self._i == 0:
+            print((IgradI_x - x_IgradI).shape)
+            print((IgradI_x - x_IgradI).sum(dim=[1,2]))
+            cst = (IgradI_x - x_IgradI)[...,0,1][None].clone()
+            print('cst',cst.shape)
+            c=  (momentum_I * cst).sum(dim=[2,3])
+            print("c avant", c)
+            sum_cst =  cst.sum(dim=[2,3])
+            print("sum_cst ", cst.sum(dim=[2,3]))
+            if sum_cst != 0:
+                c = c /  sum_cst
+            print("c final", c)
+            momentum_I -= c
+            print('momentum_I',momentum_I.shape)
         # -----------------------------------------------
         ## 1. Compute the vector field
         ## 1.1 Compute the gradient of the image by finite differences
-        grad_image = tb.spatialGradient(self.image, dx_convention = self.dx_convention)
-        self.field,_ = self._compute_vectorField_(
+        self.field,norm_V = self._compute_vectorField_(
             momentum_I, grad_image)
         # self.field *= 0
         # self.field *= sqrt(self.rho)
         print('field min max',self.field.min(),self.field.max())
         # ic(self.field.device)
+        # ----------------------------------------------
         # 1.2 Compute the rotation
 
         # ic(grad_image.shape)
-        momI_gradI = tb.im2grid(momentum_I * grad_image[0])
 #         ic(grad_image.shape,self.id_grid.shape,momentum_I.shape)
-
+        momI_gradI = tb.im2grid(momentum_I * grad_image[0])
         momIgradI_x = torch.einsum('ijkl,ijkm->ijklm', momI_gradI, self.id_grid)
         x_momIgradI = torch.einsum('ijkl,ijkm->ijklm',self.id_grid,momI_gradI)
+
+        print('x_momIgradI',x_momIgradI.shape)
         mom_rotated = momentum_R @ self.rot_mat.T
         mom_rotated =  (mom_rotated - mom_rotated.T) /2
         print("rot mat",self.rot_mat)
@@ -88,6 +111,10 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         # self.rot_mat = self.rot_mat + self.d_rot @ self.rot_mat
 
 
+        #     cst = 1/mom_rotated[0,1]
+        #     momentum_I -= cst
+
+
         # -----------------------------------------------
         # 2. Compute the residuals
         self.residuals = (sqrt(1 - self.rho) *
@@ -107,6 +134,16 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
 
 
         self._update_image_semiLagrangian_(deform_rot,momentum=momentum_I)
+
+        if self.flag_hamiltonian_integration:
+
+            # Norm L2 on z
+            norm_l2_on_z = .5 * (self.residuals ** 2).sum()
+
+            # Norm L2 on R
+            norm_l2_on_R = .5 * torch.trace( self.d_rot.T @ self.d_rot_ini)
+            self.ham_value = norm_V + norm_l2_on_z + norm_l2_on_R
+
         # -----------------------------------------------
         ## 4. Update momentums
         ## 4.1 Update image momentum
@@ -281,18 +318,21 @@ class RotatingMetamorphosis_Optimizer(Optimize_geodesicShooting):
         self.data_loss = self.data_term()
         ic(self.data_loss)
 
-        # Norm V
-        self.norm_v_2 = .5 * rho  * self._compute_V_norm_(momenta['momentum_I'],self.source)
+        if self.flag_hamiltonian_integration:
+            self.total_cost = self.data_loss + (self.cost_cst) * self.mp.ham_integration
+        else:
+            # Norm V
+            self.norm_v_2 = .5 * rho  * self._compute_V_norm_(momenta['momentum_I'],self.source)
 
-        # Norm L2 on z
-        volDelta = prod(self.dx)
-        z = sqrt(1 - rho) * (momenta['momentum_I']/volDelta)
-        self.norm_l2_on_z = .5 * (z ** 2).sum() * volDelta
+            # Norm L2 on z
+            volDelta = prod(self.dx)
+            z = sqrt(1 - rho) * (momenta['momentum_I']/volDelta)
+            self.norm_l2_on_z = .5 * (z ** 2).sum() * volDelta
 
-        # Norm L2 on R
-        self.norm_l2_on_R = .5 * torch.trace( self.mp.d_rot_ini.T @ self.mp.d_rot_ini)
-        self.norm_l2_on_R *= 1000
-        ic(self.norm_l2_on_R)
+            # Norm L2 on R
+            self.norm_l2_on_R = .5 * torch.trace( self.mp.d_rot_ini.T @ self.mp.d_rot_ini)
+            # self.norm_l2_on_R *= 1000
+            ic(self.norm_l2_on_R)
 
         self.total_cost = self.data_loss + \
                           self.cost_cst * (self.norm_v_2 + self.norm_l2_on_z + self.norm_l2_on_R)

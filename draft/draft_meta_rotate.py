@@ -55,14 +55,13 @@ newimg_r = tb.imgDeform(new_img,rot_grid,dx_convention='2square')
 #apply rot to id_grid
 
 tb.gridDef_plot(rot_grid,step=30)
-newimg_r += torch.randn_like(newimg_r)*0.1
+# newimg_r += torch.randn_like(newimg_r)*0.1
 fig,ax = plt.subplots(1,3)
-ax[0].imshow(img[0,0])
-ax[1].imshow(new_img[0,0])
-ax[2].imshow(newimg_r[0,0])
-plt.show()
+# ax[0].imshow(img[0,0])
+# ax[1].imshow(new_img[0,0])
+# ax[2].imshow(newimg_r[0,0])
+# plt.show()
 
-#%%
 print("images made, starting metamorphosis")
 
 # dx = tuple([2./(s-1) for s in img.shape[2:]])
@@ -128,7 +127,7 @@ class Rotation_Ssd_Cost(mt.DataCost):
 
 # datacost = mt.Ssd_normalized(newimg_r)
 # datacost =  None
-datacost = Rotation_Ssd_Cost(newimg_r.to('cuda:0'), alpha=0)
+datacost = Rotation_Ssd_Cost(newimg_r.to('cuda:0'), alpha=0.5)
 
 torch.autograd.set_detect_anomaly(True)
 # Metamorphosis params
@@ -159,7 +158,7 @@ momenta = {'momentum_I':momentum_I,
 
 # momenta = {k: v.to('cuda:0') for k, v in momenta.items()}
 
-n_steps =  30
+n_steps =  10
 mp = mtrt.RotatingMetamorphosis_integrator(
     rho=rho,
     n_step=n_steps,
@@ -183,16 +182,17 @@ mr = mtrt.RotatingMetamorphosis_Optimizer(
     geodesic = mp,
     cost_cst=.001,
     data_term=datacost,
+    hamiltonian_integration=False
     # optimizer_method="adadelta",
 )
-mr.forward(momenta, n_iter=15, grad_coef=1)
+mr.forward(momenta, n_iter=10, grad_coef=1)
 #%%
 mr.to_device('cpu')
 mr.plot_cost()
 plt.show()
 mr.plot_imgCmp()
 plt.show()
-mr.mp.plot(n_figs=min(5,n_steps))
+# mr.mp.plot(n_figs=min(5,n_steps))
 
 # mp.forward(img,momenta, save=True, plot=0)
 
@@ -200,4 +200,34 @@ mr.mp.plot(n_figs=min(5,n_steps))
 plt.show()
 #%%
 mr.plot_deform()
+plt.show()
+
+#%%
+# mr.plot_rot()
+fig, ax = plt.subplots(1,2)
+
+# shape = [s//10 for s in mr.source.shape[2:]]
+shape =  mr.source.shape[2:]
+id_grid = tb.make_regular_grid(shape, dx_convention = "2square")
+rot = mr.mp.rot_mat
+rot_grid_end = apply_rot_mat(id_grid, rot)
+ax[0].imshow(mr.mp.image[0,0], cmap='gray', origin="lower")
+tb.gridDef_plot_2d(rot_grid_end,
+                   ax=ax[0],
+                   step=25,
+                   dx_convention="2square",
+                   color='red')
+
+source_rot = tb.imgDeform(mr.source,rot_grid_end,dx_convention="2square")
+ax[1].imshow(
+    tb.imCmp(
+        source_rot,
+        mr.target,
+        method= "seg"
+    ),
+     cmap='gray', origin="lower"
+)
+ax[1].set_title("rotated_source vs target")
+
+
 plt.show()
