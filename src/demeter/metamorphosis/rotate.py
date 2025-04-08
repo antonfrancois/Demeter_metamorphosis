@@ -66,7 +66,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
             if sum_cst != 0:
                 c = c /  sum_cst
             print("c final", c)
-            momentum_I -= c
+            momentum_I = (momentum_I - c) * c
             print('momentum_I',momentum_I.shape)
         # -----------------------------------------------
         ## 1. Compute the vector field
