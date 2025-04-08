@@ -15,9 +15,11 @@ import demeter.utils.torchbox as tb
 from demeter.utils.toolbox import get_size
 from demeter.utils.decorators import time_it
 import demeter.metamorphosis as mt
-from demeter.utils.reproducing_kernels import get_sigma_from_img_ratio
+import demeter.utils.reproducing_kernels as rk
 
 import brats_utils as bu
+
+
 @time_it
 def exe_lddmm(img_1,img_2,seg_1,seg_2):
     sigma = [3,7]
@@ -30,24 +32,36 @@ def exe_lddmm(img_1,img_2,seg_1,seg_2):
 class ExeMeta():
 
     def __init__(self,n_steps = None,
-                 mu = None,
                  rho = None,
                  lamb = None,
-                 sigma = None,
+                 kernelOperator =  None,
                  sharp = None,
-                 n_iter=None):
+                 n_iter=None,
+                 dx_convention = None,
+                 ):
         self.n_steps = 10   if n_steps is None else n_steps
-        self.mu = 1      if mu is None else mu
         self.lamb = 1e-7    if lamb is None else lamb
         self.rho = 10  if rho is None else rho
-        self.sigma = [3,7]     if sigma is None else sigma
         self.sharp = True   if sharp is None else sharp
         self.n_iter = 1000 if n_iter is None else n_iter
+        if kernelOperator is None:
+            sigma = [(3,3),(7,7)]
+            self.kernelOperator = rk.Multi_scale_GaussianRKHS(
+                sigma,
+                normalized=False,
+            )
+        else:
+            self.kernelOperator = kernelOperator
+        self.dx_convention = "pixel" if dx_convention is None else dx_convention
 
     def __call__(self,img_1,img_2,seg_1,seg_2):
         n_iter = self.n_iter if at_serv else 3
-        mr = mt.metamorphosis(img_2,img_1,0,self.mu,self.rho,self.sigma,self.lamb,self.n_steps,
-                              n_iter = n_iter,grad_coef=.1,sharp=self.sharp)
+        mr = mt.metamorphosis(img_2,img_1,0,
+                              self.rho,self.lamb,self.n_steps,
+                              kernelOperator=self.kernelOperator,
+                              n_iter = n_iter,grad_coef=.1,sharp=self.sharp,
+                             dx_convention=self.dx_convention
+                              )
         return mr
 
 
@@ -497,15 +511,15 @@ def exe_i_list(function,
             landDistDiff = landDist - landDistbefore
             # save_valid_landmarks(mr,pb.brats_list[i],save_path+'_'+modality,scale_img)
             if 'mask' in save_file:
-                source_name, target_name = pb.brats_list[i]+'Mask','search_param'
+                file_name = pb.brats_list[i]+'Mask'+'_search_param'
             else:
-                source_name,target_name = pb.brats_list[i],f'train_{modality}'
+                file_name = f'{pb.brats_list[i]}_train_{modality}'
             ic(light_save)
-            ic("I will save",source_name,target_name,'at',save_path,save_file)
-            mr.save(source_name,target_name,
+            ic("I will save",file_name,'at',save_path,save_file)
+            mr.save(file_name,
                     light_save=light_save,
                     destination=save_path+'/',
-                    file=save_file,
+                    file_csv=save_file,
                     message= f"{float(landDistDiff):0.3f}")
 
 #%%
@@ -536,7 +550,7 @@ if __name__ == '__main__':
     valid = False
     n_img_to_test = 3
     # scale_img = .8 if at_serv and not test else .15
-    scale_img = 1
+    scale_img = .2
     light_save = True
 
     # brats_list = [
@@ -623,8 +637,9 @@ if __name__ == '__main__':
         # save_file = 'bratsReg2022_train_20240115_JM_twoResi_overview.csv'
 
         print(f"img_size : {pb.get_img_size()}")
+        resized_shape = (1,1)+ tuple(i * scale_img for i in pb.get_img_size()[2:])
+        print("resized shape :",resized_shape)
         # for JM,we set mu_I = mu, and rho_I = rho as we want to set mu_M = rho_M = 0.
-        mus = [(1,0),(1,1)]
         # ps = [5,10,25,50]
         granularity_list = [
             #
@@ -637,7 +652,13 @@ if __name__ == '__main__':
             # [3,13,30],
             [10,20,40]
             ]
-        sigmas = get_sigma_from_img_ratio(pb.get_img_size(),granularity_list)
+        resized_shape = (1,1)+ tuple(i * scale_img for i in pb.get_img_size()[2:])
+        sigmas = rk.get_sigma_from_img_ratio(resized_shape,granularity_list)
+        ic(sigmas)
+        kernelOperator = rk.Multi_scale_GaussianRKHS(
+            sigmas[0],
+            normalized=True
+        )
 
         lambs = [1e-5]
         rhos = [(1,1)]
@@ -646,10 +667,10 @@ if __name__ == '__main__':
         n_steps = [7]
         precompute_mask = False
 
-        param_name = ['mu','rho','k','sigma','n_iter','n_steps','lamb']
+        param_name = ['rho','k','sigma','n_iter','n_steps','lamb']
         params = [
             {n:pu for pu,n in zip(p,param_name)}
-            for p in itertools.product(mus,rhos,ks,sigmas,n_iters,n_steps,lambs )
+            for p in itertools.product(rhos,ks,sigmas,n_iters,n_steps,lambs )
         ]
         # print(params)
 
@@ -657,7 +678,7 @@ if __name__ == '__main__':
         i_list = torch.arange(len(pb.brats_list))
         # i_list  = torch.randperm(len(pb.brats_list))[:n_img_to_test]
         if 'LDDMM' in save_file:
-            function = ExeMeta(sigma=[3,7],mu=0,rho=0,n_steps=15,n_iter=2000)
+            function = ExeMeta(rho=0,n_steps=15,n_iter=20, kernelOperator=kernelOperator,)
             exe_i_list(function, i_list, valid, modality, save_path='results', save_file=save_file)
         elif 'mask' in save_file:
 
