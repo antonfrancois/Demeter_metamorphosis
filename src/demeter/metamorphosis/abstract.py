@@ -351,12 +351,14 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         return rho / (1 - rho)
 
     # Done
-    def _update_field_(self):
-        grad_image = tb.spatialGradient(self.image, dx_convention=self.dx_convention)
+    def _update_field_(self, momentum, image):
+        grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
         # ic(grad_image.min().item(), grad_image.max().item(),self.dx_convention)
-        self.field,self.norm_v_i = self._compute_vectorField_(self.momentum, grad_image)
+        field,self.norm_v_i = self._compute_vectorField_(momentum, grad_image)
         # self.field *= self._field_cst_mult()
         # self.field *= sqrt(self.rho)
+
+        return field
 
     # Done
     def _update_momentum_Eulerian_(self):
@@ -463,19 +465,19 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self.image = (sqrt(self.rho) * self.image + residuals) / self.n_step
 
     # Done
-    def _update_image_semiLagrangian_(self, deformation, residuals=None, sharp=False):
+    def _update_image_semiLagrangian_(self, momentum, image, deformation, residuals=None, sharp=False):
         if residuals is None:
             # z = sqrt(1 - rho) * p and I = v gradI + sqrt(1-rho) * z
-            residuals = (1 - self.rho) * self.momentum
+            residuals = (1 - self.rho) * momentum
         self.norm_z_i = None
         if self.flag_hamiltonian_integration:
             self.norm_z_i = .5 * residuals.pow(2).sum()
-        image = self.source if sharp else self.image
         # if self.rho > 0:
-        self.image = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
+        image_def = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
 
         if self._get_rho_() < 1:
-            self.image += residuals / self.n_step
+            image_def += residuals / self.n_step
+        return image_def
 
     def _update_sharp_intermediary_field_(self):
         # print('update phi ',self._i,self._phis[self._i])

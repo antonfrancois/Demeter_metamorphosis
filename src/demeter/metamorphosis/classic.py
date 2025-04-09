@@ -99,17 +99,31 @@ class Metamorphosis_integrator(Geodesic_integrator):
         return (self.image,self.rho * self.field,(1 - self.rho) * self.momentum)
 
     def _step_full_semiLagrangian(self):
-        self._update_field_()
+
+        self.field = torch.utils.checkpoint.checkpoint(self._update_field_,
+                                                       self.momentum, self.image,use_reentrant=True)
         # Lagrangian scheme on images and residuals
         deformation = self.id_grid - self.rho * self.field/self.n_step
-        self._update_image_semiLagrangian_(deformation)
+        self.image =  torch.utils.checkpoint.checkpoint(self._update_image_semiLagrangian_,
+                                                        self.momentum, self.image, deformation,use_reentrant=True)
+        # self.image =  self._update_image_semiLagrangian_(self.momentum, self.image, deformation)
 
-        self.momentum = self._compute_div_momentum_semiLagrangian_(
+
+        # self.momentum = tb.no_memory(self._compute_div_momentum_semiLagrangian_)(
+        #     deformation,
+        #     self.momentum,
+        #     sqrt(self.rho),
+        #     sqrt(self.rho) * self.field
+        # )
+        self.momentum = torch.utils.checkpoint.checkpoint(
+            self._compute_div_momentum_semiLagrangian_,
             deformation,
             self.momentum,
             sqrt(self.rho),
-            sqrt(self.rho) * self.field
+            sqrt(self.rho) * self.field,
+            use_reentrant=True
         )
+
         # self.momentum *= sqrt(self.rho)
 
         return (self.image,self.rho * self.field,(1 - self.rho) * self.momentum)

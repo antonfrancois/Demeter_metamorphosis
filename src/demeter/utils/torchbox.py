@@ -2,6 +2,7 @@ from collections.abc import Iterable
 
 import torch
 import torch.nn.functional as F
+from dask.array import select
 from kornia.filters import SpatialGradient, SpatialGradient3d, filter2d, filter3d
 from kornia.geometry.transform import resize
 from numpy import newaxis
@@ -17,6 +18,57 @@ from demeter.constants import *
 
 # from .utils.image_3d_visualisation import image_slice
 
+
+class no_memory_class(torch.autograd.Function):
+
+
+    @staticmethod
+    def forward(ctx, f, *inputs):
+        # f : fonction,
+        # *inputs : tenseurs PyTorch, arguments de la fonction
+
+        # Dans le forward on applique simplement f aux arguments.
+        # La construction du graphe pour l'autodiff
+        # est désactivée dans cette méthode, donc il n'est pas construit.
+        res = f(*inputs)
+
+        # on sauvegarde les arguments d'entrée
+        ctx.f = f
+        ctx.inputs = inputs
+        return res
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        f, inputs = ctx.f, ctx.inputs
+        N = len(inputs)
+        # on initialise les gradients par rapport aux N arguments
+        grad = [None]*N
+        # ici aussi la construction du graphe pour l'autodiff est désactivée par défaut.
+        # Pour pouvoir tout de même calculer des gradients ici, la commande suivante est nécessaire :
+        torch.set_grad_enabled(True)
+        # on doit recalculer f(x) pour pouvoir calculer ses gradients:
+        res = f(*inputs)
+        # à présent on doit calculer le gradient de res seulement par rapport aux variables qui en ont besoin,
+        # ce qui correspond au masque ctx.needs_input_grad
+        inputs_rg = [inputs[k] for k in range(N) if ctx.needs_input_grad[k+1]] # k+1 à cause de l'argument "f"
+        # on calcule les gradients :
+        grad_rg = torch.autograd.grad(res, inputs_rg, grad_output)
+        # puis on doit recopier les gradients de grad_rg à leurs bonnes positions dans grad,
+        # les autres restant à None
+        i = 0
+        for k in range(N):
+            if ctx.needs_input_grad[k+1]:
+                grad[k] = grad_rg[i]
+                i+=1
+        return None, *grad # le None initial est pour l'argument "f"
+
+def no_memory(fun):
+    # helper pour convertir une fonction
+    # Si fun est une fonction, no_memory(fun) est sa version "sans mémoire".
+    # Elle renvoie les mêmes valeurs pour le forward et le backward, mais
+    # n'enregistre pas les tenseurs intermédiaires qui devront être recalculés
+    # lors du backward.
+    return lambda *args : no_memory_class.apply(fun,*args)
 
 # ================================================
 #        IMAGE BASICS
