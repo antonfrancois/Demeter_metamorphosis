@@ -171,7 +171,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         save : bool, optional
             Option to save the integration intermediary steps, by default True
             it saves the image, field and momentum at each step in the attributes
-            `image_stock`, `field_stock` and `momentum_stock`.
+            `image_stock`, `field_stock`, `residuals_stock` and `momentum_stock`.
         plot : int, optional
             Positive int lower than `self.n_step` to plot the indicated number of
             intermediary steps, by default 0
@@ -214,7 +214,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         assert self.id_grid != None
 
         # field initialization to a regular grid
-        self.field = self.id_grid.clone().to(device)
+        field = self.id_grid.clone().to(device)
 
         if plot > 0:
             self.save = True
@@ -222,11 +222,12 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         if self.save:
             self.image_stock = torch.zeros((t_max * self.n_step,) + image.shape[1:])
             self.field_stock = torch.zeros(
-                (t_max * self.n_step,) + self.field.shape[1:]
+                (t_max * self.n_step,) + field.shape[1:]
             )
             self.momentum_stock = torch.zeros(
                 (t_max * self.n_step,) + momentum_ini.shape[1:]
             )
+            self.residuals_stock = torch.zeros_like(self.momentum_stock)
 
         if self.flag_hamiltonian_integration:
             self.norm_v = 0
@@ -235,7 +236,13 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step)):
             self._i = i
 
-            _, field_to_stock, residuals_dt = self.step()
+            # print(self.step.__name__)
+            self.momentum, self.image , field, residuals = torch.utils.checkpoint.checkpoint(
+                self.step,
+                self.image,
+                self.momentum,
+                use_reentrant = True,
+            )
 
             if self.flag_hamiltonian_integration:
                 self.norm_v += self.norm_v_i / self.n_step
@@ -260,8 +267,9 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                     self.image_stock[i] = self.image[0].detach().to("cpu")
                 else:
                     self.image_stock[i] = self.image[0]
-                self.field_stock[i] = field_to_stock[0].detach().to("cpu")
-                self.momentum_stock[i] = residuals_dt.detach().to("cpu")
+                self.field_stock[i] = field[0].detach().to("cpu")
+                self.momentum_stock[i] = self.momentum.detach().to("cpu")
+                self.residuals_stock[i] = residuals[0].detach().to("cpu")
 
             if verbose:
                 update_progress(i / (t_max * self.n_step))
@@ -939,7 +947,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             return float(self._compute_V_norm_(self.to_analyse[0], self.source))
         else:
             dist = float(
-                self._compute_V_norm_(self.mp.momentum_stock[0][None], self.mp.source)
+                self._compute_V_norm_(self.mp.momentum_stock[0][None],
+                                      self.mp.source)
             )
             for t in range(self.mp.momentum_stock.shape[0] - 1):
                 dist += float(
@@ -1508,13 +1517,13 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             image_list_for_gif += tmp_list
             image_kw = DLT_KW_IMAGE
         elif "residual" in object or "z" in object:
-            image_list_for_gif = [z[0].numpy() for z in self.mp.momentum_stock]
+            image_list_for_gif = [z[0].numpy() for z in self.mp.residuals_stock]
             # image_kw = DLT_KW_RESIDUALS
             image_kw = dict(
                 cmap="RdYlBu_r",
                 origin="lower",
-                vmin=self.mp.momentum_stock.min(),
-                vmax=self.mp.momentum_stock.max(),
+                vmin=self.mp.residuals_stock.min(),
+                vmax=self.mp.residuals_stock.max(),
             )
         elif "deformation" in object:
             image_list_for_gif = []
