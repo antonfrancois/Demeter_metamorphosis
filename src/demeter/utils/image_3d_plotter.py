@@ -105,7 +105,7 @@ class Visualize_GeodesicOptim_plt:
         )
         self.kw_grid = dict(
             color="w",
-            step=15,
+            step=5,
             alpha=0.2,
         )
 
@@ -116,6 +116,10 @@ class Visualize_GeodesicOptim_plt:
         self.deformation = self.geodesicOptim.mp.get_deformation(save=True)
         if self.geodesicOptim.dx_convention == "square":
             self.deformation = tb.square_to_pixel_convention(
+                self.deformation, is_grid=True
+            )
+        if self.geodesicOptim.dx_convention == "2square":
+            self.deformation = tb.square2_to_pixel_convention(
                 self.deformation, is_grid=True
             )
 
@@ -227,9 +231,15 @@ class Visualize_GeodesicOptim_plt:
 
     def _make_grid(self, t_val, x_val, y_val, z_val):
         t = t_val
+        ic(self.deformation.shape, t_val,z_val, y_val, x_val)
         deform_x = self.deformation[t, :, :, z_val, 1:][None].flip(-1)
         deform_y = self.deformation[t, :, y_val, :, [0, -1]][None].flip(-1)
         deform_z = self.deformation[t, x_val, :, :, :-1][None].flip(-1)
+        # if self.dx_convention == "2square":
+        #     deform_x = tb.square2_to_pixel_convention(deform_x, is_grid=True)
+        #     deform_y = tb.square2_to_pixel_convention(deform_y, is_grid=True)
+        #     deform_z = tb.square2_to_pixel_convention(deform_z, is_grid=True)
+
 
         _, lines_x = tb.gridDef_plot_2d(deform_x, ax=self.ax[0], **self.kw_grid)
         _, lines_y = tb.gridDef_plot_2d(deform_y, ax=self.ax[1], **self.kw_grid)
@@ -345,7 +355,7 @@ class Visualize_GeodesicOptim_plt:
     def _toggle_grid(self, event):
         if not self.grid_was_init:
             self.lines = self._make_grid(
-                self.sliders[3].val,
+                self.sliders[3].val - 1,
                 self.sliders[0].val,
                 self.sliders[1].val,
                 self.sliders[2].val,
