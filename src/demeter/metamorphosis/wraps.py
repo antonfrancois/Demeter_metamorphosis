@@ -47,6 +47,7 @@ def lddmm(
     dx_convention="pixel",
     optimizer_method="LBFGS_torch",
     hamiltonian_integration=False,
+    save_gpu_memory =False,
 ):
     """
     Perform a Large Deformation Diffeomorphic Metric Mapping (LDDMM) transformation between a source and a target.
@@ -103,6 +104,7 @@ def lddmm(
         n_step=integration_steps,
         kernelOperator=kernelOperator,
         dx_convention=dx_convention,
+        save_gpu_memory = save_gpu_memory
     )
     mr = cl.Metamorphosis_Shooting(
         source,
@@ -138,6 +140,7 @@ def metamorphosis(
     optimizer_method="LBFGS_torch",
     dx_convention="pixel",
     hamiltonian_integration=False,
+    save_gpu_memory = False,
 ):
     """
 
@@ -154,6 +157,7 @@ def metamorphosis(
         kernelOperator=kernelOperator,
         n_step=integration_steps,
         dx_convention=dx_convention,
+        save_gpu_memory=save_gpu_memory,
     )
     mr = cl.Metamorphosis_Shooting(
         source,
@@ -269,7 +273,7 @@ def constrained_metamorphosis(
     optimizer_method='LBFGS_torch',
    safe_mode=True,
     hamiltonian_integration=False,
-
+    save_gpu_memory = False
 ):
     if hamiltonian_integration:
         raise NotImplementedError("Hamiltonian integration is not implemented yet for this function.")
@@ -284,6 +288,7 @@ def constrained_metamorphosis(
         kernelOperator=kernelOperator,
         sharp=sharp,
         dx_convention=dx_convention,
+        save_gpu_memory = save_gpu_memory,
         # n_step=20 # n_step is defined from mask.shape[0]
     )
     mr_constr = cn.ConstrainedMetamorphosis_Shooting(
@@ -313,6 +318,7 @@ def joined_metamorphosis(
     plot=False,
     safe_mode=False,
     debug=False,
+    save_gpu_memory = False,
 ):
     # source = torch.stack([source_image,source_mask],dim=1)
     # target = torch.stack([target_image,target_mask],dim=1)
@@ -328,6 +334,7 @@ def joined_metamorphosis(
         kernelOperator=kernelOperator,
         n_step=n_step,
         dx_convention=dx_convention,
+        save_gpu_memory = save_gpu_memory
         # debug=True
     )
     mr = jn.Weighted_joinedMask_Metamorphosis_Shooting(
@@ -362,6 +369,7 @@ def simplex_metamorphosis(
     plot=False,
     safe_mode=False,
     ham=False,
+   save_gpu_memory = False
 ):
 
     if type(momentum_ini) in [int, float]:
@@ -375,6 +383,7 @@ def simplex_metamorphosis(
         kernelOperator=kernelOperator,
         n_step=n_step,
         dx_convention=dx_convention,
+        save_gpu_memory = save_gpu_memory
         # debug=True
     )
     mr = sp.Simplex_sqrt_Shooting(

@@ -82,6 +82,17 @@ if 'runner' in location:
 
 EXPL_SAVE_FOLDER  = os.path.join(location,"saved_optim/")
 
+import math
+
+def convert_size(size_bytes):
+   if size_bytes == 0:
+       return "0B"
+   size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+   i = int(math.floor(math.log(size_bytes, 1024)))
+   p = math.pow(1024, i)
+   s = round(size_bytes / p, 2)
+   return "%s %s" % (s, size_name[i])
+
 #####################################################################
 # Open and visualise images before registration
 
@@ -341,8 +352,9 @@ print(kernelOp)
 # file = "2D_25_01_2025_TEST_toyExample_grayScott_CM_square_n_step20_000.pk1"
 # mr = mt.load_optimize_geodesicShooting(file)
 
+torch.cuda.reset_peak_memory_stats(torch.device(device))
 
-
+recompute = True
 print("\n==== Constrained Metamorphosis ====")
 momentum_ini = 0
 ic.disable()
@@ -355,19 +367,26 @@ mr_cm = mt.constrained_metamorphosis(S,T,momentum_ini,
                                      grad_coef=.1,
                                     n_iter=20,
                                      dx_convention=dx_convention,
+                                     save_gpu_memory=True
                                         # optimizer_method='adadelta',
                                      )
 if recompute:
     mr_cm.compute_landmark_dist(source_landmarks,target_landmarks)
     mr_cm.plot_cost()
     plt.show()
+    torch.cuda.synchronize()
+    mem_usage = torch.cuda.max_memory_allocated(device)  # max memory used in bytes
+
     mr_cm.save(f"toyExample_grayScott_CM_{dx_convention}_n_step{n_steps}")
 else:
     mr_cm = mt.load_optimize_geodesicShooting("2D_11_02_2025_toyExample_grayScott_CM_pixel_n_step10_000.pk1",
                                               path =EXPL_SAVE_FOLDER
                                               )
 
-
+print('-_'*15)
+print("memory used : ",convert_size(mem_usage))
+print('-_'*15)
+print("\n")
 #%%
 mr_cm.plot_imgCmp()
 

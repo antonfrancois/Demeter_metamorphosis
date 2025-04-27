@@ -123,33 +123,41 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
     def _get_rho_(self):
         return 0
 
-    def step(self):
+    def step(self, image, momentum):
         mask = self.residual_mask[self._i,0]
 
         if self.flag_O or self.flag_W:
-            self._update_field_oriented_weighted_()
+            field = self._update_field_oriented_weighted_(momentum, image)
         else:
-            self._update_field_()
-            self.field *=  torch.sqrt(mask[...,None])
-        assert self.field.isnan().any() == False, f"iter: {self._i}, field is nan"
+            field = self._update_field_(momentum, image)
+            field *=  torch.sqrt(mask[...,None])
+        assert field.isnan().any() == False, f"iter: {self._i}, field is nan"
 
 
-        deform = (self.id_grid - torch.sqrt(mask)[...,None]* self.field / self.n_step)
-        resi_to_add = (1 - mask) * self.momentum
+        deform = (self.id_grid - torch.sqrt(mask)[...,None]* field / self.n_step)
+        resi_to_add = (1 - mask) * momentum
 
-        self._update_image_weighted_semiLagrangian_(deform,resi_to_add,sharp=False)
-
-        assert self.image.isnan().any() == False, f"iter: {self._i}, image is nan"
-        # self._update_momentum_semiLagrangian_(deform)
-        self.momentum  = self._compute_div_momentum_semiLagrangian_(
+        image  = self._update_image_weighted_semiLagrangian_(
+            momentum,
+            image,
             deform,
-            self.momentum,
-            torch.sqrt(mask)
+            resi_to_add,
+            sharp=False
         )
-        assert self.momentum.isnan().any() == False, f"iter: {self._i}, momentum is nan"
 
-        return (self.image,
-                 torch.sqrt(mask)[...,None]*self.field,
+        assert image.isnan().any() == False, f"iter: {self._i}, image is nan"
+        # self._update_momentum_semiLagrangian_(deform)
+        momentum  = self._compute_div_momentum_semiLagrangian_(
+            deform,
+            momentum,
+            torch.sqrt(mask),
+            field
+        )
+        assert momentum.isnan().any() == False, f"iter: {self._i}, momentum is nan"
+
+        return (momentum,
+                image,
+                torch.sqrt(mask)[...,None]*field,
                 resi_to_add)
 
 

@@ -71,7 +71,7 @@ source_name,target_name = 'm0t', 'm1c'
 # other suggestion of images to try
 # source_name,target_name = '17','20'        # easy, only deformation
 # source_name,target_name = '08','m1c'  # hard, big deformation !
-size = (500,500)
+size = (1000,1000)
 
 S = tb.reg_open(source_name,size = size)
 T = tb.reg_open(target_name,size = size)
@@ -135,7 +135,8 @@ mr = mt.metamorphosis(S,T,0,
                       grad_coef=1,  # if the optimisation diverged, try decreasing the gradient coefficient
                       dx_convention=dx_convention,
                     data_term=data_cost,
-                    hamiltonian_integration=True  # Set to true if you want to have control over the intermediate steps of the optimisation
+                    hamiltonian_integration=True,  # Set to true if you want to have control over the intermediate steps of the optimisation
+                    save_gpu_memory=False
 )
 
 torch.cuda.synchronize()

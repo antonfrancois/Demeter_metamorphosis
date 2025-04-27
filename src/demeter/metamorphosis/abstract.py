@@ -532,26 +532,21 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self.momentum = -(div_fzv + z_time_dtF)
 
     def _update_image_weighted_semiLagrangian_(
-        self, deformation, residuals=None, sharp=False
+        self, momentum, image, deformation, residuals=None, sharp=False
     ):
         if residuals is None:
-            residuals = self.momentum
-        image = self.source if sharp else self.image
-        self.image = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
-        self.image += residuals / self.n_step
+            residuals = momentum
+        image = self.source if sharp else image
+        image = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
+        image += residuals / self.n_step
 
-        # (self.rf.mu * self.rf.mask[self._i] * residuals) / self.n_step
+        return image
 
-        # ga = (self.rf.mask[self._i] * self.residuals) / self.n_step
-        # plt.figure()
-        # p = plt.imshow(ga[0])
-        # plt.colorbar(p)
-        # plt.show()
 
-    def _update_field_oriented_weighted_(self):
-        grad_image = tb.spatialGradient(self.image, dx_convention=self.dx_convention)
+    def _update_field_oriented_weighted_(self, momentum, image):
+        grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
         free_field = tb.im2grid(
-            (self.momentum * grad_image[0]) * torch.sqrt(self.residual_mask[self._i])
+            (momentum * grad_image[0]) * torch.sqrt(self.residual_mask[self._i])
         )
         oriented_field = 0
         if self.flag_O:
@@ -559,9 +554,10 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             oriented_field = (self.orienting_field[self._i][None]
                                     * self.orienting_mask[self._i][..., None])
 
-        self.field = -tb.im2grid(
+        field =  -tb.im2grid(
             self.kernelOperator(tb.grid2im(free_field + oriented_field))
         )
+        return field
 
     def to_device(self, device):
         # TODO: completer ça
