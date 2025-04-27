@@ -111,16 +111,25 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         The number of steps for the geodesic integration.
     dx_convention : str, optional
         The spatial differentiation convention, by default "pixel".
-
+    save_gpu_memory : bool, optional
+        If True, we use torch.checkpoints to use less gpu memory. We save memory
+        by avoiding storing the gradient graph and recomputing it at each iteration.
+        Setting to True, make the code slower but allows to parse bigger images.
 
     """
 
     @abstractmethod
-    def __init__(self, kernelOperator, n_step, dx_convention="pixel",**kwargs):
+    def __init__(self,
+                 kernelOperator,
+                 n_step,
+                 dx_convention="pixel",
+                 save_gpu_memory = False,
+                 **kwargs):
         super().__init__()
         self._force_save = False
         self._detach_image = True
         self.dx_convention = dx_convention
+        self.save_gpu_memory = save_gpu_memory
 
         self.kernelOperator = kernelOperator
         self.n_step = n_step
@@ -145,7 +154,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self._resi_deform = []
 
     @abstractmethod
-    def step(self):
+    def step(self, image, momentum):
         pass
 
     def forward(
@@ -237,12 +246,15 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             self._i = i
 
             # print(self.step.__name__)
-            self.momentum, self.image , field, residuals = torch.utils.checkpoint.checkpoint(
-                self.step,
-                self.image,
-                self.momentum,
-                use_reentrant = True,
-            )
+            if self.save_gpu_memory:
+                self.momentum, self.image , self.field, self.residuals = torch.utils.checkpoint.checkpoint(
+                    self.step,
+                    self.image,
+                    self.momentum,
+                    use_reentrant = True,
+                )
+            else:
+                self.momentum, self.image, self.field, self.residuals = self.step(self.image, self.momentum)
 
             if self.flag_hamiltonian_integration:
                 self.norm_v += self.norm_v_i / self.n_step
@@ -269,7 +281,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                     self.image_stock[i] = self.image[0]
                 self.field_stock[i] = field[0].detach().to("cpu")
                 self.momentum_stock[i] = self.momentum.detach().to("cpu")
-                self.residuals_stock[i] = residuals[0].detach().to("cpu")
+                self.residuals_stock[i] = self.residuals[0].detach().to("cpu")
 
             if verbose:
                 update_progress(i / (t_max * self.n_step))
@@ -400,7 +412,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                                               deformation,
                                               momentum,
                                               cst,
-                                              field = None
+                                              field
                                               ):
         r"""
         Compute the divergence of the momentum in the semiLagrangian scheme
@@ -425,8 +437,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         tensor array of shape [1,1,H,W] or [1,1,D,H,W]
         """
 
-        if field is None:
-            field = self.field
         div_v_times_p = cst * (
             momentum
             * tb.Field_divergence(dx_convention=self.dx_convention)(field)[0, 0]
