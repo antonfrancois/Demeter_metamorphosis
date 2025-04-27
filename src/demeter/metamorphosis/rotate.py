@@ -16,8 +16,30 @@ import demeter.utils.torchbox as tb
 
 # TODO: move to utils.rotate (file to be made)
 def apply_rot_mat(grid,rot_mat):
-    rotated_grid = torch.einsum('ij,bhwj->bhwi',rot_mat, grid)
-    return rotated_grid
+    ic(grid.shape, rot_mat.shape)
+    if tuple(rot_mat.shape) == (2,2) and len(grid.shape) == 4:
+        return  torch.einsum('ij,bhwj->bhwi',rot_mat, grid)
+        # return rotated_grid
+    elif  tuple(rot_mat.shape) == (3,3) and len(grid.shape) == 5:
+        return  torch.einsum('ij,bdhwj->bdhwi',rot_mat, grid)
+    else:
+        raise ValueError(
+            "In 2d, grid must be of shape [B,H,W,2] and rot_mat [2, 2],"
+            " In 3d grid must be of shape [B, D, H, W,3] and rot_mat [3, 3]"
+            f"got grid.shape : {grid.shape} and rot_mat.shape = {rot_mat.shape}"
+        )
+
+
+def multiply_grid_vectors(grid_1, grid_2):
+    if grid_1.shape != grid_2.shape:
+        raise ValueError(f"grid_1 and grid_2 must have same shape, got {grid_1.shape} and {grid_2.shape}")
+    if len(grid_1.shape) == 4: # 2d
+        return torch.einsum('ijkl,ijkm->ijklm', grid_1, grid_2)
+    elif len(grid_1.shape) == 5: # 3d
+        return torch.einsum('fijkl,fijkm->fijklm', grid_1, grid_2)
+    else:
+        raise ValueError(f'something went wrong, grid_1 shape is {grid_1.shape}, grid_2 shape is {grid_2.shape}')
+
 
 class RotatingMetamorphosis_integrator(Geodesic_integrator):
     """
@@ -38,6 +60,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         except AttributeError:
             pass
 
+
     def step(self):
         print("\n")
         print("="*25)
@@ -51,23 +74,26 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         # ----------------------------------------------
         ## 0 Contrainte
         grad_image = tb.spatialGradient(self.image, dx_convention = self.dx_convention)
-        IgradI_x = torch.einsum('ijkl,ijkm->ijklm', tb.im2grid(grad_image[0]), self.id_grid)
-        x_IgradI = torch.einsum('ijkl,ijkm->ijklm',self.id_grid, tb.im2grid(grad_image[0]))
+        # IgradI_x = torch.einsum('ijkl,ijkm->ijklm', tb.im2grid(grad_image[0]), self.id_grid)
+        # x_IgradI = torch.einsum('ijkl,ijkm->ijklm',self.id_grid, tb.im2grid(grad_image[0]))
+        # IgradI_x = multiply_grid_vectors(tb.im2grid(grad_image[0]), self.id_grid)
+        # x_IgradI = multiply_grid_vectors(self.id_grid, tb.im2grid(grad_image[0]))
 
-        if self._i == 0:
-            print((IgradI_x - x_IgradI).shape)
-            print((IgradI_x - x_IgradI).sum(dim=[1,2]))
-            cst = (IgradI_x - x_IgradI)[...,0,1][None].clone()
-            print('cst',cst.shape)
-            c=  (momentum_I * cst).sum(dim=[2,3])
-            print("c avant", c)
-            sum_cst =  cst.sum(dim=[2,3])
-            print("sum_cst ", cst.sum(dim=[2,3]))
-            if sum_cst != 0:
-                c = c /  sum_cst
-            print("c final", c)
-            momentum_I = (momentum_I - c) * c
-            print('momentum_I',momentum_I.shape)
+
+        # if self._i == 0:
+        #     print((IgradI_x - x_IgradI).shape)
+        #     print((IgradI_x - x_IgradI).sum(dim=[1,2]))
+        #     cst = (IgradI_x - x_IgradI)[...,0,1][None].clone()
+        #     print('cst',cst.shape)
+        #     c=  (momentum_I * cst).sum(dim=[2,3])
+        #     print("c avant", c)
+        #     sum_cst =  cst.sum(dim=[2,3])
+        #     print("sum_cst ", cst.sum(dim=[2,3]))
+        #     if sum_cst != 0:
+        #         c = c /  sum_cst
+        #     print("c final", c)
+        #     momentum_I = (momentum_I - c) * c
+        #     print('momentum_I',momentum_I.shape)
         # -----------------------------------------------
         ## 1. Compute the vector field
         ## 1.1 Compute the gradient of the image by finite differences
@@ -83,8 +109,11 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         # ic(grad_image.shape)
 #         ic(grad_image.shape,self.id_grid.shape,momentum_I.shape)
         momI_gradI = tb.im2grid(momentum_I * grad_image[0])
-        momIgradI_x = torch.einsum('ijkl,ijkm->ijklm', momI_gradI, self.id_grid)
-        x_momIgradI = torch.einsum('ijkl,ijkm->ijklm',self.id_grid,momI_gradI)
+        # momIgradI_x = torch.einsum('ijkl,ijkm->ijklm', momI_gradI, self.id_grid)
+        # x_momIgradI = torch.einsum('ijkl,ijkm->ijklm',self.id_grid,momI_gradI)
+        momIgradI_x = multiply_grid_vectors( momI_gradI, self.id_grid)
+        x_momIgradI = multiply_grid_vectors(self.id_grid,momI_gradI)
+
 
         print('x_momIgradI',x_momIgradI.shape)
         mom_rotated = momentum_R @ self.rot_mat.T
@@ -92,8 +121,8 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         print("rot mat",self.rot_mat)
         print("mom_rotated",mom_rotated)
 
-
-        int_mom_I = .5 * sqrt(self.rho) * (momIgradI_x - x_momIgradI).sum(dim=[1,2])[0]
+        to_sum_dim = [ 1, 2] if self._dim == 2 else [1,2,3]
+        int_mom_I = .5 * sqrt(self.rho) * (momIgradI_x - x_momIgradI).sum(dim=to_sum_dim)[0]
         print('int_mom_I',int_mom_I)
         self.d_rot = mom_rotated - int_mom_I
         if self._i == 0:
@@ -126,7 +155,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         # -----------------------------------------------
         # 3. Update the image
         # id_rot = apply_rot_mat(self.id_grid, - sqrt(self.rho) * self.d_rot)
-        eye = torch.eye(2).to(self.image.device)
+        eye = torch.eye(self._dim).to(self.image.device)
         # id_rot = self.id_grid - apply_rot_mat(self.id_grid, self.d_rot/self.n_step)
         id_rot = apply_rot_mat(self.id_grid, eye+ self.d_rot/self.n_step)
 
@@ -180,7 +209,8 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
                 sqrt(1 - self.rho) * self.residuals)
 
     def forward(self, image, momenta,**kwargs):
-        self.rot_mat = torch.eye(2)
+        self._dim = 2 if image.shape == 4 else 3
+        self.rot_mat = torch.eye(self._dim)
         # r = momenta['r']
         #  = torch.tensor(
         #     [[0,r],
