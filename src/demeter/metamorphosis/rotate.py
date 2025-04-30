@@ -73,30 +73,40 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
 
         # ----------------------------------------------
         ## 0 Contrainte
-        grad_image = tb.spatialGradient(self.image, dx_convention = self.dx_convention)
-        # IgradI_x = torch.einsum('ijkl,ijkm->ijklm', tb.im2grid(grad_image[0]), self.id_grid)
-        # x_IgradI = torch.einsum('ijkl,ijkm->ijklm',self.id_grid, tb.im2grid(grad_image[0]))
-        # IgradI_x = multiply_grid_vectors(tb.im2grid(grad_image[0]), self.id_grid)
-        # x_IgradI = multiply_grid_vectors(self.id_grid, tb.im2grid(grad_image[0]))
 
 
-        # if self._i == 0:
-        #     print((IgradI_x - x_IgradI).shape)
-        #     print((IgradI_x - x_IgradI).sum(dim=[1,2]))
-        #     cst = (IgradI_x - x_IgradI)[...,0,1][None].clone()
-        #     print('cst',cst.shape)
-        #     c=  (momentum_I * cst).sum(dim=[2,3])
-        #     print("c avant", c)
-        #     sum_cst =  cst.sum(dim=[2,3])
-        #     print("sum_cst ", cst.sum(dim=[2,3]))
-        #     if sum_cst != 0:
-        #         c = c /  sum_cst
-        #     print("c final", c)
-        #     momentum_I = (momentum_I - c) * c
-        #     print('momentum_I',momentum_I.shape)
+        if self._i == 0:
+            grad_source = tb.spatialGradient(self.source, dx_convention = self.dx_convention)
+            ic(grad_source.device, self.id_grid.device)
+            IgradI_x = multiply_grid_vectors(tb.im2grid(grad_source[0]), self.id_grid)
+            x_IgradI = multiply_grid_vectors(self.id_grid, tb.im2grid(grad_source[0]))
+            print((IgradI_x - x_IgradI).shape)
+            print((IgradI_x - x_IgradI).sum(dim=[1,2]))
+
+
+            c = (IgradI_x - x_IgradI)[...,0,1][None].clone()
+
+            print('c shape',c.shape)
+            cp=  (momentum_I * c).sum()
+            # cst_flat = cst.cpu().flatten()[None]
+            # U,S,Vh = torch.linalg.svd(cst_flat)
+            # V=Vh.mH[:,1:]
+            # assert  cst_flat @ V[:,0] == 0
+            print('cp shape',cp.shape)
+            print('cp', cp)
+            norm_c =  (c**2).sum()
+            print("norm_c ", norm_c)
+            if norm_c != 0:
+                cst = c * cp /  norm_c
+            else:
+                cst = 0
+            print("cst final mean", cst.mean(), ' min ', cst.min(), ' max ', cst.max())
+            momentum_I = (momentum_I - cst)
+            print('momentum_I',momentum_I.shape)
         # -----------------------------------------------
         ## 1. Compute the vector field
         ## 1.1 Compute the gradient of the image by finite differences
+        grad_image = tb.spatialGradient(self.image, dx_convention = self.dx_convention)
         self.field,norm_V = self._compute_vectorField_(
             momentum_I, grad_image)
         # self.field *= 0
@@ -209,7 +219,8 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
                 sqrt(1 - self.rho) * self.residuals)
 
     def forward(self, image, momenta,**kwargs):
-        self._dim = 2 if image.shape == 4 else 3
+
+        self._dim = 2 if len(image.shape) == 4 else 3
         self.rot_mat = torch.eye(self._dim)
         # r = momenta['r']
         #  = torch.tensor(

@@ -16,9 +16,9 @@ def create_rot_mat(theta):
                          [sin(theta), cos(theta)]],
                         dtype=torch.float)
 
-def apply_rot_mat(grid,rot_mat):
-    rotated_grid = torch.einsum('ij,bhwj->bhwi',rot_mat, grid)
-    return rotated_grid
+# def apply_rot_mat(grid,rot_mat):
+#     rotated_grid = torch.einsum('ij,bhwj->bhwi',rot_mat, grid)
+#     return rotated_grid
 
 def make_exp(xxx, yyy, centre, sigma):
     ce_x, ce_y = centre
@@ -27,8 +27,9 @@ def make_exp(xxx, yyy, centre, sigma):
         - 0.5*((xxx - ce_x) / sigma_x) ** 2
         - 0.5*((yyy - ce_y) / sigma_y) ** 2)
     return exp
-
-img = tb.reg_open('23',size=(200,200))
+# name = '23'
+name = 'teGS_mbs_S'
+img = tb.reg_open(name,size=(200,200))
 id_grid = tb.make_regular_grid(img.shape[2:],dx_convention='2square')
 
 xx,yy = id_grid[...,0].clone(),id_grid[...,1].clone()
@@ -47,7 +48,7 @@ new_img = tb.imgDeform(img,deform,dx_convention='2square')
 ## %%
 theta = -torch.pi/3
 rot = create_rot_mat(theta)
-rot_grid = apply_rot_mat(id_grid,rot)
+rot_grid = mtrt.apply_rot_mat(id_grid,rot)
 newimg_r = tb.imgDeform(new_img,rot_grid,dx_convention='2square')
 
 
@@ -75,9 +76,9 @@ print("images made, starting metamorphosis")
 #         border_type='constant'
 #     )
 
-kernelOperator = rk.GaussianRKHS(sigma=(10,10),normalized=False)
+# kernelOperator = rk.GaussianRKHS(sigma=(10,10),normalized=False)
 kernelOperator = rk.VolNormalizedGaussianRKHS(
-    sigma=(10,10),
+    sigma=(5,5),
     sigma_convention='pixel',
     dx=(1,1),
 )
@@ -118,8 +119,8 @@ class Rotation_Ssd_Cost(mt.DataCost):
         # if at_step == -1:
         ssd = self.ssd(self.optimizer.mp.image)
 
-        rot_def =   apply_rot_mat(self.optimizer.mp.id_grid,  self.optimizer.mp.rot_mat)
-        rotated_image =  tb.imgDeform(self.optimizer.mp.image,rot_def,dx_convention='2square')
+        rot_def =   mtrt.apply_rot_mat(self.optimizer.mp.id_grid,  self.optimizer.mp.rot_mat)
+        rotated_image =  tb.imgDeform(self.optimizer.source,rot_def,dx_convention='2square')
         ssd_rot = self.ssd(rotated_image)
 
         return self.alpha * ssd_rot + (1-self.alpha) * ssd
@@ -127,7 +128,7 @@ class Rotation_Ssd_Cost(mt.DataCost):
 
 # datacost = mt.Ssd_normalized(newimg_r)
 # datacost =  None
-datacost = Rotation_Ssd_Cost(newimg_r.to('cuda:0'), alpha=0.5)
+datacost = Rotation_Ssd_Cost(newimg_r.to('cuda:0'), alpha=0)
 
 torch.autograd.set_detect_anomaly(True)
 # Metamorphosis params
@@ -185,7 +186,7 @@ mr = mtrt.RotatingMetamorphosis_Optimizer(
     hamiltonian_integration=False
     # optimizer_method="adadelta",
 )
-mr.forward(momenta, n_iter=10, grad_coef=1)
+mr.forward(momenta, n_iter=15, grad_coef=1)
 #%%
 mr.to_device('cpu')
 mr.plot_cost()
@@ -210,7 +211,7 @@ fig, ax = plt.subplots(1,2)
 shape =  mr.source.shape[2:]
 id_grid = tb.make_regular_grid(shape, dx_convention = "2square")
 rot = mr.mp.rot_mat
-rot_grid_end = apply_rot_mat(id_grid, rot)
+rot_grid_end = mtrt.apply_rot_mat(id_grid, rot)
 ax[0].imshow(mr.mp.image[0,0], cmap='gray', origin="lower")
 tb.gridDef_plot_2d(rot_grid_end,
                    ax=ax[0],

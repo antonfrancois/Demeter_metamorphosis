@@ -194,7 +194,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         device = next((tensor.device for tensor in momenta.values() if tensor.is_cuda), 'cpu')
         # print(f'sharp = {sharp} flag_sharp : {self.flag_sharp},{self._phis}')
         self._init_sharp_(sharp)
-        self.source = image.detach()
+        self.source = image.detach().to(device)
         self.image = image.clone().to(device)
         self.momenta = momenta
         self.debug = debug
