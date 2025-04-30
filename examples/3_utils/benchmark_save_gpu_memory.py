@@ -24,20 +24,35 @@ if cda.is_available():
 else:
     print("CUDA is not available.")
 
-# (Re)initialiser le CSV
-# if not os.path.exists(csv_file):
-with open(csv_file, 'w') as f:
-    writer = csv.writer(f)
-    writer.writerow(["width", "height", "save_gpu", "mem_usage", "exec_time"])
+# Lire le CSV s’il existe
+if os.path.exists(csv_file):
+    existing_df = pd.read_csv(csv_file)
+else:
+    existing_df = pd.DataFrame(columns=["width", "height", "save_gpu", "mem_usage", "exec_time"])
 
-# # Appels à bench_execute_meta.py
-i = 1
-for save in [False, True]:
+for save_gpu in [False, True]:
     for size in size_list:
-        print(f"{i}/ {2*len(size_list)}")
-        print(f"Running size {(size, size)}, save_gpu={save}")
-        subprocess.run(["python3", "examples/3_utils/bench_execute_meta.py", str(int(size)), str(int(size)), str(save), csv_file])
-        i +=1
+        # Vérifie si cette config est déjà présente
+        already_done = (
+            ((existing_df["width"] == size) &
+             (existing_df["height"] == size) &
+             (existing_df["save_gpu"] == save_gpu))
+        ).any()
+
+        if already_done:
+            print(f"Déjà fait: size=({size},{size}), save_gpu={save_gpu} → Ignoré.")
+            continue
+
+        # Sinon, on lance le benchmark
+        print(f"Lancement: size=({size},{size}), save_gpu={save_gpu}")
+        subprocess.run([
+            "python3",
+             "examples/3_utils/bench_execute_meta.py",
+            str(size),
+            str(size),
+            str(save_gpu),
+            csv_file
+        ])
 
 
 # Lecture des résultats
