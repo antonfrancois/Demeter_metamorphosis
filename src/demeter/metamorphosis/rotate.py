@@ -80,29 +80,29 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
             ic(grad_source.device, self.id_grid.device)
             IgradI_x = multiply_grid_vectors(tb.im2grid(grad_source[0]), self.id_grid)
             x_IgradI = multiply_grid_vectors(self.id_grid, tb.im2grid(grad_source[0]))
-            print((IgradI_x - x_IgradI).shape)
-            print((IgradI_x - x_IgradI).sum(dim=[1,2]))
+            print("\t", ''(IgradI_x - x_IgradI).shape)
+            print("\t", ''(IgradI_x - x_IgradI).sum(dim=[1,2]))
 
 
             c = (IgradI_x - x_IgradI)[...,0,1][None].clone()
 
-            print('c shape',c.shape)
+            print("\t", 'c shape',c.shape)
             cp=  (momentum_I * c).sum()
             # cst_flat = cst.cpu().flatten()[None]
             # U,S,Vh = torch.linalg.svd(cst_flat)
             # V=Vh.mH[:,1:]
             # assert  cst_flat @ V[:,0] == 0
-            print('cp shape',cp.shape)
-            print('cp', cp)
+            print("\t", 'cp shape',cp.shape)
+            print("\t", 'cp', cp)
             norm_c =  (c**2).sum()
-            print("norm_c ", norm_c)
+            print("\t", "norm_c ", norm_c)
             if norm_c != 0:
                 cst = c * cp /  norm_c
             else:
                 cst = 0
-            print("cst final mean", cst.mean(), ' min ', cst.min(), ' max ', cst.max())
+            print("\t", "cst final mean", cst.mean(), ' min ', cst.min(), ' max ', cst.max())
             momentum_I = (momentum_I - cst)
-            print('momentum_I',momentum_I.shape)
+            print("\t", 'momentum_I',momentum_I.shape)
         # -----------------------------------------------
         ## 1. Compute the vector field
         ## 1.1 Compute the gradient of the image by finite differences
