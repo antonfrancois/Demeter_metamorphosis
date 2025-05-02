@@ -71,7 +71,7 @@ for save_gpu in [False, True]:
     sub_df = df[df["save_gpu"] == save_gpu]
     label = 'with save_gpu' if save_gpu else 'no save_gpu'
     ax[0].plot(sub_df["size"], sub_df["mem_usage"], label=label)
-    ax[1].plot(sub_df["size"], sub_df["exec_time"], label=label)
+    ax[1].plot(sub_df["size"], sub_df["exec_time"] /60, label=label)
 
 ax[0].set_title("Memory usage")
 ax[0].set_xlabel("Image pixel count")
@@ -81,7 +81,7 @@ ax[0].grid(True)
 
 ax[1].set_title("Execution time")
 ax[1].set_xlabel("Image pixel count")
-ax[1].set_ylabel("Seconds")
+ax[1].set_ylabel("minutes")
 ax[1].legend()
 ax[1].grid(True)
 
