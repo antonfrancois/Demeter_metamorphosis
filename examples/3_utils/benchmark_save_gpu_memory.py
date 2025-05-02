@@ -1,3 +1,15 @@
+"""
+In this file we perform a benchmark tracking execution time and memory usage with
+or without the option for saving gpu memory.
+
+This file execute the program `examples/3_utils/bench_execute_meta.py`
+
+By defauft I provide the results for my laptop. You can change the path of
+`csv_file` to try on your computer.
+
+"""
+
+
 import subprocess
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,13 +19,14 @@ import pandas as pd
 from demeter.constants import ROOT_DIRECTORY
 import torch.cuda as cda
 
-size_list = np.linspace(100, 10000, 40, dtype=int)
+size_list = np.linspace(100, 1000, 10, dtype=int)
 csv_file = os.path.join(
     ROOT_DIRECTORY,
-    "examples/results",
-    "benchmark_results.csv"
+    "examples/results/benchmark/",
+    "benchmark_results_memory.csv"
 )
 
+# 1. collect gpu information
 if cda.is_available():
     device_index = cda.current_device()
     gpu_name = cda.get_device_name(device_index)
@@ -86,6 +99,6 @@ ax[1].legend()
 ax[1].grid(True)
 
 plt.tight_layout()
-img_path = os.path.join(os.path.dirname(csv_file),"benchmark_plot.png")
+img_path = os.path.join(os.path.dirname(csv_file),"benchmark_plot_memory.png")
 plt.savefig(img_path)
 print(f"Plot saved to {img_path}")
