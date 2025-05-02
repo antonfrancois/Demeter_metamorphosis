@@ -111,16 +111,25 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         The number of steps for the geodesic integration.
     dx_convention : str, optional
         The spatial differentiation convention, by default "pixel".
-
+    save_gpu_memory : bool, optional
+        If True, we use torch.checkpoints to use less gpu memory. We save memory
+        by avoiding storing the gradient graph and recomputing it at each iteration.
+        Setting to True, make the code slower but allows to parse bigger images.
 
     """
 
     @abstractmethod
-    def __init__(self, kernelOperator, n_step, dx_convention="pixel",**kwargs):
+    def __init__(self,
+                 kernelOperator,
+                 n_step,
+                 dx_convention="pixel",
+                 save_gpu_memory = False,
+                 **kwargs):
         super().__init__()
         self._force_save = False
         self._detach_image = True
         self.dx_convention = dx_convention
+        self.save_gpu_memory = save_gpu_memory
 
         self.kernelOperator = kernelOperator
         self.n_step = n_step
@@ -145,7 +154,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self._resi_deform = []
 
     @abstractmethod
-    def step(self):
+    def step(self, image, momentum):
         pass
 
     def forward(
@@ -171,7 +180,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         save : bool, optional
             Option to save the integration intermediary steps, by default True
             it saves the image, field and momentum at each step in the attributes
-            `image_stock`, `field_stock` and `momentum_stock`.
+            `image_stock`, `field_stock`, `residuals_stock` and `momentum_stock`.
         plot : int, optional
             Positive int lower than `self.n_step` to plot the indicated number of
             intermediary steps, by default 0
@@ -214,7 +223,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         assert self.id_grid != None
 
         # field initialization to a regular grid
-        self.field = self.id_grid.clone().to(device)
+        field = self.id_grid.clone().to(device)
 
         if plot > 0:
             self.save = True
@@ -222,11 +231,12 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         if self.save:
             self.image_stock = torch.zeros((t_max * self.n_step,) + image.shape[1:])
             self.field_stock = torch.zeros(
-                (t_max * self.n_step,) + self.field.shape[1:]
+                (t_max * self.n_step,) + field.shape[1:]
             )
             self.momentum_stock = torch.zeros(
                 (t_max * self.n_step,) + momentum_ini.shape[1:]
             )
+            self.residuals_stock = torch.zeros_like(self.momentum_stock)
 
         if self.flag_hamiltonian_integration:
             self.norm_v = 0
@@ -235,7 +245,16 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step)):
             self._i = i
 
-            _, field_to_stock, residuals_dt = self.step()
+            # print(self.step.__name__)
+            if self.save_gpu_memory:
+                self.momentum, self.image , self.field, self.residuals = torch.utils.checkpoint.checkpoint(
+                    self.step,
+                    self.image,
+                    self.momentum,
+                    use_reentrant = True,
+                )
+            else:
+                self.momentum, self.image, self.field, self.residuals = self.step(self.image, self.momentum)
 
             if self.flag_hamiltonian_integration:
                 self.norm_v += self.norm_v_i / self.n_step
@@ -260,8 +279,9 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                     self.image_stock[i] = self.image[0].detach().to("cpu")
                 else:
                     self.image_stock[i] = self.image[0]
-                self.field_stock[i] = field_to_stock[0].detach().to("cpu")
-                self.momentum_stock[i] = residuals_dt.detach().to("cpu")
+                self.field_stock[i] = field[0].detach().to("cpu")
+                self.momentum_stock[i] = self.momentum.detach().to("cpu")
+                self.residuals_stock[i] = self.residuals[0].detach().to("cpu")
 
             if verbose:
                 update_progress(i / (t_max * self.n_step))
@@ -351,12 +371,14 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         return rho / (1 - rho)
 
     # Done
-    def _update_field_(self):
-        grad_image = tb.spatialGradient(self.image, dx_convention=self.dx_convention)
+    def _update_field_(self, momentum, image):
+        grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
         # ic(grad_image.min().item(), grad_image.max().item(),self.dx_convention)
-        self.field,self.norm_v_i = self._compute_vectorField_(self.momentum, grad_image)
+        field,self.norm_v_i = self._compute_vectorField_(momentum, grad_image)
         # self.field *= self._field_cst_mult()
         # self.field *= sqrt(self.rho)
+
+        return field
 
     # Done
     def _update_momentum_Eulerian_(self):
@@ -390,7 +412,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                                               deformation,
                                               momentum,
                                               cst,
-                                              field = None
+                                              field
                                               ):
         r"""
         Compute the divergence of the momentum in the semiLagrangian scheme
@@ -415,8 +437,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         tensor array of shape [1,1,H,W] or [1,1,D,H,W]
         """
 
-        if field is None:
-            field = self.field
         div_v_times_p = cst * (
             momentum
             * tb.Field_divergence(dx_convention=self.dx_convention)(field)[0, 0]
@@ -463,19 +483,19 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self.image = (sqrt(self.rho) * self.image + residuals) / self.n_step
 
     # Done
-    def _update_image_semiLagrangian_(self, deformation, residuals=None, sharp=False):
+    def _update_image_semiLagrangian_(self, momentum, image, deformation, residuals=None, sharp=False):
         if residuals is None:
             # z = sqrt(1 - rho) * p and I = v gradI + sqrt(1-rho) * z
-            residuals = (1 - self.rho) * self.momentum
+            residuals = (1 - self.rho) * momentum
         self.norm_z_i = None
         if self.flag_hamiltonian_integration:
             self.norm_z_i = .5 * residuals.pow(2).sum()
-        image = self.source if sharp else self.image
         # if self.rho > 0:
-        self.image = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
+        image_def = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
 
         if self._get_rho_() < 1:
-            self.image += residuals / self.n_step
+            image_def += residuals / self.n_step
+        return image_def
 
     def _update_sharp_intermediary_field_(self):
         # print('update phi ',self._i,self._phis[self._i])
@@ -512,26 +532,21 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self.momentum = -(div_fzv + z_time_dtF)
 
     def _update_image_weighted_semiLagrangian_(
-        self, deformation, residuals=None, sharp=False
+        self, momentum, image, deformation, residuals=None, sharp=False
     ):
         if residuals is None:
-            residuals = self.momentum
-        image = self.source if sharp else self.image
-        self.image = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
-        self.image += residuals / self.n_step
+            residuals = momentum
+        image = self.source if sharp else image
+        image = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
+        image += residuals / self.n_step
 
-        # (self.rf.mu * self.rf.mask[self._i] * residuals) / self.n_step
+        return image
 
-        # ga = (self.rf.mask[self._i] * self.residuals) / self.n_step
-        # plt.figure()
-        # p = plt.imshow(ga[0])
-        # plt.colorbar(p)
-        # plt.show()
 
-    def _update_field_oriented_weighted_(self):
-        grad_image = tb.spatialGradient(self.image, dx_convention=self.dx_convention)
+    def _update_field_oriented_weighted_(self, momentum, image):
+        grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
         free_field = tb.im2grid(
-            (self.momentum * grad_image[0]) * torch.sqrt(self.residual_mask[self._i])
+            (momentum * grad_image[0]) * torch.sqrt(self.residual_mask[self._i])
         )
         oriented_field = 0
         if self.flag_O:
@@ -539,9 +554,10 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             oriented_field = (self.orienting_field[self._i][None]
                                     * self.orienting_mask[self._i][..., None])
 
-        self.field = -tb.im2grid(
+        field =  -tb.im2grid(
             self.kernelOperator(tb.grid2im(free_field + oriented_field))
         )
+        return field
 
     def to_device(self, device):
         # TODO: completer ça
@@ -936,7 +952,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             return float(self._compute_V_norm_(self.to_analyse[0], self.source))
         else:
             dist = float(
-                self._compute_V_norm_(self.mp.momentum_stock[0][None], self.mp.source)
+                self._compute_V_norm_(self.mp.momentum_stock[0][None],
+                                      self.mp.source)
             )
             for t in range(self.mp.momentum_stock.shape[0] - 1):
                 dist += float(
@@ -1505,13 +1522,13 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             image_list_for_gif += tmp_list
             image_kw = DLT_KW_IMAGE
         elif "residual" in object or "z" in object:
-            image_list_for_gif = [z[0].numpy() for z in self.mp.momentum_stock]
+            image_list_for_gif = [z[0].numpy() for z in self.mp.residuals_stock]
             # image_kw = DLT_KW_RESIDUALS
             image_kw = dict(
                 cmap="RdYlBu_r",
                 origin="lower",
-                vmin=self.mp.momentum_stock.min(),
-                vmax=self.mp.momentum_stock.max(),
+                vmin=self.mp.residuals_stock.min(),
+                vmax=self.mp.residuals_stock.max(),
             )
         elif "deformation" in object:
             image_list_for_gif = []

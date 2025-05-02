@@ -43,12 +43,12 @@ def _find_meta_optimiser_from_repr_(repr_str):
 
 
 def _find_kernelOp_from_repr_(repr_str):
-    if "GaussianRKHS" in repr_str:
-        return GaussianRKHS
     if "VolNormalizedGaussianRKHS" in repr_str:
         return VolNormalizedGaussianRKHS
     if "Multi_scale_GaussianRKHS" in repr_str:
         return Multi_scale_GaussianRKHS
+    if "GaussianRKHS" in repr_str:
+        return GaussianRKHS
     else:
         raise ValueError("no existing kernelOperator was found for the given repr_str")
 
@@ -142,6 +142,9 @@ def _load_light_optim(opti_dict, verbose):
     kernelOp = _find_kernelOp_from_repr_(
         opti_dict["args"]["kernelOperator"]["name"]
     )
+    ic(_find_kernelOp_from_repr_(opti_dict["args"]["kernelOperator"]["name"]))
+    ic(opti_dict["args"]["kernelOperator"])
+    print("kernel Op :",kernelOp)
     kernelOp = kernelOp(**opti_dict["args"]["kernelOperator"])
 
     # and inject it in the args

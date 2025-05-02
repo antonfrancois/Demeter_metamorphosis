@@ -59,7 +59,7 @@ if 'runner' in location:
     location = os.path.dirname(os.path.dirname(location))
 
 EXPL_SAVE_FOLDER  = os.path.join(location,"saved_optim/")
-
+#%%
 #####################################################################
 # Open and visualise images before registration. The source and target are 'C' shapes.
 # The source is a 'C' shape that is deformed. The target is a 'C' shape that was
@@ -71,7 +71,7 @@ source_name,target_name = 'm0t', 'm1c'
 # other suggestion of images to try
 # source_name,target_name = '17','20'        # easy, only deformation
 # source_name,target_name = '08','m1c'  # hard, big deformation !
-size = (300,300)
+size = (1000,1000)
 
 S = tb.reg_open(source_name,size = size)
 T = tb.reg_open(target_name,size = size)
@@ -105,15 +105,19 @@ kernelOperator = rk.GaussianRKHS(sigma,kernel_reach=4)
 rk.plot_kernel_on_image(kernelOperator,image= T,subdiv=image_subdivisions)
 plt.show()
 
-
+#%%
 #####################################################################
 # Perform a first Metamorphosis registration
 if torch.cuda.is_available():
     device = 'cuda:0'
 else:
     device = 'cpu'
+# call to whatever process using the GPU ##
+
+
 S = S.to(device)
 T = T.to(device)
+torch.cuda.reset_peak_memory_stats(torch.device(device))
 dx_convention = 'square'
 # dx_convention = 'pixel'
 
@@ -131,9 +135,31 @@ mr = mt.metamorphosis(S,T,0,
                       grad_coef=1,  # if the optimisation diverged, try decreasing the gradient coefficient
                       dx_convention=dx_convention,
                     data_term=data_cost,
-                    hamiltonian_integration=True  # Set to true if you want to have control over the intermediate steps of the optimisation
-                      )
+                    hamiltonian_integration=True,  # Set to true if you want to have control over the intermediate steps of the optimisation
+                    save_gpu_memory=False
+)
+
+torch.cuda.synchronize()
+mem_usage = torch.cuda.max_memory_allocated(device)  # max memory used in bytes
 # mr.save(f'round_to_mot_rho{rho}',light_save = True)
+#%%
+import math
+
+def convert_size(size_bytes):
+   if size_bytes == 0:
+       return "0B"
+   size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+   i = int(math.floor(math.log(size_bytes, 1024)))
+   p = math.pow(1024, i)
+   s = round(size_bytes / p, 2)
+   return "%s %s" % (s, size_name[i])
+
+# mem = 1472094720
+print('-_'*15)
+print("memory used : ",convert_size(mem_usage))
+print('-_'*15)
+print("\n")
+
 #%%
 _, fig_ax = mr.plot()
 fig_cmp = fig_ax[0]
@@ -147,50 +173,50 @@ mr.mp.plot()
 # optimisation for the values of rho in the files listed in list_optim.
 # Feel free to try yourselves If you want to recompute them by setting
 # recompute to True. The number of rho to test is set by n_plot.
-list_optim = [
-    "2D_23_01_2025_simpleToyExample_rho_0.00_000.pk1",
-    "2D_23_01_2025_simpleToyExample_rho_0.11_000.pk1",
-    "2D_23_01_2025_simpleToyExample_rho_0.22_000.pk1",
-    "2D_23_01_2025_simpleToyExample_rho_0.33_000.pk1",
-    "2D_23_01_2025_simpleToyExample_rho_0.44_000.pk1",
-    "2D_23_01_2025_simpleToyExample_rho_0.56_000.pk1",
-    "2D_23_01_2025_simpleToyExample_rho_0.67_000.pk1",
-    "2D_23_01_2025_simpleToyExample_rho_0.78_000.pk1",
-    "2D_23_01_2025_simpleToyExample_rho_0.89_000.pk1",
-    "2D_23_01_2025_simpleToyExample_rho_1.00_000.pk1",
-]
-recompute = False
-n_plot = 10
-rho_list = torch.linspace(0,1,n_plot)
-
-fig,ax = plt.subplots(2,n_plot,figsize=(20,5))
-
-for i,rho in enumerate(rho_list):
-    print(f'\nrho = {rho}, {i+1}/{n_plot}')
-    if recompute:
-        mr = mt.metamorphosis(S,T,0,
-                          rho,
-                          cost_cst=.001,
-                          kernelOperator=kernelOperator,
-                          integration_steps=10,
-                          n_iter=30,
-                          grad_coef=.1,
-                          dx_convention=dx_convention,
-                          data_term=data_cost,
-                          hamiltonian_integration=True
-                          )
-        mr.save(f'simpleToyExample_rho_{rho:.2f}',light_save = True)
-    else:
-        mr = mt.load_optimize_geodesicShooting(list_optim[i],path =EXPL_SAVE_FOLDER)
-
-    # mr.plot_cost()
-    ax[0,i].set_title(f'rho = {rho:.2f}')
-    ax[0,i].imshow(mr.mp.image[0,0].detach().cpu(),**DLT_KW_IMAGE)
-    deform = mr.mp.get_deformator()
-    img_deform = tb.imgDeform(S.cpu(),deform,dx_convention=dx_convention)
-    ax[1,i].imshow(img_deform[0,0].detach().cpu(),**DLT_KW_IMAGE)
-
-
-plt.show()
+# list_optim = [
+#     "2D_23_01_2025_simpleToyExample_rho_0.00_000.pk1",
+#     "2D_23_01_2025_simpleToyExample_rho_0.11_000.pk1",
+#     "2D_23_01_2025_simpleToyExample_rho_0.22_000.pk1",
+#     "2D_23_01_2025_simpleToyExample_rho_0.33_000.pk1",
+#     "2D_23_01_2025_simpleToyExample_rho_0.44_000.pk1",
+#     "2D_23_01_2025_simpleToyExample_rho_0.56_000.pk1",
+#     "2D_23_01_2025_simpleToyExample_rho_0.67_000.pk1",
+#     "2D_23_01_2025_simpleToyExample_rho_0.78_000.pk1",
+#     "2D_23_01_2025_simpleToyExample_rho_0.89_000.pk1",
+#     "2D_23_01_2025_simpleToyExample_rho_1.00_000.pk1",
+# ]
+# recompute = False
+# n_plot = 10
+# rho_list = torch.linspace(0,1,n_plot)
+#
+# fig,ax = plt.subplots(2,n_plot,figsize=(20,5))
+#
+# for i,rho in enumerate(rho_list):
+#     print(f'\nrho = {rho}, {i+1}/{n_plot}')
+#     if recompute:
+#         mr = mt.metamorphosis(S,T,0,
+#                           rho,
+#                           cost_cst=.001,
+#                           kernelOperator=kernelOperator,
+#                           integration_steps=10,
+#                           n_iter=30,
+#                           grad_coef=.1,
+#                           dx_convention=dx_convention,
+#                           data_term=data_cost,
+#                           hamiltonian_integration=True
+#                           )
+#         mr.save(f'simpleToyExample_rho_{rho:.2f}',light_save = True)
+#     else:
+#         mr = mt.load_optimize_geodesicShooting(list_optim[i],path =EXPL_SAVE_FOLDER)
+#
+#     # mr.plot_cost()
+#     ax[0,i].set_title(f'rho = {rho:.2f}')
+#     ax[0,i].imshow(mr.mp.image[0,0].detach().cpu(),**DLT_KW_IMAGE)
+#     deform = mr.mp.get_deformator()
+#     img_deform = tb.imgDeform(S.cpu(),deform,dx_convention=dx_convention)
+#     ax[1,i].imshow(img_deform[0,0].detach().cpu(),**DLT_KW_IMAGE)
+#
+#
+# plt.show()
 
 # sphinx_gallery_thumbnail_number = 4

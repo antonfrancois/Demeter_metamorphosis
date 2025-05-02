@@ -4,16 +4,13 @@ import matplotlib.pyplot as plt
 import matplotlib
 import torch
 import numpy as np
-from kornia.augmentation.auto.autoaugment.ops import color
 from matplotlib.collections import LineCollection
 from matplotlib.widgets import Slider, Button
-from sphinx.writers.text import my_wrap
 from torch import is_tensor
 import warnings
 import os
 from PIL import Image
-from triton.language import dtype
-
+from skimage.color import hsv2rgb
 import demeter.utils.torchbox as tb
 from icecream import ic
 
@@ -47,6 +44,112 @@ def set_size(w,h, ax=None):
     figh = float(h)/(t-b)
     ax.figure.set_size_inches(figw, figh)
 
+
+def angle_average(angles, dim=None):
+    r"""
+    Compute the average angle of all angles in degrees assuming the angles are
+    on the $[0,1]$ periodical segment.
+
+    We compute the following equation:
+
+    .. math::
+        x =\frac{1}{2\pi} \mathrm{atan2}( \sum_i \sin( 2\pi \alpha_i), \sum_i \cos( 2\pi \alpha_i))
+
+    with $\alpha_i$ the angles. If $x < 0$ then we make it positive by applying $1 + x$
+
+    Parameters
+    ------------
+    angles : torch.Tensor
+    dim: dimention to perform the average along
+
+    Returns
+    ----------
+    torch.Tensor
+    """
+    angles *= 2 * np.pi
+    x = torch.atan2(
+        torch.sin(angles).nansum(axis=dim),
+        torch.cos(angles).nansum(axis=dim)
+    ) / (2 * np.pi)
+    x[x < 0] = 1 + x[x < 0]
+    return x
+
+
+class SimplexToHSV:
+    """
+    This class is used to convert a simplex image to an HSV image.
+
+    """
+
+    def __init__(self, image, is_last_background=True):
+        self.image = image
+        self.is_last_background = is_last_background
+        self.hsv_image = None
+        self.rgb_image = None
+
+    def prepare_hue(self):
+        """
+        Assign each channel to a given hue value.
+        The hue value is computed as the average angle of the channel values.
+
+        if is_last_background is True, the last channel is ignored.
+        """
+        if self.is_last_background:
+            img = self.image.clone()[:, :-1]
+        else:
+            img = self.image.clone()
+        b, c, *dims = img.shape
+
+        h_values = torch.linspace(0, 1, c + 1)
+        eps = 1e-1
+        img[img > eps] = 1
+        img[img < eps] = torch.nan
+        hue = angle_average(
+            img * h_values[:-1].view((1, c, *([1] * len(dims)))),
+            dim=1
+        )
+        return hue
+
+    def prepare_saturation(self):
+        """
+        Prepare the
+        """
+
+        image = self.image.clone()[:, :-1]
+        image[image > .5] = 0
+        sat = image.sum(dim=1)
+        return 1 - (sat / sat.max()) ** 2
+
+    def prepare_value(self):
+        """
+        Prepare the value channel of the HSV image by taking the maximum value
+        of the image along the channel dimension.
+        """
+        ic(self.image.shape)
+        img = self.image[:, :-1] if self.is_last_background else self.image
+        img_max, _ = img.max(dim=1)
+        return img_max
+
+
+    def to_hsv(self):
+        if self.hsv_image is not None:
+            return self.hsv_image
+        b, c, *dims = self.image.shape
+        hsv_img = torch.zeros((b,*dims, 3))
+        ic(hsv_img.shape)
+        hsv_img[..., 0] = self.prepare_hue()
+        hsv_img[..., 1] = self.prepare_saturation()
+        hsv_img[..., 2] = self.prepare_value()
+        self.hsv_image = hsv_img.cpu().numpy()
+        return self.hsv_image
+
+    def to_rgb(self):
+        if self.rgb_image is not None:
+            return self.rgb_image
+        if self.hsv_image is None:
+            self.to_hsv()
+        self.rgb_image = hsv2rgb(self.hsv_image)
+        return self.rgb_image
 
 class Visualize_GeodesicOptim_plt:
     """
@@ -97,6 +200,10 @@ class Visualize_GeodesicOptim_plt:
         self.shape = self.geodesicOptim.mp.image_stock.shape
         T, C, D, H, W = self.shape
         init_x_coord, init_y_coord, init_z_coord = D // 2, H // 2, W // 2
+        self.flag_simplex_visu = True if C > 1 else False
+        if self.flag_simplex_visu:
+            self._build_simplex_img()
+
         kw_image = dict(
             vmin=self.geodesicOptim.mp.image_stock.min(),
             vmax=self.geodesicOptim.mp.image_stock.max(),
@@ -120,6 +227,7 @@ class Visualize_GeodesicOptim_plt:
             )
 
         tr_tpl = (1, 0, 2)
+        ic(self.shown_image.shape)
         self.plt_img_x = self.ax[0].imshow(
             tb.image_slice(self.shown_image, init_z_coord, dim=2).transpose(tr_tpl),
             **kw_image,
@@ -195,6 +303,16 @@ class Visualize_GeodesicOptim_plt:
         for slider in self.sliders:
             slider.on_changed(self.update)
 
+    def _build_simplex_img(self):
+        self.splx_target = SimplexToHSV(self.geodesicOptim.target, is_last_background=True).to_rgb()
+        self.splx_img_stock = SimplexToHSV(self.geodesicOptim.mp.image_stock, is_last_background=True).to_rgb()
+        self.splx_source = SimplexToHSV(self.geodesicOptim.source, is_last_background=True).to_rgb()
+
+        print("splx_target", self.splx_target.shape)
+        print("splx_img_stock", self.splx_img_stock.shape)
+        print("splx_source", self.splx_source.shape)
+
+
     def temporal_image_cmp_with_target(self):
         try:
             return self.tmp_img_cmp_w_target
@@ -202,14 +320,25 @@ class Visualize_GeodesicOptim_plt:
             def mult_clip(img, factor):
                 return torch.clip(img * factor, 0, 1)
 
+            if self.flag_simplex_visu:
+                img_stk = self.geodesicOptim.mp.image_stock.argmax(dim=1)[:,None].to(torch.float32)
+                target = self.geodesicOptim.target.argmax(dim=1)[None].to(torch.float32)
+
+                img_stk /= self.shape[1]
+                target /= self.shape[1]
+            else:
+                img_stk = self.geodesicOptim.mp.image_stock
+                target = self.geodesicOptim.target
+
+
             self.tmp_img_cmp_w_target = tb.temporal_img_cmp(
                 # mult_clip(self.geodesicOptim.mp.image_stock, 1.5),
                 # mult_clip(self.geodesicOptim.target, 1.5),
-                self.geodesicOptim.mp.image_stock,
-                self.geodesicOptim.target,
-
+                img_stk,
+                target,
                 method=self.imcmp_method,
             )
+            print("tmp_img_cmp_w_target", self.tmp_img_cmp_w_target.shape)
             return self.tmp_img_cmp_w_target
 
     def temporal_image(self):
@@ -217,13 +346,19 @@ class Visualize_GeodesicOptim_plt:
         if t_img.shape[1] == 1:
             return self.geodesicOptim.mp.image_stock[:,0]
         else:
-            raise NotImplementedError(f"got multiChannel image:  {t_img.shape}")
+            return self.splx_img_stock
 
     def target(self):
-        return self.geodesicOptim.target[:,0]
+        if self.flag_simplex_visu:
+            return self.splx_target
+        else:
+            return self.geodesicOptim.target[:,0]
 
     def source(self):
-        return self.geodesicOptim.source[:,0]
+        if self.flag_simplex_visu:
+            return self.splx_source
+        else:
+            return self.geodesicOptim.source[:,0]
 
     def _make_grid(self, t_val, x_val, y_val, z_val):
         t = t_val
@@ -420,7 +555,7 @@ class Visualize_GeodesicOptim_plt:
         ic(self.shown_attribute.__name__, img_3D_to_show.shape)
         t = t_slider.val if img_3D_to_show.shape[0] > 1 else 0
         self.shown_image  = img_3D_to_show[t]
-        ic(self.shown_image.shape, self.flag_grid)
+        ic(self.shown_image.shape, self.flag_grid, t)
 
         img = np.clip(self.shown_image, 0, 1)
 
@@ -586,8 +721,11 @@ def imshow_3d_slider(
         T, H, W, D, C = image.shape
         # image = image.transpose(0, 1, 2, 3, 4)
 
+
     # Define initial parameters
-    init_x_coord, init_y_coord, init_z_coord = D // 2, W // 2, H // 2
+    # init_x_coord, init_y_coord, init_z_coord = D // 2, W // 2, H // 2
+    init_x_coord, init_y_coord, init_z_coord = H// 2, W // 2, D // 2
+
     t = max(T - 1, 0)
 
     vmin = image.min() if vmin is None else vmin
@@ -598,9 +736,11 @@ def imshow_3d_slider(
         cmap=image_cmap,
     )
     im_ini = image[0] if T > 1 else image
+    ic(im_ini.shape)
+    ic(init_x_coord,)
     tr_tpl = (1, 0, 2) if C > 1 else (1, 0)
     img_x = ax[0].imshow(
-        tb.image_slice(im_ini, init_z_coord, dim=2).transpose(tr_tpl), **kw_image
+        tb.image_slice(im_ini, init_x_coord, dim=2).transpose(tr_tpl), **kw_image
     )
     img_y = ax[1].imshow(
         tb.image_slice(im_ini, init_y_coord, dim=1).transpose(tr_tpl),
@@ -608,7 +748,7 @@ def imshow_3d_slider(
         **kw_image,
     )
     img_z = ax[2].imshow(
-        tb.image_slice(im_ini, init_x_coord, dim=0).transpose(tr_tpl),
+        tb.image_slice(im_ini, init_z_coord, dim=0).transpose(tr_tpl),
         origin="lower",
         **kw_image,
     )
@@ -619,12 +759,12 @@ def imshow_3d_slider(
     # add init lines
 
     line_color = "green"
-    l_x_v = ax[0].axvline(x=init_y_coord, color=line_color, alpha=0.6)
-    l_x_h = ax[0].axhline(y=init_z_coord, color=line_color, alpha=0.6)
-    l_y_v = ax[1].axvline(x=init_z_coord, color=line_color, alpha=0.6)
-    l_y_h = ax[1].axhline(y=init_x_coord, color=line_color, alpha=0.6)
+    l_x_v = ax[0].axvline(x=init_x_coord, color=line_color, alpha=0.6)
+    l_x_h = ax[0].axhline(y=init_y_coord, color=line_color, alpha=0.6)
+    l_y_v = ax[1].axvline(x=init_x_coord, color=line_color, alpha=0.6)
+    l_y_h = ax[1].axhline(y=init_z_coord, color=line_color, alpha=0.6)
     l_z_v = ax[2].axvline(x=init_y_coord, color=line_color, alpha=0.6)
-    l_z_h = ax[2].axhline(y=init_x_coord, color=line_color, alpha=0.6)
+    l_z_h = ax[2].axhline(y=init_z_coord, color=line_color, alpha=0.6)
 
     ax[0].margins(x=0)
 
