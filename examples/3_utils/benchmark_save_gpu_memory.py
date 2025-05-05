@@ -77,7 +77,7 @@ for save_gpu in [False, True]:
         # Sinon, on lance le benchmark
         print(f"\nLancement: size=({(size, size, 1)}), save_gpu={save_gpu}")
         print("python3",
-             "draft/meta_on_pixyl.py",
+             "examples/3_utils/meta_on_pixyl.py",
             str(size),
             str(save_gpu),
             str(False), # Plot
@@ -85,12 +85,12 @@ for save_gpu in [False, True]:
         )
         subprocess.run([
             "python3",
-             "draft/meta_on_pixyl.py",
+             "examples/3_utils/meta_on_pixyl.py",
             str(size),
             str(save_gpu),
             str(False), # Plot
             csv_file
-        ])
+        ], check = True)
 
 
 # Lecture des résultats
