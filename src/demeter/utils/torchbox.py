@@ -2,7 +2,6 @@ from collections.abc import Iterable
 
 import torch
 import torch.nn.functional as F
-from dask.array import select
 from kornia.filters import SpatialGradient, SpatialGradient3d, filter2d, filter3d
 from kornia.geometry.transform import resize
 from numpy import newaxis
@@ -14,9 +13,6 @@ from . import bspline as mbs
 from . import vector_field_to_flow as vff
 from . import decorators as deco
 from demeter.constants import *
-
-
-# from .utils.image_3d_visualisation import image_slice
 
 
 # ================================================
