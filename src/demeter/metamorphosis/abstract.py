@@ -279,7 +279,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                     self.image_stock[i] = self.image[0].detach().to("cpu")
                 else:
                     self.image_stock[i] = self.image[0]
-                self.field_stock[i] = field[0].detach().to("cpu")
+                self.field_stock[i] = self.field[0].detach().to("cpu")
                 self.momentum_stock[i] = self.momentum.detach().to("cpu")
                 self.residuals_stock[i] = self.residuals[0].detach().to("cpu")
 

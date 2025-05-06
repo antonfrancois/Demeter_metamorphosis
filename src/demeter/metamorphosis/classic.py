@@ -117,7 +117,10 @@ class Metamorphosis_integrator(Geodesic_integrator):
             sqrt(self.rho) * field,
         )
 
-        return (momentum, image, self.rho * field, (1 - self.rho) * momentum)
+        return (momentum,
+                image,
+                self.rho * field.detach(),
+                (1 - self.rho) * momentum.detach())
 
     def _step_sharp_semiLagrangian(self):
         # device = self.image.device
