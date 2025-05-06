@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "demeter_metamorphosis"
 # Lorsque tu veux changer la version mineure, il va falloir aussi changer le numéro de version dans le ficher
 # .bumpversion.cfg
-version = "0.2.9"
+version = "0.2.10"
 description = "Efficient and flexible optimization of metamorphoses in images"
 authors = [
     { name = "Anton François", email = "anton.francois@ens-paris-saclay.fr" }
