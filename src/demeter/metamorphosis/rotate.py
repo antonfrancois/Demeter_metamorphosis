@@ -90,25 +90,47 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
             IgradI_x = multiply_grid_vectors(tb.im2grid(grad_source[0]), self.id_grid)
             x_IgradI = multiply_grid_vectors(self.id_grid, tb.im2grid(grad_source[0]))
             print("\t", (IgradI_x - x_IgradI).shape)
-            print("\t", (IgradI_x - x_IgradI).sum(dim=[1,2]))
+            # print("\t", (IgradI_x - x_IgradI).sum(dim=[1,2]))
 
             if self._dim == 2:
                 c_list = [(IgradI_x - x_IgradI)[...,0,1][None]]
             elif self._dim == 3:
                 _k = [0, 0, 1]
-                _l = [1, 2, 1]
+                _l = [1, 2, 2]
                 c_list = (IgradI_x - x_IgradI)[...,_k,_l].permute(4,0,1,2,3)
 
-            for c in c_list:
+            # Orthonormaliser la liste
+            c_ortho_list = [c_list[0] / (c_list[0] **2).sum().sqrt()]
+            if len(c_list) > 1:
+                for c in c_list[1:]:
+                    c_tilde = c
+                    for co in c_ortho_list:
+                        c_tilde -= (c * co).sum() * co
+                    c_norm = (c_tilde**2).sum().sqrt()
+                    c_ortho_list.append(
+                        c_tilde / c_norm if c_norm != 0 else c_tilde
+                    )
+
+            # check orthonormalisation
+            print("\t len ortho_list", len(c_ortho_list))
+            assert (c_ortho_list[0] * c_ortho_list[1]).sum() < 1e-5, f"(c_otho_list[0] * c_otho_list[1]).sum() = {(c_ortho_list[0] * c_ortho_list[1]).sum()}"
+            assert (c_ortho_list[0] * c_ortho_list[2]).sum() < 1e-5, f"(c_otho_list[0] * c_otho_list[2]).sum() = {(c_ortho_list[0] * c_ortho_list[2]).sum()}"
+            assert (c_ortho_list[2] * c_ortho_list[1]).sum() < 1e-5, f"(c_otho_list[2] * c_otho_list[1]).sum() = {(c_ortho_list[2] * c_ortho_list[1]).sum()}"
+
+
+            for c in c_ortho_list:
                 momentum_I = self.projection(c, momentum_I)
                 print("\t", 'momentum_I',momentum_I.shape)
+
+            for i, c in enumerate(c_list):
+                assert (c * momentum_I).sum() < 1e-5, f"(c_{i} * momentum_I).sum() = {(c * momentum_I).sum()}"
         # -----------------------------------------------
         ## 1. Compute the vector field
         ## 1.1 Compute the gradient of the image by finite differences
         grad_image = tb.spatialGradient(self.image, dx_convention = self.dx_convention)
         self.field,norm_V = self._compute_vectorField_(
             momentum_I, grad_image)
-        self.field *= 0
+        # self.field *= 0
         # self.field *= sqrt(self.rho)
         print('field min max',self.field.min(),self.field.max())
         # ic(self.field.device)
