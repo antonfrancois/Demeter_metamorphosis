@@ -60,6 +60,14 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         except AttributeError:
             pass
 
+    def projection(self, c, p):
+        cp = (c * p).sum()
+        norm_c = (c **2).sum()
+        if norm_c != 0:
+            cst = c * cp /  norm_c
+        else:
+            cst = 0
+        return p - cst
 
     def step(self):
         print("\n")
@@ -75,34 +83,25 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         ## 0 Contrainte
 
 
+
         if self._i == 0:
             grad_source = tb.spatialGradient(self.source, dx_convention = self.dx_convention)
             ic(grad_source.device, self.id_grid.device)
             IgradI_x = multiply_grid_vectors(tb.im2grid(grad_source[0]), self.id_grid)
             x_IgradI = multiply_grid_vectors(self.id_grid, tb.im2grid(grad_source[0]))
-            print("\t", ''(IgradI_x - x_IgradI).shape)
-            print("\t", ''(IgradI_x - x_IgradI).sum(dim=[1,2]))
+            print("\t", (IgradI_x - x_IgradI).shape)
+            print("\t", (IgradI_x - x_IgradI).sum(dim=[1,2]))
 
+            if self._dim == 2:
+                c = [(IgradI_x - x_IgradI)[...,0,1][None]]
+            elif self._dim == 3:
+                _k = [0, 0, 1]
+                _l = [1, 2, 1]
+                c = (IgradI_x - x_IgradI)[...,_k,_l].permute(4,0,1,2,3)
 
-            c = (IgradI_x - x_IgradI)[...,0,1][None].clone()
-
-            print("\t", 'c shape',c.shape)
-            cp=  (momentum_I * c).sum()
-            # cst_flat = cst.cpu().flatten()[None]
-            # U,S,Vh = torch.linalg.svd(cst_flat)
-            # V=Vh.mH[:,1:]
-            # assert  cst_flat @ V[:,0] == 0
-            print("\t", 'cp shape',cp.shape)
-            print("\t", 'cp', cp)
-            norm_c =  (c**2).sum()
-            print("\t", "norm_c ", norm_c)
-            if norm_c != 0:
-                cst = c * cp /  norm_c
-            else:
-                cst = 0
-            print("\t", "cst final mean", cst.mean(), ' min ', cst.min(), ' max ', cst.max())
-            momentum_I = (momentum_I - cst)
-            print("\t", 'momentum_I',momentum_I.shape)
+            for _c in c:
+                momentum_I = self.projection(_c, momentum_I)
+                print("\t", 'momentum_I',momentum_I.shape)
         # -----------------------------------------------
         ## 1. Compute the vector field
         ## 1.1 Compute the gradient of the image by finite differences
