@@ -362,7 +362,7 @@ def simplex_metamorphosis(
     rho,
     data_term,
     dx_convention="pixel",
-    n_step=10,
+    integration_steps=10,
     n_iter=1000,
     grad_coef=2,
     cost_cst=0.001,
@@ -381,7 +381,7 @@ def simplex_metamorphosis(
     mp = sp.Simplex_sqrt_Metamorphosis_integrator(
         rho=rho,
         kernelOperator=kernelOperator,
-        n_step=n_step,
+        n_step=integration_steps,
         dx_convention=dx_convention,
         save_gpu_memory = save_gpu_memory
         # debug=True

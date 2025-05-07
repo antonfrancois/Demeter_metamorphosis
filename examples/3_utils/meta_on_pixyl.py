@@ -237,7 +237,7 @@ def perform_simplex_ref(resize_factor, save_gpu):
 
     try:
         start = time.time()
-        mr = mt.metamorphosis(source, target, 0,
+        mr = mt.simplex_metamorphosis(source, target, 0,
                         rho= rho,
                        kernelOperator=kernelOperator,
                         data_term=data_cost,
