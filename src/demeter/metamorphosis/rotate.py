@@ -93,14 +93,14 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
             print("\t", (IgradI_x - x_IgradI).sum(dim=[1,2]))
 
             if self._dim == 2:
-                c = [(IgradI_x - x_IgradI)[...,0,1][None]]
+                c_list = [(IgradI_x - x_IgradI)[...,0,1][None]]
             elif self._dim == 3:
                 _k = [0, 0, 1]
                 _l = [1, 2, 1]
-                c = (IgradI_x - x_IgradI)[...,_k,_l].permute(4,0,1,2,3)
+                c_list = (IgradI_x - x_IgradI)[...,_k,_l].permute(4,0,1,2,3)
 
-            for _c in c:
-                momentum_I = self.projection(_c, momentum_I)
+            for c in c_list:
+                momentum_I = self.projection(c, momentum_I)
                 print("\t", 'momentum_I',momentum_I.shape)
         # -----------------------------------------------
         ## 1. Compute the vector field
@@ -108,7 +108,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         grad_image = tb.spatialGradient(self.image, dx_convention = self.dx_convention)
         self.field,norm_V = self._compute_vectorField_(
             momentum_I, grad_image)
-        # self.field *= 0
+        self.field *= 0
         # self.field *= sqrt(self.rho)
         print('field min max',self.field.min(),self.field.max())
         # ic(self.field.device)
