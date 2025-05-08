@@ -69,7 +69,54 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
             cst = 0
         return p - cst
 
-    def step(self):
+    def _contrainte_(self, momentum_I, source):
+        grad_source = tb.spatialGradient(source, dx_convention = self.dx_convention)
+        ic(grad_source.device, self.id_grid.device)
+        IgradI_x = multiply_grid_vectors(tb.im2grid(grad_source[0]), self.id_grid)
+        x_IgradI = multiply_grid_vectors(self.id_grid, tb.im2grid(grad_source[0]))
+        print("\t", (IgradI_x - x_IgradI).shape)
+        # print("\t", (IgradI_x - x_IgradI).sum(dim=[1,2]))
+
+        if self._dim == 2:
+            c_list = [(IgradI_x - x_IgradI)[...,0,1][None]]
+        elif self._dim == 3:
+            _k = [0, 0, 1]
+            _l = [1, 2, 2]
+            c_list = (IgradI_x - x_IgradI)[...,_k,_l].permute(4,0,1,2,3)
+
+        # Orthonormaliser la liste
+        c_ortho_list = [c_list[0] / (c_list[0] **2).sum().sqrt()]
+        if len(c_list) > 1:
+            for c in c_list[1:]:
+                c_tilde = c
+                for co in c_ortho_list:
+                    c_tilde -= (c * co).sum() * co
+                c_norm = (c_tilde**2).sum().sqrt()
+                c_ortho_list.append(
+                    c_tilde / c_norm if c_norm != 0 else c_tilde
+                )
+
+        # check orthonormalisation
+        print("\t len ortho_list", len(c_ortho_list))
+
+
+
+        for c in c_ortho_list:
+            momentum_I = self.projection(c, momentum_I)
+            print("\t", 'momentum_I',momentum_I.shape)
+
+        if self._dim == 3:
+            assert (c_ortho_list[0] * c_ortho_list[1]).sum() < 1e-5, f"(c_otho_list[0] * c_otho_list[1]).sum() = {(c_ortho_list[0] * c_ortho_list[1]).sum()}"
+            assert (c_ortho_list[0] * c_ortho_list[2]).sum() < 1e-5, f"(c_otho_list[0] * c_otho_list[2]).sum() = {(c_ortho_list[0] * c_ortho_list[2]).sum()}"
+            assert (c_ortho_list[2] * c_ortho_list[1]).sum() < 1e-5, f"(c_otho_list[2] * c_otho_list[1]).sum() = {(c_ortho_list[2] * c_ortho_list[1]).sum()}"
+        for i, c in enumerate(c_list):
+            # assert (c * momentum_I).sum() < 1e-5, f"(c_{i} * momentum_I).sum() = {(c * momentum_I).sum()}"
+            print( f"(c_{i} * momentum_I).sum() = {(c * momentum_I).sum()}")
+
+
+        return momentum_I
+
+    def _step_old(self):
         print("\n")
         print("="*25)
         print('step',self._i)
@@ -81,49 +128,10 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
 
         # ----------------------------------------------
         ## 0 Contrainte
-
-
-
         if self._i == 0:
-            grad_source = tb.spatialGradient(self.source, dx_convention = self.dx_convention)
-            ic(grad_source.device, self.id_grid.device)
-            IgradI_x = multiply_grid_vectors(tb.im2grid(grad_source[0]), self.id_grid)
-            x_IgradI = multiply_grid_vectors(self.id_grid, tb.im2grid(grad_source[0]))
-            print("\t", (IgradI_x - x_IgradI).shape)
-            # print("\t", (IgradI_x - x_IgradI).sum(dim=[1,2]))
-
-            if self._dim == 2:
-                c_list = [(IgradI_x - x_IgradI)[...,0,1][None]]
-            elif self._dim == 3:
-                _k = [0, 0, 1]
-                _l = [1, 2, 2]
-                c_list = (IgradI_x - x_IgradI)[...,_k,_l].permute(4,0,1,2,3)
-
-            # Orthonormaliser la liste
-            c_ortho_list = [c_list[0] / (c_list[0] **2).sum().sqrt()]
-            if len(c_list) > 1:
-                for c in c_list[1:]:
-                    c_tilde = c
-                    for co in c_ortho_list:
-                        c_tilde -= (c * co).sum() * co
-                    c_norm = (c_tilde**2).sum().sqrt()
-                    c_ortho_list.append(
-                        c_tilde / c_norm if c_norm != 0 else c_tilde
-                    )
-
-            # check orthonormalisation
-            print("\t len ortho_list", len(c_ortho_list))
-            assert (c_ortho_list[0] * c_ortho_list[1]).sum() < 1e-5, f"(c_otho_list[0] * c_otho_list[1]).sum() = {(c_ortho_list[0] * c_ortho_list[1]).sum()}"
-            assert (c_ortho_list[0] * c_ortho_list[2]).sum() < 1e-5, f"(c_otho_list[0] * c_otho_list[2]).sum() = {(c_ortho_list[0] * c_ortho_list[2]).sum()}"
-            assert (c_ortho_list[2] * c_ortho_list[1]).sum() < 1e-5, f"(c_otho_list[2] * c_otho_list[1]).sum() = {(c_ortho_list[2] * c_ortho_list[1]).sum()}"
+            momentum_I = self._contrainte_(momentum_I, self.source)
 
 
-            for c in c_ortho_list:
-                momentum_I = self.projection(c, momentum_I)
-                print("\t", 'momentum_I',momentum_I.shape)
-
-            for i, c in enumerate(c_list):
-                assert (c * momentum_I).sum() < 1e-5, f"(c_{i} * momentum_I).sum() = {(c * momentum_I).sum()}"
         # -----------------------------------------------
         ## 1. Compute the vector field
         ## 1.1 Compute the gradient of the image by finite differences
@@ -238,6 +246,106 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         return (self.image,
                 sqrt(self.rho) * self.field,
                 sqrt(1 - self.rho) * self.residuals)
+
+    def step(self):
+        print("\n")
+        print("="*25)
+        print('step',self._i)
+        momentum_I = self.momenta['momentum_I'].clone()
+        momentum_R = self.momenta['momentum_R'].clone()
+        print('momentum_I',momentum_I.min().item(),momentum_I.max().item())
+        print("momentum_I", momentum_I.shape)
+        print("momentum_R",momentum_R)
+
+        # ----------------------------------------------
+        ## 0 Contrainte
+        if self._i == 0:
+            momentum_I = self._contrainte_(momentum_I, self.source)
+
+
+        # -----------------------------------------------
+        # 1. Compute the rotation
+        mom_rotated = momentum_R @ self.rot_mat.T
+        mom_rotated =  (mom_rotated - mom_rotated.T) /2
+        print("rot mat",self.rot_mat)
+        print("mom_rotated",mom_rotated)
+
+        self.d_rot = mom_rotated
+        if self._i == 0:
+            self.d_rot_ini = self.d_rot.clone()
+        print('d_rot',self.d_rot)
+
+        exp_A = torch.linalg.matrix_exp(self.d_rot/self.n_step)
+        self.rot_mat = exp_A @ self.rot_mat
+
+
+        print("rot mat * rot mat.T",self.rot_mat @ self.rot_mat.T)
+
+        # -----------------------------------------------
+        ## 2. apply the inverse rotation to the image
+        ## $$ \tilde I = R^{-1} I = R^{T} I
+        rot_def =   apply_rot_mat(self.optimizer.mp.id_grid,  self.optimizer.mp.rot_mat.T)
+        image =  tb.imgDeform(self.optimizer.mp.image,rot_def,dx_convention='2square')
+
+        # -----------------------------------------------
+        ## 1. Compute the vector field
+
+        grad_image = tb.spatialGradient(image, dx_convention = self.dx_convention)
+        self.field,norm_V = self._compute_vectorField_(
+            momentum_I, grad_image)
+        # self.field *= 0
+        print('field min max',self.field.min(),self.field.max())
+
+
+        # -----------------------------------------------
+        # 2. Compute the residuals
+        self.residuals = (sqrt(1 - self.rho) *
+                          momentum_I)
+        print("dx_convention",self.dx_convention)
+        print("grid min max",self.id_grid.min().item(),self.id_grid.max().item())
+
+
+        # -----------------------------------------------
+        # 3. Update the image
+        deformation = self.id_grid - self.rho * self.field/self.n_step
+        self._update_image_semiLagrangian_(deformation, momentum = momentum_I)
+
+
+        if self.flag_hamiltonian_integration:
+
+            # Norm L2 on z
+            norm_l2_on_z = .5 * (self.residuals ** 2).sum()
+
+            # Norm L2 on R
+            norm_l2_on_R = .5 * torch.trace( self.d_rot.T @ self.d_rot_ini)
+            self.ham_value = norm_V + norm_l2_on_z + norm_l2_on_R
+
+        # ------------------------------------------------
+        #  update momenta
+        momentum_I =  (
+            self._compute_div_momentum_semiLagrangian_(
+                deformation,
+                momentum_I,
+                cst = - sqrt(self.rho),
+                field = sqrt(self.rho) * self.field
+            )
+        )
+
+        momentum_R = momentum_R - self.d_rot.T @ momentum_R  / self.n_step
+        self.momenta['momentum_I'] = momentum_I.clone()
+        self.momenta['momentum_R'] = momentum_R.clone()
+
+
+
+        print('momentum_R',momentum_R)
+        print("rot mat",self.rot_mat)
+        print("arc ", torch.arcsin(exp_A[0,1])/torch.pi,
+              torch.arccos(exp_A[0,1])/torch.pi)
+
+        return (self.image,
+                sqrt(self.rho) * self.field,
+                sqrt(1 - self.rho) * self.residuals)
+
 
     def forward(self, image, momenta,**kwargs):
 
