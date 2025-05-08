@@ -144,6 +144,31 @@ def pad_to_same_size(img_1, img_2):
     return (img_1_padded, img_2_padded)
 
 
+def apply_rot_mat(grid,rot_mat):
+    if tuple(rot_mat.shape) == (2,2) and len(grid.shape) == 4:
+        return  torch.einsum('ij,bhwj->bhwi',rot_mat, grid)
+        # return rotated_grid
+    elif  tuple(rot_mat.shape) == (3,3) and len(grid.shape) == 5:
+        return  torch.einsum('ij,bdhwj->bdhwi',rot_mat, grid)
+    else:
+        raise ValueError(
+            "In 2d, grid must be of shape [B,H,W,2] and rot_mat [2, 2],"
+            " In 3d grid must be of shape [B, D, H, W,3] and rot_mat [3, 3]"
+            f"got grid.shape : {grid.shape} and rot_mat.shape = {rot_mat.shape}"
+        )
+
+
+def multiply_grid_vectors(grid_1, grid_2):
+    if grid_1.shape != grid_2.shape:
+        raise ValueError(f"grid_1 and grid_2 must have same shape, got {grid_1.shape} and {grid_2.shape}")
+    if len(grid_1.shape) == 4: # 2d
+        return torch.einsum('ijkl,ijkm->ijklm', grid_1, grid_2)
+    elif len(grid_1.shape) == 5: # 3d
+        return torch.einsum('fijkl,fijkm->fijklm', grid_1, grid_2)
+    else:
+        raise ValueError(f'something went wrong, grid_1 shape is {grid_1.shape}, grid_2 shape is {grid_2.shape}')
+
+
 def addGrid2im(img, n_line, cst=0.1, method='dots'):
     """ draw a grid to the image
 

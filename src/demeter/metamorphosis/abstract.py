@@ -252,7 +252,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                 {k: torch.zeros_like(v) for k, v in momenta.items()}
                 for _ in range(t_max * self.n_step)
             ]
-            self.residuals_stock = torch.zeros_like(self.momentum_stock)
+            self.residuals_stock = torch.zeros((t_max * self.n_step,) + image.shape[1:])
 
         if self.flag_hamiltonian_integration:
             self.norm_v = 0
@@ -270,7 +270,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                     use_reentrant = True,
                 )
             else:
-                self.momenta, self.image, self.field, self.residuals = self.step(self.image, self.momenta)
+                self.momenta, self.image, field, residuals = self.step(self.image, self.momenta)
 
             self._test_nan_(self.image, self.momenta)
 
@@ -282,25 +282,16 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             #    self.momentum.min().item(),self.momentum.max().item(),
             #     self.image.min().item(),self.image.max().item())
 
-            if self.image.isnan().any() or self.momentum.isnan().any():
-                raise OverflowError(
-                    "Some nan where produced ! the integration diverged",
-                    "changing the parameters is needed. "
-                    "You can try:"
-                    "\n- increasing n_step (deformation more complex"
-                    "\n- decreasing grad_coef (convergence slower but more stable)"
-                    "\n- increasing sigma_v (catching less details)",
-                )
 
             if self.save:
                 if self._detach_image:
                     self.image_stock[i] = self.image[0].detach().to("cpu")
                 else:
                     self.image_stock[i] = self.image[0]
-                self.field_stock[i] = self.field[0].detach().to("cpu")
+                self.field_stock[i] = field[0].detach().to("cpu")
                 for k, v in self.momenta.items():
                     self.momentum_stock[i][k] = v.detach().to("cpu")
-                self.residuals_stock[i] = self.residuals[0].detach().to("cpu")
+                self.residuals_stock[i] = residuals[0].detach().to("cpu")
 
             if verbose:
                 update_progress(i / (t_max * self.n_step))

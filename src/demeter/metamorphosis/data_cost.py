@@ -402,3 +402,54 @@ class Longitudinal_DataCost(DataCost):
                 if key == "time":
                     continue
                 td[key] = td[key].to(device)
+
+
+
+class Rotation_Ssd_Cost(DataCost):
+
+    def __init__(self, target, alpha, **kwargs):
+
+        super(Rotation_Ssd_Cost, self).__init__(target)
+        self.ssd = cf.SumSquaredDifference(target)
+        self.alpha = alpha
+
+    def set_optimizer(self, optimizer):
+        """
+        DataCost object are meant to be used along a
+        method inherited from `Optimize_geodesicShooting`.
+        This method is used to set the optimizer object and is usually
+        used at the optimizer initialisation.
+        """
+        self.optimizer = optimizer
+        # try:
+        #     self.optimizer.mp.rot_mat
+        # except AttributeError:
+        #     raise AttributeError(f"The optimizer must have Rotation implemented, optimizer is {optimizer.__class__.__name__}")
+        if self.target.shape != self.optimizer.source.shape and not self.target is None:
+            raise ValueError(
+                "Target and source shape are different."
+                f"Got source.shape = {self.optimizer.source.shape}"
+                f"and target.shape = {self.target.shape}."
+                f"Have you checked your DataCost initialisation ?"
+            )
+
+    def old_call(self, at_step =  None):
+                # if at_step == -1:
+        ssd = self.ssd(self.optimizer.mp.image)
+        rot_def =   tb.apply_rot_mat(self.optimizer.mp.id_grid,  self.optimizer.mp.rot_mat)
+        rotated_image =  tb.imgDeform(self.optimizer.source,rot_def,dx_convention='2square')
+
+        ssd_rot = self.ssd(rotated_image)
+
+        return self.alpha * ssd_rot + (1-self.alpha) * ssd
+
+    def __call__(self,at_step=None):
+        # if at_step == -1:
+        rot_def =   tb.apply_rot_mat(self.optimizer.mp.id_grid,  self.optimizer.mp.rot_mat)
+        rotated_image =  tb.imgDeform(self.optimizer.mp.image,rot_def,dx_convention='2square')
+        rotated_source = tb.imgDeform(self.optimizer.source,rot_def,dx_convention='2square')
+
+        ssd = self.ssd(rotated_image)
+        ssd_rot = self.ssd(rotated_source)
+
+        return self.alpha * ssd_rot + (1-self.alpha) * ssd

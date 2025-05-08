@@ -85,59 +85,12 @@ kernelOperator = rk.VolNormalizedGaussianRKHS(
 
 print(kernelOperator)
 
-class Rotation_Ssd_Cost(mt.DataCost):
 
-    def __init__(self, target, alpha, **kwargs):
-
-        super(Rotation_Ssd_Cost, self).__init__(target)
-        self.ssd = cf.SumSquaredDifference(target)
-        self.alpha = alpha
-
-    def set_optimizer(self, optimizer):
-        """
-        DataCost object are meant to be used along a
-        method inherited from `Optimize_geodesicShooting`.
-        This method is used to set the optimizer object and is usually
-        used at the optimizer initialisation.
-        """
-        self.optimizer = optimizer
-        # try:
-        #     self.optimizer.mp.rot_mat
-        # except AttributeError:
-        #     raise AttributeError(f"The optimizer must have Rotation implemented, optimizer is {optimizer.__class__.__name__}")
-        if self.target.shape != self.optimizer.source.shape and not self.target is None:
-            raise ValueError(
-                "Target and source shape are different."
-                f"Got source.shape = {self.optimizer.source.shape}"
-                f"and target.shape = {self.target.shape}."
-                f"Have you checked your DataCost initialisation ?"
-            )
-
-    def old_call(self, at_step =  None):
-                # if at_step == -1:
-        ssd = self.ssd(self.optimizer.mp.image)
-        rot_def =   mtrt.apply_rot_mat(self.optimizer.mp.id_grid,  self.optimizer.mp.rot_mat)
-        rotated_image =  tb.imgDeform(self.optimizer.source,rot_def,dx_convention='2square')
-
-        ssd_rot = self.ssd(rotated_image)
-
-        return self.alpha * ssd_rot + (1-self.alpha) * ssd
-
-    def __call__(self,at_step=None):
-        # if at_step == -1:
-        rot_def =   mtrt.apply_rot_mat(self.optimizer.mp.id_grid,  self.optimizer.mp.rot_mat)
-        rotated_image =  tb.imgDeform(self.optimizer.mp.image,rot_def,dx_convention='2square')
-        rotated_source = tb.imgDeform(self.optimizer.source,rot_def,dx_convention='2square')
-
-        ssd = self.ssd(rotated_image)
-        ssd_rot = self.ssd(rotated_source)
-
-        return self.alpha * ssd_rot + (1-self.alpha) * ssd
 
 
 # datacost = mt.Ssd_normalized(newimg_r)
 # datacost =  None
-datacost = Rotation_Ssd_Cost(newimg_r.to('cuda:0'), alpha=0)
+datacost = mt.Rotation_Ssd_Cost(newimg_r.to('cuda:0'), alpha=0)
 
 torch.autograd.set_detect_anomaly(True)
 # Metamorphosis params
@@ -175,7 +128,7 @@ mp = mtrt.RotatingMetamorphosis_integrator(
     kernelOperator=kernelOperator,
     dx_convention=dx_convention
 )
-# mp.forward(img,momenta, save=False, plot=0)
+# mp.forward(img,momenta, save=True, plot=0)
 # p = mp.image.sum().backward()
 # ic(p.grad)
 
@@ -183,9 +136,9 @@ mp = mtrt.RotatingMetamorphosis_integrator(
 # ax[0].imshow(mp.image[0,0].detach().cpu())
 # plt.show()
 
-img =  img.to('cuda:0')
-newimg_r = newimg_r.to('cuda:0')
-
+# img =  img.to('cuda:0')
+# newimg_r = newimg_r.to('cuda:0')
+#
 mr = mtrt.RotatingMetamorphosis_Optimizer(
     source= img,
     target= newimg_r,
@@ -195,7 +148,7 @@ mr = mtrt.RotatingMetamorphosis_Optimizer(
     hamiltonian_integration=False
     # optimizer_method="adadelta",
 )
-mr.forward(momenta, n_iter=15, grad_coef=1)
+mr.forward(momenta, n_iter=10, grad_coef=1)
 #%%
 mr.to_device('cpu')
 mr.plot_cost()
