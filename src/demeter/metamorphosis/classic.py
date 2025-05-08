@@ -21,15 +21,14 @@ by L^{-1} = K_\sigma$  that we call the kernel operator and $\|z_0\|^2_{L_2}$ th
 
 """
 
-
-
 import torch
 from math import prod, sqrt
 
-from .abstract import Geodesic_integrator,Optimize_geodesicShooting
+from .abstract import Geodesic_integrator, Optimize_geodesicShooting
 
 from demeter.constants import *
 from ..utils import torchbox as tb
+
 
 class Metamorphosis_integrator(Geodesic_integrator):
     r""" Class integrating over a geodesic shooting. The user can choose the method among
@@ -42,7 +41,8 @@ class Metamorphosis_integrator(Geodesic_integrator):
     :param n_step: number of time step in the segment [0,1]
          over the geodesic integration
     """
-    def __init__(self,method,
+
+    def __init__(self, method,
                  rho=1.,
                  # sigma_v= (1,1,1),
                  # multiScale_average=False,
@@ -72,7 +72,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
         elif method == 'sharp':
             sharp = True
             self.step = self._step_sharp_semiLagrangian
-        elif method== 'tkt':
+        elif method == 'tkt':
             pass
         else:
             raise ValueError("You have to specify the method used : 'Eulerian','advection_semiLagrangian'"
@@ -82,37 +82,45 @@ class Metamorphosis_integrator(Geodesic_integrator):
     def _step_fullEulerian(self):
         self._update_field_()
         self.field *= sqrt(self.rho)
-        ic(self.rho,self.field.min().item(), self.field.max().item())
+        ic(self.rho, self.field.min().item(), self.field.max().item())
         self._update_image_Eulerian_()
         # self._update_residuals_Eulerian_()
         self._update_momentum_Eulerian_()
 
-        return (self.image,self.field,self.momentum)
+        return (self.image, self.field, self.momentum)
 
-    def _step_advection_semiLagrangian(self):
+    def _step_advection_semiLagrangian(self, ):
         self._update_field_()
         # Lagrangian scheme on images
-        deformation = self.id_grid - self.rho * self.field/self.n_step
+        deformation = self.id_grid - self.rho * self.field / self.n_step
         self._update_image_semiLagrangian_(deformation)
         self._update_momentum_Eulerian_()
 
-        return (self.image,self.rho * self.field,(1 - self.rho) * self.momentum)
+        return (self.image, self.rho * self.field, (1 - self.rho) * self.momentum)
 
-    def _step_full_semiLagrangian(self):
-        self._update_field_()
-        # Lagrangian scheme on images and residuals
-        deformation = self.id_grid - self.rho * self.field/self.n_step
-        self._update_image_semiLagrangian_(deformation)
+    def _step_full_semiLagrangian(self, image, momentum):
 
-        self.momentum = self._compute_div_momentum_semiLagrangian_(
-            deformation,
-            self.momentum,
-            sqrt(self.rho),
-            sqrt(self.rho) * self.field
+        field = self._update_field_(
+            momentum, image,
         )
-        # self.momentum *= sqrt(self.rho)
 
-        return (self.image,self.rho * self.field,(1 - self.rho) * self.momentum)
+        # Lagrangian scheme on images and residuals
+        deformation = self.id_grid - self.rho * field / self.n_step
+        image = self._update_image_semiLagrangian_(
+            momentum, image, deformation
+        )
+
+        momentum = self._compute_div_momentum_semiLagrangian_(
+            deformation,
+            momentum,
+            sqrt(self.rho),
+            sqrt(self.rho) * field,
+        )
+
+        return (momentum,
+                image,
+                self.rho * field.detach(),
+                (1 - self.rho) * momentum.detach())
 
     def _step_sharp_semiLagrangian(self):
         # device = self.image.device
@@ -127,36 +135,36 @@ class Metamorphosis_integrator(Geodesic_integrator):
 
         # # DEBUG ============================
         if self.debug:
-            fig,ax = plt.subplots(2,self._i+1)
+            fig, ax = plt.subplots(2, self._i + 1)
             print(ax.shape)
-            print('phi :',len(self._phis[self._i]))
+            print('phi :', len(self._phis[self._i]))
 
             for k_y, phi in enumerate(self._phis[self._i]):
-                ax_p = ax[0,k_y] if self._i != 0 else ax[0]
-                tb.gridDef_plot_2d(phi.detach(),ax=ax_p,step=5)
+                ax_p = ax[0, k_y] if self._i != 0 else ax[0]
+                tb.gridDef_plot_2d(phi.detach(), ax=ax_p, step=5)
                 ax_p.set_title(f'phi [{self._i}][{k_y}]')
 
-                ax_im = ax[1,k_y] if self._i != 0 else ax[1]
-                ax_im.imshow(tb.imgDeform(self.source.detach(),phi.detach(),
-                                          dx_convention=self.dx_convention)[0,0]
-                             ,**DLT_KW_IMAGE)
-            if self._i !=0:
-                fig,ax = plt.subplots(1,3,figsize =(15,5))
-                aa = ax[0].imshow(self.momentum.detach()[0,0], **DLT_KW_RESIDUALS)
-                fig.colorbar(aa,ax=ax[0],fraction=0.046, pad=0.04)
+                ax_im = ax[1, k_y] if self._i != 0 else ax[1]
+                ax_im.imshow(tb.imgDeform(self.source.detach(), phi.detach(),
+                                          dx_convention=self.dx_convention)[0, 0]
+                             , **DLT_KW_IMAGE)
+            if self._i != 0:
+                fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+                aa = ax[0].imshow(self.momentum.detach()[0, 0], **DLT_KW_RESIDUALS)
+                fig.colorbar(aa, ax=ax[0], fraction=0.046, pad=0.04)
 
                 # self._update_residuals_semiLagrangian_(phi_n_n)
-                ab = ax[1].imshow(resi_cumul.detach()[0,0],**DLT_KW_RESIDUALS)
+                ab = ax[1].imshow(resi_cumul.detach()[0, 0], **DLT_KW_RESIDUALS)
                 ax[1].set_title("new residual")
-                fig.colorbar(ab,ax=ax[1],fraction=0.046, pad=0.04)
+                fig.colorbar(ab, ax=ax[1], fraction=0.046, pad=0.04)
 
-                ax[2].imshow(self.image.detach()[0,0],**DLT_KW_IMAGE)
+                ax[2].imshow(self.image.detach()[0, 0], **DLT_KW_IMAGE)
 
                 #
             plt.show()
         # aaa = input('Appuyez sur entree')
         # # End DEBUG ===================================
-        self._update_image_semiLagrangian_(self._phis[self._i][0],resi_cumul,
+        self._update_image_semiLagrangian_(self._phis[self._i][0], resi_cumul,
                                            sharp=True)
         # self.image = tb.imgDeform(self.source.to(self.image.device),
         #                           self._phis[self._i][0],
@@ -168,10 +176,11 @@ class Metamorphosis_integrator(Geodesic_integrator):
 
     def step(self):
         raise ValueError("You have to specify the method used : 'Eulerian','advection_semiLagrangian'"
-                             " or 'semiLagrangian'")
+                         " or 'semiLagrangian'")
 
     def _get_rho_(self):
         return float(self.rho)
+
 
 class Metamorphosis_Shooting(Optimize_geodesicShooting):
     r"""
@@ -207,10 +216,9 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
          integration, by default False
     """
 
-    def __init__(self,source,target,geodesic,**kwargs):
+    def __init__(self, source, target, geodesic, **kwargs):
         # super().__init__(source,target,geodesic,cost_cst,data_term,optimizer_method,hamiltonian_integration,**kwargs)
-        super().__init__(source,target,geodesic,**kwargs)
-
+        super().__init__(source, target, geodesic, **kwargs)
 
     # def __repr__(self) -> str:
     #     return self.__class__.__name__ +\
@@ -226,15 +234,14 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
         return float(self.mp.rho)
 
     def get_all_arguments(self):
-        params_all  = super().get_all_arguments()
+        params_all = super().get_all_arguments()
         params_spe = {
-            'rho':self._get_rho_(),
-            'method':self.mp.method,
+            'rho': self._get_rho_(),
+            'method': self.mp.method,
         }
-        return {**params_all,**params_spe}
+        return {**params_all, **params_spe}
 
-
-    def cost(self, momentum_ini : torch.Tensor) -> torch.Tensor:
+    def cost(self, momentum_ini: torch.Tensor) -> torch.Tensor:
         r"""
         cost computation
 
@@ -242,7 +249,7 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
         :return: :math:`H(z_0)` a single valued tensor
         """
         lamb = self.cost_cst
-        self.mp.forward(self.source,momentum_ini,
+        self.mp.forward(self.source, momentum_ini,
                         save=False,
                         plot=0,
                         hamiltonian_integration=self.flag_hamiltonian_integration,
@@ -251,8 +258,6 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
         # Compute the data_term. Default is the Ssd
         self.data_loss = self.data_term()
 
-
-
         # norm_2 on z
         if self.flag_hamiltonian_integration:
             self.norm_v_2 = self.mp.norm_v
@@ -260,12 +265,12 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
             # self.total_cost = self.data_loss + lamb * (self.norm_v_2 + self.norm_l2_on_z)
         else:
             # Norm V
-            self.norm_v_2 = .5 * self._compute_V_norm_(momentum_ini,self.source)
+            self.norm_v_2 = .5 * self._compute_V_norm_(momentum_ini, self.source)
 
             # # Norm on the residuals only
-            self.norm_l2_on_z = .5 * (momentum_ini**2).sum()/prod(self.source.shape[2:])
+            self.norm_l2_on_z = .5 * (momentum_ini ** 2).sum() / prod(self.source.shape[2:])
 
         self.total_cost = self.data_loss + \
-                              lamb * (self.norm_v_2 + self.norm_l2_on_z)
+                          lamb * (self.norm_v_2 + self.norm_l2_on_z)
         # print('ssd :',self.ssd,' norm_v :',self.norm_v_2)
         return self.total_cost

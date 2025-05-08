@@ -1,3 +1,35 @@
+r"""
+The implementation of Metamorphoses in **Demeter** is based on the minimization of a Hamiltonian:
+$$H(q,p,v,z) =  (p|\dot q) - R(v,z)$$
+
+where $q : (\Omega, [0,1]) \mapsto \mathcal M$ is the temporal image valued in $\mathcal M$, $R$ is a regularization function, $v$ is a vector field, and $z$ is a control on the photometric part.
+
+In the case of LDDMM and considering $\mathcal M = \mathbb R$, the Hamiltonian is:
+$$H(q,p,v,z) =  (p|\dot q) - \frac 12\|v\|_V^2 - \frac 12\|z\|_Z^2$$
+
+An optimal trajectory or geodesic under the conditions given by $H$ is:
+
+$$\left\{\begin{array}{rl} \dot q_t &= - \nabla q_t \cdot v_t + z_t\\ \dot z_t &= - \mathrm{div}(z_t  v_t) \\
+p_t &= z_t\\
+v_t &= -K_V\left( z_t\nabla q_t \right)  \end{array}\right.$$
+
+These equations are written in the continuous case. In this document, all discretization choices made during the implementation are detailed.
+
+To solve the registration problem, a geodesic shooting strategy is used. For this, a relaxed version of $H$ is minimized:
+$$E(p_0) = D_T(I_1) + \frac{\lambda}{2} \left( \|v_0\|_V^2 +\|z_0\|_Z^2  \right)$$
+
+Where $D_T$ is a data attachment term and $T$ is a target image, $I_1$ is the image at the end of the geodesic integration, and $p_0$ is the initial momentum. Note that in the case of Metamorphoses valued in images, $p = z$.
+
+You may have noticed that in the above equation $E(p_{0})$ depends only on the initial momentum. Indeed, thanks to a conservation property of norms during the calculation of optimal trajectories in a Hamiltonian which states: Let $v$ and $z$ follow a geodesic given by $H$, then
+$$\forall t \in [0,1], \|v_{0}\|^2_{V} = \|v_{t}\|^2_{V}; \|v_{0}\|^2_{2} = \|z_{t}\|^2_{2}. $$
+
+This property is used to save computation time. In practice, due to numerical scheme choices, norm conservation may not be achieved. In this case, it is possible to optimize over the set of norms and $E$ becomes:
+$$E(p_0) = D_T(I_1) + \frac \lambda2 \int_{0}^1 \left( \|v_t\|_V^2 +\|z_t\|_Z^2  \right) dt.$$
+
+The $I_{t},v_t,z_{t}$ are still deduced from $p_0$. It is possible to switch between the two in the code using the `hamiltonian_integration` option in the children of `Optimize_geodesicShooting`.
+"""
+
+
 import torch
 import matplotlib.pyplot as plt
 import warnings
@@ -9,17 +41,23 @@ from icecream import ic
 from datetime import datetime
 from abc import ABC, abstractmethod
 
-from demeter.utils.optim import GradientDescent
+from ..utils.optim import GradientDescent
 from demeter.constants import *
-from demeter.utils import torchbox as tb
-from demeter.utils import vector_field_to_flow as vff
-from demeter.utils.toolbox import update_progress, format_time, get_size, fig_to_image, save_gif_with_plt
-from demeter.utils.decorators import time_it
-from demeter.utils import cost_functions as cf
-from demeter.utils import fill_saves_overview as fill_saves_overview
+from ..utils import torchbox as tb
+from ..utils import vector_field_to_flow as vff
+from ..utils.toolbox import (
+    update_progress,
+    fig_to_image,
+    save_gif_with_plt,
+)
+from ..utils.decorators import time_it
+from ..utils import cost_functions as cf
+from ..utils import fill_saves_overview as fill_saves_overview
 
 from ..metamorphosis import data_cost as dt
 
+# TO DRAW THE BACKWARD GRAPH
+# from torchviz import make_dot
 
 # =========================================================================
 #
@@ -73,39 +111,29 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         The number of steps for the geodesic integration.
     dx_convention : str, optional
         The spatial differentiation convention, by default "pixel".
-
+    save_gpu_memory : bool, optional
+        If True, we use torch.checkpoints to use less gpu memory. We save memory
+        by avoiding storing the gradient graph and recomputing it at each iteration.
+        Setting to True, make the code slower but allows to parse bigger images.
 
     """
 
     @abstractmethod
-    def __init__(self, kernelOperator, n_step, dx_convention="pixel", **kwargs):
+    def __init__(self,
+                 kernelOperator,
+                 n_step,
+                 dx_convention="pixel",
+                 save_gpu_memory = False,
+                 **kwargs):
         super().__init__()
         self._force_save = False
         self._detach_image = True
         self.dx_convention = dx_convention
+        self.save_gpu_memory = save_gpu_memory
 
         self.kernelOperator = kernelOperator
         self.n_step = n_step
 
-        # Get sigma from the kernelOperator
-        # self.sigma_v = self.kernelOperator.sigma_v
-
-        # if sigma_v is None:
-        #     raise ValueError("Please specify a value for sigma_v. Got sigma_v = None.")
-        # elif isinstance(sigma_v,tuple):
-        #     self.sigma_v = sigma_v# is used if the optimization is later saved
-        #     self.kernelOperator = rk.VolNormalizedGaussianRKHS(sigma_v,
-        #                                                        border_type='constant')
-        # elif isinstance(sigma_v,list):
-        #     self.sigma_v = sigma_v
-        #     if multiScale_average:
-        #         self.kernelOperator = rk.Multi_scale_GaussianRKHS_notAverage(sigma_v)
-        #     else:
-        #         self.kernelOperator = rk.Multi_scale_GaussianRKHS(sigma_v)
-        # else:
-        #     ValueError("Something went wrong with sigma_v")
-        # self.border_effect = border_effect
-        # self._init_sharp_()
 
     def _init_sharp_(self, sharp):
         # print(f'sharp = {sharp}')
@@ -126,7 +154,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self._resi_deform = []
 
     @abstractmethod
-    def step(self):
+    def step(self, image, momentum):
         pass
 
     def check_nan(self, tensor):
@@ -170,7 +198,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         save : bool, optional
             Option to save the integration intermediary steps, by default True
             it saves the image, field and momentum at each step in the attributes
-            `image_stock`, `field_stock` and `momentum_stock`.
+            `image_stock`, `field_stock`, `residuals_stock` and `momentum_stock`.
         plot : int, optional
             Positive int lower than `self.n_step` to plot the indicated number of
             intermediary steps, by default 0
@@ -210,42 +238,76 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         assert self.id_grid != None
 
         # field initialization to a regular grid
-        self.field = self.id_grid.clone().to(device)
+        field = self.id_grid.clone().to(device)
 
         if plot > 0:
             self.save = True
 
         if self.save:
-            self.image_stock = torch.zeros((t_max * self.n_step+1,) + image.shape[1:])
-            self.field_stock = torch.zeros((t_max * self.n_step+1,) + self.field.shape[1:])
-            # self.momentum_stock = torch.zeros((t_max * self.n_step+1,) + momenta.shape[1:])
+            self.image_stock = torch.zeros((t_max * self.n_step,) + image.shape[1:])
+            self.field_stock = torch.zeros(
+                (t_max * self.n_step,) + field.shape[1:]
+            )
             self.momentum_stock = [
                 {k: torch.zeros_like(v) for k, v in momenta.items()}
-                for _ in range(t_max * self.n_step+1)
+                for _ in range(t_max * self.n_step)
             ]
+            self.residuals_stock = torch.zeros_like(self.momentum_stock)
 
         if self.flag_hamiltonian_integration:
             self.norm_v = 0
             self.norm_z = 0
 
-        for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step+1)):
+        for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step)):
             self._i = i
 
-            _, field_to_stock, residuals_dt = self.step()
+            # print(self.step.__name__)
+            if self.save_gpu_memory:
+                self.momenta, self.image , self.field, self.residuals = torch.utils.checkpoint.checkpoint(
+                    self.step,
+                    self.image,
+                    self.momenta,
+                    use_reentrant = True,
+                )
+            else:
+                self.momenta, self.image, self.field, self.residuals = self.step(self.image, self.momenta)
 
             self._test_nan_(self.image, self.momenta)
 
+            if self.flag_hamiltonian_integration:
+                self.norm_v += self.norm_v_i / self.n_step
+                self.norm_z += self.norm_z_i / self.n_step
+                # self.ham_integration += self.ham_value / self.n_step
+            # ic(self._i,self.field.min().item(),self.field.max().item(),
+            #    self.momentum.min().item(),self.momentum.max().item(),
+            #     self.image.min().item(),self.image.max().item())
+
+            if self.image.isnan().any() or self.momentum.isnan().any():
+                raise OverflowError(
+                    "Some nan where produced ! the integration diverged",
+                    "changing the parameters is needed. "
+                    "You can try:"
+                    "\n- increasing n_step (deformation more complex"
+                    "\n- decreasing grad_coef (convergence slower but more stable)"
+                    "\n- increasing sigma_v (catching less details)",
+                )
+
             if self.save:
                 if self._detach_image:
-                    self.image_stock[i] = self.image[0].detach().to('cpu')
+                    self.image_stock[i] = self.image[0].detach().to("cpu")
                 else:
                     self.image_stock[i] = self.image[0]
-                self.field_stock[i] = field_to_stock[0].detach().to('cpu')
+                self.field_stock[i] = self.field[0].detach().to("cpu")
                 for k, v in self.momenta.items():
-                    self.momentum_stock[i][k] = v.detach().to('cpu')
+                    self.momentum_stock[i][k] = v.detach().to("cpu")
+                self.residuals_stock[i] = self.residuals[0].detach().to("cpu")
 
             if verbose:
                 update_progress(i / (t_max * self.n_step))
+                if self.flag_hamilt_integration:
+                    print('ham :', self.ham_value.detach().cpu().item(),
+                      self.norm_v.detach().cpu().item(),
+                      self.norm_z.detach().cpu().item())
 
         # try:
         #     _d_ = device if self._force_save else 'cpu'
@@ -328,11 +390,14 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         return rho / (1 - rho)
 
     # Done
-    def _update_field_(self, momentum):
-        grad_image = tb.spatialGradient(self.image, dx_convention=self.dx_convention)
-        self.field,self.norm_v_i = self._compute_vectorField_(momentum, grad_image)
+    def _update_field_(self, momentum, image):
+        grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
+        # ic(grad_image.min().item(), grad_image.max().item(),self.dx_convention)
+        field,self.norm_v_i = self._compute_vectorField_(momentum, grad_image)
         # self.field *= self._field_cst_mult()
         # self.field *= sqrt(self.rho)
+
+        return field
 
     # Done
     def _update_momentum_Eulerian_(self, momentum):
@@ -345,23 +410,27 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     # Done
     def _update_momentum_semiLagrangian_(self, deformation):
         warnings.warn("ANTON ! You should not use this function but "
-                      "_compute_div_momentum_semiLagrangian_() instead !")
-        div_v_times_z = (self.momenta
-                         * tb.Field_divergence(dx_convention=self.dx_convention)(self.field)[0, 0])
+                      "_compute_div_momentum_semiLagrangian_() instead !"
+        )
+        div_v_times_z = (
+                self.momenta
+                * tb.Field_divergence(dx_convention=self.dx_convention)(self.field)[0, 0]
+        )
         self.momenta = (
-                tb.imgDeform(self.momenta, # TODO: check si c'est bien ça ...
-                             deformation,
-                             dx_convention=self.dx_convention,
-                             clamp=False)
+                tb.imgDeform(
+                    self.momenta, # TODO: check si c'est bien ça ...
+                    deformation,
+                    dx_convention=self.dx_convention,
+                    clamp=False
+                )
                 - div_v_times_z / self.n_step
         )
 
-    # TODO : Ajouter field dans rotate
     def _compute_div_momentum_semiLagrangian_(self,
                                               deformation,
                                               momentum,
                                               cst,
-                                              field = None
+                                              field
                                               ):
         r"""
         Compute the divergence of the momentum in the semiLagrangian scheme
@@ -386,8 +455,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         tensor array of shape [1,1,H,W] or [1,1,D,H,W]
         """
 
-        if field is None:
-            field = self.field
         div_v_times_p = cst * (
             momentum
             * tb.Field_divergence(dx_convention=self.dx_convention)(field)[0, 0]
@@ -428,21 +495,23 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             self.image, self.field, 1 / self.n_step, 1
         )
         # z = sqrt(1 - rho) * p and I = v gradI + sqrt(1-rho) * z
-        residuals = (1 - self.rho) * momentum
+        residuals = (1 - self.rho) * self.momentum
         self.image = (sqrt(self.rho) * self.image + residuals) / self.n_step
 
     # Done
-    def _update_image_semiLagrangian_(self, deformation, momentum=None, residuals=None, sharp=False):
+    def _update_image_semiLagrangian_(self, momentum, image, deformation, residuals=None, sharp=False):
         if residuals is None:
             # z = sqrt(1 - rho) * p and I = v gradI + sqrt(1-rho) * z
             residuals = (1 - self.rho) * momentum
-        image = self.source if sharp else self.image
+        self.norm_z_i = None
+        if self.flag_hamiltonian_integration:
+            self.norm_z_i = .5 * residuals.pow(2).sum()
         # if self.rho > 0:
-        print('dx_convention 2', self.dx_convention)
-        self.image = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
+        image_def = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
 
         if self._get_rho_() < 1:
-            self.image += residuals / self.n_step
+            image_def += residuals / self.n_step
+        return image_def
 
     def _update_sharp_intermediary_field_(self):
         # print('update phi ',self._i,self._phis[self._i])
@@ -459,37 +528,39 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                 #     'pixel'
                 # ).to(self.field.device)
 
-    def _update_momentum_weighted_semiLagrangian_(self, deformation, momentum):
-        f_t = self.rf.f(self._i)  # TODO: C'est bizarre que ce soit encore ici. Check si on utilise encore cette fonction
-        fz_times_div_v = f_t * momentum * tb.Field_divergence(dx_convention=self.dx_convention)(self.field)[0, 0]
-        div_fzv = -tb.imgDeform(f_t * momentum,
-                                deformation,
-                                dx_convention=self.dx_convention,
-                                clamp=False)[0, 0] \
-                  + fz_times_div_v / self.n_step
-        z_time_dtF = momentum * self.rf.dt_F(self._i)
-        new_momentum = - (div_fzv + z_time_dtF) / f_t
-        return new_momentum
+    def _update_momentum_weighted_semiLagrangian_(self, deformation):
+        sqm = torch.sqrt(self.residual_norm[self._i])
+        fz_times_div_v = (
+            sqm
+            * self.momentum
+            * tb.Field_divergence(dx_convention=self.dx_convention)(self.field)[0, 0]
+        )
+        div_fzv = (
+            -tb.imgDeform(
+                sqm * self.momentum,
+                deformation,
+                dx_convention=self.dx_convention,
+                clamp=False,
+            )[0, 0]
+            + fz_times_div_v / self.n_step
+        )
+        z_time_dtF = self.momentum * self.rf.dt_F(self._i)
+        self.momentum = -(div_fzv + z_time_dtF)
 
-    def _update_image_weighted_semiLagrangian_(self, deformation,
-                                               momentum=None,
-                                               residuals=None,
-                                               sharp=False):
-        if residuals is None: residuals = (1 - self.rho) * momentum
-        image = self.source if sharp else self.image
-        self.image = tb.imgDeform(image, deformation, dx_convention=self.dx_convention) + \
-                     (self.rf.F_div_f(self._i) * residuals) / self.n_step
+    def _update_image_weighted_semiLagrangian_(
+        self, momentum, image, deformation, residuals=None, sharp=False
+    ):
+        if residuals is None:
+            residuals = momentum
+        image = self.source if sharp else image
+        image = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
+        image += residuals / self.n_step
 
-        # (self.rf.mu * self.rf.mask[self._i] * residuals) / self.n_step
+        return image
 
-        # ga = (self.rf.mask[self._i] * self.residuals) / self.n_step
-        # plt.figure()
-        # p = plt.imshow(ga[0])
-        # plt.colorbar(p)
-        # plt.show()
 
-    def _update_field_oriented_weighted_(self, momentum):
-        grad_image = tb.spatialGradient(self.image, dx_convention=self.dx_convention)
+    def _update_field_oriented_weighted_(self, momentum, image):
+        grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
         free_field = tb.im2grid(
             (momentum * grad_image[0]) * torch.sqrt(self.residual_mask[self._i])
         )
@@ -499,9 +570,10 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             oriented_field = (self.orienting_field[self._i][None]
                                     * self.orienting_mask[self._i][..., None])
 
-        self.field = -tb.im2grid(
+        field =  -tb.im2grid(
             self.kernelOperator(tb.grid2im(free_field + oriented_field))
         )
+        return field
 
     def to_device(self, device):
         # TODO: completer ça
@@ -520,6 +592,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         :params: save : (bool) option to save the integration intermediary steps. If true, the return value will have its shape with T>1
         :return: deformation [T,H,W,2] or [T,H,W,D,3]
         """
+
         # if n_step == 0:
         #     return self.id_grid.detach().cpu() + self.field_stock[0][None].detach().cpu()/self.n_step
         # temporal_integrator = vff.FieldIntegrator(method='temporal',save=save)
@@ -532,6 +605,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             method="temporal", save=save, dx_convention=self.dx_convention
         )
         if from_t is None and to_t is None:
+            print("Je suis passé par là")
             return temporal_integrator(self.field_stock / self.n_step, forward=False)
         # if from_t is None: from_t = 0
         if to_t is None:
@@ -790,7 +864,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         :param cost_cst:
         :param optimizer_method:
         """
-        print("optimizer_method", optimizer_method)
+
         super().__init__()
         self.mp = geodesic
         self.dx_convention = self.mp.dx_convention
@@ -828,8 +902,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             self._step_optimizer_ = self._step_adadelta_
         else:
             raise ValueError(
-                "\noptimizer_method is " + optimizer_method +
-                "You have to specify the optimizer_method used among"
+                "\noptimizer_method is "
+                + optimizer_method
+                + "You have to specify the optimizer_method used among"
                 "{'grad_descent', 'LBFGS_torch','adadelta'}"
             )
         self._iter = 0  # optimisation iteration counter
@@ -864,20 +939,20 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         grad_source = tb.spatialGradient(image, dx_convention=self.dx_convention)
         field_momentum = (grad_source * momentum.unsqueeze(2)).sum(dim=1)  # / C
         field = self.mp.kernelOperator(field_momentum)
-        norm_V = (field_momentum * field).sum()
 
-        if norm_V < 0:
-            warnings.warn(f"We computed norm_V = {norm_V} < 0 ! Increasing the"
-                          f"parameter `kernel_reach` in kernelOperator might help.")
-        return norm_V
+        norm_v = (field_momentum * field).sum()
+        if norm_v < 0:
+            warnings.warn(f"norm_v is negative : {norm_v}, increasing"
+                          f" kernel_reach in kernelOperator might help")
+        return norm_v
 
     @abstractmethod
     def cost(self, **kwargs):
         pass
 
-    @abstractmethod
-    def _get_rho_(self):
-        pass
+    # @abstractmethod
+    # def _get_rho_(self):
+    #     pass
 
     @abstractmethod
     def get_all_arguments(self):
@@ -894,7 +969,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             return float(self._compute_V_norm_(self.to_analyse[0], self.source))
         else:
             dist = float(
-                self._compute_V_norm_(self.mp.momentum_stock[0][None], self.mp.source)
+                self._compute_V_norm_(self.mp.momentum_stock[0][None],
+                                      self.mp.source)
             )
             for t in range(self.mp.momentum_stock.shape[0] - 1):
                 dist += float(
@@ -1199,7 +1275,6 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         :return: (float) DICE score.
         """
 
-        # TODO : make the computation
         self.is_DICE_cmp = True
         deformator = self.mp.get_deformator() if forward else self.mp.get_deformation()
         device = source_segmentation.device
@@ -1471,13 +1546,13 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             image_list_for_gif += tmp_list
             image_kw = DLT_KW_IMAGE
         elif "residual" in object or "z" in object:
-            image_list_for_gif = [z[0].numpy() for z in self.mp.momentum_stock]
+            image_list_for_gif = [z[0].numpy() for z in self.mp.residuals_stock]
             # image_kw = DLT_KW_RESIDUALS
             image_kw = dict(
                 cmap="RdYlBu_r",
                 origin="lower",
-                vmin=self.mp.momentum_stock.min(),
-                vmax=self.mp.momentum_stock.max(),
+                vmin=self.mp.residuals_stock.min(),
+                vmax=self.mp.residuals_stock.max(),
             )
         elif "deformation" in object:
             image_list_for_gif = []
