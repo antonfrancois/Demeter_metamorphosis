@@ -22,8 +22,8 @@ from math import prod
 
 SIMPLEX = True
 if SIMPLEX:
-    size_list = np.linspace(0.1, 1, 10)
-    name_csv = "benchmark_simplex_results_memory.csv"
+    size_list = np.linspace(0.1, 0.10, 15)
+    name_csv = "benchmark_simplex_results_memory_meso.csv"
 else:
     size_list = np.linspace(100, 1000, 10, dtype=int)
     name_csv = "benchmark_results_memory.csv"
@@ -46,9 +46,11 @@ if cda.is_available():
 else:
     raise ValueError("CUDA is not available.")
 
+
 # Lire le CSV s’il existe
 if os.path.exists(csv_file):
     existing_df = pd.read_csv(csv_file)
+    print(existing_df.keys())
     existing_df['resize factor'] = existing_df['resize factor'].apply(ast.literal_eval)
 
 else:

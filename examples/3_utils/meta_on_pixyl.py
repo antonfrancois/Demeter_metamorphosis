@@ -1,5 +1,7 @@
 import __init__
 import os, math, time
+import re
+import sys, csv
 import torch
 
 import  demeter.utils.reproducing_kernels as rk
@@ -9,17 +11,18 @@ from demeter.utils.torchbox import resize_image
 import demeter.utils.image_3d_plotter as i3p
 import matplotlib.pyplot as plt
 import nibabel as nib
+
 # open simplex
 
 ORDER  = [
     "necrosis",             #1
     "wm",                   #4
     "basal",                #7
-    "gm",                   #5
     "ventricles",       #6
+    "gm",                   #5
     "gde",                      #3
-    "wmh_edema",       #2
     "thalamus",         #8
+    "wmh_edema",       #2
 ]
 
 def open_nii(path):
@@ -67,16 +70,26 @@ def probability_to_simplex(probabilities, key='prob', resize_factors = None):
 
     # simplex = np.zeros((d,) + proba[0]['data'].shape)
     proba_f = []
+    pattern = re.compile(fr"{key}_([a-z_]*).nii.gz")
     for o in ORDER:
         for p in probabilities:
-            if o in p['name'] and key in p['name']:
-                proba_f.append(p)
+            file_id = pattern.search(p["name"])
+            if file_id:
+                result = file_id.group(1)
+            else:
+                result = 'non'
+                continue
 
+            if o == result:
+                print(f"\tAdding : {p["name"]}")
+                proba_f.append(p)
+                continue
+    print("\t len(proba_f)",len(proba_f))
     # for pf in proba_f:
     #     print(pf['name'])
     if resize_factors is None:
         simplex = torch.stack([
-            torch.tensor(proba['data'].copy())
+            torch.tensor(proba['data'].copy()).clip( 0,1)
             for proba in proba_f
         ],dim=0)[None]
     else:
@@ -85,20 +98,23 @@ def probability_to_simplex(probabilities, key='prob', resize_factors = None):
                 img  = torch.tensor(proba['data'].copy())[None, None]
                 # ic(img.shape)
                 re_img = resize_image(img, resize_factors)
+                re_img = re_img.clip(0, 1)
                 # ic(re_img.shape)
                 img_list.append( re_img )
         simplex = torch.cat(
             img_list,dim=1
         )
 
-    sum_simplex = simplex.sum(dim=1,keepdim=True)
+    sum_simplex = simplex.sum(dim=1,keepdim=True).clip(0,1)
     # complete the simplex with a background class
     simplex = torch.cat([simplex, 1 - sum_simplex],dim=1)
     return simplex
 
 def path_to_simplex(path, key='prob', resize_factors = None):
     probabilities = open_probabilities(path, key)
-    return probability_to_simplex(probabilities, key, resize_factors)
+
+    simplex = probability_to_simplex(probabilities, key, resize_factors)
+    return simplex
 
 def plot_simplex(image, slc):
     image_rgb =  i3p.SimplexToHSV(image,is_last_background=True).to_rgb()
@@ -134,7 +150,7 @@ def convert_size(size_bytes):
 
 def plot_mr(mr):
     slc = tuple( [int(s * r) for s, r in zip(slice, resize_factor)])
-    rho = mr._get_rho_()
+    rho = mr.mp.rho
     name = f"{patient}_{source_fol}_to_{target_fol}_meta_rho{rho}"
     if 'turtlefox' in ROOT_DIRECTORY:
         mr.plot_cost()
@@ -187,17 +203,17 @@ def perform_simplex_ref(resize_factor, save_gpu):
         resize_factors=resize_factor,
         key = 'LB_prob'
     )
-    print("source : ", source.shape)
+    print("source : ", source.shape, source.min().item(), source.max().item())
+    print("target; ", target.shape, target.min().item(), target.max().item())
 
     # if 'turtlefox' in ROOT_DIRECTORY:
     #     plot_simplex(source, slc)
 
 
-    #%%
 
-    # subdiv = 15
+    # subdiv = 10
     # sigma = rk.get_sigma_from_img_ratio(source.shape,subdiv = subdiv)
-    # kernelOperator = rk.GaussianRKHS(sigma)
+    # kernelOperator = rk.GaussianRKHS(sigma, kernel_reach=6, normalized=True)
 
     # sigma = (.01,.01,.1)
     # dx = tuple([1./(s-1) for s in source.shape[2:]])
@@ -210,6 +226,7 @@ def perform_simplex_ref(resize_factor, save_gpu):
 
     sigma = (.1,.1,.1)
     dx = tuple([1./(s-1) for s in source.shape[2:]])
+    # dx = (1, 1, 1)
     k = 3
     kernelOperator = rk.All_Scale_Anisotropic_Normalized_Gaussian_RKHS(
             sigma=sigma,
@@ -217,9 +234,12 @@ def perform_simplex_ref(resize_factor, save_gpu):
             dx=dx,
             sigma_convention='continuous'
         )
+
+
     print(kernelOperator)
-    print(kernelOperator)
-    #%%
+    print(kernelOperator.kernel.max())
+    # rk.plot_gaussian_kernel_3d(kernelOperator.kernel, sigma=sigma)
+    # plt.show()
 
 
 
@@ -228,7 +248,9 @@ def perform_simplex_ref(resize_factor, save_gpu):
     dx_convention = "pixel"
     source = source.to(device)
     target = target.to(device)
-    rho = .5
+
+    print("source", source.min(), source.max())
+    rho = 1
     ic(rho)
 
     torch.cuda.empty_cache()
@@ -243,7 +265,7 @@ def perform_simplex_ref(resize_factor, save_gpu):
                         data_term=data_cost,
                        cost_cst=.001,
                        integration_steps=10,
-                       n_iter=25 if 'turtlefox' in ROOT_DIRECTORY else 25,
+                       n_iter=25,
                        grad_coef=10,
                       dx_convention=dx_convention,
                       save_gpu_memory=save_gpu
@@ -259,15 +281,55 @@ def perform_simplex_ref(resize_factor, save_gpu):
         print('-_'*15)
         print("\n")
     except torch.OutOfMemoryError:
+        print("OUT OF MEMORY")
         return None, None, None,  source.shape
 
     return mr, mem_usage, exec_time, source.shape
 
 
     #%%
-import sys, csv
+
+# if __name__ == "__main__":
+#
+#     device = 'cuda:0'
+#     if 'turtlefox' in ROOT_DIRECTORY:
+#         path = "/home/turtlefox/Documents/11_metamorphoses/data/pixyl/aligned"
+#     else:
+#         path = "/gpfs/workdir/francoisa/data/aligned"
+#
+#     rf = 1
+#     resize_factor = (rf, rf, 1)
+#
+#     patient, slice  = "PSL_001", (200,270,50)
+#     # patient, slice  = "PSL_007", (300,180,25)
+#     source_fol = "M21"
+#     target_fol = "M30"
+#     # source_fol = "M10"
+#     # target_fol = "M14"
+#
+#     slc = tuple( [int(s * r) for s, r in zip(slice, resize_factor)])
+#
+#     print("Building source:")
+#     source = path_to_simplex(os.path.join(path,patient,f"{patient}_{source_fol}"),
+#                                 resize_factors=resize_factor,
+#                                 key = 'LB_prob'
+#                                 )
+#     # print("Building target:")
+#     # target = path_to_simplex(
+#     #     os.path.join(path,patient,f"{patient}_{target_fol}"),
+#     #     resize_factors=resize_factor,
+#     #     key = 'LB_prob'
+#     # )
+#     print("source : ", source.shape, source.min().item(), source.max().item())
+#     # print("target; ", target.shape, target.min().item(), target.max().item())
+#
+#     if 'turtlefox' in ROOT_DIRECTORY:
+#         plot_simplex(source, slc)
+
+#%%
 
 if __name__ == "__main__":
+# if False:
     assert len(sys.argv) == 5, "Usage: python meta_on_pixyl.py resize_factor save_gpu save_plot csv_path "
     rf = float(sys.argv[1])
     save_gpu = sys.argv[2].lower() == 'true'
@@ -298,6 +360,7 @@ if __name__ == "__main__":
     else:
         path = "/gpfs/workdir/francoisa/data/aligned"
 
+    # rf = .2
     resize_factor = (rf, rf, 1)
 
     patient, slice  = "PSL_001", (200,270,50)
@@ -307,6 +370,23 @@ if __name__ == "__main__":
     # source_fol = "M10"
     # target_fol = "M14"
 
+    # slc = tuple( [int(s * r) for s, r in zip(slice, resize_factor)])
+    #
+    # source = path_to_simplex(os.path.join(path,patient,f"{patient}_{source_fol}"),
+    #                             resize_factors=resize_factor,
+    #                             key = 'LB_prob'
+    #                             )
+    # target = path_to_simplex(
+    #     os.path.join(path,patient,f"{patient}_{target_fol}"),
+    #     resize_factors=resize_factor,
+    #     key = 'LB_prob'
+    # )
+    # print("source : ", source.shape)
+    #
+    # if 'turtlefox' in ROOT_DIRECTORY:
+    #     plot_simplex(source, slc)
+
+#%%
     mr, mem, time_exec, img_shape = perform_simplex_ref(resize_factor, save_gpu)
 
     if save_plot:

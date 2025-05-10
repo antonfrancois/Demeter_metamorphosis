@@ -12,6 +12,8 @@ from demeter.utils.toolbox import update_progress
 import torch
 
 
+
+
 class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
     # TODO : Add equations in the docstring
     """
@@ -64,12 +66,12 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
 
         ## 1. Compute the vector field
         ## 1.1 Compute the gradient of the image by finite differences
-
         grad_simplex = tb.spatialGradient(image, dx_convention="pixel")
-
-        field_momentum = (grad_simplex * momentum.unsqueeze(2)).sum(dim=1)  # / C
+        field_momentum = (grad_simplex * momentum.unsqueeze(2)).sum(dim=1)# / C
         field = self.kernelOperator(field_momentum)
         field = -self.rho * tb.im2grid(field)
+
+        assert not field.isnan().any(), "Field is Nan"
 
         try:
             volDelta = prod(self.kernelOperator.dx)
@@ -85,6 +87,8 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
         residuals = (
             (1 - self.rho) * (momentum - pi_q * image) / volDelta
         )
+
+        assert not residuals.isnan().any(), "Residuals is Nan"
 
         if self.flag_hamiltonian_integration:
             self.norm_v_i = 0.5 * (field_momentum * field).sum()
@@ -104,13 +108,14 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
         # cette ligne remet l'image sur la sphere, c'est un test pour
         # voir la stabilité du shémas numérique.
         image = image / (image**2).sum(dim=1, keepdim=True).sqrt()
+        assert not image.isnan().any(), "Image is Nan"
 
         # ic(self.image.min(),self.image.max(),self.image[0,:,15,80])
 
         ## 4. Compute the momentum update
         div_v_times_p = (
             momentum
-            * tb.Field_divergence(dx_convention=self.dx_convention)(self.field)[0, 0]
+            * tb.Field_divergence(dx_convention=self.dx_convention)(field)[0, 0]
         )
         momentum = (
             tb.imgDeform(momentum, deform, dx_convention=self.dx_convention)
@@ -120,6 +125,8 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
             )
             / self.n_step
         )
+
+        assert not momentum.isnan().any(), "Momentum is Nan"
 
         # return self.image, self.field,self.momentum, self.residuals
         return (
@@ -289,6 +296,8 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
         hamiltonian_integration=False,
         **kwargs,
     ):
+        if source.min() < 0 or target.min() < 0:
+            raise ValueError(f"Provided images must be positive ! Got source.min() = {source.min()} and target.min() = {target.min()}")
         source = torch.sqrt(source)
         target = torch.sqrt(target)
         self.flag_hamiltonian_integration = hamiltonian_integration
@@ -305,7 +314,7 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
         # TODO:  use super for kernelOp, n_step ....
         return {
             "rho": self.mp.rho,
-            "sigma_v": self.mp.sigma_v,
+            "kernelOperator": self.mp.kernelOperator,
             "n_step": self.mp.n_step,
             "cost_cst": self.cost_cst,
         }

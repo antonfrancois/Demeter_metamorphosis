@@ -1029,7 +1029,7 @@ class All_Scale_Anisotropic_Normalized_Gaussian_RKHS(torch.nn.Module):
         x[x==0] = 1e-6
         return x
 
-    def     _build_kernel_2d(self,sigma, k, kernel_size = None) -> torch.Tensor:
+    def   _build_kernel_2d(self,sigma, k, kernel_size = None) -> torch.Tensor:
         def norm(x):
             # return np.abs(x).sum(axis = -1)**2
             return np.sum(x**2,axis = -1)
