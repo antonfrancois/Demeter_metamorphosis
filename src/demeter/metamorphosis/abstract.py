@@ -247,14 +247,14 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
             # print(self.step.__name__)
             if self.save_gpu_memory:
-                self.momentum, self.image , self.field, self.residuals = torch.utils.checkpoint.checkpoint(
+                self.momentum, self.image , field, residuals = torch.utils.checkpoint.checkpoint(
                     self.step,
                     self.image,
                     self.momentum,
                     use_reentrant = True,
                 )
             else:
-                self.momentum, self.image, self.field, self.residuals = self.step(self.image, self.momentum)
+                self.momentum, self.image, field, residuals = self.step(self.image, self.momentum)
 
             if self.flag_hamiltonian_integration:
                 self.norm_v += self.norm_v_i / self.n_step
@@ -281,7 +281,12 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                     self.image_stock[i] = self.image[0]
                 self.field_stock[i] = field[0].detach().to("cpu")
                 self.momentum_stock[i] = self.momentum.detach().to("cpu")
-                self.residuals_stock[i] = self.residuals[0].detach().to("cpu")
+                self.residuals_stock[i] = residuals[0].detach().to("cpu")
+
+            # save some gpu memory:
+            if device != 'cpu':
+                del field, residuals
+                torch.cuda.empty_cache()
 
             if verbose:
                 update_progress(i / (t_max * self.n_step))

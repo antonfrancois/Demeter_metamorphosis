@@ -259,6 +259,14 @@ def perform_simplex_ref(resize_factor, save_gpu):
 
     try:
         start = time.time()
+
+        # from torch.profiler import profile, record_function, ProfilerActivity
+
+        # with profile(
+        #     activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+        #     profile_memory=True
+        # ) as prof:
+        #     with record_function("simplex_metamorphosis"):
         mr = mt.simplex_metamorphosis(source, target, 0,
                         rho= rho,
                        kernelOperator=kernelOperator,
@@ -274,6 +282,7 @@ def perform_simplex_ref(resize_factor, save_gpu):
         torch.cuda.synchronize()
         exec_time = time.time() - start
         mem_usage = torch.cuda.max_memory_allocated()
+        # print(prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10))
 
         print('-_'*15)
         print("size : ",source.shape,  "save gpu", save_gpu)
@@ -289,42 +298,6 @@ def perform_simplex_ref(resize_factor, save_gpu):
 
     #%%
 
-# if __name__ == "__main__":
-#
-#     device = 'cuda:0'
-#     if 'turtlefox' in ROOT_DIRECTORY:
-#         path = "/home/turtlefox/Documents/11_metamorphoses/data/pixyl/aligned"
-#     else:
-#         path = "/gpfs/workdir/francoisa/data/aligned"
-#
-#     rf = 1
-#     resize_factor = (rf, rf, 1)
-#
-#     patient, slice  = "PSL_001", (200,270,50)
-#     # patient, slice  = "PSL_007", (300,180,25)
-#     source_fol = "M21"
-#     target_fol = "M30"
-#     # source_fol = "M10"
-#     # target_fol = "M14"
-#
-#     slc = tuple( [int(s * r) for s, r in zip(slice, resize_factor)])
-#
-#     print("Building source:")
-#     source = path_to_simplex(os.path.join(path,patient,f"{patient}_{source_fol}"),
-#                                 resize_factors=resize_factor,
-#                                 key = 'LB_prob'
-#                                 )
-#     # print("Building target:")
-#     # target = path_to_simplex(
-#     #     os.path.join(path,patient,f"{patient}_{target_fol}"),
-#     #     resize_factors=resize_factor,
-#     #     key = 'LB_prob'
-#     # )
-#     print("source : ", source.shape, source.min().item(), source.max().item())
-#     # print("target; ", target.shape, target.min().item(), target.max().item())
-#
-#     if 'turtlefox' in ROOT_DIRECTORY:
-#         plot_simplex(source, slc)
 
 #%%
 
@@ -370,21 +343,6 @@ if __name__ == "__main__":
     # source_fol = "M10"
     # target_fol = "M14"
 
-    # slc = tuple( [int(s * r) for s, r in zip(slice, resize_factor)])
-    #
-    # source = path_to_simplex(os.path.join(path,patient,f"{patient}_{source_fol}"),
-    #                             resize_factors=resize_factor,
-    #                             key = 'LB_prob'
-    #                             )
-    # target = path_to_simplex(
-    #     os.path.join(path,patient,f"{patient}_{target_fol}"),
-    #     resize_factors=resize_factor,
-    #     key = 'LB_prob'
-    # )
-    # print("source : ", source.shape)
-    #
-    # if 'turtlefox' in ROOT_DIRECTORY:
-    #     plot_simplex(source, slc)
 
 #%%
     mr, mem, time_exec, img_shape = perform_simplex_ref(resize_factor, save_gpu)
