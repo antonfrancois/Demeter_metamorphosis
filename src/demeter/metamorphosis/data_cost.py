@@ -445,7 +445,7 @@ class Rotation_Ssd_Cost(DataCost):
 
     def __call__(self,at_step=None):
         # if at_step == -1:
-        rot_def =   tb.apply_rot_mat(self.optimizer.mp.id_grid,  self.optimizer.mp.rot_mat)
+        rot_def =   tb.apply_rot_mat(self.optimizer.mp.id_grid,  self.optimizer.mp.rot_mat.T)
         rotated_image =  tb.imgDeform(self.optimizer.mp.image,rot_def,dx_convention='2square')
         rotated_source = tb.imgDeform(self.optimizer.source,rot_def,dx_convention='2square')
 

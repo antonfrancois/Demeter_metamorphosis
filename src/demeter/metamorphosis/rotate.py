@@ -262,9 +262,9 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
 
         # -----------------------------------------------
         ## 2. apply the inverse rotation to the image
-        ## $$ \tilde I = R^{-1} I = R^{T} I
-        rot_def =   tb.apply_rot_mat(self.id_grid,  self.rot_mat.T)
-        image =  tb.imgDeform(image,rot_def,dx_convention='2square')
+        ## $$ \tilde I = R^{-1} I = R^{T} I$$
+        # rot_def =   tb.apply_rot_mat(self.id_grid,  self.rot_mat.T)
+        # image =  tb.imgDeform(image,rot_def,dx_convention='2square')
 
         # -----------------------------------------------
         ## 1. Compute the vector field
@@ -313,7 +313,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
                 field = sqrt(self.rho) * field
             )
         )
-
+        ic(momentum_I.shape)
         momentum_R = momentum_R - self.d_rot.T @ momentum_R  / self.n_step
         momenta['momentum_I'] = momentum_I.clone()
         momenta['momentum_R'] = momentum_R.clone()
@@ -326,14 +326,14 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
               torch.arccos(exp_A[0,1])/torch.pi)
 
         # ------------------------------------------------
-        rot_def =   tb.apply_rot_mat(self.id_grid,  self.rot_mat)
-        field =  tb.im2grid(
-            tb.imgDeform(
-                tb.grid2im(field),
-                rot_def,
-                dx_convention='2square'
-            )
-        )
+        # rot_def =   tb.apply_rot_mat(self.id_grid,  self.rot_mat)
+        # field =  tb.im2grid(
+        #     tb.imgDeform(
+        #         tb.grid2im(field),
+        #         rot_def,
+        #         dx_convention='2square'
+        #     )
+        # )
 
         return (
             momenta,
@@ -428,7 +428,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         shape = self.source.shape[2:]
         id_grid = tb.make_regular_grid(shape, dx_convention = "2square")
         rot = self.mp.rot_mat
-        rot_grid_end = apply_rot_mat(id_grid, rot)
+        rot_grid_end = tb.apply_rot_mat(id_grid, rot)
         ax[0].imshow(self.mp.image[0,0], cmap='gray', origin="lower")
         tb.gridDef_plot_2d(rot_grid_end,
                            ax=ax[0],

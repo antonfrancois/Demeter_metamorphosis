@@ -48,7 +48,7 @@ new_img = tb.imgDeform(img,deform,dx_convention='2square')
 ## %%
 theta = -torch.pi/3
 rot = create_rot_mat(theta)
-rot_grid = mtrt.apply_rot_mat(id_grid,rot)
+rot_grid = tb.apply_rot_mat(id_grid,rot)
 newimg_r = tb.imgDeform(new_img,rot_grid,dx_convention='2square')
 
 
@@ -78,7 +78,7 @@ print("images made, starting metamorphosis")
 
 # kernelOperator = rk.GaussianRKHS(sigma=(10,10),normalized=False)
 kernelOperator = rk.VolNormalizedGaussianRKHS(
-    sigma=(5,5),
+    sigma=(10,10),
     sigma_convention='pixel',
     dx=(1,1),
 )
@@ -90,14 +90,14 @@ print(kernelOperator)
 
 # datacost = mt.Ssd_normalized(newimg_r)
 # datacost =  None
-datacost = mt.Rotation_Ssd_Cost(newimg_r.to('cuda:0'), alpha=0)
+datacost = mt.Rotation_Ssd_Cost(newimg_r.to('cuda:0'), alpha=0.5)
 
 torch.autograd.set_detect_anomaly(True)
 # Metamorphosis params
 rho = 1
 dx_convention = '2square'
 from math import pi
-r = 0
+r = 0.7
 # r = torch.tensor([r])
 momentum_I = torch.zeros(img.shape,
                          dtype=torch.float32,
@@ -152,18 +152,47 @@ mr.forward(momenta, n_iter=10, grad_coef=1)
 #%%
 mr.to_device('cpu')
 mr.plot_cost()
-plt.show()
-mr.plot_imgCmp()
-plt.show()
-# mr.mp.plot(n_figs=min(5,n_steps))
+# plt.show()
+# mr.plot_imgCmp()
+# plt.show()
+# # mr.mp.plot(n_figs=min(5,n_steps))
+#
+# # mp.forward(img,momenta, save=True, plot=0)
+#
+#
+# plt.show()
+# #%%
+# mr.plot_deform()
+# plt.show()
 
-# mp.forward(img,momenta, save=True, plot=0)
-
-
-plt.show()
 #%%
+
+rot_def =   tb.apply_rot_mat(mr.mp.id_grid,  mr.mp.rot_mat.T)
+img_rot = tb.imgDeform(mr.mp.image.to('cpu'),rot_def,dx_convention='2square')
+st = tb.imCmp(img_rot,newimg_r,method = 'compose')
+kwargs = {"origin": "lower", 'cmap': "gray"}
+
+fig,ax = plt.subplots(2,2)
+ax[0,0].imshow(img[0,0], **kwargs)
+ax[0,0].set_title("source")
+
+ax[0,1].imshow(newimg_r[0,0], **kwargs)
+ax[0,1].set_title("target")
+
+ax[1,0].imshow(mr.mp.image.to('cpu')[0,0], **kwargs)
+ax[1,0].set_title("image")
+
+ax[1,1].imshow(img_rot[0,0], **kwargs)
+
+#%%
+plt.figure()
+plt.imshow(st)
+
 mr.plot_deform()
+# plt.show()
 plt.show()
+
+
 
 #%%
 # mr.plot_rot()
@@ -172,8 +201,8 @@ fig, ax = plt.subplots(1,2)
 # shape = [s//10 for s in mr.source.shape[2:]]
 shape =  mr.source.shape[2:]
 id_grid = tb.make_regular_grid(shape, dx_convention = "2square")
-rot = mr.mp.rot_mat
-rot_grid_end = mtrt.apply_rot_mat(id_grid, rot)
+rot = mr.mp.rot_mat.T
+rot_grid_end = tb.apply_rot_mat(id_grid, rot)
 ax[0].imshow(mr.mp.image[0,0], cmap='gray', origin="lower")
 tb.gridDef_plot_2d(rot_grid_end,
                    ax=ax[0],
