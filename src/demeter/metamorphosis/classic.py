@@ -28,6 +28,7 @@ from .abstract import Geodesic_integrator, Optimize_geodesicShooting
 
 from demeter.constants import *
 from ..utils import torchbox as tb
+from ..utils.decorators import monitor_gpu, print_gpumemory
 
 
 class Metamorphosis_integrator(Geodesic_integrator):
@@ -42,6 +43,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
          over the geodesic integration
     """
 
+    @monitor_gpu
     def __init__(self, method,
                  rho=1.,
                  # sigma_v= (1,1,1),
@@ -98,6 +100,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
 
         return (self.image, self.rho * self.field, (1 - self.rho) * self.momentum)
 
+    @monitor_gpu
     def _step_full_semiLagrangian(self, image, momentum):
 
         field = self._update_field_(
@@ -213,6 +216,7 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
          integration, by default False
     """
 
+    @monitor_gpu
     def __init__(self, source, target, geodesic, **kwargs):
         # super().__init__(source,target,geodesic,cost_cst,data_term,optimizer_method,hamiltonian_integration,**kwargs)
         super().__init__(source, target, geodesic, **kwargs)
@@ -238,6 +242,7 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
         }
         return {**params_all, **params_spe}
 
+    @monitor_gpu
     def cost(self, momentum_ini: torch.Tensor) -> torch.Tensor:
         r"""
         cost computation
@@ -245,15 +250,19 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
         :param momentum_ini: Moment initial p_0
         :return: :math:`H(z_0)` a single valued tensor
         """
+        # print_gpumemory("In cost; Before forward")
+
         lamb = self.cost_cst
         self.mp.forward(self.source, momentum_ini,
                         save=False,
                         plot=0,
                         hamiltonian_integration=self.flag_hamiltonian_integration,
                         )
+#         print_gpumemory("In cost; After forward")
 
         # Compute the data_term. Default is the Ssd
         self.data_loss = self.data_term()
+#         print_gpumemory("In cost; After data_term")
 
         # norm_2 on z
         if self.flag_hamiltonian_integration:
@@ -263,9 +272,12 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
         else:
             # Norm V
             self.norm_v_2 = .5 * self._compute_V_norm_(momentum_ini, self.source)
+#             print_gpumemory("In cost; After norm_v")
+
 
             # # Norm on the residuals only
             self.norm_l2_on_z = .5 * (momentum_ini ** 2).sum() / prod(self.source.shape[2:])
+#             print_gpumemory("In cost; After norm_z")
 
         self.total_cost = self.data_loss + \
                           lamb * (self.norm_v_2 + self.norm_l2_on_z)

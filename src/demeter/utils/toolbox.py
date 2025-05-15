@@ -56,6 +56,7 @@ def update_progress(progress,message = None):
         text += f' ({message[0]} ,{message[1]:8.4f}).'
     sys.stdout.write(text)
     sys.stdout.flush()
+    print()
 
 def format_time(seconds):
     m, s = divmod(seconds, 60)

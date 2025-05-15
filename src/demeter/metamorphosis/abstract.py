@@ -50,7 +50,7 @@ from ..utils.toolbox import (
     fig_to_image,
     save_gif_with_plt,
 )
-from ..utils.decorators import time_it
+from ..utils.decorators import time_it, monitor_gpu
 from ..utils import cost_functions as cf
 from ..utils import fill_saves_overview as fill_saves_overview
 
@@ -157,6 +157,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     def step(self, image, momentum):
         pass
 
+    @monitor_gpu
     def forward(
         self,
         image,
@@ -840,6 +841,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         cost_cst,
         data_term=None,
         optimizer_method: str = "grad_descent",
+        lbfgs_max_eval: int = 20,
+        lbfgs_history_size: int = 100,
         hamiltonian_integration=False,
         **kwargs
     ):
@@ -859,6 +862,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.dx_convention = self.mp.dx_convention
         self.source = source
         self.target = target
+        self.lbfgs_max_eval = lbfgs_max_eval
+        self.lbfgs_history_size = lbfgs_history_size
 
         self.flag_hamiltonian_integration = hamiltonian_integration
         self.mp.kernelOperator.init_kernel(source)
@@ -1002,7 +1007,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
     def _initialize_LBFGS_(self, dt_step, max_iter=20):
         self.optimizer = torch.optim.LBFGS(
             [self.parameter],
-            max_eval=30,
+            max_eval=self.lbfgs_max_eval,
+            history_size=self.lbfgs_history_size,
             max_iter=max_iter,
             lr=dt_step,
             line_search_fn="strong_wolfe",
@@ -1019,6 +1025,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         self.closure = closure
 
+    @monitor_gpu
     def _step_LBFGS_(self):
         self.optimizer.step(self.closure)
 
@@ -1037,7 +1044,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             # if(self._it_count >1 and L < self._loss_stock[:self._it_count].min()):
             #     cms_tosave.data = self.cms_ini.detach().data
             L.backward()
-            ic("adadelta", L, self.parameter.grad)
+            # ic("adadelta", L, self.parameter.grad)
             # dot = make_dot(L, params=dict(x=self.parameter))
             # dot.render("torch_backward_graph", format="png")
             return L

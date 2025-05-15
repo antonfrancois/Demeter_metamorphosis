@@ -140,6 +140,8 @@ def metamorphosis(
     optimizer_method="LBFGS_torch",
     dx_convention="pixel",
     hamiltonian_integration=False,
+    lbfgs_max_eval: int = 20,
+    lbfgs_history_size: int = 100,
     save_gpu_memory = False,
 ):
     """
@@ -167,6 +169,8 @@ def metamorphosis(
         data_term=data_term,
         # optimizer_method='LBFGS_torch')
         optimizer_method=optimizer_method,
+        lbfgs_max_eval=lbfgs_max_eval,
+        lbfgs_history_size=lbfgs_history_size,
         hamiltonian_integration=hamiltonian_integration,
     )
 
