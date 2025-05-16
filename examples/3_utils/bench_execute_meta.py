@@ -128,4 +128,14 @@ if __name__ == "__main__":
 
     with open(csv_path, 'a') as f:
         writer = csv.writer(f)
-        writer.writerow([width, height, save_gpu, mem if mem else "OOM", time_exec if time_exec else "OOM"])
+        writer.writerow([
+            (1,1,width,height),
+            image_mem_size,
+            save_gpu,
+            n_iter,
+            n_step,
+            lbfgs_history_size,
+            lbfgs_max_eval,
+            mem if mem else "OOM",
+            time_exec if time_exec else "OOM"
+        ])
