@@ -25,7 +25,7 @@ def convert_size(size_bytes):
 import time
 
 @monitor_gpu
-def perform_ref_of_size(size, save_gpu, n_iter, n_step):
+def perform_ref_of_size(size, save_gpu, n_iter, n_step, lbfgs_history_size,  lbfgs_max_iter):
     # print(f"Before putting S,T on GPU : GPU memory used: {gpus[0].memoryUsed} MB")
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     print(device)
@@ -65,8 +65,8 @@ def perform_ref_of_size(size, save_gpu, n_iter, n_step):
                          dx_convention='square',
                          grad_coef=1,
                          optimizer_method="LBFGS_torch",
-                         lbfgs_history_size=20,
-                         lbfgs_max_eval=10,
+                         lbfgs_history_size= lbfgs_history_size,
+                         lbfgs_max_iter=lbfgs_max_iter,
                          )
         torch.cuda.synchronize()
         exec_time = time.time() - start
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_iter", type=int, default = 10, help="Number of iterations")
     parser.add_argument("--n_step", type=int, default = 10, help="Number of steps")
     parser.add_argument("--lbfgs_history_size", type=int, default = 100, help="L-BFGS history size")
-    parser.add_argument("--lbfgs_max_eval", type=int, default = 20, help="L-BFGS max evaluations")
+    parser.add_argument("--lbfgs_max_iter", type=int, default = 20, help="L-BFGS max evaluations")
     parser.add_argument("--csv_file", type=str, default = "trash.csv", help="Path to output CSV")
 
     args = parser.parse_args()
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     n_iter = args.n_iter
     n_step = args.n_step
     lbfgs_history_size = args.lbfgs_history_size
-    lbfgs_max_eval = args.lbfgs_max_eval
+    lbfgs_max_iter = args.lbfgs_max_iter
     csv_path = args.csv_file
 
     print(f"python bench_execute_meta.py "
@@ -116,12 +116,19 @@ if __name__ == "__main__":
             f"\n\tn_iter = {n_iter}" 
             f"\n\tn_step = {n_step}" 
             f"\n\tlbfgs_history_size = {lbfgs_history_size}" 
-            f"\n\tlbfgs_max_eval = {lbfgs_max_eval}" 
+            f"\n\tlbfgs_max_iter = {lbfgs_max_iter}" 
             f"\n\tcsv_path = {csv_path}"
           )
     # print(f"Before : GPU memory used: {gpus[0].memoryUsed} MB")
 
-    image_mem_size, mem, time_exec = perform_ref_of_size((width, height), save_gpu, n_iter, n_step)
+    image_mem_size, mem, time_exec = perform_ref_of_size(
+        (width, height),
+        save_gpu,
+        n_iter,
+        n_step,
+        lbfgs_history_size,
+        lbfgs_max_iter
+    )
 
     # print(f"After : GPU memory used: {gpus[0].memoryUsed} MB")
 
@@ -135,7 +142,7 @@ if __name__ == "__main__":
             n_iter,
             n_step,
             lbfgs_history_size,
-            lbfgs_max_eval,
+            lbfgs_max_iter,
             mem if mem else "OOM",
             time_exec if time_exec else "OOM"
         ])

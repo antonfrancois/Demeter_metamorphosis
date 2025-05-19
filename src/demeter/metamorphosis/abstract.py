@@ -841,7 +841,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         cost_cst,
         data_term=None,
         optimizer_method: str = "grad_descent",
-        lbfgs_max_eval: int = 20,
+        lbfgs_max_iter: int = 20,
         lbfgs_history_size: int = 100,
         hamiltonian_integration=False,
         **kwargs
@@ -862,7 +862,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.dx_convention = self.mp.dx_convention
         self.source = source
         self.target = target
-        self.lbfgs_max_eval = lbfgs_max_eval
+        self.lbfgs_max_iter = lbfgs_max_iter
         self.lbfgs_history_size = lbfgs_history_size
 
         self.flag_hamiltonian_integration = hamiltonian_integration
@@ -1004,12 +1004,11 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.optimizer.step(verbose=False)
 
     # LBFGS
-    def _initialize_LBFGS_(self, dt_step, max_iter=20):
+    def _initialize_LBFGS_(self, dt_step):
         self.optimizer = torch.optim.LBFGS(
             [self.parameter],
-            max_eval=self.lbfgs_max_eval,
+            max_iter=self.lbfgs_max_iter,
             history_size=self.lbfgs_history_size,
-            max_iter=max_iter,
             lr=dt_step,
             line_search_fn="strong_wolfe",
         )
@@ -1029,7 +1028,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
     def _step_LBFGS_(self):
         self.optimizer.step(self.closure)
 
-    def _initialize_adadelta_(self, dt_step, max_iter=None):
+    def _initialize_adadelta_(self, dt_step):
         self.optimizer = torch.optim.Adadelta(
             [self.parameter], lr=dt_step, rho=0.9, weight_decay=0
         )
@@ -1109,7 +1108,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         # self.data_term.to_device(z_0.device)
 
         self.parameter = z_0  # optimized variable
-        self._initialize_optimizer_(grad_coef, max_iter=n_iter)
+        self._initialize_optimizer_(grad_coef)
         self.n_iter = n_iter
 
         self.id_grid = tb.make_regular_grid(
