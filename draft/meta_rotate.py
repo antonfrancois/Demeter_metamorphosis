@@ -45,25 +45,27 @@ new_img = tb.imgDeform(img,deform,dx_convention='2square')
 # tb.gridDef_plot(deform,ax = ax,step=30,dx_convention='2square',color='orange')
 # plt.show()
 
+tau = torch.tensor([.1,.2])
 ## %%
 theta = -torch.pi/3
 rot = create_rot_mat(theta)
 rot_grid = tb.apply_rot_mat(id_grid,rot)
+rot_grid += tau
 newimg_r = tb.imgDeform(new_img,rot_grid,dx_convention='2square')
-
 
 
 #apply rot to id_grid
 
 tb.gridDef_plot(rot_grid,step=30)
 # newimg_r += torch.randn_like(newimg_r)*0.1
-fig,ax = plt.subplots(1,3)
+# fig,ax = plt.subplots(1,3)
 # ax[0].imshow(img[0,0])
 # ax[1].imshow(new_img[0,0])
 # ax[2].imshow(newimg_r[0,0])
 # plt.show()
 
 print("images made, starting metamorphosis")
+# # %%
 
 # dx = tuple([2./(s-1) for s in img.shape[2:]])
 # s=0.15
@@ -116,12 +118,14 @@ momentum_R = torch.tensor(
 #                         )
 momentum_R.requires_grad = True
 
-momentum_T = torch.zeros([2,1], dtype=torch.float32, device='cuda:0')
+momentum_T = torch.zeros([2,], dtype=torch.float32, device='cuda:0')
 momentum_T.requires_grad = True
 
 momenta = {'momentum_I':momentum_I,
            # 'r':r,
-           'momentum_R':momentum_R}
+           'momentum_R':momentum_R,
+           'momentum_T':momentum_T
+           }
 
 # momenta = {k: v.to('cuda:0') for k, v in momenta.items()}
 
@@ -156,7 +160,7 @@ mr.forward(momenta, n_iter=10, grad_coef=1)
 #%%
 mr.to_device('cpu')
 mr.plot_cost()
-# plt.show()
+plt.show()
 # mr.plot_imgCmp()
 # plt.show()
 # # mr.mp.plot(n_figs=min(5,n_steps))
@@ -172,6 +176,7 @@ mr.plot_cost()
 #%%
 
 rot_def =   tb.apply_rot_mat(mr.mp.id_grid,  mr.mp.rot_mat.T)
+if
 img_rot = tb.imgDeform(mr.mp.image.to('cpu'),rot_def,dx_convention='2square')
 st = tb.imCmp(img_rot,newimg_r,method = 'compose')
 kwargs = {"origin": "lower", 'cmap': "gray"}
@@ -187,7 +192,7 @@ ax[1,0].imshow(mr.mp.image.to('cpu')[0,0], **kwargs)
 ax[1,0].set_title("image")
 
 ax[1,1].imshow(img_rot[0,0], **kwargs)
-
+plt.show()
 #%%
 plt.figure()
 plt.imshow(st)

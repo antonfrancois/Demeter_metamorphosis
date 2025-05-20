@@ -49,6 +49,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         return p - cst
 
     def _contrainte_(self, momentum_I, source):
+        print("\n CONTRAINTE:")
         grad_source = tb.spatialGradient(source, dx_convention = self.dx_convention)
         ic(grad_source.device, self.id_grid.device)
         IgradI_x = tb.multiply_grid_vectors(tb.im2grid(grad_source[0]), self.id_grid)
@@ -66,6 +67,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
 
         #contrainte translation
 
+        print("\t gradS p^I :",(momentum_I * grad_source).sum(dim=[-1,-2])[0,0])
 
         # Orthonormaliser la liste
         c_ortho_list = [c_list[0] / (c_list[0] **2).sum().sqrt()]
@@ -96,7 +98,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
             # assert (c * momentum_I).sum() < 1e-5, f"(c_{i} * momentum_I).sum() = {(c * momentum_I).sum()}"
             print( f"(c_{i} * momentum_I).sum() = {(c * momentum_I).sum()}")
 
-
+        print()
         return momentum_I
 
     def _step_old(self):
@@ -272,7 +274,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         print("rot mat * rot mat.T",self.rot_mat @ self.rot_mat.T)
 
         # 1.b Compute the translation
-        if flag_translation:
+        if self.flag_translation:
             self.translation = momentum_T * self._i
 
         # -----------------------------------------------
