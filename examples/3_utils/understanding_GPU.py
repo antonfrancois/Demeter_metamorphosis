@@ -68,7 +68,7 @@ else:
             ])
     existing_df.to_csv(csv_file, index=False)
 
-size_list = [200]#, 282, 400]
+size_list = [200, 282, 400]
 save_gpu_list = [True, False]
 n_iter_list = [1,2,3,10]
 n_step_list = [2,3,5,7,10,12]
@@ -161,6 +161,7 @@ df["M1"] =  df["lbfgs_max_iter"]*df["n_iter"]
 df["M1 > hist"] = df["M1"] > df["lbfgs_history_size"]
 
 df["lbfgs_history_size * im_mem"] = df["lbfgs_history_size"] * df["image mem size"]
+df["M * im_mem"]= df["M"] * df["image mem size"]
 
 df_200 = df[df["img shape"] == (1,1,200,200)]
 
@@ -170,9 +171,11 @@ from sklearn.linear_model import LinearRegression
 f_sa_gpu = False
 df_gpu = df_200[
     (df_200["save gpu"] == f_sa_gpu)
-    & (df_200["M"]> 20)
+    # & (df_200["M"]> 20)
 ]
-X = df_gpu[['lbfgs_history_size * im_mem',"n_step * im_mem"]]
+X = df_gpu[['M * im_mem',"n_step * im_mem"]]
+
+# X = df_gpu[['lbfgs_history_size * im_mem',"n_step * im_mem"]]
 y = df_gpu['mem usage bytes']
 # yb = df['reserved']
 
