@@ -4,6 +4,7 @@ in the metamorphosis optimization. All data attachment terms must herit from
 the abstract class `DataCost`. The module contains the following classes:
 `Ssd`, `Ssd_normalized`, `Cfm`, `SimiliSegs`, `Mutlimodal_ssd_cfm`, `Longitudinal_DataCost`.
 """
+from mailbox import Error
 
 import torch
 from abc import ABC, abstractmethod
@@ -433,6 +434,7 @@ class Rotation_Ssd_Cost(DataCost):
                 f"Have you checked your DataCost initialisation ?"
             )
 
+
     def old_call(self, at_step =  None):
                 # if at_step == -1:
         ssd = self.ssd(self.optimizer.mp.image)
@@ -446,6 +448,9 @@ class Rotation_Ssd_Cost(DataCost):
     def __call__(self,at_step=None):
         # if at_step == -1:
         rot_def =   tb.apply_rot_mat(self.optimizer.mp.id_grid,  self.optimizer.mp.rot_mat.T)
+        if self.optimizer.flag_translation:
+            raise Error("Ca a bugger, fait une expe avant.")
+            rot_def += self.optimizer.translation
         rotated_image =  tb.imgDeform(self.optimizer.mp.image,rot_def,dx_convention='2square')
         rotated_source = tb.imgDeform(self.optimizer.source,rot_def,dx_convention='2square')
 

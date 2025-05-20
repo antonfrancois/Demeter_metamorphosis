@@ -56,12 +56,16 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         print("\t", (IgradI_x - x_IgradI).shape)
         # print("\t", (IgradI_x - x_IgradI).sum(dim=[1,2]))
 
+        # contrainte rotation
         if self._dim == 2:
             c_list = [(IgradI_x - x_IgradI)[...,0,1][None]]
         elif self._dim == 3:
             _k = [0, 0, 1]
             _l = [1, 2, 2]
             c_list = (IgradI_x - x_IgradI)[...,_k,_l].permute(4,0,1,2,3)
+
+        #contrainte translation
+
 
         # Orthonormaliser la liste
         c_ortho_list = [c_list[0] / (c_list[0] **2).sum().sqrt()]
@@ -232,6 +236,13 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         print('step',self._i)
         momentum_I = momenta['momentum_I'].clone()
         momentum_R = momenta['momentum_R'].clone()
+        # try:
+        #     flag_translation = True
+        #     momentum_T = momenta['momentum_T'].clone()
+        # except KeyError:
+        #     flag_translation = False
+        if self.flag_translation:
+            momentum_T = momenta['momentum_T'].clone()
         print('momentum_I',momentum_I.min().item(),momentum_I.max().item())
         print("momentum_I", momentum_I.shape)
         print("momentum_R",momentum_R)
@@ -243,7 +254,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
 
 
         # -----------------------------------------------
-        # 1. Compute the rotation
+        # 1.a Compute the rotation
         mom_rotated = momentum_R @ self.rot_mat.T
         mom_rotated =  (mom_rotated - mom_rotated.T) /2
         print("rot mat",self.rot_mat)
@@ -259,6 +270,10 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
 
 
         print("rot mat * rot mat.T",self.rot_mat @ self.rot_mat.T)
+
+        # 1.b Compute the translation
+        if flag_translation:
+            self.translation = momentum_T * self._i
 
         # -----------------------------------------------
         ## 2. apply the inverse rotation to the image
@@ -325,16 +340,6 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         print("arc ", torch.arcsin(exp_A[0,1])/torch.pi,
               torch.arccos(exp_A[0,1])/torch.pi)
 
-        # ------------------------------------------------
-        # rot_def =   tb.apply_rot_mat(self.id_grid,  self.rot_mat)
-        # field =  tb.im2grid(
-        #     tb.imgDeform(
-        #         tb.grid2im(field),
-        #         rot_def,
-        #         dx_convention='2square'
-        #     )
-        # )
-
         return (
             momenta,
             image,
@@ -355,6 +360,11 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         momentum_R = momenta['momentum_R'].clone()
         momenta['momentum_R'] =  (momentum_R - momentum_R.T) /2
         self.to_device(momentum_R.device)
+        try:
+            _ = momenta['momentum_T'].clone()
+            self.flag_translation = True
+        except KeyError:
+            self.flag_translation = False
 
         return super().forward(image,momenta,**kwargs)
 
