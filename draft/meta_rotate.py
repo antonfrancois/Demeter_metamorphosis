@@ -176,7 +176,6 @@ plt.show()
 #%%
 
 rot_def =   tb.apply_rot_mat(mr.mp.id_grid,  mr.mp.rot_mat.T)
-if
 img_rot = tb.imgDeform(mr.mp.image.to('cpu'),rot_def,dx_convention='2square')
 st = tb.imCmp(img_rot,newimg_r,method = 'compose')
 kwargs = {"origin": "lower", 'cmap': "gray"}

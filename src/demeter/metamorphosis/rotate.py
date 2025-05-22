@@ -66,8 +66,9 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
             c_list = (IgradI_x - x_IgradI)[...,_k,_l].permute(4,0,1,2,3)
 
         #contrainte translation
+        for i in range(grad_source.shape[2]):
+            c_list.append(grad_source[:,:,i])
 
-        print("\t gradS p^I :",(momentum_I * grad_source).sum(dim=[-1,-2])[0,0])
 
         # Orthonormaliser la liste
         c_ortho_list = [c_list[0] / (c_list[0] **2).sum().sqrt()]
@@ -83,6 +84,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
 
         # check orthonormalisation
         print("\t len ortho_list", len(c_ortho_list))
+        print("\t gradS p^I :",(momentum_I * grad_source).sum(dim=[-1,-2])[0,0])
 
 
 
