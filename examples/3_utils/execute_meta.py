@@ -11,18 +11,8 @@ import demeter.utils.reproducing_kernels as rk
 import demeter.metamorphosis as mt
 import demeter.utils.torchbox as tb
 from demeter.utils.decorators import *
+from demeter.utils.toolbox import convert_bytes_size
 
-
-
-def convert_size(size_bytes):
-    if size_bytes == 0:
-        return "0B"
-    size_name = ("B", "KB", "MB", "GB")
-    i = int(math.floor(math.log(size_bytes, 1024)))
-    p = math.pow(1024, i)
-    s = round(size_bytes / p, 2)
-    return "%s %s" % (s, size_name[i])
-import time
 
 @monitor_gpu
 def perform_ref_of_size(size, save_gpu, n_iter, n_step, lbfgs_history_size,  lbfgs_max_iter):
@@ -74,7 +64,7 @@ def perform_ref_of_size(size, save_gpu, n_iter, n_step, lbfgs_history_size,  lbf
         # print(f"In : GPU memory used: {gpus[0].memoryUsed} MB")
         print('-_'*15)
         print("size : ",size, "save gpu", save_gpu)
-        print("memory used : " ,convert_size(mem_usage))
+        print("memory used : " ,convert_bytes_size(mem_usage))
         print('-_'*15)
         print("\n")
         return size_of_S, mem_usage, exec_time

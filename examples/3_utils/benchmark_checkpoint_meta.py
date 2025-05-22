@@ -16,10 +16,13 @@ import matplotlib.pyplot as plt
 import csv
 import os, ast
 import pandas as pd
+import torch
+
 from demeter.constants import ROOT_DIRECTORY
 import torch.cuda as cda
 from math import prod
 
+from demeter.utils.toolbox import convert_bytes_size
 
 size_list = np.linspace(0.1, 0.10, 15)
 name_csv = "benchmark_simplex_results_memory_meso.csv"
@@ -37,6 +40,8 @@ if cda.is_available():
     gpu_name = cda.get_device_name(device_index)
     total_memory = cda.get_device_properties(device_index).total_memory
 
+    gpu_name = 'Nvidia HGX A100'
+    total_memory = 40 * (1024 ** 3)
     print(f"GPU Name: {gpu_name}")
     print(f"Total Memory: {total_memory / (1024 ** 3):.2f} GB")
 else:
@@ -91,6 +96,7 @@ for save_gpu in [False, True]:
         ], check = True)
 
 
+#%%
 # Lecture des résultats
 df = pd.read_csv(csv_file)
 df['img shape'] = df['img shape'].apply(ast.literal_eval)
@@ -99,7 +105,6 @@ df['img shape'] = df['img shape'].apply(ast.literal_eval)
 # df["size"] = df["width"] * df["height"]  # on suppose que width = height
 df["size"] = df["img shape"].apply(prod)
 
-#%%
 df["mem usage bytes"] = pd.to_numeric(df["mem usage bytes"], errors='coerce')
 df["exec time sec"] = pd.to_numeric(df["exec time sec"], errors='coerce')
 
@@ -109,15 +114,40 @@ fig.suptitle(f" {gpu_name}; Total Memory: {total_memory / (1024 ** 3):.2f} GB")
 
 for save_gpu in [False, True]:
     sub_df = df[df["save gpu"] == save_gpu]
-    label = 'with save_gpu' if save_gpu else 'no save_gpu'
+
+    # Ajouter calcul du coef du modèle y = ax + b
+    df_min = sub_df[sub_df["mem usage bytes"] == sub_df["mem usage bytes"].min()]
+    df_max = sub_df[sub_df["mem usage bytes"] == sub_df["mem usage bytes"].max()]
+    a = ((df_max["mem usage bytes"].item() - df_min["mem usage bytes"].item()) /
+         (df_max["size"].item() - df_min["size"].item()))
+    b = df_min["mem usage bytes"].item() - a * df_min["size"].item()
+    print(f"modèle checkpoint : {save_gpu} : "
+          f"a: ({a}, {convert_bytes_size(a)}), "
+          f"b: ({b}, {convert_bytes_size(b)})")
+
+    label = 'with checkpoint' if save_gpu else 'no checkpoint'
+    size_max = df_max["size"].max().item()
+    x = torch.linspace(0,size_max * (1 + .3), 5 )
+    ax[0].plot(x, a*x +b, '--', label=f"model checkpoint : {save_gpu}",
+               c= 'C1' if save_gpu else 'C2')
+
     ax[0].plot(sub_df["size"], sub_df["mem usage bytes"],
             label=label,
             marker='o',
+            c = 'C1' if save_gpu else 'C2'
     )
+
     ax[1].plot(sub_df["size"], sub_df["exec time sec"] /60,
                label=label,
                marker='o',
+               c = 'C1' if save_gpu else 'C2'
     )
+
+ax[0].hlines(total_memory, 0, size_max * (1 + .3),
+             label="memory_limit",
+             linestyle ='--',
+             color ='k'
+             )
 
 ax[0].set_title("Memory usage")
 ax[0].set_xlabel("Image pixel count")
