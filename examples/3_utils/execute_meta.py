@@ -24,13 +24,9 @@ def perform_ref_of_size(size, save_gpu, n_iter, n_step, lbfgs_history_size,  lbf
     torch.cuda.synchronize()
 
     bef_mem = torch.cuda.max_memory_allocated()
-    # print(f"Before S,T; Peak allocated: {torch.cuda.max_memory_allocated() / 1024**2:.2f} MB")
-    # print(f"Before S,T;Peak reserved:  {torch.cuda.max_memory_reserved() / 1024**2:.2f} MB")
     S = tb.reg_open('m0t', size=size).to(device)
     after_mem = torch.cuda.max_memory_allocated()
     T = tb.reg_open('m1c', size=size).to(device)
-    # print(f"After S,T; Peak allocated: {torch.cuda.max_memory_allocated() / 1024**2:.2f} MB")
-    # print(f"After S,T;Peak reserved:  {torch.cuda.max_memory_reserved() / 1024**2:.2f} MB")
 
     size_of_S = after_mem - bef_mem
     print(f"size of the image : {size_of_S/1024 ** 2:.2f} MB")
