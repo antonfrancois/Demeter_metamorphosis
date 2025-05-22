@@ -303,7 +303,7 @@ def perform_simplex_ref(resize_factor, save_gpu):
 
 if __name__ == "__main__":
 # if False:
-    assert len(sys.argv) == 5, "Usage: python meta_on_pixyl.py resize_factor save_gpu save_plot csv_path "
+    assert len(sys.argv) == 5, "Usage: python execute_simplex_pixyl.py resize_factor save_gpu save_plot csv_path "
     rf = float(sys.argv[1])
     save_gpu = sys.argv[2].lower() == 'true'
     save_plot = sys.argv[3].lower() == 'true'
