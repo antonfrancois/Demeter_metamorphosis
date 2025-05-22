@@ -281,7 +281,7 @@ def save_gif_with_plt(image_list,file_name,folder=None, delay = 20,duplicate=Tru
         if not os.path.exists(f'{folder}/{file_name}_{i:03d}.png'):
             raise FileNotFoundError(f'Image {folder}/{file_name}_{i:03d}.png not found')
 
-    print(f'convert -delay {delay} -loop 0 {folder}/{file_name}_\d{3}.png {folder}/{file_name}.gif')
+    print(fr'convert -delay {delay} -loop 0 {folder}/{file_name}_\d{3}.png {folder}/{file_name}.gif')
     os.system(f'convert -delay {delay} -loop 0 {folder}/{file_name}_*.png {folder}/{file_name}.gif')
     if duplicate: os.system(f'convert -duplicate 1,-1 {folder}/{file_name}.gif {folder}/{file_name}.gif')
     # clean

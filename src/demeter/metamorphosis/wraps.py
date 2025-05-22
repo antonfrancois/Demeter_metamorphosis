@@ -373,7 +373,10 @@ def simplex_metamorphosis(
     plot=False,
     safe_mode=False,
     ham=False,
-   save_gpu_memory = False
+   save_gpu_memory = False,
+    lbfgs_max_iter=10,
+    lbfgs_history_size=100,
+
 ):
 
     if type(momentum_ini) in [int, float]:
@@ -399,6 +402,8 @@ def simplex_metamorphosis(
         optimizer_method="LBFGS_torch",
         # optimizer_method='adadelta'
         hamiltonian_integration=ham,
+        lbfgs_max_iter=lbfgs_max_iter,
+        lbfgs_history_size=lbfgs_history_size,
     )
     if safe_mode:
         mr.forward_safe_mode(momentum_ini, n_iter, grad_coef, plot)
