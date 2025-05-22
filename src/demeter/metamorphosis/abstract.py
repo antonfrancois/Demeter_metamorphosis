@@ -1110,7 +1110,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                 f"The initial momentum provided might have the wrong shape, got :{z_0.shape}"
             )
 
-        self.cost(self.parameter)
+        self.cost(self.parameter.detach())
 
         loss_stock = self._cost_saving_(n_iter, None)  # initialisation
         loss_stock = self._cost_saving_(0, loss_stock)
