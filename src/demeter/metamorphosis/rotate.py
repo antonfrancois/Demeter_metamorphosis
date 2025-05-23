@@ -58,12 +58,14 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         # print("\t", (IgradI_x - x_IgradI).sum(dim=[1,2]))
 
         # contrainte rotation
+        print("dim : ",self._dim)
         if self._dim == 2:
             c_list = [(IgradI_x - x_IgradI)[...,0,1][None]]
         elif self._dim == 3:
             _k = [0, 0, 1]
             _l = [1, 2, 2]
             c_list = (IgradI_x - x_IgradI)[...,_k,_l].permute(4,0,1,2,3)
+            c_list = [c for c in c_list]
 
         #contrainte translation
         for i in range(grad_source.shape[2]):
