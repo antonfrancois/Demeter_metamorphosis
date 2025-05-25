@@ -72,7 +72,7 @@ def probability_to_simplex(probabilities, key='prob', resize_factors = None):
                 continue
 
             if o == result:
-                print(f"\tAdding : {p["name"]}")
+                print(f"\tAdding : {p['name']}")
                 proba_f.append(p)
                 continue
     print("\t len(proba_f)",len(proba_f))
