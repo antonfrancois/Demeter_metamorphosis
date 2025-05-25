@@ -396,7 +396,7 @@ def simplex_metamorphosis(
     mr = sp.Simplex_sqrt_Shooting(
         source.clone(),
         target.clone(),
-        mp,
+        geodesic=mp,
         cost_cst=cost_cst,
         data_term=data_term,
         optimizer_method="LBFGS_torch",
