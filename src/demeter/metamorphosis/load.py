@@ -21,6 +21,7 @@ from ..utils.reproducing_kernels import (
     GaussianRKHS,
     VolNormalizedGaussianRKHS,
     Multi_scale_GaussianRKHS,
+    All_Scale_Anisotropic_Normalized_Gaussian_RKHS
 )
 
 
@@ -43,6 +44,8 @@ def _find_meta_optimiser_from_repr_(repr_str):
 
 
 def _find_kernelOp_from_repr_(repr_str):
+    if "All_Scale_Anisotropic_Normalized_Gaussian_RKHS" in repr_str:
+        return All_Scale_Anisotropic_Normalized_Gaussian_RKHS
     if "VolNormalizedGaussianRKHS" in repr_str:
         return VolNormalizedGaussianRKHS
     if "Multi_scale_GaussianRKHS" in repr_str:
