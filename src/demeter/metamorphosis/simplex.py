@@ -291,17 +291,13 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
         self,
         source,
         target,
-        integrator,
-        cost_cst,
-        hamiltonian_integration=False,
         **kwargs,
     ):
         if source.min() < 0 or target.min() < 0:
             raise ValueError(f"Provided images must be positive ! Got source.min() = {source.min()} and target.min() = {target.min()}")
         source = torch.sqrt(source)
         target = torch.sqrt(target)
-        self.flag_hamiltonian_integration = hamiltonian_integration
-        super().__init__(source, target, integrator, cost_cst, **kwargs)
+        super().__init__(source, target, **kwargs)
         # self._cost_saving_ = self._simplex_cost_saving_
 
     # def _get_mu_(self):
@@ -310,14 +306,14 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
     def _get_rho_(self):
         return self.mp._get_rho_()
 
+
     def get_all_arguments(self):
-        # TODO:  use super for kernelOp, n_step ....
-        return {
+        print("new get_all_args simplex")
+        params_all  = super().get_all_arguments()
+        params_const = {
             "rho": self.mp.rho,
-            "kernelOperator": self.mp.kernelOperator,
-            "n_step": self.mp.n_step,
-            "cost_cst": self.cost_cst,
         }
+        return {**params_all,**params_const}
 
     def cost(self, momentum_ini: torch.Tensor):
 
