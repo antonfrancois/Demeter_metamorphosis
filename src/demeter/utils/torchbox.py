@@ -168,6 +168,58 @@ def multiply_grid_vectors(grid_1, grid_2):
     else:
         raise ValueError(f'something went wrong, grid_1 shape is {grid_1.shape}, grid_2 shape is {grid_2.shape}')
 
+def create_affine_mat_3d(params):
+    r"""
+    build a 2D affine matrix for 3D affine transformation such as
+    $$A = \begin{bmatrix}
+    \cos(\beta) \sin(\gamma)/s1 & -\sin(\alpha) \sin(\beta) \cos(\gamma) - \cos(\alpha) \sin(\gamma) & \cos(\alpha) \sin(\beta) \cos(\gamma) - \sin(\alpha) \sin(\gamma) & a \\
+    \cos(\beta) \cos(\gamma) & (-\sin(\alpha) \sin(\beta) \sin(\gamma) + \cos(\alpha) \cos(\gamma))/s2 & \cos(\alpha) \sin(\beta) \sin(\gamma) + \sin(\alpha) \cos(\gamma) & b \\
+    -\sin(\beta) & \sin(\alpha) \cos(\beta) & \cos(\alpha) \cos(\beta)/s3 & c \\
+    0 & 0 & 0 & 1
+    \end{bmatrix}$$
+
+    params : tensor of len 9 containing: gamma,beta,alpha, a,b,c,s1,s2,s3
+    """
+    gamma,beta,alpha, a,b,c,s1,s2,s3 = params
+
+    A = torch.stack(
+        [
+        torch.stack(
+            [torch.cos(beta) * torch.cos(gamma)/s1,
+             torch.sin(alpha) * torch.sin(beta) * torch.cos(gamma) - torch.cos(alpha) * torch.sin(gamma),
+             torch.cos(alpha) * torch.sin(beta) * torch.cos(gamma) + torch.sin(alpha) * torch.sin(gamma),
+             a]
+        ),
+        torch.stack(
+            [
+            torch.cos(beta) * torch.sin(gamma),
+            (torch.sin(alpha) * torch.sin(beta) * torch.sin(gamma) + torch.cos(alpha) * torch.cos(gamma))/s2,
+            torch.cos(alpha) * torch.sin(beta) * torch.sin(gamma) - torch.sin(alpha) * torch.cos(gamma),
+                b
+            ]),
+        torch.stack(
+            [
+            - torch.sin(beta),
+            torch.sin(alpha) * torch.cos(beta),
+            (torch.cos(alpha) * torch.cos(beta))/s3,
+                c
+            ]),
+        torch.tensor([ 0, 0, 0, 1],device=params.device)
+        ]
+    )
+    return A
+
+def affine_to_grid_3d(affine_mat,img_shape):
+    id_grid = make_regular_grid(img_shape,dx_convention='2square')
+
+    # apply affine to grid
+    id_grid_aug = torch.cat(
+        [id_grid,torch.ones_like(id_grid[...,0])[...,None]],
+        dim = -1
+    )
+    aff_grid = torch.einsum('ij,hklmj->hklmi', affine_mat, id_grid_aug)
+    return aff_grid[...,:-1]
+
 
 def addGrid2im(img, n_line, cst=0.1, method='dots'):
     """ draw a grid to the image

@@ -1,3 +1,5 @@
+from mailbox import Error
+
 import torch
 
 import demeter.utils.torchbox as tb
@@ -8,7 +10,6 @@ import demeter.metamorphosis as mt
 import demeter.utils.cost_functions as cf
 import demeter.utils.reproducing_kernels as rk
 
-
 cuda = torch.cuda.is_available()
 # cuda = True
 device = 'cpu'
@@ -16,57 +17,7 @@ if cuda:
     device = 'cuda:0'
 print('device used :',device)
 
-def create_affine_mat_3d(params):
-    r"""
-    build a 2D affine matrix for 3D affine transformation such as
-    $$A = \begin{bmatrix}
-    \cos(\beta) \sin(\gamma)/s1 & -\sin(\alpha) \sin(\beta) \cos(\gamma) - \cos(\alpha) \sin(\gamma) & \cos(\alpha) \sin(\beta) \cos(\gamma) - \sin(\alpha) \sin(\gamma) & a \\
-    \cos(\beta) \cos(\gamma) & (-\sin(\alpha) \sin(\beta) \sin(\gamma) + \cos(\alpha) \cos(\gamma))/s2 & \cos(\alpha) \sin(\beta) \sin(\gamma) + \sin(\alpha) \cos(\gamma) & b \\
-    -\sin(\beta) & \sin(\alpha) \cos(\beta) & \cos(\alpha) \cos(\beta)/s3 & c \\
-    0 & 0 & 0 & 1
-    \end{bmatrix}$$
 
-    params : tensor of len 9 containing: gamma,beta,alpha, a,b,c,s1,s2,s3
-    """
-    gamma,beta,alpha, a,b,c,s1,s2,s3 = params
-
-    A = torch.stack(
-        [
-        torch.stack(
-            [torch.cos(beta) * torch.cos(gamma)/s1,
-             -torch.sin(alpha) * torch.sin(beta) * torch.cos(gamma) - torch.cos(alpha) * torch.sin(gamma),
-             torch.cos(alpha) * torch.sin(beta) * torch.cos(gamma) - torch.sin(alpha) * torch.sin(gamma),
-             a]
-        ),
-        torch.stack(
-            [
-            torch.cos(beta) * torch.sin(gamma),
-            (-torch.sin(alpha) * torch.sin(beta) * torch.sin(gamma) + torch.cos(alpha) * torch.cos(gamma))/s2,
-            torch.cos(alpha) * torch.sin(beta) * torch.sin(gamma) + torch.sin(alpha) * torch.cos(gamma),
-                b
-            ]),
-        torch.stack(
-            [
-            - torch.sin(beta),
-            torch.sin(alpha) * torch.cos(beta),
-            torch.cos(alpha) * torch.cos(beta)/s3,
-                c
-            ]),
-        torch.tensor([ 0, 0, 0, 1],device=params.device)
-        ]
-    )
-    return A
-
-def affine_to_grid_3d(affine_mat,img_shape):
-    id_grid = tb.make_regular_grid(img_shape,dx_convention='2square')
-
-    # apply affine to grid
-    id_grid_aug = torch.cat(
-        [id_grid,torch.ones_like(id_grid[...,0])[...,None]],
-        dim = -1
-    )
-    aff_grid = torch.einsum('ij,hklmj->hklmi', affine_mat, id_grid_aug)
-    return aff_grid[...,:-1]
 
 
 path = ROOT_DIRECTORY+"/examples/im3Dbank/"
@@ -83,15 +34,17 @@ if step > 0:
 _,_,D,H,W = S.shape
 
 args_aff = torch.tensor(
-        [.6,-.3, 0, # angle
-        0,0,0,   # translation
+        [3.14/2, 3.14/4, 0, # angle
+        0,-0.1,0.15,
+        # 0.5,-.1,.15,   # translation
         1,1,1] # scaling
 )
 
-aff_mat = create_affine_mat_3d(args_aff)
-aff_grid = affine_to_grid_3d(aff_mat,(D, H,W))
+aff_mat = tb.create_affine_mat_3d(args_aff)
+print(aff_mat)
+print(aff_mat.T @ aff_mat)
+aff_grid = tb.affine_to_grid_3d(aff_mat.T,(D, H,W))
 
-S = tb.imgDeform(S, aff_grid, dx_convention='2square', clamp=True)
 
 # add deformations
 def make_exp(xxx, yyy, zzz, centre, sigma):
@@ -105,12 +58,12 @@ def make_exp(xxx, yyy, zzz, centre, sigma):
     return exp
 
 xx,yy, zz = aff_grid[...,0].clone(),aff_grid[...,1].clone(), aff_grid[...,2].clone()
-xx -= .2* make_exp(xx,yy,zz,(0.25,0.25, .25),(0.1,0.1, .5))
-yy -= (.2* make_exp(xx,yy,zz,(0,-0.25,0),(0.15,0.15,.5)))
+# xx -= .2* make_exp(xx,yy,zz,(0.25,0.25, .25),(0.1,0.1, .5))
+# yy -= (.2* make_exp(xx,yy,zz,(0,-0.25,0),(0.15,0.15,.5)))
 
 deform = torch.stack([xx,yy,zz],dim = -1)
 # deform = id_grid.clone()
-S = tb.imgDeform(S, deform, dx_convention='2square', clamp=True)
+T = tb.imgDeform(T, deform, dx_convention='2square', clamp=True)
 
 st = tb.imCmp(S,T,method = 'compose')
 sl = i3p.imshow_3d_slider(st, title = 'Source (orange) and Target (blue)')
@@ -122,7 +75,7 @@ plt.show()
 # residuals.requires_grad = True
 momentum_ini = 0
 
-
+# raise Error("shut")
 #%%
 ######################################################################
 kernelOperator = rk.GaussianRKHS(sigma=(10,10,10),normalized=False)
@@ -132,45 +85,6 @@ kernelOperator = rk.GaussianRKHS(sigma=(10,10,10),normalized=False)
 #     dx=(1, 1, 1),
 # )
 
-# class Rotation_Ssd_Cost(mt.DataCost):
-#
-#     def __init__(self, target, alpha, **kwargs):
-#
-#         super(Rotation_Ssd_Cost, self).__init__(target)
-#         self.ssd = cf.SumSquaredDifference(target)
-#         self.alpha = alpha
-#
-#     def set_optimizer(self, optimizer):
-#         """
-#         DataCost object are meant to be used along a
-#         method inherited from `Optimize_geodesicShooting`.
-#         This method is used to set the optimizer object and is usually
-#         used at the optimizer initialisation.
-#         """
-#         self.optimizer = optimizer
-#         # try:
-#         #     self.optimizer.mp.rot_mat
-#         # except AttributeError:
-#         #     raise AttributeError(f"The optimizer must have Rotation implemented, optimizer is {optimizer.__class__.__name__}")
-#         if self.target.shape != self.optimizer.source.shape and not self.target is None:
-#             raise ValueError(
-#                 "Target and source shape are different."
-#                 f"Got source.shape = {self.optimizer.source.shape}"
-#                 f"and target.shape = {self.target.shape}."
-#                 f"Have you checked your DataCost initialisation ?"
-#             )
-#
-#
-#
-#     def __call__(self,at_step=None):
-#         # if at_step == -1:
-#         ssd = self.ssd(self.optimizer.mp.image)
-#
-#         rot_def =   mtrt.apply_rot_mat(self.optimizer.mp.id_grid,  self.optimizer.mp.rot_mat)
-#         rotated_image =  tb.imgDeform(self.optimizer.source,rot_def,dx_convention='2square')
-#         ssd_rot = self.ssd(rotated_image)
-#
-#         return self.alpha * ssd_rot + (1-self.alpha) * ssd
 
 
 # datacost = mt.Ssd_normalized(T.to('cuda:0'))
@@ -185,7 +99,7 @@ datacost = mt.Rotation_Ssd_Cost(T.to('cuda:0'), alpha=.5)
 rho = 1
 dx_convention = '2square'
 from math import pi
-r1, r2, r3 = 0, 0, 0
+r1, r2, r3 = 0, 0.2, 0
 # r = torch.tensor([r])
 momentum_I = torch.zeros(S.shape,
                          dtype=torch.float32,
@@ -200,18 +114,20 @@ momentum_R = torch.tensor(
      [-r2, r3, 0]],
     dtype=torch.float32, device='cuda:0')
 
-momentum_R = torch.tensor([[ 0.0000, -1.1283, -0.5543],
-        [ 1.1283,  0.0000, -0.1769],
-        [ 0.5543,  0.1769,  0.0000]],
-    dtype=torch.float32, device='cuda:0')
-# momentum_R = torch.zeros((2,2),
-#                         dtype=torch.float32,
-#                         device='cuda:0'
-#                         )
+# momentum_R = torch.tensor([[ 0.0000, -1.1283, -0.5543],
+#         [ 1.1283,  0.0000, -0.1769],
+#         [ 0.5543,  0.1769,  0.0000]],
+#     dtype=torch.float32, device='cuda:0')
 momentum_R.requires_grad = True
+
+momentum_T = torch.tensor([0, 0, 0],
+                          dtype=torch.float32, device='cuda:0')
+momentum_T.requires_grad = True
 momenta = {'momentum_I':momentum_I,
            # 'r':r,
-           'momentum_R':momentum_R}
+           'momentum_R':momentum_R,
+           'momentum_T':momentum_T
+           }
 
 n_steps =  7
 mp = mtrt.RotatingMetamorphosis_integrator(
@@ -233,7 +149,10 @@ mr = mtrt.RotatingMetamorphosis_Optimizer(
     hamiltonian_integration=False
     # optimizer_method="adadelta",
 )
-mr.forward(momenta, n_iter=5, grad_coef=1)
+mr.forward(momenta, n_iter=10, grad_coef=1)
+
+print(aff_mat)
+print(mr.mp.translation)
 #%%
 # img = mr.mp.image
 # st = tb.imCmp(img,T,method = 'compose')
@@ -255,11 +174,14 @@ mr.plot_cost()
 
 #%%
 rot_def =   tb.apply_rot_mat(mr.mp.id_grid,  mr.mp.rot_mat.T)
+if mr.mp.flag_translation:
+    rot_def += mr.mp.translation
 img_rot = tb.imgDeform(mr.mp.image, rot_def.to('cpu'), dx_convention='2square')
 st = tb.imCmp(img_rot,T,method = 'compose')
 
 i3p.imshow_3d_slider(st, title = "Image rotate cmp avec target")
 plt.show()
+
 
 #%%
 # i3p.Visualize_GeodesicOptim_plt(mr,"ball_for_hanse_rot")

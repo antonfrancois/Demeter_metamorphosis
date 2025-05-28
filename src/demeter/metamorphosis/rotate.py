@@ -261,12 +261,16 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
 
         # -----------------------------------------------
         # 1.a Compute the rotation
-        mom_rotated = momentum_R @ self.rot_mat.T
-        mom_rotated =  (mom_rotated - mom_rotated.T) /2
+        momR_rotated = momentum_R @ self.rot_mat.T
+        pre_d_rot = momR_rotated #+ momT_translated
+        if self.flag_translation:
+            momT_translated = momentum_T @ self.translation.T
+            pre_d_rot += momT_translated
         print("rot mat",self.rot_mat)
-        print("mom_rotated",mom_rotated)
-
-        self.d_rot = mom_rotated
+        print("momR_rotated",momR_rotated)
+        # momR_rotated =  (momR_rotated - momR_rotated.T) /2
+        #
+        self.d_rot = (pre_d_rot - pre_d_rot.T) / 2
         if self._i == 0:
             self.d_rot_ini = self.d_rot.clone()
         print('d_rot',self.d_rot)
@@ -279,7 +283,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
 
         # 1.b Compute the translation
         if self.flag_translation:
-            self.translation = momentum_T * self._i
+            self.translation = momentum_T
 
         # -----------------------------------------------
         ## 2. apply the inverse rotation to the image
@@ -293,7 +297,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         grad_image = tb.spatialGradient(image, dx_convention = self.dx_convention)
         field,norm_V = self._compute_vectorField_(
             momentum_I, grad_image)
-        # self.field *= 0
+        # field *= 0
         print('field min max',field.min(), field.max())
 
 
@@ -338,6 +342,10 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         momentum_R = momentum_R - self.d_rot.T @ momentum_R  / self.n_step
         momenta['momentum_I'] = momentum_I.clone()
         momenta['momentum_R'] = momentum_R.clone()
+        if self.flag_translation:
+            momentum_T = momentum_T - self.d_rot.T @ momentum_T / self.n_step
+            momenta['momentum_T'] = momentum_T.clone()
+            print('momentum_T',momentum_T)
 
 
 
@@ -367,7 +375,7 @@ class RotatingMetamorphosis_integrator(Geodesic_integrator):
         momenta['momentum_R'] =  (momentum_R - momentum_R.T) /2
         self.to_device(momentum_R.device)
         try:
-            _ = momenta['momentum_T'].clone()
+            self.translation = torch.zeros_like(momenta['momentum_T'])
             self.flag_translation = True
         except KeyError:
             self.flag_translation = False
