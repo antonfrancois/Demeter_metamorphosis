@@ -9,6 +9,7 @@ from . import classic as cl
 from . import constrained as cn
 from . import simplex as sp
 from . import joined as jn
+from . import rotate as rd
 
 from ..utils import torchbox as tb
 from ..utils.decorators import time_it
@@ -400,4 +401,62 @@ def simplex_metamorphosis(
         mr.forward_safe_mode(momentum_ini, n_iter, grad_coef, plot)
     else:
         mr.forward(momentum_ini, n_iter=n_iter, grad_coef=grad_coef, plot=plot)
+    return mr
+
+
+def rigid_along_metamorphosis(
+        source,
+        target,
+        momenta_ini,
+        kernelOperator,
+        rho,
+        data_term,
+        # dx_convention="2square",
+        n_steps=10,
+        n_iter=10,
+        grad_coef=2,
+        cost_cst=0.001,
+        plot=False,
+        safe_mode=False,
+        hamiltonian_integration=False,
+       save_gpu_memory = False
+    ):
+    """
+
+    Note: momenta_ini must be a dictionary containing the keywords:
+        - "momentum_I" for the image
+        - "momentum_R" for the rotation
+        - "momentum_T" for the translation
+
+    if you want to do not optimise over one of the above don't
+
+    """
+    for key in momenta_ini.keys():
+        if not key in ['momentum_I', 'momentum_R', 'momentum_T']:
+            raise ValueError("momenta_ini must be a dictionary containing the keywords:"
+                    " - 'momentum_I' for the image"
+                    " - 'momentum_R' for the rotation"
+                    " - 'momentum_T' for the translation")
+
+    if save_gpu_memory:
+        raise NotImplementedError("GPU memory saving is not implemented yet.")
+
+    mp = rd.RigidMetamorphosis_integrator(
+        rho=rho,
+        n_step=n_steps,
+        kernelOperator=kernelOperator,
+        dx_convention="2square"
+    )
+
+    mr = rd.RigidMetamorphosis_Optimizer(
+        source= source,
+        target= target,
+        geodesic = mp,
+        cost_cst=cost_cst,
+        data_term=data_term,
+        hamiltonian_integration=hamiltonian_integration,
+        # optimizer_method="adadelta",
+    )
+    mr = _commun_after(mr, momenta_ini, safe_mode, n_iter, grad_coef)
+
     return mr

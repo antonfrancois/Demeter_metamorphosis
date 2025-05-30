@@ -9,6 +9,8 @@ import demeter.metamorphosis.rotate as mtrt
 import demeter.metamorphosis as mt
 import demeter.utils.cost_functions as cf
 import demeter.utils.reproducing_kernels as rk
+from demeter.metamorphosis import rigid_along_metamorphosis
+
 
 cuda = torch.cuda.is_available()
 # cuda = True
@@ -78,6 +80,64 @@ momentum_ini = 0
 # raise Error("shut")
 #%%
 ######################################################################
+def prepare_momenta(image_shape,
+                    image : bool = True,
+                    rotation : bool = True,
+                    translation : bool = True,
+                    rot_prior = None,
+                    trans_prior= None,
+                    device = "cuda:0"):
+    dim = 2 if len(image_shape) == 4 else 3
+    if rot_prior is None:
+        rot_prior = torch.eye(dim)
+    if trans_prior is None:
+        trans_prior = [0] * dim
+    momenta = {}
+    kwargs = {
+        "dtype":torch.float32,
+        "device":device
+    }
+    if image:
+        momenta["momentum_I"]= torch.zeros(S.shape,**kwargs)
+    if rotation:
+            momenta["momentum_R"] = torch.tensor(rot_prior,**kwargs)
+    if translation:
+        momenta["momentum_T"]= torch.tensor(trans_prior,
+                                            **kwargs)
+
+    for keys in momenta.keys():
+        momenta[keys].requires_grad=True
+
+    return momenta
+
+#%%
+from math import pi, sqrt
+import demeter.utils.torchbox as tb
+angles_list = torch.tensor([
+    # [0, 0, 0],
+    [pi/2, 0, 0],
+    [0, pi/2, 0],
+
+    [pi, 0, 0],
+    [-pi/2, 0, 0],
+    [0, pi/2, 0],
+    [0, -pi/2, 0],
+    # [0, 0, 0],
+    [0, pi, 0],
+    [0, 0, pi/2],
+    [0, 0, -pi/2]
+])
+for  angles in angles_list:
+    print(fr" TEST {angles}" +"- "*10)
+    rot_mat_prior = tb.create_rot_mat_3d(angles)
+    vect = torch.tensor([[sqrt(2)/2, sqrt(2)/2,0]], dtype=torch.float32)
+    print(vect @ rot_mat_prior.T)
+    print(rot_mat_prior)
+    print(r" END TEST" +"- "*10)
+    print()
+
+#%%
+
 kernelOperator = rk.GaussianRKHS(sigma=(10,10,10),normalized=False)
 # kernelOperator = rk.VolNormalizedGaussianRKHS(
 #     sigma=(10,10,10),
@@ -92,67 +152,102 @@ kernelOperator = rk.GaussianRKHS(sigma=(10,10,10),normalized=False)
 datacost = mt.Rotation_Ssd_Cost(T.to('cuda:0'), alpha=.5)
 
 
-# datacost =  None
+
 
 # torch.autograd.set_detect_anomaly(True)
 # Metamorphosis params
 rho = 1
-dx_convention = '2square'
-from math import pi
-r1, r2, r3 = 0, 0.2, 0
-# r = torch.tensor([r])
-momentum_I = torch.zeros(S.shape,
-                         dtype=torch.float32,
-                         device='cuda:0')
 
-# r.requires_grad = True
-momentum_I.requires_grad = True
 
-momentum_R = torch.tensor(
-    [[0,-r1, r2 ],
-     [r1, 0, -r3],
-     [-r2, r3, 0]],
-    dtype=torch.float32, device='cuda:0')
 
-# momentum_R = torch.tensor([[ 0.0000, -1.1283, -0.5543],
-#         [ 1.1283,  0.0000, -0.1769],
-#         [ 0.5543,  0.1769,  0.0000]],
-#     dtype=torch.float32, device='cuda:0')
-momentum_R.requires_grad = True
+angles_list = torch.tensor([
+    # [0, 0, 0],
+    # [pi/2, 0, 0],
+    # [pi, 0, 0],
+    # [-pi/2, 0, 0],
+    # [0, pi/2, 0],
+    # [0, -pi/2, 0]
+    [0, 0, 0],
+    [0, pi/2, 0],
+    [0, pi, 0],
+    [0, -pi/2, 0],
+    [0, 0, pi/2],
+    [0, 0, -pi/2]
+])
 
-momentum_T = torch.tensor([0, 0, 0],
-                          dtype=torch.float32, device='cuda:0')
-momentum_T.requires_grad = True
-momenta = {'momentum_I':momentum_I,
-           # 'r':r,
-           'momentum_R':momentum_R,
-           'momentum_T':momentum_T
-           }
+best_angle = 0
+best_loss = torch.inf
+for i,angles in  enumerate(angles_list):
+    rot_mat_prior = tb.create_rot_mat_3d(angles)
+
+    print(r" TEST" +"- "*10)
+    vect = torch.tensor([[1,0,0]], dtype=torch.float32)
+    print(vect @ rot_mat_prior.T)
+    print(r" END TEST" +"- "*10)
+
+    momenta = prepare_momenta(
+        S.shape,
+        image=False,rotation=True,translation=True,
+        rot_prior=rot_mat_prior,trans_prior=(0,0,0),
+    )
+
+    n_steps =  7
+
+    mr = rigid_along_metamorphosis(
+        S,T,momenta, kernelOperator,
+        rho= rho,
+        data_term=datacost,
+        n_steps=n_steps,
+        n_iter=10,
+        cost_cst=1e-1,
+        safe_mode=True
+    )
+    best = False
+    if mr.data_loss < best_loss:
+        best_loss = mr.data_loss
+        best_angle = angles
+        best_translation = mr.mp.translation
+        best = True
+
+
+    print("="*10)
+    print(f"i : {i}, best = {best}")
+    print(angles)
+    print(aff_mat)
+    print(mr.mp.translation)
+    print(mr.mp.rot_mat)
+    print(mr.data_loss)
+    print("="*10)
+
+print(best_angle)
+print(best_loss)
+
+
+rot_mat_prior = tb.create_rot_mat_3d(best_angle)
+momenta = prepare_momenta(
+    S.shape,
+    image=True,rotation=True,translation=True,
+    rot_prior=rot_mat_prior,
+    # trans_prior=best_translation,
+    trans_prior=(0,0,0)
+)
 
 n_steps =  7
-mp = mtrt.RotatingMetamorphosis_integrator(
-    rho=rho,
-    n_step=n_steps,
-    kernelOperator=kernelOperator,
-    dx_convention=dx_convention
-)
 
-S =  S.to('cuda:0')
-T = T.to('cuda:0')
-
-mr = mtrt.RotatingMetamorphosis_Optimizer(
-    source= S,
-    target= T,
-    geodesic = mp,
-    cost_cst=1e-1,
+mr = rigid_along_metamorphosis(
+    S,T,momenta, kernelOperator,
+    rho= rho,
     data_term=datacost,
-    hamiltonian_integration=False
-    # optimizer_method="adadelta",
+    n_steps=n_steps,
+    n_iter=17,
+    cost_cst=1e-1
 )
-mr.forward(momenta, n_iter=10, grad_coef=1)
 
-print(aff_mat)
+print("Estimated")
 print(mr.mp.translation)
+print(mr.mp.rot_mat)
+print("Real:")
+print(aff_mat)
 #%%
 # img = mr.mp.image
 # st = tb.imCmp(img,T,method = 'compose')
@@ -177,6 +272,7 @@ rot_def =   tb.apply_rot_mat(mr.mp.id_grid,  mr.mp.rot_mat.T)
 if mr.mp.flag_translation:
     rot_def += mr.mp.translation
 img_rot = tb.imgDeform(mr.mp.image, rot_def.to('cpu'), dx_convention='2square')
+img_rot = torch.clip(img_rot, 0, 1)
 st = tb.imCmp(img_rot,T,method = 'compose')
 
 i3p.imshow_3d_slider(st, title = "Image rotate cmp avec target")
