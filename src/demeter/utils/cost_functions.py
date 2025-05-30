@@ -27,8 +27,6 @@ class SumSquaredDifference:
         :return:
         """
         self.source_deform = source_deform
-        ic('source_deform',source_deform.device)
-        ic('target',self.target.device)
         # print('poterior function : source_deform '+str(self.source_deform.shape))
         if self.cancer_seg is None:
             return .5*((self.target - self.source_deform)**2).sum()
