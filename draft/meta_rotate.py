@@ -130,7 +130,7 @@ momenta = {'momentum_I':momentum_I,
 # momenta = {k: v.to('cuda:0') for k, v in momenta.items()}
 
 n_steps =  10
-mp = mtrt.RotatingMetamorphosis_integrator(
+mp = mtrt.RigidMetamorphosis_integrator(
     rho=rho,
     n_step=n_steps,
     kernelOperator=kernelOperator,
@@ -147,7 +147,7 @@ mp = mtrt.RotatingMetamorphosis_integrator(
 # img =  img.to('cuda:0')
 # newimg_r = newimg_r.to('cuda:0')
 #
-mr = mtrt.RotatingMetamorphosis_Optimizer(
+mr = mtrt.RigidMetamorphosis_Optimizer(
     source= img,
     target= newimg_r,
     geodesic = mp,
