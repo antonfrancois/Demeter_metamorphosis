@@ -1102,9 +1102,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.data_term.to_device(device)
 
         self.parameter = momenta_ini  # optimized variable
-        ic(
-            self.parameter
-        )
+
         # self.parameter = self._build_parameter_dict_(momenta_ini)
         self._initialize_optimizer_(grad_coef, max_iter=n_iter)
         self.n_iter = n_iter
@@ -1125,10 +1123,10 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         for i in range(1, n_iter):
             self._iter_ = i
-            print()
-            print("//////" * 20)
-            print(f"      {self._iter_}/{n_iter}")
-            print("//////" * 20)
+            # print()
+            # print("//////" * 20)
+            # print(f"      {self._iter_}/{n_iter}")
+            # print("//////" * 20)
 
             self._step_optimizer_()
             loss_stock = self._cost_saving_(i, loss_stock)
