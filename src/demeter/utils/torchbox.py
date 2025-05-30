@@ -167,6 +167,33 @@ def multiply_grid_vectors(grid_1, grid_2):
         return torch.einsum('fijkl,fijkm->fijklm', grid_1, grid_2)
     else:
         raise ValueError(f'something went wrong, grid_1 shape is {grid_1.shape}, grid_2 shape is {grid_2.shape}')
+#%%
+def create_rot_mat_3d(params):
+    gamma,beta,alpha = params
+    A = torch.stack(
+        [
+        torch.stack(
+            [torch.cos(beta) * torch.cos(gamma),
+             torch.sin(alpha) * torch.sin(beta) * torch.cos(gamma) - torch.cos(alpha) * torch.sin(gamma),
+             torch.cos(alpha) * torch.sin(beta) * torch.cos(gamma) + torch.sin(alpha) * torch.sin(gamma),
+             ]
+        ),
+        torch.stack(
+            [
+            torch.cos(beta) * torch.sin(gamma),
+            (torch.sin(alpha) * torch.sin(beta) * torch.sin(gamma) + torch.cos(alpha) * torch.cos(gamma)),
+            torch.cos(alpha) * torch.sin(beta) * torch.sin(gamma) - torch.sin(alpha) * torch.cos(gamma),
+            ]),
+        torch.stack(
+            [
+            - torch.sin(beta),
+            torch.sin(alpha) * torch.cos(beta),
+            (torch.cos(alpha) * torch.cos(beta)),
+            ]),
+        ]
+    )
+    return A
+
 
 def create_affine_mat_3d(params):
     r"""
@@ -182,32 +209,51 @@ def create_affine_mat_3d(params):
     """
     gamma,beta,alpha, a,b,c,s1,s2,s3 = params
 
-    A = torch.stack(
-        [
-        torch.stack(
-            [torch.cos(beta) * torch.cos(gamma)/s1,
-             torch.sin(alpha) * torch.sin(beta) * torch.cos(gamma) - torch.cos(alpha) * torch.sin(gamma),
-             torch.cos(alpha) * torch.sin(beta) * torch.cos(gamma) + torch.sin(alpha) * torch.sin(gamma),
-             a]
-        ),
-        torch.stack(
-            [
-            torch.cos(beta) * torch.sin(gamma),
-            (torch.sin(alpha) * torch.sin(beta) * torch.sin(gamma) + torch.cos(alpha) * torch.cos(gamma))/s2,
-            torch.cos(alpha) * torch.sin(beta) * torch.sin(gamma) - torch.sin(alpha) * torch.cos(gamma),
-                b
-            ]),
-        torch.stack(
-            [
-            - torch.sin(beta),
-            torch.sin(alpha) * torch.cos(beta),
-            (torch.cos(alpha) * torch.cos(beta))/s3,
-                c
-            ]),
-        torch.tensor([ 0, 0, 0, 1],device=params.device)
-        ]
-    )
+    R = create_rot_mat_3d((gamma, beta, alpha))
+    for i,s in enumerate([s1, s2, s3]):
+        R[i,i] = R[i,i] / s
+    T = torch.tensor([a, b, c])[:, None]
+    RT = torch.cat([R,T], dim=-1)
+    F = torch.tensor([0, 0, 0, 1], dtype=R.dtype, device=R.device)[None]
+    A = torch.cat([RT, F], dim=0)
+
+
+    # A = torch.stack(
+    #     [
+    #     torch.stack(
+    #         [torch.cos(beta) * torch.cos(gamma)/s1,
+    #          torch.sin(alpha) * torch.sin(beta) * torch.cos(gamma) - torch.cos(alpha) * torch.sin(gamma),
+    #          torch.cos(alpha) * torch.sin(beta) * torch.cos(gamma) + torch.sin(alpha) * torch.sin(gamma),
+    #          a]
+    #     ),
+    #     torch.stack(
+    #         [
+    #         torch.cos(beta) * torch.sin(gamma),
+    #         (torch.sin(alpha) * torch.sin(beta) * torch.sin(gamma) + torch.cos(alpha) * torch.cos(gamma))/s2,
+    #         torch.cos(alpha) * torch.sin(beta) * torch.sin(gamma) - torch.sin(alpha) * torch.cos(gamma),
+    #             b
+    #         ]),
+    #     torch.stack(
+    #         [
+    #         - torch.sin(beta),
+    #         torch.sin(alpha) * torch.cos(beta),
+    #         (torch.cos(alpha) * torch.cos(beta))/s3,
+    #             c
+    #         ]),
+    #     torch.tensor([ 0, 0, 0, 1],device=params.device)
+    #     ]
+    # )
     return A
+
+args_aff = torch.tensor(
+        [3.14/2, 3.14/4, 0, # angle
+        0,-0.1,0.15,
+        # 0.5,-.1,.15,   # translation
+        1,1,1] # scaling
+)
+create_affine_mat_3d(args_aff)
+#%%
+
 
 def affine_to_grid_3d(affine_mat,img_shape):
     id_grid = make_regular_grid(img_shape,dx_convention='2square')
