@@ -124,12 +124,14 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                  n_step,
                  dx_convention="pixel",
                  save_gpu_memory = False,
+                 debug= False,
                  **kwargs):
         super().__init__()
         self._force_save = False
         self._detach_image = True
         self.dx_convention = dx_convention
         self.save_gpu_memory = save_gpu_memory
+        self.debug = debug
 
         self.kernelOperator = kernelOperator
         self.n_step = n_step
@@ -184,7 +186,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                 t_max=1,
                 verbose=False,
                 sharp=None,
-                debug=False,
+                # debug=False,
                 hamiltonian_integration=False
         ):
         r""" This method is doing the temporal loop using the good method `_step_`
@@ -225,7 +227,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self.source = image.detach().to(device)
         self.image = image.clone().to(device)
         self.momenta = momenta
-        self.debug = debug
+        # self.debug = debug
         self.flag_hamiltonian_integration = hamiltonian_integration
         try:
             self.save = True if self._force_save else save
@@ -843,6 +845,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         data_term=None,
         optimizer_method: str = 'LBFGS_torch',
         hamiltonian_integration=False,
+        debug=False,
         **kwargs
     ):
         """
@@ -861,6 +864,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.dx_convention = self.mp.dx_convention
         self.source = source
         self.target = target
+        self.debug = debug
 
         self.flag_hamiltonian_integration = hamiltonian_integration
         self.mp.kernelOperator.init_kernel(source)
@@ -1101,7 +1105,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         # self.mp.kernelOperator.kernel = self.mp.kernelOperator.kernel.to(z_0.device)
         self.data_term.to_device(device)
 
-        self.parameter = momenta_ini  # optimized variable
+        self.parameter = momenta_ini.copy()  # optimized variable
 
         # self.parameter = self._build_parameter_dict_(momenta_ini)
         self._initialize_optimizer_(grad_coef, max_iter=n_iter)
@@ -1116,7 +1120,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                 f"The initial momentum provided might have the wrong shape, got :{momenta_ini.shape}"
             )
 
-        self.cost(self.parameter)
+        self.cost({k: v.detach() for k, v in self.parameter.items()})
+        # if self.debug:
+        #     raise Error("et oui")
 
         loss_stock = self._cost_saving_(n_iter, None)  # initialisation
         loss_stock = self._cost_saving_(0, loss_stock)
@@ -1127,7 +1133,6 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             # print("//////" * 20)
             # print(f"      {self._iter_}/{n_iter}")
             # print("//////" * 20)
-
             self._step_optimizer_()
             loss_stock = self._cost_saving_(i, loss_stock)
 
@@ -1145,9 +1150,10 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         detached_param = {k: v.detach().cpu() for k, v in self.parameter.items()}
         # for future plots compute shooting with save = True
         self.mp.forward(self.source.clone(),
-                        detached_param,
+                        detached_param.copy(),
                         save=True,
-                        plot=0)
+                        plot=0,
+                        )
 
         self.to_analyse = (detached_param, loss_stock)
         self.to_device('cpu')
