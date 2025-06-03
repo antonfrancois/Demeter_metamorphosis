@@ -3,6 +3,7 @@ from mailbox import Error
 import torch
 
 import demeter.utils.torchbox as tb
+from demeter.utils.decorators import time_it
 from demeter.constants import *
 import demeter.utils.image_3d_plotter as i3p
 import demeter.metamorphosis.rotate as mtrt
@@ -10,7 +11,6 @@ import demeter.metamorphosis as mt
 import demeter.utils.cost_functions as cf
 import demeter.utils.reproducing_kernels as rk
 from demeter.metamorphosis import rigid_along_metamorphosis
-
 
 cuda = torch.cuda.is_available()
 # cuda = True
@@ -36,8 +36,8 @@ if step > 0:
 _,_,D,H,W = S.shape
 
 args_aff = torch.tensor(
-        [3.14/2, 3.14/4, 0, # angle
-        0,-0.1,0.15,
+        [-3.14/2, 3*3.14/4, 0, # angle
+        0,0.2,0,
         # 0.5,-.1,.15,   # translation
         1,1,1] # scaling
 )
@@ -60,8 +60,8 @@ def make_exp(xxx, yyy, zzz, centre, sigma):
     return exp
 
 xx,yy, zz = aff_grid[...,0].clone(),aff_grid[...,1].clone(), aff_grid[...,2].clone()
-# xx -= .2* make_exp(xx,yy,zz,(0.25,0.25, .25),(0.1,0.1, .5))
-# yy -= (.2* make_exp(xx,yy,zz,(0,-0.25,0),(0.15,0.15,.5)))
+xx -= .2* make_exp(xx,yy,zz,(0.25,0.25, .25),(0.1,0.1, .5))
+yy -= (.2* make_exp(xx,yy,zz,(0,-0.25,0),(0.15,0.15,.5)))
 
 deform = torch.stack([xx,yy,zz],dim = -1)
 # deform = id_grid.clone()
@@ -86,10 +86,11 @@ def prepare_momenta(image_shape,
                     translation : bool = True,
                     rot_prior = None,
                     trans_prior= None,
-                    device = "cuda:0"):
+                    device = "cuda:0",
+                    requires_grad = True):
     dim = 2 if len(image_shape) == 4 else 3
     if rot_prior is None:
-        rot_prior = torch.eye(dim)
+        rot_prior = torch.zeros((dim,))
     if trans_prior is None:
         trans_prior = [0] * dim
     momenta = {}
@@ -100,41 +101,51 @@ def prepare_momenta(image_shape,
     if image:
         momenta["momentum_I"]= torch.zeros(S.shape,**kwargs)
     if rotation:
+        if len(rot_prior.shape)==2:
             momenta["momentum_R"] = torch.tensor(rot_prior,**kwargs)
+        elif len(rot_prior.shape)==1:
+            r1, r2, r3 = rot_prior
+            momenta["momentum_R"] = torch.tensor(
+            [[0,-r1, -r2 ],
+                     [r1, 0, -r3],
+                     [r2, r3, 0]],
+                    dtype=torch.float32, device='cuda:0')
+        else:
+            raise ValueError("Rotation prior must be 2 or 1 dimensional")
     if translation:
         momenta["momentum_T"]= torch.tensor(trans_prior,
                                             **kwargs)
 
     for keys in momenta.keys():
-        momenta[keys].requires_grad=True
+        momenta[keys].requires_grad=requires_grad
 
     return momenta
 
-#%%
+# #%%
 from math import pi, sqrt
-import demeter.utils.torchbox as tb
-angles_list = torch.tensor([
-    # [0, 0, 0],
-    [pi/2, 0, 0],
-    [0, pi/2, 0],
-
-    [pi, 0, 0],
-    [-pi/2, 0, 0],
-    [0, pi/2, 0],
-    [0, -pi/2, 0],
-    # [0, 0, 0],
-    [0, pi, 0],
-    [0, 0, pi/2],
-    [0, 0, -pi/2]
-])
-for  angles in angles_list:
-    print(fr" TEST {angles}" +"- "*10)
-    rot_mat_prior = tb.create_rot_mat_3d(angles)
-    vect = torch.tensor([[sqrt(2)/2, sqrt(2)/2,0]], dtype=torch.float32)
-    print(vect @ rot_mat_prior.T)
-    print(rot_mat_prior)
-    print(r" END TEST" +"- "*10)
-    print()
+# import demeter.utils.torchbox as tb
+# angles_list = torch.tensor([
+#     # [0, 0, 0],
+#     [pi/2, 0, 0],
+#     [0, pi/2, 0],
+#
+#     [pi, 0, 0],
+#     [-pi/2, 0, 0],
+#     [0, pi/2, 0],
+#     [0, -pi/2, 0],
+#     # [0, 0, 0],
+#     [0, pi, 0],
+#     [0, 0, pi/2],
+#     [0, 0, -pi/2]
+# ])
+# for  angles in angles_list:
+#     print(fr" TEST {angles}" +"- "*10)
+#     rot_mat_prior = tb.create_rot_mat_3d(angles)
+#     vect = torch.tensor([[sqrt(2)/2, sqrt(2)/2,0]], dtype=torch.float32)
+#     print(vect @ rot_mat_prior.T)
+#     print(rot_mat_prior)
+#     print(r" END TEST" +"- "*10)
+#     print()
 
 #%%
 
@@ -149,7 +160,7 @@ kernelOperator = rk.GaussianRKHS(sigma=(10,10,10),normalized=False)
 
 # datacost = mt.Ssd_normalized(T.to('cuda:0'))
 # datacost =  None
-datacost = mt.Rotation_Ssd_Cost(T.to('cuda:0'), alpha=.5)
+datacost = mt.Rotation_Ssd_Cost(T.to('cuda:0'), alpha=1)
 
 
 
@@ -158,37 +169,86 @@ datacost = mt.Rotation_Ssd_Cost(T.to('cuda:0'), alpha=.5)
 # Metamorphosis params
 rho = 1
 
+#%%
 
 
-angles_list = torch.tensor([
-    # [0, 0, 0],
-    # [pi/2, 0, 0],
-    # [pi, 0, 0],
-    # [-pi/2, 0, 0],
-    # [0, pi/2, 0],
-    # [0, -pi/2, 0]
-    [0, 0, 0],
-    [0, pi/2, 0],
-    [0, pi, 0],
-    [0, -pi/2, 0],
-    [0, 0, pi/2],
-    [0, 0, -pi/2]
-])
 
-best_angle = 0
-best_loss = torch.inf
-for i,angles in  enumerate(angles_list):
-    rot_mat_prior = tb.create_rot_mat_3d(angles)
+# i = 37
+# r_combi = r_combi[i-1:i+1]
 
-    print(r" TEST" +"- "*10)
-    vect = torch.tensor([[1,0,0]], dtype=torch.float32)
-    print(vect @ rot_mat_prior.T)
-    print(r" END TEST" +"- "*10)
+#%% Explore angles
+def _insert_(entry, top_losses, top_k = 10):
+    # Insert in sorted position
+    inserted = False
+    for i, (existing_loss, _) in enumerate(top_losses):
+        if entry[0] < existing_loss:
+            top_losses.insert(i, entry)
+            inserted = True
+            break
 
+    # If not inserted and list not full, append at the end
+    if not inserted and len(top_losses) < top_k:
+        top_losses.append(entry)
+
+    # Prune list if too long
+    if len(top_losses) > top_k:
+        top_losses = top_losses[:top_k]
+
+    return top_losses
+
+@time_it
+def initial_exploration(r_step = 4, max_output = 10, verbose:bool = True):
+    r_list = torch.linspace(-torch.pi, torch.pi, r_step)
+    r_combi = torch.cartesian_prod(r_list,r_list,r_list)
+    top_losses = []
+    for i,params_r in  enumerate(r_combi):
+        if verbose:
+            print(f"Init search : {i+1} / {len(r_combi)}")
+        momenta = prepare_momenta(
+            S.shape,
+            image=False,rotation=True,translation=False,
+            rot_prior=params_r,trans_prior=(0,0,0),
+            requires_grad=False
+        )
+        mp = mtrt.RigidMetamorphosis_integrator(
+            rho=1,
+            n_step=7,
+            kernelOperator=None,
+            dx_convention="2square"
+        )
+        mp.forward(S, momenta)
+
+        rot_def =   tb.apply_rot_mat(mp.id_grid,  mp.rot_mat.T)
+        img_rot = tb.imgDeform(S, rot_def.to('cpu'), dx_convention='2square')
+        # img_rot = torch.clip(img_rot, 0, 1)
+        loss_val = cf.SumSquaredDifference(T)(img_rot)
+
+        # keep a list of the N best loss_val related with the corresponding param_r
+        entry = (loss_val.detach(), params_r.detach())
+        if verbose:
+            print(f"\t {entry}")
+        top_losses = _insert_(entry, top_losses, max_output)
+
+    if verbose:
+        print('Best params found')
+        for loss, params in top_losses:
+            print(f"Loss: {loss.item():.4f} | Params: {params.tolist()}")
+
+    return top_losses
+
+top_params = initial_exploration(r_step=5)
+
+
+
+#%% rigid optimisation
+best_loss = top_params[0][0]
+for i,(val,params_r) in  enumerate(top_params):
+    print(">"*10)
+    ic(params_r)
     momenta = prepare_momenta(
         S.shape,
         image=False,rotation=True,translation=True,
-        rot_prior=rot_mat_prior,trans_prior=(0,0,0),
+        rot_prior=params_r,trans_prior=(0,0,0),
     )
 
     n_steps =  7
@@ -200,47 +260,59 @@ for i,angles in  enumerate(angles_list):
         n_steps=n_steps,
         n_iter=10,
         cost_cst=1e-1,
-        safe_mode=True
+        safe_mode=True,
+        debug =  False
     )
+
+
     best = False
-    if mr.data_loss < best_loss:
+    if mr.data_loss < best_loss or mr.data_loss == 0:
         best_loss = mr.data_loss
-        best_angle = angles
+        best_momentum = mr.to_analyse[0]["momentum_R"]
         best_translation = mr.mp.translation
         best = True
+    # mr.plot_cost(
+    # )
+    # plt.show()
 
-
-    print("="*10)
-    print(f"i : {i}, best = {best}")
-    print(angles)
+    print(f"i : {i} / {len(top_params)}, best = {best}")
     print(aff_mat)
     print(mr.mp.translation)
     print(mr.mp.rot_mat)
-    print(mr.data_loss)
-    print("="*10)
+    print("best mom",best_momentum)
+    print("anti best mom", (best_momentum - best_momentum.T)/2)
+    print("best loss",mr.data_loss)
+    print("<"*10)
+    if best_loss < 1:
+        print("rigid_optim stop.")
+        break
 
-print(best_angle)
+print("Best find : ")
 print(best_loss)
+print(best_momentum)
+print(best_translation)
 
 
-rot_mat_prior = tb.create_rot_mat_3d(best_angle)
+print("\nBegin Metamorphosis >>>")
+
 momenta = prepare_momenta(
     S.shape,
     image=True,rotation=True,translation=True,
-    rot_prior=rot_mat_prior,
-    # trans_prior=best_translation,
-    trans_prior=(0,0,0)
+    rot_prior=best_momentum,
+    trans_prior=best_translation,
+    # trans_prior=(0,0,0)
 )
 
-n_steps =  7
 
+datacost = mt.Rotation_Ssd_Cost(T.to('cuda:0'), alpha=.5)
 mr = rigid_along_metamorphosis(
     S,T,momenta, kernelOperator,
     rho= rho,
     data_term=datacost,
     n_steps=n_steps,
-    n_iter=17,
-    cost_cst=1e-1
+    n_iter=10,
+    cost_cst=1e-1,
+    debug=False,
 )
 
 print("Estimated")
