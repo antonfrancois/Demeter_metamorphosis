@@ -1,3 +1,5 @@
+import argparse
+
 import __init__
 import os, math, time
 import re
@@ -65,7 +67,11 @@ def open_probabilities(path, key='prob'):
     return dict_list
 
 
-def probability_to_simplex(probabilities, key='prob', resize_factors = None):
+def probability_to_simplex(probabilities,
+                           key : str ='prob',
+                           resize_factors : tuple[float] = None,
+                           to_shape : tuple[int] = None
+                           ):
     d = len(probabilities)
 
     # simplex = np.zeros((d,) + proba[0]['data'].shape)
@@ -81,23 +87,26 @@ def probability_to_simplex(probabilities, key='prob', resize_factors = None):
                 continue
 
             if o == result:
-                print(f"\tAdding : {p["name"]}")
+                # print(f"\tAdding : {p["name"]}")
                 proba_f.append(p)
                 continue
-    print("\t len(proba_f)",len(proba_f))
+    # print("\t len(proba_f)",len(proba_f))
     # for pf in proba_f:
     #     print(pf['name'])
-    if resize_factors is None:
+    if resize_factors is None and to_shape is None:
         simplex = torch.stack([
             torch.tensor(proba['data'].copy()).clip( 0,1)
             for proba in proba_f
         ],dim=0)[None]
+    elif resize_factors is not None and to_shape is not None:
+        raise ValueError(f"ResizeFactors and to_shape are mutually exclusive, got resize_factor : {resize_factors} and to_shape : {to_shape}, only one of them has to be provided")
     else:
+        # check resize
         img_list = []
         for proba in proba_f:
                 img  = torch.tensor(proba['data'].copy())[None, None]
                 # ic(img.shape)
-                re_img = resize_image(img, resize_factors)
+                re_img = resize_image(img, scale_factor = resize_factors, to_shape=to_shape)
                 re_img = re_img.clip(0, 1)
                 # ic(re_img.shape)
                 img_list.append( re_img )
@@ -110,10 +119,10 @@ def probability_to_simplex(probabilities, key='prob', resize_factors = None):
     simplex = torch.cat([simplex, 1 - sum_simplex],dim=1)
     return simplex
 
-def path_to_simplex(path, key='prob', resize_factors = None):
+def path_to_simplex(path, key='prob', resize_factors = None, to_shape = None):
     probabilities = open_probabilities(path, key)
 
-    simplex = probability_to_simplex(probabilities, key, resize_factors)
+    simplex = probability_to_simplex(probabilities, key, resize_factors=resize_factors, to_shape=to_shape)
     return simplex
 
 def plot_simplex(image, slc):
@@ -191,21 +200,34 @@ def plot_mr(mr):
     mr.save(name, light_save=True)
 
 
-def perform_simplex_ref(resize_factor, save_gpu):
-    slc = tuple( [int(s * r) for s, r in zip(slice, resize_factor)])
+def perform_simplex_ref(img_shape, save_gpu,  n_iter, n_step, lbfgs_history_size,  lbfgs_max_iter):
 
+    print("Building source & target ...")
     source = path_to_simplex(os.path.join(path,patient,f"{patient}_{source_fol}"),
-                                resize_factors=resize_factor,
+                                # resize_factors=resize_factor,
+                             # to_shape = img_shape,
                                 key = 'LB_prob'
                                 )
     target = path_to_simplex(
         os.path.join(path,patient,f"{patient}_{target_fol}"),
-        resize_factors=resize_factor,
+        # resize_factors=resize_factor,
+        # to_shape = img_shape,
         key = 'LB_prob'
     )
     print("source : ", source.shape, source.min().item(), source.max().item())
     print("target; ", target.shape, target.min().item(), target.max().item())
 
+    # resize
+    before_shape =  source.shape
+    source = resize_image(source, to_shape=img_shape)
+    source = source.clip(0, 1)
+    target = resize_image(target, to_shape=img_shape)
+    target = target.clip(0, 1)
+    print(before_shape,img_shape, source.shape)
+    resize_factor  = [a / b for a, b in zip(img_shape, before_shape[2:])]
+    print("resize_factor ",resize_factor)
+    slc = tuple( [int(s * r) for s, r in zip(slice, resize_factor)])
+    print(slc, slice)
     # if 'turtlefox' in ROOT_DIRECTORY:
     #     plot_simplex(source, slc)
 
@@ -272,11 +294,13 @@ def perform_simplex_ref(resize_factor, save_gpu):
                        kernelOperator=kernelOperator,
                         data_term=data_cost,
                        cost_cst=.001,
-                       integration_steps=10,
-                       n_iter=25,
+                       integration_steps=n_step,
+                       n_iter=n_iter,
                        grad_coef=10,
                       dx_convention=dx_convention,
-                      save_gpu_memory=save_gpu
+                      save_gpu_memory=save_gpu,
+                     lbfgs_history_size=lbfgs_history_size,
+                    lbfgs_max_iter=lbfgs_max_iter
         )
         ic(mr)
         torch.cuda.synchronize()
@@ -303,18 +327,30 @@ def perform_simplex_ref(resize_factor, save_gpu):
 
 if __name__ == "__main__":
 # if False:
-    assert len(sys.argv) == 5, "Usage: python execute_simplex_pixyl.py resize_factor save_gpu save_plot csv_path "
-    rf = float(sys.argv[1])
-    save_gpu = sys.argv[2].lower() == 'true'
-    save_plot = sys.argv[3].lower() == 'true'
-    csv_path = sys.argv[4]
+    parser = argparse.ArgumentParser(description="Run GPU Simplex Metamorphosis on pixyl Benchmark")
 
-    ic(
-        rf,
-        save_gpu,
-        save_plot,
-        csv_path,
-    )
+    parser.add_argument("--width", type=int, default = 200, help="Image width")
+    parser.add_argument("--height", type=int, default = 200, help="Image height")
+    parser.add_argument("--save_gpu", type=str, default = "False", help="Whether to save GPU info (true/false)")
+    parser.add_argument("--n_iter", type=int, default = 10, help="Number of iterations")
+    parser.add_argument("--n_step", type=int, default = 10, help="Number of steps")
+    parser.add_argument("--lbfgs_history_size", type=int, default = 100, help="L-BFGS history size")
+    parser.add_argument("--lbfgs_max_iter", type=int, default = 20, help="L-BFGS max evaluations")
+    parser.add_argument("--csv_file", type=str, default = "trash.csv", help="Path to output CSV")
+
+    args = parser.parse_args()
+
+    # Parse booleans
+    save_gpu = args.save_gpu.lower() == "true"
+
+    # Now you can use:
+    width = args.width
+    height = args.height
+    n_iter = args.n_iter
+    n_step = args.n_step
+    lbfgs_history_size = args.lbfgs_history_size
+    lbfgs_max_iter = args.lbfgs_max_iter
+    csv_path = args.csv_file
 
     if not os.path.exists(csv_path):
         with open(csv_path, "w", newline='') as csvfile:
@@ -334,7 +370,8 @@ if __name__ == "__main__":
         path = "/gpfs/workdir/francoisa/data/aligned"
 
     # rf = .2
-    resize_factor = (rf, rf, 1)
+    size = (width, height, 100)
+    # resize_factor = (rf, rf, 1)
 
     patient, slice  = "PSL_001", (200,270,50)
     # patient, slice  = "PSL_007", (300,180,25)
@@ -345,19 +382,20 @@ if __name__ == "__main__":
 
 
 #%%
-    mr, mem, time_exec, img_shape = perform_simplex_ref(resize_factor, save_gpu)
+    mr, mem, time_exec, img_shape = perform_simplex_ref(size, save_gpu,n_iter,n_step,lbfgs_history_size,lbfgs_max_iter)
 
-    if save_plot:
-        plot_mr(mr)
     with open(csv_path, 'a') as f:
         writer = csv.writer(f)
         writer.writerow([
-            tuple(img_shape),
-            resize_factor,
+            (1,1,width,height),
+            mem,
             save_gpu,
+            n_iter,
+            n_step,
+            lbfgs_history_size,
+            lbfgs_max_iter,
             mem if mem else "OOM",
             time_exec if time_exec else "OOM"
         ])
-
 
 
