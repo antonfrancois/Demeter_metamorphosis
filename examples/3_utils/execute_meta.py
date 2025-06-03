@@ -1,7 +1,10 @@
 import argparse
 import sys
 import os
-import time
+
+
+from time import time
+
 import math
 import csv
 import torch
@@ -12,7 +15,6 @@ import demeter.metamorphosis as mt
 import demeter.utils.torchbox as tb
 from demeter.utils.decorators import *
 from demeter.utils.toolbox import convert_bytes_size
-
 
 @monitor_gpu
 def perform_ref_of_size(size, save_gpu, n_iter, n_step, lbfgs_history_size,  lbfgs_max_iter):
@@ -39,7 +41,7 @@ def perform_ref_of_size(size, save_gpu, n_iter, n_step, lbfgs_history_size,  lbf
     print(S.dtype)
 
     try:
-        start = time.time()
+        start = time()
         mt.metamorphosis(S, T, 0, 0.05,
                          cost_cst=0.001,
                          kernelOperator=kernelOperator,
@@ -55,7 +57,7 @@ def perform_ref_of_size(size, save_gpu, n_iter, n_step, lbfgs_history_size,  lbf
                          lbfgs_max_iter=lbfgs_max_iter,
                          )
         torch.cuda.synchronize()
-        exec_time = time.time() - start
+        exec_time = time() - start
         mem_usage = torch.cuda.max_memory_allocated()
         # print(f"In : GPU memory used: {gpus[0].memoryUsed} MB")
         print('-_'*15)

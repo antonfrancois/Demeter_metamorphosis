@@ -9,12 +9,11 @@ By defauft I provide the results for my laptop. You can change the path of
 
 """
 
+import os, ast
 
 import subprocess
-import numpy as np
 import matplotlib.pyplot as plt
 import csv
-import os, ast
 import pandas as pd
 import torch
 
@@ -24,7 +23,12 @@ from math import prod
 
 from demeter.utils.toolbox import convert_bytes_size
 
-size_list = np.linspace(0.1, 0.10, 15)
+# env = os.environ.copy()
+os.environ["MKL_THREADING_LAYER"] = "GNU"
+import numpy as np
+
+# size_list = np.linspace(0.1, 0.10, 15)
+size_list = np.linspace(38, 384, 6, dtype=int)
 name_csv = "benchmark_simplex_results_memory_meso.csv"
 
 
@@ -57,8 +61,12 @@ if os.path.exists(csv_file):
 else:
     existing_df = pd.DataFrame(columns=[
                 "img shape",
-                'resize factor',
+                "image mem size",
                 "save gpu",
+                "n_iter",
+                "n_step",
+                "lbfgs_history_size",
+                "lbfgs_max_iter",
                 "mem usage bytes",
                 "exec time sec",
             ])
@@ -66,7 +74,7 @@ else:
 #%%
 for save_gpu in [False, True]:
     for size in size_list:
-        size = float(size)
+        # size = float(size)
         # Vérifie si cette config est déjà présente
         already_done = (
             ((existing_df["resize factor"] == (size, size, 1)) &
@@ -81,18 +89,18 @@ for save_gpu in [False, True]:
         print(f"\nLancement: size=({(size, size, 1)}), save_gpu={save_gpu}")
         print("python3",
              "examples/3_utils/execute_simplex_pixyl.py",
-            str(size),
-            str(save_gpu),
-            str(False), # Plot
-            csv_file
+            "--width", str(size),
+            "--height", str(size),
+            "--save_gpu", str(save_gpu).lower(),
+            "--csv_file", str(csv_file)
         )
         subprocess.run([
             "python3",
              "examples/3_utils/execute_simplex_pixyl.py",
-            str(size),
-            str(save_gpu),
-            str(False), # Plot
-            csv_file
+            "--width", str(size),
+            "--height", str(size),
+            "--save_gpu", str(save_gpu).lower(),
+            "--csv_file", str(csv_file)
         ], check = True)
 
 

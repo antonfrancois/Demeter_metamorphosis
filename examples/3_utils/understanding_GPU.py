@@ -68,7 +68,7 @@ else:
             ])
     existing_df.to_csv(csv_file, index=False)
 
-size_list = [200, 282, 400]
+size_list = [200]#, 282, 400]
 save_gpu_list = [True, False]
 n_iter_list = [1,2,3,10]
 n_step_list = [2,3,5,7,10,12]
