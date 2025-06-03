@@ -419,7 +419,8 @@ def rigid_along_metamorphosis(
         plot=False,
         safe_mode=False,
         hamiltonian_integration=False,
-       save_gpu_memory = False
+       save_gpu_memory = False,
+        debug=False
     ):
     """
 
@@ -445,7 +446,8 @@ def rigid_along_metamorphosis(
         rho=rho,
         n_step=n_steps,
         kernelOperator=kernelOperator,
-        dx_convention="2square"
+        dx_convention="2square",
+        debug=debug,
     )
 
     mr = rd.RigidMetamorphosis_Optimizer(
@@ -456,6 +458,7 @@ def rigid_along_metamorphosis(
         data_term=data_term,
         hamiltonian_integration=hamiltonian_integration,
         # optimizer_method="adadelta",
+        debug = debug
     )
     mr = _commun_after(mr, momenta_ini, safe_mode, n_iter, grad_coef)
 

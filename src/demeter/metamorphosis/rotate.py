@@ -234,20 +234,24 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
                 sqrt(1 - self.rho) * self.residuals)
 
     def step(self, image, momenta):
-        # print("\n")
-        # print("="*25)
-        # print('step',self._i)
+        if self.debug:
+            print("\n")
+            print("="*25)
+            print('step',self._i)
         if self.flag_field:
             momentum_I = momenta['momentum_I'].clone()
-            # print('momentum_I',momentum_I.min().item(),momentum_I.max().item())
-            # print("momentum_I", momentum_I.shape)
+            if self.debug:
+                print('momentum_I',momentum_I.min().item(),momentum_I.max().item())
+                print("momentum_I", momentum_I.shape)
 
         if self.flag_translation:
             momentum_T = momenta['momentum_T'].clone()
-            # print('momentum_T',momentum_T)
+            if self.debug:
+                print('momentum_T',momentum_T)
 
         momentum_R = momenta['momentum_R'].clone()
-        # print("momentum_R",momentum_R)
+        if self.debug:
+            print("momentum_R",momentum_R)
 
         # ----------------------------------------------
         ## 0 Contrainte
@@ -263,8 +267,10 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         if self.flag_translation:
             momT_translated = momentum_T @ self.translation.T
             pre_d_rot += momT_translated
-        # print("rot mat",self.rot_mat)
-        # print("momR_rotated",momR_rotated)
+
+        if self.debug:
+            print("rot mat",self.rot_mat)
+            print("momR_rotated",momR_rotated)
         # momR_rotated =  (momR_rotated - momR_rotated.T) /2
         #
         self.d_rot = (pre_d_rot - pre_d_rot.T) / 2
@@ -374,7 +380,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
 
         momentum_R = momenta['momentum_R'].clone()
         momenta['momentum_R'] =  (momentum_R - momentum_R.T) /2
-        self.to_device(momentum_R.device)
+        self.to_device(momenta['momentum_R'].device)
         try:
             self.translation = torch.zeros_like(momenta['momentum_T'])
             self.flag_translation = True
@@ -499,6 +505,7 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
         rho = self._get_rho_()
         self.to_device(momenta['momentum_R'].device)
+        # print(f"cost iter {self._iter}: mom_R {momenta['momentum_R']}")
         self.mp.forward(self.source,momenta,
                         save=False,
                         plot=0,
