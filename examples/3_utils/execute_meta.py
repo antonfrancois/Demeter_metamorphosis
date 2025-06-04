@@ -58,16 +58,18 @@ def perform_ref_of_size(size, save_gpu, n_iter, n_step, lbfgs_history_size,  lbf
                          )
         torch.cuda.synchronize()
         exec_time = time() - start
-        mem_usage = torch.cuda.max_memory_allocated()
+        mem_allocated = torch.cuda.max_memory_allocated()
+        mem_reserved = torch.cuda.max_memory_reserved()
         # print(f"In : GPU memory used: {gpus[0].memoryUsed} MB")
         print('-_'*15)
         print("size : ",size, "save gpu", save_gpu)
-        print("memory used : " ,convert_bytes_size(mem_usage))
+        print("max memory allocated : " ,convert_bytes_size(mem_allocated))
+        print("max memory reserved : " ,convert_bytes_size(mem_reserved))
         print('-_'*15)
         print("\n")
-        return size_of_S, mem_usage, exec_time
+        return size_of_S, mem_allocated, mem_reserved, exec_time
     except torch.OutOfMemoryError:
-        return size_of_S, None, None
+        return size_of_S, None, None, None
 
 
 # print(f"Before : GPU memory used: {gpus[0].memoryUsed} MB")
@@ -109,7 +111,16 @@ if __name__ == "__main__":
           )
     # print(f"Before : GPU memory used: {gpus[0].memoryUsed} MB")
 
-    image_mem_size, mem, time_exec = perform_ref_of_size(
+    # image_mem_size, mem, time_exec = perform_ref_of_size(
+    #     (width, height),
+    #     save_gpu,
+    #     n_iter,
+    #     n_step,
+    #     lbfgs_history_size,
+    #     lbfgs_max_iter
+    # )
+
+    image_mem_size, mem_allocated, mem_reserved, time_exec = perform_ref_of_size(
         (width, height),
         save_gpu,
         n_iter,
@@ -119,7 +130,7 @@ if __name__ == "__main__":
     )
 
     # print(f"After : GPU memory used: {gpus[0].memoryUsed} MB")
-
+    # torch.cuda.memory._dump_snapshot('snapshot_Pointer.pickle')
 
     with open(csv_path, 'a') as f:
         writer = csv.writer(f)
@@ -131,6 +142,7 @@ if __name__ == "__main__":
             n_step,
             lbfgs_history_size,
             lbfgs_max_iter,
-            mem if mem else "OOM",
-            time_exec if time_exec else "OOM"
+            mem_allocated if mem_allocated else "OOM",
+            mem_reserved if mem_reserved else "OOM",
+            time_exec if time_exec else "OOM",
         ])

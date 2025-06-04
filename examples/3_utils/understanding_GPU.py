@@ -15,6 +15,7 @@ import csv
 import os, ast
 import pandas as pd
 from demeter.constants import ROOT_DIRECTORY
+from demeter.utils.toolbox import convert_bytes_size
 import torch.cuda as cda
 from math import prod
 import subprocess
@@ -26,7 +27,6 @@ env["MKL_THREADING_LAYER"] = "GNU"
 #     size_list = np.linspace(0.1, 0.10, 15)
 #     name_csv = "benchmark_simplex_results_memory_meso.csv"
 # else:
-size_list = np.linspace(100, 1000, 10, dtype=int)
 name_csv = "understanding_memory_results.csv"
 
 
@@ -52,6 +52,7 @@ else:
 if os.path.exists(csv_file):
     existing_df = pd.read_csv(csv_file)
     print(existing_df.keys())
+    print(existing_df["img shape"])
     existing_df['img shape'] = existing_df['img shape'].apply(ast.literal_eval)
 
 else:
@@ -63,14 +64,15 @@ else:
                 "n_step",
                 "lbfgs_history_size",
                 "lbfgs_max_iter",
-                "mem usage bytes",
+                "memory allocated",
+                "memory reserved",
                 "exec time sec",
             ])
     existing_df.to_csv(csv_file, index=False)
 
-size_list = [200]#, 282, 400]
+size_list = [200, 282, 400]
 save_gpu_list = [True, False]
-n_iter_list = [1,2,3,10]
+n_iter_list = [1,2,3,10,15]
 n_step_list = [2,3,5,7,10,12]
 lbfgs_history_size_list = [10,20, 50, 100]
 lbfgs_max_iter_list = [5,10,20]
@@ -143,6 +145,7 @@ for c, p in enumerate(params):
 # Lecture des résultats
 #%%
 df = pd.read_csv(csv_file)
+print(df.keys())
 try:
     df['img shape'] = df['img shape'].apply(ast.literal_eval)
 except ValueError:
@@ -153,30 +156,35 @@ except ValueError:
 df["size"] = df["img shape"].apply(prod)
 df["n_step * im_mem"] = df["n_step"] * df["image mem size"]
 
-df["mem usage bytes"] = pd.to_numeric(df["mem usage bytes"], errors='coerce')
+mem_to_consider = "memory allocated"
+# mem_to_consider = "memory reserved"
+
+df[mem_to_consider] = pd.to_numeric(df[mem_to_consider], errors='coerce')
 df["exec time sec"] = pd.to_numeric(df["exec time sec"], errors='coerce')
 
-df["M"] =  np.minimum( df["lbfgs_max_iter"]*df["n_iter"], df["lbfgs_history_size"] )
+df["M"] =  np.minimum( df["lbfgs_max_iter"]*df["n_iter"], 2* df["lbfgs_history_size"] )
 df["M1"] =  df["lbfgs_max_iter"]*df["n_iter"]
 df["M1 > hist"] = df["M1"] > df["lbfgs_history_size"]
 
-df["lbfgs_history_size * im_mem"] = df["lbfgs_history_size"] * df["image mem size"]
+
 df["M * im_mem"]= df["M"] * df["image mem size"]
 
-df_200 = df[df["img shape"] == (1,1,200,200)]
+df_200 = df[df["img shape"] == (1,1,400,400)]
+
+df_200 = df_200[df_200["n_iter"]>1]
 
 #%%
 from sklearn.linear_model import LinearRegression
 
-f_sa_gpu = False
-df_gpu = df_200[
-    (df_200["save gpu"] == f_sa_gpu)
+f_sa_gpu = True
+df_gpu = df[
+    (df["save gpu"] == f_sa_gpu)
     # & (df_200["M"]> 20)
 ]
 X = df_gpu[['M * im_mem',"n_step * im_mem"]]
 
 # X = df_gpu[['lbfgs_history_size * im_mem',"n_step * im_mem"]]
-y = df_gpu['mem usage bytes']
+y = df_gpu['memory allocated']
 # yb = df['reserved']
 
 model = LinearRegression()
@@ -184,7 +192,7 @@ model.fit(X, y)
 
 print(f'Prediction allocated memory (save gpu = {f_sa_gpu})')
 print("Coefficients :", model.coef_)
-print("Intercept    :", model.intercept_)
+print("Intercept    :", convert_bytes_size(model.intercept_))
 print("Score R²     :", model.score(X, y))
 
 #%%
@@ -194,17 +202,17 @@ mask_10 = ((df_200["M"] == m_ref) &
     (df_200["n_step"] == 10) &
      (df_200["save gpu"] == True))
 mask_2 = ((df_200["M"] == m_ref) &
-    (df_200["n_step"] == 7) &
+    (df_200["n_step"] == 2) &
      (df_200["save gpu"] == True))
 try:
     D = df_200[mask_10]["image mem size"].item()
-    b_true = (df_200[mask_10]["mem usage bytes"].item() - df_200[mask_2]["mem usage bytes"].item()) / ((10 -2) * D)
+    b_true = (df_200[mask_10][mem_to_consider].item() - df_200[mask_2][mem_to_consider].item()) / ((10 -2) * D)
 except ValueError:
     if ((len(df_200[mask_10]["image mem size"].unique()) ==1)
-        and (len(df_200[mask_10]["mem usage bytes"].unique()) ==1)
+        and (len(df_200[mask_10][mem_to_consider].unique()) ==1)
             and (len(df_200[mask_10]["image mem size"].unique())==1)):
         D = df_200[mask_10]["image mem size"].to_list()[0]
-        b_true = (df_200[mask_10]["mem usage bytes"].to_list()[0] - df_200[mask_2]["mem usage bytes"].to_list()[0]) / ((10 -2) * D)
+        b_true = (df_200[mask_10][mem_to_consider].to_list()[0] - df_200[mask_2][mem_to_consider].to_list()[0]) / ((10 -2) * D)
 # calcul de b gpu False
 mask_10 = ((df_200["M"] == m_ref) &
     (df_200["n_step"] == 10) &
@@ -214,13 +222,13 @@ mask_2 = ((df_200["M"] == m_ref) &
      (df_200["save gpu"] == False))
 try:
     D = df_200[mask_10]["image mem size"].item()
-    b_false = (df_200[mask_10]["mem usage bytes"].item() - df_200[mask_2]["mem usage bytes"].item()) / ((10 -2) * D)
+    b_false = (df_200[mask_10][mem_to_consider].item() - df_200[mask_2][mem_to_consider].item()) / ((10 -2) * D)
 except ValueError:
     if ((len(df_200[mask_10]["image mem size"].unique()) ==1)
-        and (len(df_200[mask_10]["mem usage bytes"].unique()) ==1)
+        and (len(df_200[mask_10][mem_to_consider].unique()) ==1)
             and (len(df_200[mask_10]["image mem size"].unique())==1)):
         D = df_200[mask_10]["image mem size"].to_list()[0]
-        b_false = (df_200[mask_10]["mem usage bytes"].to_list()[0] - df_200[mask_2]["mem usage bytes"].to_list()[0]) / ((10 -2) * D)
+        b_false = (df_200[mask_10][mem_to_consider].to_list()[0] - df_200[mask_2][mem_to_consider].to_list()[0]) / ((10 -2) * D)
 
 print(f"b_true : {b_true}, b_false : {b_false}, M = {m_ref}")
 #%%
@@ -240,11 +248,11 @@ for m in m_unique:
         for ls, lh in enumerate(df_200_m_gpu["M1 > hist"].unique()):
             df_200_m_gpu_lh = df_200_m_gpu[df_200_m_gpu["M1 > hist"] == lh]
             n_ax = 1 if save_gpu else 0
-            ax[0,n_ax].plot(df_200_m_gpu_lh["n_step"]+ i*eps, df_200_m_gpu_lh["mem usage bytes"] ,
+            ax[0,n_ax].plot(df_200_m_gpu_lh["n_step"]+ i*eps, df_200_m_gpu_lh[mem_to_consider] ,
                        label=f"M = {m}, M1 : {lh}",
                        # label=f"M = {m}" if ls == 0 else "",
-                        linestyle='',
-                       # linestyle = line_styles[ls],
+                       #  linestyle='',
+                       linestyle = line_styles[ls],
                         marker= markers[ls],
                        color=default_colors[i]
                        )
@@ -272,7 +280,7 @@ for save_gpu in [True, False]:
             df_200_pi = df_200[(df_200[crit] == p) & (df_200[crit_2] == p2)]
             df_200_pi_gpu = df_200_pi[df_200_pi["save gpu"] == save_gpu].sort_values(by=x_name, ascending=True)
             # if p2:
-            ax[1,n_ax].plot(df_200_pi_gpu[x_name], df_200_pi_gpu["mem usage bytes"],
+            ax[1,n_ax].plot(df_200_pi_gpu[x_name], df_200_pi_gpu[mem_to_consider],
                             marker=markers[pi],
                             label=f"{crit}:{p}, {crit_2}:{p2}",
                             linestyle = line_styles[ci],

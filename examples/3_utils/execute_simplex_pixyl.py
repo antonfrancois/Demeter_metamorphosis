@@ -9,6 +9,7 @@ import torch
 import  demeter.utils.reproducing_kernels as rk
 import demeter.metamorphosis as mt
 from demeter.constants import ROOT_DIRECTORY
+from demeter.utils.toolbox import convert_bytes_size
 from demeter.utils.torchbox import resize_image
 import demeter.utils.image_3d_plotter as i3p
 import matplotlib.pyplot as plt
@@ -268,10 +269,14 @@ def perform_simplex_ref(img_shape, save_gpu,  n_iter, n_step, lbfgs_history_size
     data_cost = mt.Ssd_normalized(target)
     # data_cost = None
     dx_convention = "pixel"
+    bef_mem = torch.cuda.max_memory_allocated()
     source = source.to(device)
+    after_mem = torch.cuda.max_memory_allocated()
     target = target.to(device)
 
     print("source", source.min(), source.max())
+    size_of_S = after_mem - bef_mem
+    print(f"size of the image : {size_of_S/1024 ** 2:.2f} MB")
     rho = 1
     ic(rho)
 
@@ -305,19 +310,19 @@ def perform_simplex_ref(img_shape, save_gpu,  n_iter, n_step, lbfgs_history_size
         ic(mr)
         torch.cuda.synchronize()
         exec_time = time.time() - start
-        mem_usage = torch.cuda.max_memory_allocated()
-        # print(prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10))
-
+        mem_allocated = torch.cuda.max_memory_allocated()
+        mem_reserved = torch.cuda.max_memory_reserved()
+        # print(f"In : GPU memory used: {gpus[0].memoryUsed} MB")
         print('-_'*15)
-        print("size : ",source.shape,  "save gpu", save_gpu)
-        print("memory used : " ,convert_size(mem_usage))
+        print("size : ",size, "save gpu", save_gpu)
+        print("max memory allocated : " ,convert_bytes_size(mem_allocated))
+        print("max memory reserved : " ,convert_bytes_size(mem_reserved))
         print('-_'*15)
         print("\n")
+        return  size_of_S, mem_allocated, mem_reserved, exec_time
     except torch.OutOfMemoryError:
-        print("OUT OF MEMORY")
-        return None, None, None,  source.shape
+        return size_of_S, None, None, None
 
-    return mr, mem_usage, exec_time, source.shape
 
 
     #%%
@@ -382,20 +387,20 @@ if __name__ == "__main__":
 
 
 #%%
-    mr, mem, time_exec, img_shape = perform_simplex_ref(size, save_gpu,n_iter,n_step,lbfgs_history_size,lbfgs_max_iter)
+    size_image, mem_allocated, mem_reserved, exec_time = perform_simplex_ref(size, save_gpu,n_iter,n_step,lbfgs_history_size,lbfgs_max_iter)
 
     with open(csv_path, 'a') as f:
         writer = csv.writer(f)
         writer.writerow([
             (1,1,width,height),
-            mem,
+            size_image,
             save_gpu,
             n_iter,
             n_step,
             lbfgs_history_size,
             lbfgs_max_iter,
-            mem if mem else "OOM",
-            time_exec if time_exec else "OOM"
+            mem_allocated if mem_allocated else "OOM",
+            mem_reserved if mem_reserved else "OOM",
+            time_exec if time_exec else "OOM",
         ])
-
 
