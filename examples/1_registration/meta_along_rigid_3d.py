@@ -1,6 +1,7 @@
 from mailbox import Error
 
 import torch
+from torch.backends.mkl import verbose
 
 import demeter.utils.torchbox as tb
 from demeter.utils.decorators import time_it
@@ -78,8 +79,38 @@ plt.show()
 momentum_ini = 0
 
 # raise Error("shut")
-#%%
+
 ######################################################################
+#%% 1 Alignement des barycentres
+# calcul du barycentre:
+def compute_img_barycentre(img, id_grid = None, dx_convention= '2square'):
+    if id_grid is None:
+        id_grid = tb.make_regular_grid(S.shape[2:],dx_convention=dx_convention,)
+
+    img_bin = (img[0,0,...,None] * id_grid[0])
+    bary = img_bin.sum(dim=[0,1,2]) / img.sum()
+    return bary
+
+id_grid = tb.make_regular_grid(S.shape[2:],dx_convention="2square",)
+b_S = compute_img_barycentre(S, id_grid)
+b_T = compute_img_barycentre(T, id_grid)
+print("S compute barycentre :",b_S)
+print("T compute barycentre :",b_T)
+print("diff : ", b_T - b_S)
+
+#
+S_b = tb.imgDeform(S, (id_grid + b_S))
+T_b = tb.imgDeform(T, (id_grid + b_T))
+
+
+st = tb.imCmp(S,S_b,method = 'compose')
+sl = i3p.imshow_3d_slider(st, title = 'Source (orange) and source _b (blue)')
+plt.show()
+st = tb.imCmp(S_b,T_b,method = 'compose')
+sl = i3p.imshow_3d_slider(st, title = 'Source - b (orange) and Target _b (blue)')
+plt.show()
+
+#%%
 def prepare_momenta(image_shape,
                     image : bool = True,
                     rotation : bool = True,
@@ -121,31 +152,7 @@ def prepare_momenta(image_shape,
 
     return momenta
 
-# #%%
-from math import pi, sqrt
-# import demeter.utils.torchbox as tb
-# angles_list = torch.tensor([
-#     # [0, 0, 0],
-#     [pi/2, 0, 0],
-#     [0, pi/2, 0],
-#
-#     [pi, 0, 0],
-#     [-pi/2, 0, 0],
-#     [0, pi/2, 0],
-#     [0, -pi/2, 0],
-#     # [0, 0, 0],
-#     [0, pi, 0],
-#     [0, 0, pi/2],
-#     [0, 0, -pi/2]
-# ])
-# for  angles in angles_list:
-#     print(fr" TEST {angles}" +"- "*10)
-#     rot_mat_prior = tb.create_rot_mat_3d(angles)
-#     vect = torch.tensor([[sqrt(2)/2, sqrt(2)/2,0]], dtype=torch.float32)
-#     print(vect @ rot_mat_prior.T)
-#     print(rot_mat_prior)
-#     print(r" END TEST" +"- "*10)
-#     print()
+
 
 #%%
 
@@ -160,7 +167,7 @@ kernelOperator = rk.GaussianRKHS(sigma=(10,10,10),normalized=False)
 
 # datacost = mt.Ssd_normalized(T.to('cuda:0'))
 # datacost =  None
-datacost = mt.Rotation_Ssd_Cost(T.to('cuda:0'), alpha=1)
+datacost = mt.Rotation_Ssd_Cost(T_b.to('cuda:0'), alpha=1)
 
 
 
@@ -169,12 +176,6 @@ datacost = mt.Rotation_Ssd_Cost(T.to('cuda:0'), alpha=1)
 # Metamorphosis params
 rho = 1
 
-#%%
-
-
-
-# i = 37
-# r_combi = r_combi[i-1:i+1]
 
 #%% Explore angles
 def _insert_(entry, top_losses, top_k = 10):
@@ -197,7 +198,7 @@ def _insert_(entry, top_losses, top_k = 10):
     return top_losses
 
 @time_it
-def initial_exploration(r_step = 4, max_output = 10, verbose:bool = True):
+def initial_exploration(integration_steps, r_step = 4, max_output = 10, verbose:bool = True):
     r_list = torch.linspace(-torch.pi, torch.pi, r_step)
     r_combi = torch.cartesian_prod(r_list,r_list,r_list)
     top_losses = []
@@ -212,16 +213,16 @@ def initial_exploration(r_step = 4, max_output = 10, verbose:bool = True):
         )
         mp = mtrt.RigidMetamorphosis_integrator(
             rho=1,
-            n_step=7,
+            n_step=integration_steps,
             kernelOperator=None,
             dx_convention="2square"
         )
         mp.forward(S, momenta)
 
         rot_def =   tb.apply_rot_mat(mp.id_grid,  mp.rot_mat.T)
-        img_rot = tb.imgDeform(S, rot_def.to('cpu'), dx_convention='2square')
+        img_rot = tb.imgDeform(S_b, rot_def.to('cpu'), dx_convention='2square')
         # img_rot = torch.clip(img_rot, 0, 1)
-        loss_val = cf.SumSquaredDifference(T)(img_rot)
+        loss_val = cf.SumSquaredDifference(T_b)(img_rot)
 
         # keep a list of the N best loss_val related with the corresponding param_r
         entry = (loss_val.detach(), params_r.detach())
@@ -236,87 +237,93 @@ def initial_exploration(r_step = 4, max_output = 10, verbose:bool = True):
 
     return top_losses
 
-top_params = initial_exploration(r_step=5)
+
 
 
 
 #%% rigid optimisation
-best_loss = top_params[0][0]
-for i,(val,params_r) in  enumerate(top_params):
-    print(">"*10)
-    ic(params_r)
-    momenta = prepare_momenta(
-        S.shape,
-        image=False,rotation=True,translation=True,
-        rot_prior=params_r,trans_prior=(0,0,0),
-    )
-
-    n_steps =  7
-
-    mr = rigid_along_metamorphosis(
-        S,T,momenta, kernelOperator,
-        rho= rho,
-        data_term=datacost,
-        n_steps=n_steps,
-        n_iter=10,
-        cost_cst=1e-1,
-        safe_mode=True,
-        debug =  False
-    )
+def optimize_on_rigid(source, target, integration_steps, top_params, verbose = False):
+    best_loss = top_params[0][0]
+    for i,(val,params_r) in  enumerate(top_params):
+        print(">"*10)
+        ic(params_r)
+        momenta = prepare_momenta(
+            S.shape,
+            image=False,rotation=True,translation=True,
+            rot_prior=params_r,trans_prior=(0,0,0),
+        )
 
 
-    best = False
-    if mr.data_loss < best_loss or mr.data_loss == 0:
-        best_loss = mr.data_loss
-        best_momentum = mr.to_analyse[0]["momentum_R"]
-        best_translation = mr.mp.translation
-        best = True
-    # mr.plot_cost(
-    # )
-    # plt.show()
+        mr = rigid_along_metamorphosis(
+            source,target,momenta, kernelOperator,
+            rho= rho,
+            data_term=datacost,
+            n_steps=integration_steps,
+            n_iter=10,
+            cost_cst=1e-1,
+            safe_mode=True,
+            debug =  False
+        )
 
-    print(f"i : {i} / {len(top_params)}, best = {best}")
-    print(aff_mat)
-    print(mr.mp.translation)
-    print(mr.mp.rot_mat)
-    print("best mom",best_momentum)
-    print("anti best mom", (best_momentum - best_momentum.T)/2)
-    print("best loss",mr.data_loss)
-    print("<"*10)
-    if best_loss < 1:
-        print("rigid_optim stop.")
-        break
 
-print("Best find : ")
-print(best_loss)
-print(best_momentum)
-print(best_translation)
+        best = False
+        if mr.data_loss < best_loss or mr.data_loss == 0:
+            best_loss = mr.data_loss
+            best_momentum = mr.to_analyse[0]["momentum_R"]
+            best_translation = mr.mp.translation
+            best = True
+        # mr.plot_cost(
+        # )
+        # plt.show()
+        if verbose:
+            print(f"i : {i} / {len(top_params)}, best = {best}")
+            print(aff_mat)
+            print(mr.mp.translation)
+            print(mr.mp.rot_mat)
+            print("best mom",best_momentum)
+            print("anti best mom", (best_momentum - best_momentum.T)/2)
+            print("best loss",mr.data_loss)
+            print("<"*10)
+        if best_loss < 1:
+            print("rigid_optim stop.")
+            break
+    if verbose:
+        print("Best find : ")
+        print(best_loss)
+        print(best_momentum)
+        print(best_translation)
+    return best_loss, best_momentum, best_translation
 
+integration_steps = 7
+top_params = initial_exploration(integration_steps,r_step=5)
+loss, mom_R_ini, mom_T_ini = optimize_on_rigid(S_b, T_b,integration_steps, top_params)
 
 print("\nBegin Metamorphosis >>>")
 
 momenta = prepare_momenta(
     S.shape,
     image=True,rotation=True,translation=True,
-    rot_prior=best_momentum,
-    trans_prior=best_translation,
+    rot_prior=mom_R_ini,
+    trans_prior=mom_T_ini,
     # trans_prior=(0,0,0)
 )
 
 
-datacost = mt.Rotation_Ssd_Cost(T.to('cuda:0'), alpha=.5)
+datacost = mt.Rotation_Ssd_Cost(T_b.to('cuda:0'), alpha=.5)
 mr = rigid_along_metamorphosis(
-    S,T,momenta, kernelOperator,
+    S_b,T_b,momenta, kernelOperator,
     rho= rho,
     data_term=datacost,
-    n_steps=n_steps,
-    n_iter=10,
+    n_steps=integration_steps,
+    n_iter=15,
     cost_cst=1e-1,
     debug=False,
 )
 
 print("Estimated")
-print(mr.mp.translation)
+print("tau",mr.mp.translation)
+print("boom:", b_S + mr.mp.translation - b_T)
+# print("baam:", b_S + mr.mp.translation - b_T)
 print(mr.mp.rot_mat)
 print("Real:")
 print(aff_mat)
@@ -343,9 +350,9 @@ mr.plot_cost()
 rot_def =   tb.apply_rot_mat(mr.mp.id_grid,  mr.mp.rot_mat.T)
 if mr.mp.flag_translation:
     rot_def += mr.mp.translation
-img_rot = tb.imgDeform(mr.mp.image, rot_def.to('cpu'), dx_convention='2square')
-img_rot = torch.clip(img_rot, 0, 1)
-st = tb.imCmp(img_rot,T,method = 'compose')
+img_rot = tb.imgDeform(mr.mp.image, rot_def.to('cpu'),
+                       dx_convention='2square', clamp=True)
+st = tb.imCmp(img_rot,T_b,method = 'compose')
 
 i3p.imshow_3d_slider(st, title = "Image rotate cmp avec target")
 plt.show()
