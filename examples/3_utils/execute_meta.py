@@ -41,6 +41,7 @@ def perform_ref_of_size(size, save_gpu, n_iter, n_step, lbfgs_history_size,  lbf
     print(S.dtype)
 
     try:
+        torch.cuda.memory._record_memory_history()
         start = time()
         mt.metamorphosis(S, T, 0, 0.05,
                          cost_cst=0.001,
@@ -58,6 +59,12 @@ def perform_ref_of_size(size, save_gpu, n_iter, n_step, lbfgs_history_size,  lbf
                          )
         torch.cuda.synchronize()
         exec_time = time() - start
+
+        save_at = f'memory_snapshots/classic_s{size[0]}_sg{save_gpu}_ni{n_iter}_ns{n_step}_lh{lbfgs_history_size}_li{lbfgs_max_iter}.pickle'
+        torch.cuda.memory._dump_snapshot(save_at)
+        print(f"snapshot saved at {save_at}")
+
+
         mem_allocated = torch.cuda.max_memory_allocated()
         mem_reserved = torch.cuda.max_memory_reserved()
         # print(f"In : GPU memory used: {gpus[0].memoryUsed} MB")
@@ -130,7 +137,6 @@ if __name__ == "__main__":
     )
 
     # print(f"After : GPU memory used: {gpus[0].memoryUsed} MB")
-    # torch.cuda.memory._dump_snapshot('snapshot_Pointer.pickle')
 
     with open(csv_path, 'a') as f:
         writer = csv.writer(f)

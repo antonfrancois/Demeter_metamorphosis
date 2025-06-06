@@ -72,8 +72,8 @@ else:
 
 size_list = [200, 282, 400]
 save_gpu_list = [True, False]
-n_iter_list = [1,2,3,10,15]
-n_step_list = [2,3,5,7,10,12]
+n_iter_list = [2,3,10,15]
+n_step_list = [3,5,7,10,12]
 lbfgs_history_size_list = [10,20, 50, 100]
 lbfgs_max_iter_list = [5,10,20]
 
@@ -162,21 +162,21 @@ mem_to_consider = "memory allocated"
 df[mem_to_consider] = pd.to_numeric(df[mem_to_consider], errors='coerce')
 df["exec time sec"] = pd.to_numeric(df["exec time sec"], errors='coerce')
 
-df["M"] =  np.minimum( df["lbfgs_max_iter"]*df["n_iter"], 2* df["lbfgs_history_size"] )
+df["M"] =  np.minimum( df["lbfgs_max_iter"]*df["n_iter"], df["lbfgs_history_size"] )
 df["M1"] =  df["lbfgs_max_iter"]*df["n_iter"]
 df["M1 > hist"] = df["M1"] > df["lbfgs_history_size"]
 
 
 df["M * im_mem"]= df["M"] * df["image mem size"]
 
-df_200 = df[df["img shape"] == (1,1,400,400)]
+df_200 = df[df["img shape"] == (1,1,200,200)]
 
 df_200 = df_200[df_200["n_iter"]>1]
 
 #%%
 from sklearn.linear_model import LinearRegression
 
-f_sa_gpu = True
+f_sa_gpu = False
 df_gpu = df[
     (df["save gpu"] == f_sa_gpu)
     # & (df_200["M"]> 20)
@@ -192,54 +192,57 @@ model.fit(X, y)
 
 print(f'Prediction allocated memory (save gpu = {f_sa_gpu})')
 print("Coefficients :", model.coef_)
-print("Intercept    :", convert_bytes_size(model.intercept_))
+print("Intercept    :", model.intercept_," , ",convert_bytes_size(model.intercept_))
 print("Score R²     :", model.score(X, y))
+
+a,b = model.coef_
+c = model.intercept_
 
 #%%
 # calcul de b gpu True
-m_ref = 60
-mask_10 = ((df_200["M"] == m_ref) &
-    (df_200["n_step"] == 10) &
-     (df_200["save gpu"] == True))
-mask_2 = ((df_200["M"] == m_ref) &
-    (df_200["n_step"] == 2) &
-     (df_200["save gpu"] == True))
-try:
-    D = df_200[mask_10]["image mem size"].item()
-    b_true = (df_200[mask_10][mem_to_consider].item() - df_200[mask_2][mem_to_consider].item()) / ((10 -2) * D)
-except ValueError:
-    if ((len(df_200[mask_10]["image mem size"].unique()) ==1)
-        and (len(df_200[mask_10][mem_to_consider].unique()) ==1)
-            and (len(df_200[mask_10]["image mem size"].unique())==1)):
-        D = df_200[mask_10]["image mem size"].to_list()[0]
-        b_true = (df_200[mask_10][mem_to_consider].to_list()[0] - df_200[mask_2][mem_to_consider].to_list()[0]) / ((10 -2) * D)
-# calcul de b gpu False
-mask_10 = ((df_200["M"] == m_ref) &
-    (df_200["n_step"] == 10) &
-     (df_200["save gpu"] == False))
-mask_2 = ((df_200["M"] == m_ref) &
-    (df_200["n_step"] == 2) &
-     (df_200["save gpu"] == False))
-try:
-    D = df_200[mask_10]["image mem size"].item()
-    b_false = (df_200[mask_10][mem_to_consider].item() - df_200[mask_2][mem_to_consider].item()) / ((10 -2) * D)
-except ValueError:
-    if ((len(df_200[mask_10]["image mem size"].unique()) ==1)
-        and (len(df_200[mask_10][mem_to_consider].unique()) ==1)
-            and (len(df_200[mask_10]["image mem size"].unique())==1)):
-        D = df_200[mask_10]["image mem size"].to_list()[0]
-        b_false = (df_200[mask_10][mem_to_consider].to_list()[0] - df_200[mask_2][mem_to_consider].to_list()[0]) / ((10 -2) * D)
-
-print(f"b_true : {b_true}, b_false : {b_false}, M = {m_ref}")
+# m_ref = 60
+# mask_10 = ((df_200["M"] == m_ref) &
+#     (df_200["n_step"] == 10) &
+#      (df_200["save gpu"] == True))
+# mask_2 = ((df_200["M"] == m_ref) &
+#     (df_200["n_step"] == 2) &
+#      (df_200["save gpu"] == True))
+# try:
+#     D = df_200[mask_10]["image mem size"].item()
+#     b_true = (df_200[mask_10][mem_to_consider].item() - df_200[mask_2][mem_to_consider].item()) / ((10 -2) * D)
+# except ValueError:
+#     if ((len(df_200[mask_10]["image mem size"].unique()) ==1)
+#         and (len(df_200[mask_10][mem_to_consider].unique()) ==1)
+#             and (len(df_200[mask_10]["image mem size"].unique())==1)):
+#         D = df_200[mask_10]["image mem size"].to_list()[0]
+#         b_true = (df_200[mask_10][mem_to_consider].to_list()[0] - df_200[mask_2][mem_to_consider].to_list()[0]) / ((10 -2) * D)
+# # calcul de b gpu False
+# mask_10 = ((df_200["M"] == m_ref) &
+#     (df_200["n_step"] == 10) &
+#      (df_200["save gpu"] == False))
+# mask_2 = ((df_200["M"] == m_ref) &
+#     (df_200["n_step"] == 2) &
+#      (df_200["save gpu"] == False))
+# try:
+#     D = df_200[mask_10]["image mem size"].item()
+#     b_false = (df_200[mask_10][mem_to_consider].item() - df_200[mask_2][mem_to_consider].item()) / ((10 -2) * D)
+# except ValueError:
+#     if ((len(df_200[mask_10]["image mem size"].unique()) ==1)
+#         and (len(df_200[mask_10][mem_to_consider].unique()) ==1)
+#             and (len(df_200[mask_10]["image mem size"].unique())==1)):
+#         D = df_200[mask_10]["image mem size"].to_list()[0]
+#         b_false = (df_200[mask_10][mem_to_consider].to_list()[0] - df_200[mask_2][mem_to_consider].to_list()[0]) / ((10 -2) * D)
+#
+# print(f"b_true : {b_true}, b_false : {b_false}, M = {m_ref}")
 #%%
 fig, ax = plt.subplots(2, 2, figsize=(12, 10), constrained_layout = True)
-fig.suptitle(f" {gpu_name}; Total Memory: {total_memory / (1024 ** 3):.2f} GB; img size : {df_200["img shape"].iloc[0]}, {D/1024**2:.2f}MB")
+fig.suptitle(f" {gpu_name}; Total Memory: {total_memory / (1024 ** 3):.2f} GB; img size : {df_200["img shape"].iloc[0]}")#, {D/1024**2:.2f}MB")
 default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 line_styles = ['-', '--', '-.',':',(0, (3, 5, 1, 5, 1, 5))]
 markers = ['.','v', '<', '>', '^', 's' ,"*"]
 m_unique = df_200["M"].unique()
 i = 0
-eps = .1*1
+eps = .1*0
 for m in m_unique:
     df_200_m = df_200[df_200["M"] == m].sort_values(by="n_step", ascending=True)
     for save_gpu in [True, False]:
@@ -248,13 +251,15 @@ for m in m_unique:
         for ls, lh in enumerate(df_200_m_gpu["M1 > hist"].unique()):
             df_200_m_gpu_lh = df_200_m_gpu[df_200_m_gpu["M1 > hist"] == lh]
             n_ax = 1 if save_gpu else 0
-            ax[0,n_ax].plot(df_200_m_gpu_lh["n_step"]+ i*eps, df_200_m_gpu_lh[mem_to_consider] ,
+
+            ax[0,n_ax].plot(df_200_m_gpu_lh["n_step"]+ i*eps,
+                            df_200_m_gpu_lh[mem_to_consider], #- a* df_200_m_gpu_lh["M * im_mem"] - c,
                        label=f"M = {m}, M1 : {lh}",
                        # label=f"M = {m}" if ls == 0 else "",
                        #  linestyle='',
                        linestyle = line_styles[ls],
                         marker= markers[ls],
-                       color=default_colors[i]
+                       color=default_colors[i] if i < len(default_colors) else default_colors[i- len(default_colors)],
                        )
             ax[0,n_ax].set_xlabel("n integration step")
             ax[0,n_ax].set_ylabel("Mem usage bytes")
@@ -282,7 +287,7 @@ for save_gpu in [True, False]:
             # if p2:
             ax[1,n_ax].plot(df_200_pi_gpu[x_name], df_200_pi_gpu[mem_to_consider],
                             marker=markers[pi],
-                            label=f"{crit}:{p}, {crit_2}:{p2}",
+                            label=f"{crit}:{p}, {crit_2 if not p2 else 'M1 < hist'}",
                             linestyle = line_styles[ci],
                             color=default_colors[i]
                             )
@@ -293,3 +298,65 @@ for save_gpu in [True, False]:
         i +=1
 plt.show()
 fig.savefig(csv_file[:-4] + ".png")
+
+#%%
+from mpl_toolkits.mplot3d import Axes3D
+
+# Filtrer les lignes où save_gpu == False
+df_filtered = df[
+    (df['save gpu'] == False)
+    & (df["img shape"] == (1,1,200,200))
+    & (df["n_iter"] > 1)
+    & (df["n_step"] == 2)
+]
+color = df_filtered['M']
+
+pivot_table = df_filtered.pivot_table(
+    index='lbfgs_history_size',
+    columns='M1',
+    values='memory allocated'
+)
+# Extract grid values
+X, Y = np.meshgrid(pivot_table.columns, pivot_table.index)
+Z = pivot_table.values
+
+# Ajouter une surface rouge semi-transparente là où M1 < lbfgs_history_size
+mask = Y > X  # car Y = lbfgs_history_size, X = M1
+Z_mask = np.where(mask, Z, np.nan)  # ne garder que les zones valides
+
+# Créer la figure et l'axe 3D
+fig = plt.figure(figsize=(10, 7))
+ax = fig.add_subplot(111, projection='3d')
+
+# Tracer les points
+sc = ax.scatter(
+    df_filtered['M1'],
+    df_filtered['lbfgs_history_size'],
+    df_filtered['memory allocated'],
+    c=color, marker='o',cmap="jet"
+)
+highlight = df_filtered[df_filtered['M1'] < df_filtered['lbfgs_history_size']]
+ax.scatter(
+    highlight['M1'],
+    highlight['lbfgs_history_size'],
+    highlight['memory allocated'],
+    facecolors='none', edgecolors='red', s=80, linewidths=1.5, label='M1 < hist'
+)
+surf = ax.plot_surface(X, Y, Z, cmap='viridis', edgecolor='k',alpha=0.5)
+ax.plot_surface(X, Y, Z_mask, color='red', alpha=0.3, linewidth=0, antialiased=False)
+
+# Ajouter une barre de couleur
+cbar = plt.colorbar(sc, ax=ax, shrink=0.6, pad=0.1)
+cbar.set_label('M')
+
+
+# Ajouter les étiquettes des axes
+ax.set_xlabel('M1')
+ax.set_ylabel('lbfgs_history_size')
+ax.set_zlabel('memory allocated (MB)')  # ajuste l'unité si besoin
+
+# Titre
+ax.set_title('Memory Allocated selon n_step et M (save_gpu = False)')
+
+plt.tight_layout()
+plt.show()

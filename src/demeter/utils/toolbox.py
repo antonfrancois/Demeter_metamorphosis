@@ -87,6 +87,8 @@ def get_size(obj, seen=None):
 
 
 def convert_bytes_size(size_bytes):
+    if size_bytes is None:
+        return "None"
     if size_bytes == 0:
         return "0B"
     size_name = ("B", "KB", "MB", "GB")
