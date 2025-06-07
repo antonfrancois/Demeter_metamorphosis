@@ -307,7 +307,7 @@ df_filtered = df[
     (df['save gpu'] == False)
     & (df["img shape"] == (1,1,200,200))
     & (df["n_iter"] > 1)
-    & (df["n_step"] == 2)
+    # & (df["n_step"] == 2)
 ]
 color = df_filtered['M']
 

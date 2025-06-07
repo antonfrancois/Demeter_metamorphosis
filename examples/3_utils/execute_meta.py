@@ -17,7 +17,7 @@ from demeter.utils.decorators import *
 from demeter.utils.toolbox import convert_bytes_size
 
 @monitor_gpu
-def perform_ref_of_size(size, save_gpu, n_iter, n_step, lbfgs_history_size,  lbfgs_max_iter):
+def perform_ref_of_size(size, save_gpu, n_iter, n_step, lbfgs_history_size,  lbfgs_max_iter, snapshoot = False):
     # print(f"Before putting S,T on GPU : GPU memory used: {gpus[0].memoryUsed} MB")
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     print(device)
@@ -41,7 +41,8 @@ def perform_ref_of_size(size, save_gpu, n_iter, n_step, lbfgs_history_size,  lbf
     print(S.dtype)
 
     try:
-        torch.cuda.memory._record_memory_history()
+        if snapshoot:
+            torch.cuda.memory._record_memory_history()
         start = time()
         mt.metamorphosis(S, T, 0, 0.05,
                          cost_cst=0.001,
@@ -60,9 +61,10 @@ def perform_ref_of_size(size, save_gpu, n_iter, n_step, lbfgs_history_size,  lbf
         torch.cuda.synchronize()
         exec_time = time() - start
 
-        save_at = f'memory_snapshots/classic_s{size[0]}_sg{save_gpu}_ni{n_iter}_ns{n_step}_lh{lbfgs_history_size}_li{lbfgs_max_iter}.pickle'
-        torch.cuda.memory._dump_snapshot(save_at)
-        print(f"snapshot saved at {save_at}")
+        if snapshoot:
+            save_at = f'memory_snapshots/classic_s{size[0]}_sg{save_gpu}_ni{n_iter}_ns{n_step}_lh{lbfgs_history_size}_li{lbfgs_max_iter}.pickle'
+            torch.cuda.memory._dump_snapshot(save_at)
+            print(f"snapshot saved at {save_at}")
 
 
         mem_allocated = torch.cuda.max_memory_allocated()
