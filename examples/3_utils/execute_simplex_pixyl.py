@@ -1,5 +1,7 @@
 import argparse
 
+from torch.mtia import snapshot
+
 import __init__
 import os, math, time
 import re
@@ -201,7 +203,16 @@ def plot_mr(mr):
     mr.save(name, light_save=True)
 
 
-def perform_simplex_ref(img_shape, save_gpu,  n_iter, n_step, lbfgs_history_size,  lbfgs_max_iter):
+def perform_simplex_ref(img_shape, save_gpu,  n_iter, n_step, lbfgs_history_size,  lbfgs_max_iter,  snapshoot = False):
+
+    print("Will execute perform_simplex_ref with params:")
+    print(f"\timage_shape = {img_shape}")
+    print(f"\tsave_gpu = {save_gpu}")
+    print(f"\tn_iter = {n_iter}")
+    print(f"\tn_step = {n_step}")
+    print(f"\tlbfgs_history_size = {lbfgs_history_size}")
+    print(f"\tlbfgs_max_iter = {lbfgs_max_iter}")
+    print(f"\tsnapshoot = {snapshot}")
 
     print("Building source & target ...")
     source = path_to_simplex(os.path.join(path,patient,f"{patient}_{source_fol}"),
@@ -219,6 +230,8 @@ def perform_simplex_ref(img_shape, save_gpu,  n_iter, n_step, lbfgs_history_size
     print("target; ", target.shape, target.min().item(), target.max().item())
 
     # resize
+    if snapshoot:
+            torch.cuda.memory._record_memory_history()
     before_shape =  source.shape
     source = resize_image(source, to_shape=img_shape)
     source = source.clip(0, 1)
@@ -246,7 +259,6 @@ def perform_simplex_ref(img_shape, save_gpu,  n_iter, n_step, lbfgs_history_size
     #     dx=dx,
     #     kernel_reach=6
     # )
-
     sigma = (.1,.1,.1)
     dx = tuple([1./(s-1) for s in source.shape[2:]])
     # dx = (1, 1, 1)
@@ -307,9 +319,13 @@ def perform_simplex_ref(img_shape, save_gpu,  n_iter, n_step, lbfgs_history_size
                      lbfgs_history_size=lbfgs_history_size,
                     lbfgs_max_iter=lbfgs_max_iter
         )
-        ic(mr)
+
         torch.cuda.synchronize()
         exec_time = time.time() - start
+        if snapshoot:
+            save_at = f'memory_snapshots/simplex_s{size[0]}_sg{save_gpu}_ni{n_iter}_ns{n_step}_lh{lbfgs_history_size}_li{lbfgs_max_iter}.pickle'
+            torch.cuda.memory._dump_snapshot(save_at)
+            print(f"snapshot saved at {save_at}")
         mem_allocated = torch.cuda.max_memory_allocated()
         mem_reserved = torch.cuda.max_memory_reserved()
         # print(f"In : GPU memory used: {gpus[0].memoryUsed} MB")
@@ -326,8 +342,6 @@ def perform_simplex_ref(img_shape, save_gpu,  n_iter, n_step, lbfgs_history_size
 
 
     #%%
-
-
 #%%
 
 if __name__ == "__main__":
@@ -342,11 +356,13 @@ if __name__ == "__main__":
     parser.add_argument("--lbfgs_history_size", type=int, default = 100, help="L-BFGS history size")
     parser.add_argument("--lbfgs_max_iter", type=int, default = 20, help="L-BFGS max evaluations")
     parser.add_argument("--csv_file", type=str, default = "trash.csv", help="Path to output CSV")
+    parser.add_argument("--snapshot", type=str, default = "False", help="Whether to save GPU snapshot (true/false)")
 
     args = parser.parse_args()
 
     # Parse booleans
     save_gpu = args.save_gpu.lower() == "true"
+    snapshot = args.snapshot.lower() == "true"
 
     # Now you can use:
     width = args.width
@@ -387,7 +403,7 @@ if __name__ == "__main__":
 
 
 #%%
-    size_image, mem_allocated, mem_reserved, exec_time = perform_simplex_ref(size, save_gpu,n_iter,n_step,lbfgs_history_size,lbfgs_max_iter)
+    size_image, mem_allocated, mem_reserved, time_exec = perform_simplex_ref(size, save_gpu,n_iter,n_step,lbfgs_history_size,lbfgs_max_iter, snapshot)
 
     with open(csv_path, 'a') as f:
         writer = csv.writer(f)

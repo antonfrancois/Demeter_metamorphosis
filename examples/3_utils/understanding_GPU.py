@@ -22,12 +22,11 @@ import subprocess
 
 env = os.environ.copy()
 env["MKL_THREADING_LAYER"] = "GNU"
-# SIMPLEX = True
-# if SIMPLEX:
-#     size_list = np.linspace(0.1, 0.10, 15)
-#     name_csv = "benchmark_simplex_results_memory_meso.csv"
-# else:
-name_csv = "understanding_memory_results.csv"
+SIMPLEX = True
+if SIMPLEX:
+    name_csv = "understanding_memory_simplex.csv"
+else:
+    name_csv = "understanding_memory_results.csv"
 
 
 csv_file = os.path.join(
@@ -70,12 +69,15 @@ else:
             ])
     existing_df.to_csv(csv_file, index=False)
 
-size_list = [200, 282, 400]
+if SIMPLEX:
+    size_list = [80,120,140, 200]
+else:
+    size_list = [200, 282, 400]
 save_gpu_list = [True, False]
-n_iter_list = [2,3,10,15]
+n_iter_list = [2,10,15]
 n_step_list = [3,5,7,10,12]
-lbfgs_history_size_list = [10,20, 50, 100]
-lbfgs_max_iter_list = [5,10,20]
+lbfgs_history_size_list = [10,20, 50]
+lbfgs_max_iter_list = [5,10]
 
 
 
@@ -108,10 +110,14 @@ for c, p in enumerate(params):
         (existing_df["lbfgs_max_iter"] == lbfgs_max_iter)
     ).any()
 
+    if SIMPLEX:
+        exec_file = "examples/3_utils/execute_simplex_pixyl.py"
+    else:
+        exec_file = "examples/3_utils/execute_meta.py"
 
     print(f"\nLancement {c+1}/{len(params)}: size=({(size, size, 1)}), save_gpu={save_gpu}")
-    print("python3"
-         " examples/3_utils/execute_meta.py"
+    print("python3 ",
+        exec_file,
         f"\n\t--width {size}" 
         f"\n\t--height {size}" 
         f"\n\t--save_gpu {save_gpu}"
@@ -129,7 +135,7 @@ for c, p in enumerate(params):
 
     subprocess.run([
         "python3",
-        "examples/3_utils/execute_meta.py",
+        exec_file,
         "--width", str(size),
         "--height", str(size),
         "--save_gpu", str(save_gpu).lower(),
@@ -156,8 +162,8 @@ except ValueError:
 df["size"] = df["img shape"].apply(prod)
 df["n_step * im_mem"] = df["n_step"] * df["image mem size"]
 
-mem_to_consider = "memory allocated"
-# mem_to_consider = "memory reserved"
+# mem_to_consider = "memory allocated"
+mem_to_consider = "memory reserved"
 
 df[mem_to_consider] = pd.to_numeric(df[mem_to_consider], errors='coerce')
 df["exec time sec"] = pd.to_numeric(df["exec time sec"], errors='coerce')
@@ -176,7 +182,7 @@ df_200 = df_200[df_200["n_iter"]>1]
 #%%
 from sklearn.linear_model import LinearRegression
 
-f_sa_gpu = False
+f_sa_gpu = True
 df_gpu = df[
     (df["save gpu"] == f_sa_gpu)
     # & (df_200["M"]> 20)
@@ -184,8 +190,9 @@ df_gpu = df[
 X = df_gpu[['M * im_mem',"n_step * im_mem"]]
 
 # X = df_gpu[['lbfgs_history_size * im_mem',"n_step * im_mem"]]
-y = df_gpu['memory allocated']
-# yb = df['reserved']
+# y = df_gpu['memory allocated']
+y = df_gpu['memory reserved']
+
 
 model = LinearRegression()
 model.fit(X, y)
