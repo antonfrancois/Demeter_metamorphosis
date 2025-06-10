@@ -43,23 +43,23 @@ PARAM_LINREG_200_FALSE = {
 }
 
 PARAM_LINREG_ALL_TRUE = {
-    'a':0, 'b':0, 'c':0, 'save_gpu': True
+    'a':2.51876377 , 'b':6.57725367, 'c':19109046, 'save_gpu': True
 }
 
 PARAM_LINREG_ALL_FALSE = {
-    'a':0, 'b':0, 'c':0, 'save_gpu': False
+    'a':1.65921669, 'b':64.26293817, 'c':438641, 'save_gpu': False
 }
 
 
 #======================================================
 
-size = 200
+size = 1000
 img = torch.rand((size,size),dtype= torch.float32)
-integration_steps= 20
-n_iter= 3
+integration_steps= 10
+n_iter= 6
 lbfgs_max_iter= 6
-lbfgs_history_size= 10
-parameters = PARAM_LINREG_200_TRUE
+lbfgs_history_size= 20
+parameters = PARAM_LINREG_ALL_FALSE
 
 pred =  predict_gpu_model_image(img,
         integration_steps,
