@@ -1,11 +1,11 @@
 """
 
 """
-
+import matplotlib.pyplot as plt
 import torch
 from math import log
 from demeter.utils.toolbox import convert_bytes_size
-from execute_meta import perform_ref_of_size
+# from execute_meta import perform_ref_of_size
 
 def predict_gpu_model_image(
         image,
@@ -75,6 +75,7 @@ print(f"Prediction: {pred}, {convert_bytes_size(pred)}")
 if pred > total_gpu_mem:
     print(f"With current GPU (memory available {convert_bytes_size(total_gpu_mem)})and parameters, the model will be out of memory.")
 
+#%%
 # =====================================================
 # Check if the prediction is correct !
 
@@ -106,3 +107,36 @@ else:
     print(f"Memory allocated: Out Of Memory")
 
 
+#%% Fake benchmark
+# import numpy as np
+
+size_list = torch.linspace(100,5000, 10)
+pred_true_list = []
+pred_false_list = []
+img_size_list = []
+for size in size_list:
+    img = torch.rand((int(size),int(size)),dtype= torch.float32)
+    img_size_list.append(int(size)**2)
+    pred_false =  predict_gpu_model_image(img,
+            integration_steps,
+            n_iter,
+            lbfgs_max_iter,
+            lbfgs_history_size,
+            PARAM_LINREG_ALL_FALSE
+                            )
+    pred_true =  predict_gpu_model_image(img,
+            integration_steps,
+            n_iter,
+            lbfgs_max_iter,
+            lbfgs_history_size,
+            PARAM_LINREG_ALL_TRUE
+                            )
+    pred_true_list.append(pred_true)
+    pred_false_list.append(pred_false)
+
+fig, ax = plt.subplots()
+ax.plot(img_size_list, pred_true_list, 'b')
+ax.plot(img_size_list, pred_false_list, 'r')
+ax.legend()
+ax.grid(True)
+plt.show()
