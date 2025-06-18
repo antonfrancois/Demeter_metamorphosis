@@ -22,11 +22,13 @@ import subprocess
 
 env = os.environ.copy()
 env["MKL_THREADING_LAYER"] = "GNU"
-SIMPLEX = True
+SIMPLEX = False
 if SIMPLEX:
     name_csv = "understanding_memory_simplex.csv"
 else:
-    name_csv = "understanding_memory_results.csv"
+    name_csv = "understanding_memory_classic.csv"
+    # name_csv = "understanding_memory_results_archive.csv"
+
 
 
 csv_file = os.path.join(
@@ -72,7 +74,7 @@ else:
 if SIMPLEX:
     size_list = [80,120,140, 200]
 else:
-    size_list = [200, 282, 400]
+    size_list = [200, 282, 400, 750]
 save_gpu_list = [True, False]
 n_iter_list = [2,10,15]
 n_step_list = [3,5,7,10,12]
@@ -162,8 +164,8 @@ except ValueError:
 df["size"] = df["img shape"].apply(prod)
 df["n_step * im_mem"] = df["n_step"] * df["image mem size"]
 
-# mem_to_consider = "memory allocated"
-mem_to_consider = "memory reserved"
+mem_to_consider = "memory allocated"
+# mem_to_consider = "memory reserved"
 
 df[mem_to_consider] = pd.to_numeric(df[mem_to_consider], errors='coerce')
 df["exec time sec"] = pd.to_numeric(df["exec time sec"], errors='coerce')
@@ -186,12 +188,12 @@ f_sa_gpu = True
 df_gpu = df[
     (df["save gpu"] == f_sa_gpu)
     # & (df_200["M"]> 20)
-]
+].dropna()
 X = df_gpu[['M * im_mem',"n_step * im_mem"]]
 
 # X = df_gpu[['lbfgs_history_size * im_mem',"n_step * im_mem"]]
-# y = df_gpu['memory allocated']
-y = df_gpu['memory reserved']
+y = df_gpu['memory allocated']
+# y = df_gpu['memory reserved']
 
 
 model = LinearRegression()
@@ -204,6 +206,16 @@ print("Score R²     :", model.score(X, y))
 
 a,b = model.coef_
 c = model.intercept_
+results = {
+    'a': float(round(a, 8)),
+    'b': float(round(b, 8)),
+    'c': float(round(c)),  # en bytes
+    'r2': float(round(model.score(X, y), 6)),
+    'save_gpu': f_sa_gpu,
+}
+
+print(results)
+
 
 #%%
 # calcul de b gpu True
@@ -238,8 +250,7 @@ c = model.intercept_
 #         and (len(df_200[mask_10][mem_to_consider].unique()) ==1)
 #             and (len(df_200[mask_10]["image mem size"].unique())==1)):
 #         D = df_200[mask_10]["image mem size"].to_list()[0]
-#         b_false = (df_200[mask_10][mem_to_consider].to_list()[0] - df_200[mask_2][mem_to_consider].to_list()[0]) / ((10 -2) * D)
-#
+#         b_false = (df_200[mask_10][mem_to_consider].to_list()[0] - df_200[mask_2][mem_to_consider].to_list()[0]) / ((10
 # print(f"b_true : {b_true}, b_false : {b_false}, M = {m_ref}")
 #%%
 fig, ax = plt.subplots(2, 2, figsize=(12, 10), constrained_layout = True)
@@ -261,7 +272,7 @@ for m in m_unique:
 
             ax[0,n_ax].plot(df_200_m_gpu_lh["n_step"]+ i*eps,
                             df_200_m_gpu_lh[mem_to_consider], #- a* df_200_m_gpu_lh["M * im_mem"] - c,
-                       label=f"M = {m}, M1 : {lh}",
+                       label=f"M = {m}, {"M1 > hist" if lh else 'M1 <= hist'}",
                        # label=f"M = {m}" if ls == 0 else "",
                        #  linestyle='',
                        linestyle = line_styles[ls],
@@ -294,7 +305,7 @@ for save_gpu in [True, False]:
             # if p2:
             ax[1,n_ax].plot(df_200_pi_gpu[x_name], df_200_pi_gpu[mem_to_consider],
                             marker=markers[pi],
-                            label=f"{crit}:{p}, {crit_2 if not p2 else 'M1 < hist'}",
+                            label=f"{crit}:{p}, {crit_2 if not p2 else 'M1 <= hist'}",
                             linestyle = line_styles[ci],
                             color=default_colors[i]
                             )

@@ -25,20 +25,23 @@ def perform_ref_of_size(size, save_gpu, n_iter, n_step, lbfgs_history_size,  lbf
     torch.cuda.reset_peak_memory_stats()
     torch.cuda.synchronize()
 
-    bef_mem = torch.cuda.max_memory_allocated()
+    # bef_mem = torch.cuda.max_memory_allocated()
     S = tb.reg_open('m0t', size=size).to(device)
-    after_mem = torch.cuda.max_memory_allocated()
+    # after_mem = torch.cuda.max_memory_allocated()
     T = tb.reg_open('m1c', size=size).to(device)
 
-    size_of_S = after_mem - bef_mem
+    # size_of_S = after_mem - bef_mem
+    size_of_S = S.nbytes
     print(f"size of the image : {size_of_S/1024 ** 2:.2f} MB")
+    # print(f"nbytes :{S.nbytes}, {convert_bytes_size(S.nbytes)}")
+    print(f"dtype : {S.dtype}")
+
 
     sigma = rk.get_sigma_from_img_ratio(T.shape, subdiv=10)
     kernelOperator = rk.GaussianRKHS(sigma, kernel_reach=4)
     data_cost = mt.Ssd(T)
     # print(f"After putting S,T on GPU : GPU memory used: {gpus[0].memoryUsed} MB")
 
-    print(S.dtype)
 
     try:
         if snapshoot:
