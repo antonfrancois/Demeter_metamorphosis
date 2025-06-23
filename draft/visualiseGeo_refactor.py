@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
@@ -12,87 +14,8 @@ import demeter.metamorphosis as mt
 from demeter.constants import *
 from demeter.utils.image_3d_plotter import *
 
+import demeter.utils.torchbox as tb
 
-#
-# def img_torch_to_plt(image):
-#     """
-#     Converts a PyTorch tensor or NumPy array into a format suitable for Matplotlib or other
-#     visualization libraries that expect channel-last layout.
-#
-#     Supported input formats and their corresponding outputs:
-#
-#
-#     Parameters
-#     ----------
-#     image : torch.Tensor or np.ndarray
-#         Input image data in one of the supported formats described above.
-#
-#     Returns
-#     -------
-#     np.ndarray
-#         The image converted to a NumPy array in a layout compatible with visualization libraries.
-#
-#     Raises
-#     ------
-#     ValueError
-#         If the input shape is not supported or inconsistent with the expected channel assumptions.
-#     TypeError
-#         If the input is neither a torch.Tensor nor a np.ndarray.
-#
-#     2d
-#     input (B,C,H,W) torch tensor => output numpy (B,H,W, C) if C == 3
-#     input (B,C,H,W) torch tensor => output numpy (B,H,W, 1) if C == 1
-#     input (B,C,H,W) torch tensor => output numpy (B,H,W, 1) if C != 1 and C != 3 raises an Error wrong numbers of channels.
-#
-#     input (H,W) torch tensor => output numpy (1, H,W,1)
-#     input (H, W, C) numpy => output numpy (1,H,W,C) if C == 3 else raise Error
-#
-#     3d
-#     input (B,C, D, H,W) torch tensor => output numpy (B, D, H,W) if C != 3
-#     input (B, C,D,H,W) torch tensor => output numpy (B, D, H,W,C) if C == 3
-#     input (D,H,W) torch tensor => output numpy (1, D, H,W,1)
-#     input (B, D, H, W) torch tensor => output numpy (B, D, H,W,1) if W != 3 else raise Error
-#     input (D, H, W, C) numpy => output numpy (1,D,H,W,C) if C == 3 else raise Error
-#     input(B, D, H,W,C) numpy => output numpy (B, D, H,W,C) if C in [1,3]  else raise Error
-#     """
-#     if isinstance(image, torch.Tensor):
-#         ndim = image.ndim
-#
-#         if ndim == 4:
-#             # (B,C,H,W)
-#             B, C, H, W = image.shape
-#             if C == 3:
-#                 return image.permute(0, 2, 3, 1).cpu().numpy()  # (B,H,W,C)
-#             else:
-#                 return image[:, 0, :, :].unsqueeze(1).cpu().numpy().squeeze(1)  # (B,H,W)
-#
-#         elif ndim == 2:
-#             # (H,W)
-#             return image.unsqueeze(0).cpu().numpy()  # (1,H,W)
-#
-#         elif ndim == 5:
-#             # (B,C,D,H,W)
-#             B, C, D, H, W = image.shape
-#             if C == 3:
-#                 return image.permute(0, 2, 3, 4, 1).cpu().numpy()  # (B,D,H,W,C)
-#             else:
-#                 return image[:, 0, :, :, :].cpu().numpy()  # (B,D,H,W)
-#
-#         else:
-#             raise ValueError(f"Unsupported torch tensor shape {image.shape}")
-#
-#     elif isinstance(image, np.ndarray):
-#         if image.ndim == 3:
-#             H, W, C = image.shape
-#             if C == 3:
-#                 return image[np.newaxis, ...]  # (1,H,W,C)
-#             else:
-#                 raise ValueError("NumPy input with shape (H,W,C) must have C == 3")
-#         else:
-#             raise ValueError(f"Unsupported numpy array shape {image.shape}")
-#
-#     else:
-#         raise TypeError("Input must be a torch.Tensor or numpy.ndarray")
 
 def img_torch_to_plt(image):
     """
@@ -146,7 +69,7 @@ def img_torch_to_plt(image):
             elif C == 1:
                 return image.permute(0, 2, 3, 1).numpy()
             else:
-                raise ValueError(f"Unsupported number of channels for 2D: {C}")
+                raise ValueError(f"Unsupported number of channels for 2D: {C}, got image shape {image.shape}")
 
         elif image.ndim == 2:
             # (H, W)
@@ -188,13 +111,14 @@ def img_torch_to_plt(image):
             # (B, D, H, W)
             B, D, H, W = image.shape
             if W == 3:
-                raise ValueError(f"Ambiguous shape (B, D, H, W) with W==3 in numpy is not supported.")
+                warnings.warn(f"Ambiguous shape (B, D, H, W) with W==3 in numpy, considered image to be 3d.")
+                return image[np.newaxis, ...] # (1,D, H, W, 3)
             return image[..., np.newaxis]  # (B, D, H, W, 1)
 
         elif image.ndim == 5:
             # (B, D, H, W, C)
             B, D, H, W, C = image.shape
-            if C in [1, 3]:
+            if C in [1, 3, 4]:
                 return image
             else:
                 raise ValueError(f"Unsupported number of channels in 3D numpy image: {C}")
@@ -218,36 +142,60 @@ img = torch.randn(5, 1, 10, 64, 64)
 out = img_torch_to_plt(img)
 
 
-# %%
 
-class Image3dAxes_slider:
+class Base3dAxes_slider:
+    def __init__(self, ax=None,  color_txt=(0.7, 0.7, 0.7, 1), color_bg=(0.1, 0.1, 0.1, 1)):
+        self.color_txt = color_txt
+        self.color_bg = color_bg
 
-    def __init__(self, image,
-                 ax=None,
-                 color_bg=None,
-                 color_txt=None,
-                 cmap='gray'
-                 ):
-        # ----- Init fig ------------
         if ax is None:
             self.fig, self.ax = plt.subplots(1, 3, constrained_layout=False)
         else:
             self.fig = ax.get_figure()
             self.ax = ax
-
-        self.color_bg = color_bg if color_bg is not None else (0.1, 0.1, 0.1, 1)
-        self.color_txt = color_txt if color_txt is not None else (0.7, 0.7, 0.7, 1)
         self.fig.patch.set_facecolor(self.color_bg)
-        self.fig.canvas.mpl_connect('button_press_event', self.on_click)
-        self.fig.canvas.mpl_connect('key_press_event', self.on_keypress)
 
         for a in self.ax:
             a.tick_params(axis="both", colors=self.color_txt)
 
-        # -------------- init
+    def _init_4d_sliders(self, init_x=None, init_y=None, init_z=None):
+        T, D, H, W, _ = self.shape
+        init_x = init_x if init_x is not None else D // 2
+        init_y = init_y if init_y is not None else H // 2
+        init_z = init_z if init_z is not None else W // 2
+
+        axcolor = "lightgoldenrodyellow"
+        ax_t = plt.axes([0.25, 0.20, 0.5, 0.03], facecolor=axcolor)
+        ax_x = plt.axes([0.25, 0.15, 0.5, 0.03], facecolor=axcolor)
+        ax_y = plt.axes([0.25, 0.10, 0.5, 0.03], facecolor=axcolor)
+        ax_z = plt.axes([0.25, 0.05, 0.5, 0.03], facecolor=axcolor)
+
+        self.sliders = [
+            Slider(ax=ax_x, label="x", valmin=0, valmax=D - 1, valinit=init_x, valfmt="%0.0f", valstep=1),
+            Slider(ax=ax_y, label="y", valmin=0, valmax=H - 1, valinit=init_y, valfmt="%0.0f", valstep=1),
+            Slider(ax=ax_z, label="z", valmin=0, valmax=W - 1, valinit=init_z, valfmt="%0.0f", valstep=1),
+            Slider(ax=ax_t, label="t", valmin=0, valmax=T - 1, valinit=T - 1, valfmt="%0.0f", valstep=1),
+        ]
+
+        for s in self.sliders:
+            s.label.set_color(self.color_txt)
+            s.valtext.set_color(self.color_txt)
+            s.on_changed(self.update)
+
+        return self.sliders
+# %%
+
+class Image3dAxes_slider(Base3dAxes_slider):
+
+    def __init__(self, image,
+                 cmap='gray',
+                 **kwargs
+                 ):
+         # ---------- init image shape
         self.image = img_torch_to_plt(image)
+        ic(self.image.shape)
         ic(self.image.max())
-        self.shown_image = self.image[-1, ..., 0]
+        self.shown_image = self.image[-1]
         self.shape = self.image.shape
         assert len(self.shape) == 5, f"The optimised image is not a 3D image got {self.shape}"
         T, D, H, W, C = self.shape
@@ -258,15 +206,28 @@ class Image3dAxes_slider:
             cmap=cmap,
             # origin = "lower"
         )
+
+
+        # ----- Init fig ------------
+        super().__init__(**kwargs)
+        self.fig.canvas.mpl_connect('button_press_event', self.on_click)
+        self.fig.canvas.mpl_connect('key_press_event', self.on_keypress)
+
+
+
+        # -------------- init
         self._init_axes_(init_x_coord, init_y_coord, init_z_coord)
         self._add_lines_on_plt_(init_x_coord, init_y_coord, init_z_coord)
-        self.sliders = self._init_slider(init_x_coord, init_y_coord, init_z_coord)
+        self._init_4d_sliders(init_x_coord, init_y_coord, init_z_coord)
 
-        # register the update function with each slider
-        for slider in self.sliders:
-            slider.label.set_color(self.color_txt)     # For the label (e.g. "x", "y", "z", "t")
-            slider.valtext.set_color(self.color_txt)   # For the value display (e.g. "15")
-            slider.on_changed(self.update)
+        # # register the update function with each slider
+        # for slider in self.sliders:
+        #     slider.label.set_color(self.color_txt)     # For the label (e.g. "x", "y", "z", "t")
+        #     slider.valtext.set_color(self.color_txt)   # For the value display (e.g. "15")
+        #     slider.on_changed(self.update)
+
+    def get_fig_ax(self):
+        return (self.fig, self.ax)
 
     def _make_transpose_tpl_(self):
         return (1, 0, 2) if len(self.shown_image.shape) == 4 else (1, 0)
@@ -305,6 +266,7 @@ class Image3dAxes_slider:
         self.ax[1].set_ylim(0, self.shown_image.shape[2] - 1)
         self.ax[2].set_ylim(0, self.shown_image.shape[2] - 1)
 
+
     def _add_lines_on_plt_(self, x, y, z):
         line_color = "green"
         self._l_x_v = self.ax[0].axvline(x=x, color=line_color, alpha=0.6)
@@ -316,35 +278,10 @@ class Image3dAxes_slider:
 
         self.ax[0].margins(x=0)
 
-    def _init_slider(self, init_x_coord, init_y_coord, init_z_coord):
-        """Create sliders for the 3D image."""
-        # make sliders
-        T, D, H, W, C = self.shape
-        axcolor = "lightgoldenrodyellow"
-        sl_x = plt.axes([0.25, 0.15, 0.5, 0.03], facecolor=axcolor)
-        sl_y = plt.axes([0.25, 0.1, 0.5, 0.03], facecolor=axcolor)
-        sl_z = plt.axes([0.25, 0.05, 0.5, 0.03], facecolor=axcolor)
-        sl_t = plt.axes([0.25, 0.2, 0.5, 0.03], facecolor=axcolor)
-
-        kw_slider_args = dict(valmin=0, valfmt="%0.0f", valstep=1)
-        x_slider = Slider(
-            label="z", ax=sl_z, valmax=D - 1, valinit=init_x_coord, **kw_slider_args
-        )
-        y_slider = Slider(
-            label="y", ax=sl_y, valmax=H - 1, valinit=init_y_coord, **kw_slider_args
-        )
-        z_slider = Slider(
-            label="x", ax=sl_x, valmax=W - 1, valinit=init_z_coord, **kw_slider_args
-        )
-        t_slider = Slider(
-            label="t", ax=sl_t, valmax=T - 1, valinit=T - 1, **kw_slider_args
-        )
-        return [x_slider, y_slider, z_slider, t_slider]
-
     def change_image(self, image, cmap=None):
         image = img_torch_to_plt(image)
         if image.shape != self.shape:
-            raise ValueError(f"New image shape does not match previous image, {self.shape} != {image.shape}")
+            raise ValueError(f"New image shape does not match previous image, previous: {self.shape} != new:{image.shape}")
         self.image = image
         self.shown_image = image[self.sliders[-1].val]
 
@@ -365,7 +302,7 @@ class Image3dAxes_slider:
         x_slider, y_slider, z_slider, t_slider = self.sliders
         t = t_slider.val if self.image.shape[0] > 1 else 0
 
-        self.shown_image = self.image[t, ..., 0].copy()
+        self.shown_image = self.image[t].copy()
 
         # img = np.clip(self.shown_image, 0, 1)
 
@@ -861,36 +798,243 @@ class VisualizeGeodesicOptim:
         plt.show()
 
 
-# %%
-# file = "3D_20250517_BraTSReg_086_train_flair_turtlefox_000.pk1"
-# mr = mt.load_optimize_geodesicShooting(
-#     file,
-#     # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/saved_optim/'),
-#     # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/'),
-#
-# )
-# name = file.split('.')[0]
 
 
-path = "/home/turtlefox/Documents/11_metamorphoses/data/pixyl/aligned/PSL_001/"
-file = "PSL_001_longitudinal_rigid.pt"
-data = torch.load(os.path.join(path, file))
-print(data.keys())
-months = data["months_list"]
-flair = data["flair_longitudinal"]
-t1ce = data["t1ce_longitudinal"]
-pred = data["pred_longitudinal"]
 
-pred = torch.clip(pred, 0, 10)
-print(flair.shape)
-print(pred.max())
-print(pred.dtype)
 
-ias = Image3dAxes_slider(flair)
-ias.go_on_slice(168,176,53)
+class Grid3dAxes_slider(Base3dAxes_slider):
+    def __init__(self, deformation: torch.Tensor,
+                 step = 10,
+                 alpha=0.2,
+                 color_grid = "k",
+                 button_position=[0.05, 0.85, 0.1, 0.05],
+                 **kwargs
+                 ):
+        """
+        Parameters
+        ----------
+        deformation : torch.Tensor
+            Expected shape: (T, D, H, W, 3)
+        button_position : list of float
+            Position of the grid toggle button [left, bottom, width, height]
+        step : int or None
+            Grid step size. If None, it will be computed to get at least 15 lines in each direction.
+        color_txt: Tuple[float, float, float, float]  default
+                             color_txt=(0.7, 0.7, 0.7, 1)  # dark gray
+        color_bg: Tuple[float, float, float, float]  default
+                 color_bg=(0.1, 0.1, 0.1, 1),  # very light gray
 
-ias.change_image(pred, cmap='tab10')
-plt.show()
+        """
+        super().__init__(**kwargs)
+        assert deformation.ndim == 5 and deformation.shape[-1] == 3, "Expected deformation of shape (T, D, H, W, 3)"
+
+        self.deformation = deformation
+        # self.color_txt = color_txt
+        # self.color_bg = color_bg
+        self.button_position = button_position
+
+
+        self.shape = self.deformation.shape  # (T, D, H, W, 3)
+        T, D, H, W, _ = self.shape
+        if step is None:
+            step = max(1, min(D, H, W) // 15)
+        self.kw_grid = dict(color=color_grid, step=step, alpha=alpha)
+        self.grid_was_init = False
+        self.flag_grid = False
+        self.lines = []
+
+        self._init_4d_sliders()
+        self._init_button()
+
+    # def _init_4d_slider(self, init_x_coord = None, init_y_coord=None, init_z_coord=None):
+    #     """Create sliders for the 3D image."""
+    #     # make sliders
+    #     T, D, H, W, C = self.shape
+    #     init_x_coord, init_y_coord, init_z_coord = D//2, H//2, W//2
+    #     axcolor = "lightgoldenrodyellow"
+    #     sl_x = plt.axes([0.25, 0.15, 0.5, 0.03], facecolor=axcolor)
+    #     sl_y = plt.axes([0.25, 0.1, 0.5, 0.03], facecolor=axcolor)
+    #     sl_z = plt.axes([0.25, 0.05, 0.5, 0.03], facecolor=axcolor)
+    #     sl_t = plt.axes([0.25, 0.2, 0.5, 0.03], facecolor=axcolor)
+    #
+    #     kw_slider_args = dict(valmin=0, valfmt="%0.0f", valstep=1)
+    #     self.sliders = [
+    #          Slider(label="z", ax=sl_z, valmax=D - 1, valinit=init_x_coord, **kw_slider_args),
+    #         Slider(label="y", ax=sl_y, valmax=H - 1, valinit=init_y_coord, **kw_slider_args),
+    #         Slider(label="x", ax=sl_x, valmax=W - 1, valinit=init_z_coord, **kw_slider_args),
+    #         Slider(label="t", ax=sl_t, valmax=T - 1, valinit=T - 1, **kw_slider_args)
+    #     ]
+    #
+    #     for s in self.sliders:
+    #         s.label.set_color(self.color_txt)
+    #         s.valtext.set_color(self.color_txt)
+    #         s.on_changed(self.update)
+    #     return self.sliders
+
+    def _init_button(self):
+        ax_button = plt.axes(self.button_position)
+        self.btn = Button(ax_button, "Show Grid", color=self.color_txt, hovercolor=(1, 1, 1, 0.2))
+        self.btn.on_clicked(self._toggle_grid)
+
+    def _make_grid(self, t, x, y, z):
+        deform_x = self.deformation[t, :, :, z, 1:][None].flip(-1)
+        deform_y = self.deformation[t, :, y, :, [0, -1]][None].flip(-1)
+        deform_z = self.deformation[t, x, :, :, :-1][None].flip(-1)
+
+        _, lines_x = tb.gridDef_plot_2d(deform_x, ax=self.ax[0], **self.kw_grid)
+        _, lines_y = tb.gridDef_plot_2d(deform_y, ax=self.ax[1], **self.kw_grid)
+        _, lines_z = tb.gridDef_plot_2d(deform_z, ax=self.ax[2], **self.kw_grid)
+
+        return lines_x + lines_y + lines_z
+
+    def _toggle_grid(self, event):
+        t, x, y, z = [int(s.val) for s in self.sliders[::-1]]
+        if not self.grid_was_init:
+            self.lines = self._make_grid(t, x, y, z)
+            self.grid_was_init = True
+            self.flag_grid = True
+        else:
+            self.flag_grid = not self.flag_grid
+            for line in self.lines:
+                try:
+                    line.set_visible(self.flag_grid)
+                except ValueError:
+                    pass
+        self.fig.canvas.draw_idle()
+
+    def update(self, val):
+        if self.grid_was_init and self.flag_grid:
+            for line in self.lines:
+                try:
+                    line.remove()
+                except ValueError:
+                    pass
+            t, x, y, z = [int(s.val) for s in self.sliders[::-1]]
+            self.lines = self._make_grid(t, x, y, z)
+        self.fig.canvas.draw_idle()
+
+    def show(self):
+        plt.show()
+
+
+class Flow3dAxes_slider(Base3dAxes_slider):
+    def __init__(self, flow: torch.Tensor, color_txt=(0.7, 0.7, 0.7, 1), color_bg=(0.1, 0.1, 0.1, 1), step=10):
+        """
+        Parameters
+        ----------
+        flow : torch.Tensor
+            Shape (T, D, H, W, 3), the time sequence of vector fields
+        step : int
+            Grid resolution for initial quiver
+        """
+        assert flow.ndim == 5 and flow.shape[-1] == 3, "Expected flow of shape (T, D, H, W, 3)"
+        super().__init__(flow.shape, color_txt=color_txt, color_bg=color_bg)
+
+        self.flow = flow
+        self.step = step
+        self.T, self.D, self.H, self.W, _ = flow.shape
+
+        # Precompute flow integration trajectory
+        self.trajectories = self._compute_flow_trajectories()
+
+        # Init sliders
+        self.init_4d_sliders()
+        for s in self.sliders:
+            s.on_changed(self.update)
+
+    def _compute_flow_trajectories(self):
+        """Integrates the flow over time using Euler steps."""
+        T, D, H, W, _ = self.flow.shape
+        device = self.flow.device
+        grid = tb.make_regular_grid((D, H, W), step=self.step, centered=True).to(device)  # (N, 3)
+
+        # Store (T, N, 3) positions and vectors
+        positions = [grid.clone()]  # x_0
+        vectors = []
+
+        for t in range(T):
+            xt = positions[-1]  # (N, 3)
+            ut = ti.interpolate_vectorfield(self.flow[t].unsqueeze(0), xt[None])[0]  # (N, 3)
+            vectors.append(ut)
+            positions.append(xt + ut)
+
+        return {
+            'points': torch.stack(positions[:-1], dim=0),  # (T, N, 3)
+            'vectors': torch.stack(vectors, dim=0)         # (T, N, 3)
+        }
+
+    def _project_on_slice(self, pts, vecs, axis, index):
+        """
+        Projects the 3D vectors and points on a 2D plane along axis at slice index.
+        Returns the 2D projected pts and vectors.
+        """
+        mask = (pts[:, axis].round().long() == index)
+        pts2d = pts[mask][:, [i for i in range(3) if i != axis]]
+        vec2d = vecs[mask][:, [i for i in range(3) if i != axis]]
+        return pts2d, vec2d
+
+    def update(self, val):
+        for a in self.ax:
+            a.cla()
+            a.set_facecolor(self.color_bg)
+            a.tick_params(axis="both", colors=self.color_txt)
+
+        t, x, y, z = [int(s.val) for s in self.sliders[::-1]]
+        pts_t = self.trajectories['points'][t]  # (N, 3)
+        vecs_t = self.trajectories['vectors'][t]  # (N, 3)
+
+        for axis, index, ax in zip([2, 1, 0], [z, y, x], self.ax):
+            pts2d, vecs2d = self._project_on_slice(pts_t, vecs_t, axis, index)
+            if len(pts2d) > 0:
+                ax.quiver(pts2d[:, 1], pts2d[:, 0], vecs2d[:, 1], vecs2d[:, 0], color="white", angles="xy", scale_units="xy", scale=1)
+                ax.set_aspect('equal')
+
+        self.fig.canvas.draw_idle()
+
+    def show(self):
+        plt.show()
+
+
+
+
+
+file = "3D_20250517_BraTSReg_086_train_flair_turtlefox_000.pk1"
+file = "3D_02_02_2025_ball_for_hanse_hanse_w_ball_Metamorphosis_000.pk1"
+mr = mt.load_optimize_geodesicShooting(
+    file,
+    # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/saved_optim/'),
+    # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/'),
+
+)
+name = file.split('.')[0]
+
+deform =  mr.mp.get_deformation(save=True)
+grid_slider = Grid3dAxes_slider(deform, color_grid = "k")
+grid_slider.show()
 
 # vg =VisualizeGeodesicOptim(mr, name)
 # vg.show()
+
+
+#%% Test Image3dAxes_slider
+# path = "/home/turtlefox/Documents/11_metamorphoses/data/pixyl/aligned/PSL_001/"
+# file = "PSL_001_longitudinal_rigid.pt"
+# data = torch.load(os.path.join(path, file))
+# print(data.keys())
+# months = data["months_list"]
+# flair = data["flair_longitudinal"]
+# t1ce = data["t1ce_longitudinal"]
+# pred = data["pred_longitudinal"]
+#
+# flair /= flair.max()
+# t1ce /= t1ce.max()
+#
+# # img = flair
+# # img = tb.temporal_img_cmp(flair, t1ce)
+# img = torch.clip(pred, 0, 10)
+# # img = flair[-1,0]
+# ias = Image3dAxes_slider(img)
+# # ias.change_image(pred, cmap='tab10')
+# # ias.go_on_slice(168,176,53)
+#
+# plt.show()
