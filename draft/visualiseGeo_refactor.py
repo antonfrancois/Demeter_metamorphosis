@@ -1148,61 +1148,69 @@ las = Landmark3dAxes_slider(landmarks, image_shape = (1,H,W,D,1), ax = ias.ax)
 plt.show()
 #%%
 #%%
-# def add_landmarks_to_ax(landmarks, ax, depth, dim, color):
-#     """
-#     This function plot the projection of 3d landmarks on a given image slice.
-#     """
-#     ms_max = 10
-#     dist_d = landmarks[:,dim] - depth
-#     print(dist_d)
-#
-#     def affine_dist(dist):
-#         return (
-#                 ms_max
-#                 - (torch.abs(dist) * ms_max)
-#                 # /(torch.quantile(dist_d.abs().float(), .7))
-#                 /(dist_d.abs().max() +10)
-#         )
-#
-#     for i, l in enumerate(landmarks):
-#         if dist_d[i] == 0:
-#             ax.plot(l[1], l[0],
-#                     marker='o',
-#                     markerfacecolor=color,
-#                     markeredgecolor=color,
-#                     markersize=ms_max
-#                     )
-#         elif dist_d[i] < 0:
-#             ms = affine_dist(dist_d[i])
-#             ax.plot(l[1], l[0],
-#                     marker=7,
-#                     markerfacecolor=color,
-#                     markeredgecolor=color,
-#                     markersize= ms
-#                     )
-#         elif dist_d[i] > 0:
-#             ms = affine_dist(dist_d[i])
-#             ax.plot(l[1], l[0],
-#                     marker=6,
-#                     markerfacecolor=color,
-#                     markeredgecolor=color,
-#                     markersize= ms
-#                     )
-#         eps = 2
-#         plt.text(l[1]+eps, l[0]-eps, f"{i}")
-#
-# white_img = np.ones((H,W))
-# white_img[0,0] = 0
-#
-# fig,ax = plt.subplots()
-# ax.imshow(white_img, cmap = 'gray')
-# # Start with landmarks that are in the plane
-#
-# add_landmarks_to_ax(landmarks,ax, 42,2,'blue')
-# add_landmarks_to_ax(landmarks + noise, ax,42,2,'red')
-#
-#
-#
-# plt.show()
-#
 
+
+def compare_images_with_landmarks(
+    image0: torch.Tensor,
+    image1: torch.Tensor,
+    landmarks0: torch.Tensor,
+    landmarks1: torch.Tensor,
+    method: str = "compose",
+    cmap: str = "gray"
+):
+    """
+    Visualise une paire d'images et leurs landmarks, avec boutons pour alterner affichage image0, image1 ou la comparaison.
+    """
+
+    # --------- Standardise image shape (B, C, D, H, W)
+    def ensure_shape(img):
+        if img.ndim == 4:  # (1, D, H, W)
+            return img[:, None]
+        elif img.ndim == 5:
+            return img
+        else:
+            raise ValueError("Image shape must be (1, D, H, W) or (1, 1, D, H, W)")
+
+    image0 = ensure_shape(image0)
+    image1 = ensure_shape(image1)
+    cmp_img = tb.temporal_img_cmp(image0, image1, method=method)  # (1, D, H, W, 3)
+
+    # --------- Create image viewer
+    ias = Image3dAxes_slider(cmp_img, cmap=cmap)
+
+    # --------- Add landmark overlays
+    Landmark3dAxes_slider(landmarks0, image_shape=cmp_img.shape, color="green", ax=ias.ax)
+    Landmark3dAxes_slider(landmarks1, image_shape=cmp_img.shape, color="red", ax=ias.ax)
+
+    # --------- Store state
+    state = {
+        "image0": img_torch_to_plt(image0),
+        "image1": img_torch_to_plt(image1),
+        "compose": cmp_img,
+        "current": "compose"
+    }
+
+    # --------- Button callbacks
+    def set_image(name, button_label=None):
+        def inner(event):
+            if state["current"] == name:
+                return
+            ias.change_image(state[name])
+            state["current"] = name
+            ias.update(None)
+        return inner
+
+    # --------- Buttons
+    ax_b0 = plt.axes([0.1, 0.88, 0.1, 0.04])
+    ax_b1 = plt.axes([0.21, 0.88, 0.1, 0.04])
+    ax_bc = plt.axes([0.32, 0.88, 0.1, 0.04])
+
+    b0 = Button(ax_b0, "image0", color=(0.6, 0.8, 0.6, 1))
+    b1 = Button(ax_b1, "image1", color=(0.8, 0.6, 0.6, 1))
+    bc = Button(ax_bc, "compose", color=(0.6, 0.6, 0.8, 1))
+
+    b0.on_clicked(set_image("image0"))
+    b1.on_clicked(set_image("image1"))
+    bc.on_clicked(set_image("compose"))
+
+    plt.show()
