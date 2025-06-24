@@ -2,13 +2,7 @@ import warnings
 
 import numpy as np
 import torch
-from matplotlib import pyplot as plt
-from matplotlib.widgets import Slider, Button
 
-import os
-
-from prompt_toolkit.utils import to_float
-from vtkmodules.numpy_interface.internal_algorithms import aspect
 
 import demeter.metamorphosis as mt
 from demeter.constants import *
@@ -150,6 +144,9 @@ class Base3dAxes_slider:
 
         if ax is None:
             self.fig, self.ax = plt.subplots(1, 3, constrained_layout=False)
+        elif isinstance(ax, np.ndarray):
+            self.fig = ax[0].get_figure()
+            self.ax = ax
         else:
             self.fig = ax.get_figure()
             self.ax = ax
@@ -160,6 +157,7 @@ class Base3dAxes_slider:
 
     def _init_4d_sliders(self, init_x=None, init_y=None, init_z=None):
         T, D, H, W, _ = self.shape
+        print("init shape", self.shape)
         init_x = init_x if init_x is not None else D // 2
         init_y = init_y if init_y is not None else H // 2
         init_z = init_z if init_z is not None else W // 2
@@ -376,6 +374,201 @@ class Image3dAxes_slider(Base3dAxes_slider):
             t_slider.set_val(new_t)
 
 
+class Grid3dAxes_slider(Base3dAxes_slider):
+    def __init__(self, deformation: torch.Tensor,
+                 step = 10,
+                 alpha=0.2,
+                 color_grid = "k",
+                 button_position=[0.05, 0.85, 0.1, 0.05],
+                 **kwargs
+                 ):
+        """
+        Parameters
+        ----------
+        deformation : torch.Tensor
+            Expected shape: (T, D, H, W, 3)
+        button_position : list of float
+            Position of the grid toggle button [left, bottom, width, height]
+        step : int or None
+            Grid step size. If None, it will be computed to get at least 15 lines in each direction.
+        color_txt: Tuple[float, float, float, float]  default
+                             color_txt=(0.7, 0.7, 0.7, 1)  # dark gray
+        color_bg: Tuple[float, float, float, float]  default
+                 color_bg=(0.1, 0.1, 0.1, 1),  # very light gray
+
+        """
+        super().__init__(**kwargs)
+        assert deformation.ndim == 5 and deformation.shape[-1] == 3, "Expected deformation of shape (T, D, H, W, 3)"
+
+        self.deformation = deformation
+        # self.color_txt = color_txt
+        # self.color_bg = color_bg
+        self.button_position = button_position
+
+
+        self.shape = self.deformation.shape  # (T, D, H, W, 3)
+        T, D, H, W, _ = self.shape
+        if step is None:
+            step = max(1, min(D, H, W) // 15)
+        self.kw_grid = dict(color=color_grid, step=step, alpha=alpha)
+        self.grid_was_init = False
+        self.flag_grid = False
+        self.lines = []
+
+        self._init_4d_sliders()
+        self._init_button()
+
+    # def _init_4d_slider(self, init_x_coord = None, init_y_coord=None, init_z_coord=None):
+    #     """Create sliders for the 3D image."""
+    #     # make sliders
+    #     T, D, H, W, C = self.shape
+    #     init_x_coord, init_y_coord, init_z_coord = D//2, H//2, W//2
+    #     axcolor = "lightgoldenrodyellow"
+    #     sl_x = plt.axes([0.25, 0.15, 0.5, 0.03], facecolor=axcolor)
+    #     sl_y = plt.axes([0.25, 0.1, 0.5, 0.03], facecolor=axcolor)
+    #     sl_z = plt.axes([0.25, 0.05, 0.5, 0.03], facecolor=axcolor)
+    #     sl_t = plt.axes([0.25, 0.2, 0.5, 0.03], facecolor=axcolor)
+    #
+    #     kw_slider_args = dict(valmin=0, valfmt="%0.0f", valstep=1)
+    #     self.sliders = [
+    #          Slider(label="z", ax=sl_z, valmax=D - 1, valinit=init_x_coord, **kw_slider_args),
+    #         Slider(label="y", ax=sl_y, valmax=H - 1, valinit=init_y_coord, **kw_slider_args),
+    #         Slider(label="x", ax=sl_x, valmax=W - 1, valinit=init_z_coord, **kw_slider_args),
+    #         Slider(label="t", ax=sl_t, valmax=T - 1, valinit=T - 1, **kw_slider_args)
+    #     ]
+    #
+    #     for s in self.sliders:
+    #         s.label.set_color(self.color_txt)
+    #         s.valtext.set_color(self.color_txt)
+    #         s.on_changed(self.update)
+    #     return self.sliders
+
+    def _init_button(self):
+        ax_button = plt.axes(self.button_position)
+        self.btn = Button(ax_button, "Show Grid", color=self.color_txt, hovercolor=(1, 1, 1, 0.2))
+        self.btn.on_clicked(self._toggle_grid)
+
+    def _make_grid(self, t, x, y, z):
+        deform_x = self.deformation[t, :, :, z, 1:][None].flip(-1)
+        deform_y = self.deformation[t, :, y, :, [0, -1]][None].flip(-1)
+        deform_z = self.deformation[t, x, :, :, :-1][None].flip(-1)
+
+        _, lines_x = tb.gridDef_plot_2d(deform_x, ax=self.ax[0], **self.kw_grid)
+        _, lines_y = tb.gridDef_plot_2d(deform_y, ax=self.ax[1], **self.kw_grid)
+        _, lines_z = tb.gridDef_plot_2d(deform_z, ax=self.ax[2], **self.kw_grid)
+
+        return lines_x + lines_y + lines_z
+
+    def _toggle_grid(self, event):
+        t, x, y, z = [int(s.val) for s in self.sliders[::-1]]
+        if not self.grid_was_init:
+            self.lines = self._make_grid(t, x, y, z)
+            self.grid_was_init = True
+            self.flag_grid = True
+        else:
+            self.flag_grid = not self.flag_grid
+            for line in self.lines:
+                try:
+                    line.set_visible(self.flag_grid)
+                except ValueError:
+                    pass
+        self.fig.canvas.draw_idle()
+
+    def update(self, val):
+        if self.grid_was_init and self.flag_grid:
+            for line in self.lines:
+                try:
+                    line.remove()
+                except ValueError:
+                    pass
+            t, x, y, z = [int(s.val) for s in self.sliders[::-1]]
+            self.lines = self._make_grid(t, x, y, z)
+        self.fig.canvas.draw_idle()
+
+    def show(self):
+        plt.show()
+
+
+class Flow3dAxes_slider(Base3dAxes_slider):
+    def __init__(self, flow: torch.Tensor, color_txt=(0.7, 0.7, 0.7, 1), color_bg=(0.1, 0.1, 0.1, 1), step=10):
+        """
+        Parameters
+        ----------
+        flow : torch.Tensor
+            Shape (T, D, H, W, 3), the time sequence of vector fields
+        step : int
+            Grid resolution for initial quiver
+        """
+        assert flow.ndim == 5 and flow.shape[-1] == 3, "Expected flow of shape (T, D, H, W, 3)"
+        super().__init__(flow.shape, color_txt=color_txt, color_bg=color_bg)
+
+        self.flow = flow
+        self.step = step
+        self.T, self.D, self.H, self.W, _ = flow.shape
+
+        # Precompute flow integration trajectory
+        self.trajectories = self._compute_flow_trajectories()
+
+        # Init sliders
+        self.init_4d_sliders()
+        for s in self.sliders:
+            s.on_changed(self.update)
+
+    def _compute_flow_trajectories(self):
+        """Integrates the flow over time using Euler steps."""
+        T, D, H, W, _ = self.flow.shape
+        device = self.flow.device
+        grid = tb.make_regular_grid((D, H, W), step=self.step, centered=True).to(device)  # (N, 3)
+
+        # Store (T, N, 3) positions and vectors
+        positions = [grid.clone()]  # x_0
+        vectors = []
+
+        for t in range(T):
+            xt = positions[-1]  # (N, 3)
+            ut = ti.interpolate_vectorfield(self.flow[t].unsqueeze(0), xt[None])[0]  # (N, 3)
+            vectors.append(ut)
+            positions.append(xt + ut)
+
+        return {
+            'points': torch.stack(positions[:-1], dim=0),  # (T, N, 3)
+            'vectors': torch.stack(vectors, dim=0)         # (T, N, 3)
+        }
+
+    def _project_on_slice(self, pts, vecs, axis, index):
+        """
+        Projects the 3D vectors and points on a 2D plane along axis at slice index.
+        Returns the 2D projected pts and vectors.
+        """
+        mask = (pts[:, axis].round().long() == index)
+        pts2d = pts[mask][:, [i for i in range(3) if i != axis]]
+        vec2d = vecs[mask][:, [i for i in range(3) if i != axis]]
+        return pts2d, vec2d
+
+    def update(self, val):
+        for a in self.ax:
+            a.cla()
+            a.set_facecolor(self.color_bg)
+            a.tick_params(axis="both", colors=self.color_txt)
+
+        t, x, y, z = [int(s.val) for s in self.sliders[::-1]]
+        pts_t = self.trajectories['points'][t]  # (N, 3)
+        vecs_t = self.trajectories['vectors'][t]  # (N, 3)
+
+        for axis, index, ax in zip([2, 1, 0], [z, y, x], self.ax):
+            pts2d, vecs2d = self._project_on_slice(pts_t, vecs_t, axis, index)
+            if len(pts2d) > 0:
+                ax.quiver(pts2d[:, 1], pts2d[:, 0], vecs2d[:, 1], vecs2d[:, 0], color="white", angles="xy", scale_units="xy", scale=1)
+                ax.set_aspect('equal')
+
+        self.fig.canvas.draw_idle()
+
+    def show(self):
+        plt.show()
+
+
+
+
 class VisualizeGeodesicOptim:
     """
     Visualize_GeodesicOptim_plt
@@ -416,20 +609,11 @@ class VisualizeGeodesicOptim:
         )
         self.name = name
 
-        self.fig, self.ax = plt.subplots(1, 3, constrained_layout=False)
-        self.fig.suptitle(self.name, c=self.my_white)
-
         self.shape = self.geodesicOptim.mp.image_stock.shape
 
         self.flag_simplex_visu = True if C > 1 else False
         if self.flag_simplex_visu:
             self._build_simplex_img()
-
-        self.kw_grid = dict(
-            color="w",
-            step=15,
-            alpha=0.2,
-        )
 
         # Add 3 image panels
         # shown_image will be the displayed image at all time
@@ -798,219 +982,20 @@ class VisualizeGeodesicOptim:
         plt.show()
 
 
-
-
-
-
-class Grid3dAxes_slider(Base3dAxes_slider):
-    def __init__(self, deformation: torch.Tensor,
-                 step = 10,
-                 alpha=0.2,
-                 color_grid = "k",
-                 button_position=[0.05, 0.85, 0.1, 0.05],
-                 **kwargs
-                 ):
-        """
-        Parameters
-        ----------
-        deformation : torch.Tensor
-            Expected shape: (T, D, H, W, 3)
-        button_position : list of float
-            Position of the grid toggle button [left, bottom, width, height]
-        step : int or None
-            Grid step size. If None, it will be computed to get at least 15 lines in each direction.
-        color_txt: Tuple[float, float, float, float]  default
-                             color_txt=(0.7, 0.7, 0.7, 1)  # dark gray
-        color_bg: Tuple[float, float, float, float]  default
-                 color_bg=(0.1, 0.1, 0.1, 1),  # very light gray
-
-        """
-        super().__init__(**kwargs)
-        assert deformation.ndim == 5 and deformation.shape[-1] == 3, "Expected deformation of shape (T, D, H, W, 3)"
-
-        self.deformation = deformation
-        # self.color_txt = color_txt
-        # self.color_bg = color_bg
-        self.button_position = button_position
-
-
-        self.shape = self.deformation.shape  # (T, D, H, W, 3)
-        T, D, H, W, _ = self.shape
-        if step is None:
-            step = max(1, min(D, H, W) // 15)
-        self.kw_grid = dict(color=color_grid, step=step, alpha=alpha)
-        self.grid_was_init = False
-        self.flag_grid = False
-        self.lines = []
-
-        self._init_4d_sliders()
-        self._init_button()
-
-    # def _init_4d_slider(self, init_x_coord = None, init_y_coord=None, init_z_coord=None):
-    #     """Create sliders for the 3D image."""
-    #     # make sliders
-    #     T, D, H, W, C = self.shape
-    #     init_x_coord, init_y_coord, init_z_coord = D//2, H//2, W//2
-    #     axcolor = "lightgoldenrodyellow"
-    #     sl_x = plt.axes([0.25, 0.15, 0.5, 0.03], facecolor=axcolor)
-    #     sl_y = plt.axes([0.25, 0.1, 0.5, 0.03], facecolor=axcolor)
-    #     sl_z = plt.axes([0.25, 0.05, 0.5, 0.03], facecolor=axcolor)
-    #     sl_t = plt.axes([0.25, 0.2, 0.5, 0.03], facecolor=axcolor)
-    #
-    #     kw_slider_args = dict(valmin=0, valfmt="%0.0f", valstep=1)
-    #     self.sliders = [
-    #          Slider(label="z", ax=sl_z, valmax=D - 1, valinit=init_x_coord, **kw_slider_args),
-    #         Slider(label="y", ax=sl_y, valmax=H - 1, valinit=init_y_coord, **kw_slider_args),
-    #         Slider(label="x", ax=sl_x, valmax=W - 1, valinit=init_z_coord, **kw_slider_args),
-    #         Slider(label="t", ax=sl_t, valmax=T - 1, valinit=T - 1, **kw_slider_args)
-    #     ]
-    #
-    #     for s in self.sliders:
-    #         s.label.set_color(self.color_txt)
-    #         s.valtext.set_color(self.color_txt)
-    #         s.on_changed(self.update)
-    #     return self.sliders
-
-    def _init_button(self):
-        ax_button = plt.axes(self.button_position)
-        self.btn = Button(ax_button, "Show Grid", color=self.color_txt, hovercolor=(1, 1, 1, 0.2))
-        self.btn.on_clicked(self._toggle_grid)
-
-    def _make_grid(self, t, x, y, z):
-        deform_x = self.deformation[t, :, :, z, 1:][None].flip(-1)
-        deform_y = self.deformation[t, :, y, :, [0, -1]][None].flip(-1)
-        deform_z = self.deformation[t, x, :, :, :-1][None].flip(-1)
-
-        _, lines_x = tb.gridDef_plot_2d(deform_x, ax=self.ax[0], **self.kw_grid)
-        _, lines_y = tb.gridDef_plot_2d(deform_y, ax=self.ax[1], **self.kw_grid)
-        _, lines_z = tb.gridDef_plot_2d(deform_z, ax=self.ax[2], **self.kw_grid)
-
-        return lines_x + lines_y + lines_z
-
-    def _toggle_grid(self, event):
-        t, x, y, z = [int(s.val) for s in self.sliders[::-1]]
-        if not self.grid_was_init:
-            self.lines = self._make_grid(t, x, y, z)
-            self.grid_was_init = True
-            self.flag_grid = True
-        else:
-            self.flag_grid = not self.flag_grid
-            for line in self.lines:
-                try:
-                    line.set_visible(self.flag_grid)
-                except ValueError:
-                    pass
-        self.fig.canvas.draw_idle()
-
-    def update(self, val):
-        if self.grid_was_init and self.flag_grid:
-            for line in self.lines:
-                try:
-                    line.remove()
-                except ValueError:
-                    pass
-            t, x, y, z = [int(s.val) for s in self.sliders[::-1]]
-            self.lines = self._make_grid(t, x, y, z)
-        self.fig.canvas.draw_idle()
-
-    def show(self):
-        plt.show()
-
-
-class Flow3dAxes_slider(Base3dAxes_slider):
-    def __init__(self, flow: torch.Tensor, color_txt=(0.7, 0.7, 0.7, 1), color_bg=(0.1, 0.1, 0.1, 1), step=10):
-        """
-        Parameters
-        ----------
-        flow : torch.Tensor
-            Shape (T, D, H, W, 3), the time sequence of vector fields
-        step : int
-            Grid resolution for initial quiver
-        """
-        assert flow.ndim == 5 and flow.shape[-1] == 3, "Expected flow of shape (T, D, H, W, 3)"
-        super().__init__(flow.shape, color_txt=color_txt, color_bg=color_bg)
-
-        self.flow = flow
-        self.step = step
-        self.T, self.D, self.H, self.W, _ = flow.shape
-
-        # Precompute flow integration trajectory
-        self.trajectories = self._compute_flow_trajectories()
-
-        # Init sliders
-        self.init_4d_sliders()
-        for s in self.sliders:
-            s.on_changed(self.update)
-
-    def _compute_flow_trajectories(self):
-        """Integrates the flow over time using Euler steps."""
-        T, D, H, W, _ = self.flow.shape
-        device = self.flow.device
-        grid = tb.make_regular_grid((D, H, W), step=self.step, centered=True).to(device)  # (N, 3)
-
-        # Store (T, N, 3) positions and vectors
-        positions = [grid.clone()]  # x_0
-        vectors = []
-
-        for t in range(T):
-            xt = positions[-1]  # (N, 3)
-            ut = ti.interpolate_vectorfield(self.flow[t].unsqueeze(0), xt[None])[0]  # (N, 3)
-            vectors.append(ut)
-            positions.append(xt + ut)
-
-        return {
-            'points': torch.stack(positions[:-1], dim=0),  # (T, N, 3)
-            'vectors': torch.stack(vectors, dim=0)         # (T, N, 3)
-        }
-
-    def _project_on_slice(self, pts, vecs, axis, index):
-        """
-        Projects the 3D vectors and points on a 2D plane along axis at slice index.
-        Returns the 2D projected pts and vectors.
-        """
-        mask = (pts[:, axis].round().long() == index)
-        pts2d = pts[mask][:, [i for i in range(3) if i != axis]]
-        vec2d = vecs[mask][:, [i for i in range(3) if i != axis]]
-        return pts2d, vec2d
-
-    def update(self, val):
-        for a in self.ax:
-            a.cla()
-            a.set_facecolor(self.color_bg)
-            a.tick_params(axis="both", colors=self.color_txt)
-
-        t, x, y, z = [int(s.val) for s in self.sliders[::-1]]
-        pts_t = self.trajectories['points'][t]  # (N, 3)
-        vecs_t = self.trajectories['vectors'][t]  # (N, 3)
-
-        for axis, index, ax in zip([2, 1, 0], [z, y, x], self.ax):
-            pts2d, vecs2d = self._project_on_slice(pts_t, vecs_t, axis, index)
-            if len(pts2d) > 0:
-                ax.quiver(pts2d[:, 1], pts2d[:, 0], vecs2d[:, 1], vecs2d[:, 0], color="white", angles="xy", scale_units="xy", scale=1)
-                ax.set_aspect('equal')
-
-        self.fig.canvas.draw_idle()
-
-    def show(self):
-        plt.show()
-
-
-
-
-
-file = "3D_20250517_BraTSReg_086_train_flair_turtlefox_000.pk1"
-file = "3D_02_02_2025_ball_for_hanse_hanse_w_ball_Metamorphosis_000.pk1"
-mr = mt.load_optimize_geodesicShooting(
-    file,
-    # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/saved_optim/'),
-    # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/'),
-
-)
-name = file.split('.')[0]
-
-deform =  mr.mp.get_deformation(save=True)
-grid_slider = Grid3dAxes_slider(deform, color_grid = "k")
-grid_slider.show()
+#
+# file = "3D_20250517_BraTSReg_086_train_flair_turtlefox_000.pk1"
+# file = "3D_02_02_2025_ball_for_hanse_hanse_w_ball_Metamorphosis_000.pk1"
+# mr = mt.load_optimize_geodesicShooting(
+#     file,
+#     # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/saved_optim/'),
+#     # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/'),
+#
+# )
+# name = file.split('.')[0]
+#
+# deform =  mr.mp.get_deformation(save=True)
+# grid_slider = Grid3dAxes_slider(deform, color_grid = "k")
+# grid_slider.show()
 
 # vg =VisualizeGeodesicOptim(mr, name)
 # vg.show()
@@ -1038,3 +1023,186 @@ grid_slider.show()
 # # ias.go_on_slice(168,176,53)
 #
 # plt.show()
+
+
+#%%
+
+class Landmark3dAxes_slider(Base3dAxes_slider):
+    def __init__(self, landmarks, image_shape, dx_convention="pixel", color = "green",**kwargs):
+        self.landmarks = landmarks
+        self.shape = image_shape
+        print("Land shape", self.shape)
+        super().__init__( **kwargs)  # dummy image
+
+        # if ax is None:
+        #     white_img = np.ones((H,W))
+        #     white_img[0,0] = 0
+        #
+        #     self.ax[0].imshow(white_img)
+        #     self.ax[1].imshow(white_img)
+        #     self.ax[2].imshow(white_img)
+        self.color = color
+        self._init_4d_sliders()
+        self.landmark_artists = [[], [], []]  # one per axis
+        self.update(None)  # draw once initially
+
+
+    def clear_landmarks(self):
+        for artists in self.landmark_artists:
+            for art in artists:
+                art.remove()
+        self.landmark_artists = [[], [], []]
+
+    def update(self, val):
+        """Redraws landmarks on each view."""
+        x_slider, y_slider, z_slider, t_slider = self.sliders
+        x, y, z = x_slider.val, y_slider.val, z_slider.val
+
+        self.clear_landmarks()
+
+        self.landmark_artists[0] = self._add_landmarks_to_ax(
+            ax=self.ax[0], dim=2, depth=z, color=self.color
+        )
+        self.landmark_artists[1] = self._add_landmarks_to_ax(
+            ax=self.ax[1], dim=1, depth=y, color=self.color
+        )
+        self.landmark_artists[2] = self._add_landmarks_to_ax(
+            ax=self.ax[2], dim=0, depth=x, color=self.color
+        )
+
+        self.fig.canvas.draw_idle()
+
+    def _add_landmarks_to_ax(self, ax, dim, depth, color):
+        """
+        Plot 3D landmarks on a given slice and return the list of matplotlib artists.
+        """
+        ms_max = 10
+        dist_d = self.landmarks[:, dim] - depth
+        artists = []
+        if dim == 0:
+            dim_x, dim_y = 1,2
+        elif dim == 1:
+            dim_x, dim_y = 2,0
+        elif dim == 2:
+            dim_x, dim_y = 1,0
+        else:
+            raise ValueError(f"Dimension {dim} is not supported.")
+
+        def affine_dist(dist):
+            return (
+                ms_max
+                - (torch.abs(dist) * ms_max)
+                / (dist_d.abs().max().float() + 10)
+            )
+
+        for i, l in enumerate(self.landmarks):
+            if dist_d[i] == 0:
+                art = ax.plot(l[dim_x], l[dim_y], marker="o", color=color, markersize=ms_max)[0]
+            elif dist_d[i] < 0:
+                ms = affine_dist(dist_d[i])
+                art = ax.plot(l[dim_x], l[dim_y], marker=7, color=color, markersize=ms)[0]
+            else:
+                ms = affine_dist(dist_d[i])
+                art = ax.plot(l[dim_x], l[dim_y], marker=6, color=color, markersize=ms)[0]
+
+            txt = ax.text(
+                l[1] + 2, l[0] - 2, f"{i}", fontsize=8, color=color
+            )
+            artists.extend([art, txt])
+
+        return artists
+
+
+#%%
+path = "/home/turtlefox/Documents/11_metamorphoses/data/pixyl/aligned/PSL_001/"
+file = "PSL_001_longitudinal_rigid.pt"
+data = torch.load(os.path.join(path, file))
+print(data.keys())
+months = data["months_list"]
+flair = data["flair_longitudinal"]
+t1ce = data["t1ce_longitudinal"]
+pred = data["pred_longitudinal"]
+
+flair /= flair.max()
+t1ce /= t1ce.max()
+
+img = flair
+# img = tb.temporal_img_cmp(flair, t1ce)
+# img = torch.clip(pred, 0, 10)
+# img = flair[-1,0]
+ias = Image3dAxes_slider(img)
+# ias.change_image(pred, cmap='tab10')
+# ias.go_on_slice(168,176,53)
+
+
+
+_,_,H,W,D  = img.shape
+lh = torch.randint(0,H,(10,1))
+lw = torch.randint(0,W,(10,1))
+ld = torch.randint(0,D,(10,1))
+
+landmarks = torch.cat((lh, lw, ld), dim=1)
+noise = torch.randint(-3,3,landmarks.shape)
+landmarks
+las = Landmark3dAxes_slider(landmarks, image_shape = (1,H,W,D,1), ax = ias.ax)
+plt.show()
+#%%
+#%%
+# def add_landmarks_to_ax(landmarks, ax, depth, dim, color):
+#     """
+#     This function plot the projection of 3d landmarks on a given image slice.
+#     """
+#     ms_max = 10
+#     dist_d = landmarks[:,dim] - depth
+#     print(dist_d)
+#
+#     def affine_dist(dist):
+#         return (
+#                 ms_max
+#                 - (torch.abs(dist) * ms_max)
+#                 # /(torch.quantile(dist_d.abs().float(), .7))
+#                 /(dist_d.abs().max() +10)
+#         )
+#
+#     for i, l in enumerate(landmarks):
+#         if dist_d[i] == 0:
+#             ax.plot(l[1], l[0],
+#                     marker='o',
+#                     markerfacecolor=color,
+#                     markeredgecolor=color,
+#                     markersize=ms_max
+#                     )
+#         elif dist_d[i] < 0:
+#             ms = affine_dist(dist_d[i])
+#             ax.plot(l[1], l[0],
+#                     marker=7,
+#                     markerfacecolor=color,
+#                     markeredgecolor=color,
+#                     markersize= ms
+#                     )
+#         elif dist_d[i] > 0:
+#             ms = affine_dist(dist_d[i])
+#             ax.plot(l[1], l[0],
+#                     marker=6,
+#                     markerfacecolor=color,
+#                     markeredgecolor=color,
+#                     markersize= ms
+#                     )
+#         eps = 2
+#         plt.text(l[1]+eps, l[0]-eps, f"{i}")
+#
+# white_img = np.ones((H,W))
+# white_img[0,0] = 0
+#
+# fig,ax = plt.subplots()
+# ax.imshow(white_img, cmap = 'gray')
+# # Start with landmarks that are in the plane
+#
+# add_landmarks_to_ax(landmarks,ax, 42,2,'blue')
+# add_landmarks_to_ax(landmarks + noise, ax,42,2,'red')
+#
+#
+#
+# plt.show()
+#
+
