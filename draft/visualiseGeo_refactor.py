@@ -137,53 +137,319 @@ out = img_torch_to_plt(img)
 
 
 
+import warnings
+from types import SimpleNamespace
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.widgets import Slider
+from ipywidgets import IntSlider, HBox, VBox
+from IPython.display import display, clear_output
+# def init_jupyter_sliders(fig=None,
+#                              bottom=0.02,
+#                              spacing=0.05,
+#                              height=0.03,
+#                              left=0.25,
+#                              width=0.5,
+#                              ):
+#         """
+#         Creates 4 Axes inside the given Matplotlib figure to host sliders for x,y, z, t.
+#
+#         Parameters
+#         ----------
+#         fig : matplotlib.figure.Figure, optional
+#             The figure to which the slider axes will be added. If None, uses `plt.gcf()`.
+#
+#         bottom : float
+#             Y-coordinate of the bottommost slider.
+#
+#         spacing : float
+#             Vertical spacing between sliders.
+#
+#         height : float
+#             Height of each slider axis.
+#
+#         left : float
+#             Left position of each slider (0–1 relative to figure).
+#
+#         width : float
+#             Width of each slider (0–1 relative to figure).
+#
+#         Returns
+#         -------
+#         List[matplotlib.axes.Axes]
+#             A list of 4 Axes instances: [ax_x, ax_y, ax_z, ax_t], ordered for use in _init_4d_sliders.
+#         """
+#         if fig is None:
+#             fig = plt.gcf()
+#
+#         ax_z = fig.add_axes([left, bottom, width, height])
+#         ax_y = fig.add_axes([left, bottom + spacing, width, height])
+#         ax_x = fig.add_axes([left, bottom + 2 * spacing, width, height])
+#         ax_t = fig.add_axes([left, bottom + 3 * spacing, width, height])
+#
+#         return [ax_x, ax_y, ax_z, ax_t]
+
+
+
 class Base3dAxes_slider:
-    def __init__(self, ax=None,  color_txt=(0.7, 0.7, 0.7, 1), color_bg=(0.1, 0.1, 0.1, 1)):
-        self.color_txt = color_txt
-        self.color_bg = color_bg
+    """
+    Base class for modular 3D+T visualization in Matplotlib with synchronized sliders.
 
-        if ax is None:
-            self.fig, self.ax = plt.subplots(1, 3, constrained_layout=False)
-        elif isinstance(ax, np.ndarray):
-            self.fig = ax[0].get_figure()
-            self.ax = ax
+    This class manages the figure, axes, and a set of four sliders (x, y, z, t) used to
+    navigate through 3D+t data interactively. It also supports shared visualization
+    contexts, enabling multiple derived components (e.g., image display, landmark overlays,
+    deformation fields) to interoperate by sharing axes, figure, sliders, and event handling.
+
+    Parameters
+    ----------
+    shared_context : SimpleNamespace or None, optional
+        If provided, the instance will reuse the figure, axes, sliders, and other shared
+        attributes from the given context. This enables multiple visual components to
+        cooperate seamlessly. When `shared_context` is provided, the other layout parameters
+        (`ax`, `color_txt`, `color_bg`) are ignored with a warning.
+
+    ax : np.ndarray or list of matplotlib.axes.Axes, optional
+        Array or list of 3 matplotlib axes to use for visualization. Ignored if
+        `shared_context` is provided. If `ax` is None and `shared_context` is None,
+        a new 1×3 figure and axes are created.
+
+    color_txt : tuple, optional
+        RGBA color tuple for text and tick labels. Default is (0.7, 0.7, 0.7, 1).
+
+    color_bg : tuple, optional
+        RGBA color tuple for figure background. Default is (0.1, 0.1, 0.1, 1).
+
+    Attributes
+    ----------
+    ctx : SimpleNamespace
+        Shared context containing the figure, axes, sliders, children modules, and style.
+
+    fig : matplotlib.figure.Figure
+        The figure object in use.
+
+    ax : list of matplotlib.axes.Axes
+        List of 3 axes used to display orthogonal slices (x, y, z).
+
+    sliders : list of matplotlib.widgets.Slider or None
+        List of four sliders (x, y, z, t), initialized via `_init_4d_sliders()` unless already present in `ctx`.
+
+    Methods
+    -------
+    _init_context_(shared_context, ax, color_txt, color_bg)
+        Internal method to initialize or adopt a shared context.
+
+    _init_4d_sliders(init_x=None, init_y=None, init_z=None)
+        Initializes sliders for navigating along the 3 spatial axes and time.
+        Skips initialization if sliders already exist in context.
+
+    _notify_all(event=None)
+        Calls `update(event)` on all registered child objects sharing this context.
+    """
+
+    def __init__(self, shared_context=None,
+                 ax=None,
+                 color_txt=(0.7, 0.7, 0.7, 1),
+                 color_bg=(0.1, 0.1, 0.1, 1),
+                jupyter_sliders=False
+                 ):
+        self._init_context_(shared_context, ax, color_txt, color_bg)
+        self.use_ipywidgets = jupyter_sliders
+        self.fig = self.ctx.fig
+        self.ax = self.ctx.ax
+        self.sliders = getattr(self.ctx, 'sliders', None)
+
+        # Register self
+        if not hasattr(self.ctx, 'children'):
+            self.ctx.children = []
+        self.ctx.children.append(self)
+
+    def _init_context_(self, shared_context, ax, color_txt, color_bg):
+        defaults = {
+            "color_txt": color_txt,
+            "color_bg": color_bg,
+            "children": [],
+        }
+
+        if shared_context is not None:
+            self.ctx = shared_context
+
+            # Inject defaults if missing
+            for key, value in defaults.items():
+                if not hasattr(self.ctx, key):
+                    setattr(self.ctx, key, value)
+
+            # Ensure fig/ax are present or deducible
+            if hasattr(self.ctx, "fig") and hasattr(self.ctx, "ax"):
+                pass
+            elif hasattr(self.ctx, "ax"):
+                self.ctx.fig = self.ctx.ax[0].get_figure() if isinstance(self.ctx.ax, np.ndarray) else self.ctx.ax.get_figure()
+            elif hasattr(self.ctx, "fig"):
+                raise ValueError("shared_context has 'fig' but no 'ax'")
+            else:
+                raise ValueError("shared_context must have at least 'fig' or 'ax' defined")
         else:
-            self.fig = ax.get_figure()
-            self.ax = ax
-        self.fig.patch.set_facecolor(self.color_bg)
+            self.ctx = SimpleNamespace()
+            self.ctx.color_txt = defaults["color_txt"]
+            self.ctx.color_bg = defaults["color_bg"]
+            self.ctx.children = []
 
-        for a in self.ax:
-            a.tick_params(axis="both", colors=self.color_txt)
+            if ax is None:
+                self.ctx.fig, self.ctx.ax = plt.subplots(1, 3, constrained_layout=False)
+            else:
+                self.ctx.ax = ax
+                self.ctx.fig = ax[0].get_figure() if isinstance(ax, np.ndarray) else ax.get_figure()
 
-    def _init_4d_sliders(self, init_x=None, init_y=None, init_z=None):
+        # Final fallback styling
+        self.ctx.fig.patch.set_facecolor(self.ctx.color_bg)
+        for a in self.ctx.ax:
+            a.tick_params(axis="both", colors=self.ctx.color_txt)
+
+
+
+    def _init_matplotlib_sliders(self, init_x=None, init_y=None, init_z=None, slider_axes=None):
         T, D, H, W, _ = self.shape
-        print("init shape", self.shape)
         init_x = init_x if init_x is not None else D // 2
         init_y = init_y if init_y is not None else H // 2
         init_z = init_z if init_z is not None else W // 2
 
-        axcolor = "lightgoldenrodyellow"
-        ax_t = plt.axes([0.25, 0.20, 0.5, 0.03], facecolor=axcolor)
-        ax_x = plt.axes([0.25, 0.15, 0.5, 0.03], facecolor=axcolor)
-        ax_y = plt.axes([0.25, 0.10, 0.5, 0.03], facecolor=axcolor)
-        ax_z = plt.axes([0.25, 0.05, 0.5, 0.03], facecolor=axcolor)
+        if slider_axes is not None:
+            if len(slider_axes) != 4:
+                raise ValueError("slider_axes must contain exactly 4 Axes: [x, y, z, t]")
+            ax_x, ax_y, ax_z, ax_t = slider_axes
+        else:
+            # fallback default
+            axcolor = "lightgoldenrodyellow"
+            ax_t = plt.axes([0.25, 0.20, 0.5, 0.03], facecolor=axcolor)
+            ax_x = plt.axes([0.25, 0.15, 0.5, 0.03], facecolor=axcolor)
+            ax_y = plt.axes([0.25, 0.10, 0.5, 0.03], facecolor=axcolor)
+            ax_z = plt.axes([0.25, 0.05, 0.5, 0.03], facecolor=axcolor)
 
-        self.sliders = [
+        sliders = [
             Slider(ax=ax_x, label="x", valmin=0, valmax=D - 1, valinit=init_x, valfmt="%0.0f", valstep=1),
             Slider(ax=ax_y, label="y", valmin=0, valmax=H - 1, valinit=init_y, valfmt="%0.0f", valstep=1),
             Slider(ax=ax_z, label="z", valmin=0, valmax=W - 1, valinit=init_z, valfmt="%0.0f", valstep=1),
             Slider(ax=ax_t, label="t", valmin=0, valmax=T - 1, valinit=T - 1, valfmt="%0.0f", valstep=1),
         ]
 
-        for s in self.sliders:
-            s.label.set_color(self.color_txt)
-            s.valtext.set_color(self.color_txt)
-            s.on_changed(self.update)
+        for s in sliders:
+            s.label.set_color(self.ctx.color_txt)
+            s.valtext.set_color(self.ctx.color_txt)
+            s.on_changed(self._notify_all)
 
+        self.ctx.sliders = sliders
+        self.sliders = sliders
+        return sliders
+
+    def _init_ipywidgets_sliders(self, init_x=None, init_y=None, init_z=None):
+        T, D, H, W, _ = self.shape
+        init_x = init_x if init_x is not None else D // 2
+        init_y = init_y if init_y is not None else H // 2
+        init_z = init_z if init_z is not None else W // 2
+
+        s_x = IntSlider(value=init_x, min=0, max=D - 1, description='x')
+        s_y = IntSlider(value=init_y, min=0, max=H - 1, description='y')
+        s_z = IntSlider(value=init_z, min=0, max=W - 1, description='z')
+        s_t = IntSlider(value=T - 1, min=0, max=T - 1, description='t')
+
+        sliders = [s_x, s_y, s_z, s_t]
+
+        for s in sliders:
+            s.observe(self._notify_all_ipywidgets, names="value")
+
+        display(VBox(sliders))
+        return sliders
+
+    def _init_4d_sliders(self, init_x=None, init_y=None, init_z=None, slider_axes=None):
+        if hasattr(self.ctx, 'sliders'):
+            warnings.warn("Sliders already present in shared context, skipping slider creation.", stacklevel=2)
+            return self.ctx.sliders
+
+        if self.use_ipywidgets:
+            self.ctx.sliders = self._init_ipywidgets_sliders(init_x, init_y, init_z)
+        else:
+            self.ctx.sliders = self._init_matplotlib_sliders(init_x, init_y, init_z, slider_axes)
+
+        self.sliders = self.ctx.sliders
         return self.sliders
+
+    def _notify_all_ipywidgets(self, change):
+        for obj in getattr(self.ctx, 'children', []):
+            if hasattr(obj, 'update'):
+                obj.update(None)  # or simply call obj.update(None)
+
+    def _notify_all(self, event=None):
+        for obj in getattr(self.ctx, 'children', []):
+            if hasattr(obj, 'update'):
+                obj.update(event)
+
+    def get_sliders_val(self):
+        """
+        Returns
+        -------
+        x, y, z, t : int
+            Current values of the x, y, z, t sliders.
+        """
+        if self.use_ipywidgets:
+            return tuple(int(s.value) for s in self.ctx.sliders)
+        else:
+            return tuple(int(s.val) for s in self.ctx.sliders)
+
+
 # %%
 
 class Image3dAxes_slider(Base3dAxes_slider):
+    """
+    Display a 3D+t image using three orthogonal slices with interactive sliders and optional colormap controls.
+
+    Inherits from Base3dAxes_slider and integrates into a shared visualization context. This class is
+    responsible for rendering the current slice view and managing updates when the sliders or keyboard
+    are used. It supports channel-last images and interactive switching of colormap and color scale.
+
+    Parameters
+    ----------
+    image : torch.Tensor or np.ndarray
+        The image data to display. Must be of shape (1, D, H, W) or (1, 1, D, H, W) or (1, D, H, W, C).
+
+    cmap : str, optional
+        The initial colormap to use. Default is 'gray'.
+
+    vmin : float, optional
+        Minimum value for colormap normalization. Default is image min.
+
+    vmax : float, optional
+        Maximum value for colormap normalization. Default is image max.
+
+    shared_context : SimpleNamespace, optional
+        If provided, the instance reuses the figure, axes, sliders, and context attributes.
+
+    Attributes
+    ----------
+    image : np.ndarray
+        The full image array, converted to channel-last NumPy format.
+
+    shown_image : np.ndarray
+        The image shown on current update (based on t slider).
+
+    kw_image : dict
+        Contains current display options for `imshow`, including 'cmap', 'vmin', 'vmax'.
+
+    plt_img_x, plt_img_y, plt_img_z : AxesImage
+        The current plotted image objects on each orthogonal plane.
+
+    Methods
+    -------
+    change_image(new_image, new_cmap=None, vmin=None, vmax=None)
+        Change the internal image and optionally the colormap and intensity range.
+
+    on_keypress(event)
+        Navigate time index using left/right arrow keys.
+
+    go_on_slice(x, y, z)
+        Move to the specified spatial coordinates.
+
+    update(val)
+        Update the plotted image slices based on current sliders.
+    """
 
     def __init__(self, image,
                  cmap='gray',
@@ -191,48 +457,40 @@ class Image3dAxes_slider(Base3dAxes_slider):
                  ):
          # ---------- init image shape
         self.image = img_torch_to_plt(image)
-        ic(self.image.shape)
-        ic(self.image.max())
         self.shown_image = self.image[-1]
         self.shape = self.image.shape
         assert len(self.shape) == 5, f"The optimised image is not a 3D image got {self.shape}"
         T, D, H, W, C = self.shape
-        init_x_coord, init_y_coord, init_z_coord = D // 2, H // 2, W // 2
         self.kw_image = dict(
             vmin=self.image.min(),
             vmax=self.image.max(),
             cmap=cmap,
             # origin = "lower"
         )
-
-
-        # ----- Init fig ------------
+                # ----- Init fig ------------
         super().__init__(**kwargs)
-        self.fig.canvas.mpl_connect('button_press_event', self.on_click)
+
+        if not hasattr(self.ctx, "sliders"):
+            self._init_4d_sliders()
+
+        self._connect_keypress()
         self.fig.canvas.mpl_connect('key_press_event', self.on_keypress)
+        self.fig.canvas.mpl_connect('button_press_event', self.on_click)
 
 
+        self._init_images()
+        self._add_lines_on_plt_()
+        self.update(None)
 
-        # -------------- init
-        self._init_axes_(init_x_coord, init_y_coord, init_z_coord)
-        self._add_lines_on_plt_(init_x_coord, init_y_coord, init_z_coord)
-        self._init_4d_sliders(init_x_coord, init_y_coord, init_z_coord)
-
-        # # register the update function with each slider
-        # for slider in self.sliders:
-        #     slider.label.set_color(self.color_txt)     # For the label (e.g. "x", "y", "z", "t")
-        #     slider.valtext.set_color(self.color_txt)   # For the value display (e.g. "15")
-        #     slider.on_changed(self.update)
-
-    def get_fig_ax(self):
-        return (self.fig, self.ax)
+    def _connect_keypress(self):
+        self.ctx.fig.canvas.mpl_connect('key_press_event', self.on_keypress)
 
     def _make_transpose_tpl_(self):
         return (1, 0, 2) if len(self.shown_image.shape) == 4 else (1, 0)
 
-    def _init_axes_(self, init_x_coord, init_y_coord, init_z_coord):
+    def _init_images(self):
         T, D, H, W, C = self.shape
-
+        init_x_coord, init_y_coord, init_z_coord = D // 2, H // 2, W // 2
         tr_tpl = self._make_transpose_tpl_()
         ic(self.shown_image.shape, init_x_coord, init_y_coord, init_z_coord, tr_tpl)
 
@@ -265,8 +523,10 @@ class Image3dAxes_slider(Base3dAxes_slider):
         self.ax[2].set_ylim(0, self.shown_image.shape[2] - 1)
 
 
-    def _add_lines_on_plt_(self, x, y, z):
+    def _add_lines_on_plt_(self):
         line_color = "green"
+        T, D, H, W, C = self.shape
+        x, y, z = D // 2, H // 2, W // 2
         self._l_x_v = self.ax[0].axvline(x=x, color=line_color, alpha=0.6)
         self._l_x_h = self.ax[0].axhline(y=y, color=line_color, alpha=0.6)
         self._l_y_v = self.ax[1].axvline(x=x, color=line_color, alpha=0.6)
@@ -276,29 +536,20 @@ class Image3dAxes_slider(Base3dAxes_slider):
 
         self.ax[0].margins(x=0)
 
-    def change_image(self, image, cmap=None):
-        image = img_torch_to_plt(image)
-        if image.shape != self.shape:
-            raise ValueError(f"New image shape does not match previous image, previous: {self.shape} != new:{image.shape}")
-        self.image = image
-        self.shown_image = image[self.sliders[-1].val]
-
-        self.plt_img_x.set_clim(self.image.min(), self.image.max())
-        self.plt_img_y.set_clim(self.image.min(), self.image.max())
-        self.plt_img_z.set_clim(self.image.min(), self.image.max())
-
-        if cmap is not None:
-            self.kw_image["cmap"] = cmap
-            self.plt_img_x.set_cmap(cmap)
-            self.plt_img_y.set_cmap(cmap)
-            self.plt_img_z.set_cmap(cmap)
-
-        # TODO: do smthing
+    def _update_lines(self, x, y, z):
+        T, D, H, W, C = self.shape
+        self._l_x_v.set_xdata([x, x])
+        self._l_x_h.set_ydata([D- y, D - y])
+        self._l_y_v.set_xdata([x, x])
+        self._l_y_h.set_ydata([z, z])
+        self._l_z_v.set_xdata([y, y])
+        self._l_z_h.set_ydata([z, z])
 
     def update(self, val):
         """Update the plot when the sliders change."""
-        x_slider, y_slider, z_slider, t_slider = self.sliders
-        t = t_slider.val if self.image.shape[0] > 1 else 0
+        x, y, z, t = self.get_sliders_val()
+        if self.image.shape[0] == 1:
+            t = 0
 
         self.shown_image = self.image[t].copy()
 
@@ -308,26 +559,56 @@ class Image3dAxes_slider(Base3dAxes_slider):
         # slice = tb.image_slice(img, z_slider.val, 2)
         # ic(tr_tpl, slice.shape)
         # slice = slice.transpose(*tr_tpl)
-        ic(x_slider.val, y_slider.val, z_slider.val, t_slider.val, tr_tpl)
+        ic(x, y, z, t, tr_tpl)
 
-        im_1 = tb.image_slice(self.shown_image, z_slider.val, dim=2).transpose(*tr_tpl)
-        im_2 = tb.image_slice(self.shown_image, y_slider.val, dim=1).transpose(*tr_tpl)
-        im_3 = tb.image_slice(self.shown_image, x_slider.val, dim=0).transpose(*tr_tpl)
+        im_1 = tb.image_slice(self.shown_image, z, dim=2).transpose(*tr_tpl)
+        im_2 = tb.image_slice(self.shown_image, y, dim=1).transpose(*tr_tpl)
+        im_3 = tb.image_slice(self.shown_image, x, dim=0).transpose(*tr_tpl)
 
         self.plt_img_x.set_data(im_1)
         self.plt_img_y.set_data(im_2)
         self.plt_img_z.set_data(im_3)
 
         # update lines
-        T, D, H, W, C = self.shape
-        self._l_x_v.set_xdata([x_slider.val, x_slider.val])
-        self._l_x_h.set_ydata([D- y_slider.val, D - y_slider.val])
-        self._l_y_v.set_xdata([x_slider.val, x_slider.val])
-        self._l_y_h.set_ydata([z_slider.val, z_slider.val])
-        self._l_z_v.set_xdata([y_slider.val, y_slider.val])
-        self._l_z_h.set_ydata([z_slider.val, z_slider.val])
+        self._update_lines(x, y, z)
+
 
         self.fig.canvas.draw_idle()
+
+    def change_image(self, new_image, new_cmap=None, vmin=None, vmax=None):
+        """
+        Replace the current image and optionally update the display colormap and intensity range.
+        """
+        if new_image.shape != self.shape:
+            raise ValueError(f"Shape mismatch: {new_image.shape} != {self.shape}")
+        self.image = img_torch_to_plt(new_image)
+        self.shown_image = self.image[-1, ..., 0]
+
+        if new_cmap is not None:
+            self.kw_image['cmap'] = new_cmap
+            self.plt_img_x.set_cmap(new_cmap)
+            self.plt_img_y.set_cmap(new_cmap)
+            self.plt_img_z.set_cmap(new_cmap)
+
+        if vmin is not None or vmax is not None:
+            vmin = self.image.min() if vmin is None else vmin
+            vmax = self.image.max() if vmax is None else vmax
+            self.kw_image['vmin'] = vmin
+            self.kw_image['vmax'] = vmax
+            self.plt_img_x.set_clim(vmin, vmax)
+            self.plt_img_y.set_clim(vmin, vmax)
+            self.plt_img_z.set_clim(vmin, vmax)
+
+        self.update(None)
+
+    def go_on_slice(self, x=None, y=None, z=None):
+        if x is not None:
+            self.ctx.sliders[0].set_val(x)
+        if y is not None:
+            self.ctx.sliders[1].set_val(y)
+        if z is not None:
+            self.ctx.sliders[2].set_val(z)
+        self.update(None)
 
     def on_click(self, event):
         if event.inaxes is None or event.xdata is None or event.ydata is None:
@@ -351,29 +632,44 @@ class Image3dAxes_slider(Base3dAxes_slider):
             # self.sliders[2].set_val(ydata)
             self.go_on_slice(y=xdata, z=ydata)
 
-    def go_on_slice(self, x=None, y=None, z=None):
-        if x is not None:
-            self.sliders[0].set_val(x)
-        if y is not None:
-            self.sliders[1].set_val(y)
-        if z is not None:
-            self.sliders[2].set_val(z)
-        self.update(None)
-
     def on_keypress(self, event):
         """Handle keypress events to navigate through time."""
-        t_slider = self.sliders[3]
+        t_slider = self.ctx.sliders[3]
         current_t = int(t_slider.val)
         max_t = int(t_slider.valmax)
 
         if event.key == "right":
-            new_t = min(current_t + 1, max_t)
-            t_slider.set_val(new_t)
+            t_slider.set_val(min(current_t + 1, max_t))
         elif event.key == "left":
-            new_t = max(current_t - 1, 0)
-            t_slider.set_val(new_t)
+            t_slider.set_val(max(current_t - 1, 0))
 
 
+
+#%%
+if __name__ == '__main__':
+
+    path = "/home/turtlefox/Documents/11_metamorphoses/data/pixyl/aligned/PSL_001/"
+    file = "PSL_001_longitudinal_rigid.pt"
+    data = torch.load(os.path.join(path, file))
+    print(data.keys())
+    months = data["months_list"]
+    flair = data["flair_longitudinal"]
+    t1ce = data["t1ce_longitudinal"]
+    pred = data["pred_longitudinal"]
+
+    flair /= flair.max()
+    t1ce /= t1ce.max()
+
+    img = flair
+    # img = tb.temporal_img_cmp(flair, t1ce)
+    # img = torch.clip(pred, 0, 10)
+    # img = flair[-1,0]
+    ias = Image3dAxes_slider(img)
+    # ias.change_image(pred, cmap='tab10')
+    # ias.go_on_slice(168,176,53)
+    plt.show()
+
+#%%
 class Grid3dAxes_slider(Base3dAxes_slider):
     def __init__(self, deformation: torch.Tensor,
                  step = 10,
@@ -417,31 +713,6 @@ class Grid3dAxes_slider(Base3dAxes_slider):
 
         self._init_4d_sliders()
         self._init_button()
-
-    # def _init_4d_slider(self, init_x_coord = None, init_y_coord=None, init_z_coord=None):
-    #     """Create sliders for the 3D image."""
-    #     # make sliders
-    #     T, D, H, W, C = self.shape
-    #     init_x_coord, init_y_coord, init_z_coord = D//2, H//2, W//2
-    #     axcolor = "lightgoldenrodyellow"
-    #     sl_x = plt.axes([0.25, 0.15, 0.5, 0.03], facecolor=axcolor)
-    #     sl_y = plt.axes([0.25, 0.1, 0.5, 0.03], facecolor=axcolor)
-    #     sl_z = plt.axes([0.25, 0.05, 0.5, 0.03], facecolor=axcolor)
-    #     sl_t = plt.axes([0.25, 0.2, 0.5, 0.03], facecolor=axcolor)
-    #
-    #     kw_slider_args = dict(valmin=0, valfmt="%0.0f", valstep=1)
-    #     self.sliders = [
-    #          Slider(label="z", ax=sl_z, valmax=D - 1, valinit=init_x_coord, **kw_slider_args),
-    #         Slider(label="y", ax=sl_y, valmax=H - 1, valinit=init_y_coord, **kw_slider_args),
-    #         Slider(label="x", ax=sl_x, valmax=W - 1, valinit=init_z_coord, **kw_slider_args),
-    #         Slider(label="t", ax=sl_t, valmax=T - 1, valinit=T - 1, **kw_slider_args)
-    #     ]
-    #
-    #     for s in self.sliders:
-    #         s.label.set_color(self.color_txt)
-    #         s.valtext.set_color(self.color_txt)
-    #         s.on_changed(self.update)
-    #     return self.sliders
 
     def _init_button(self):
         ax_button = plt.axes(self.button_position)
@@ -569,7 +840,255 @@ class Flow3dAxes_slider(Base3dAxes_slider):
 
 
 
-class VisualizeGeodesicOptim:
+
+
+#
+# file = "3D_20250517_BraTSReg_086_train_flair_turtlefox_000.pk1"
+# file = "3D_02_02_2025_ball_for_hanse_hanse_w_ball_Metamorphosis_000.pk1"
+# mr = mt.load_optimize_geodesicShooting(
+#     file,
+#     # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/saved_optim/'),
+#     # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/'),
+#
+# )
+# name = file.split('.')[0]
+#
+# deform =  mr.mp.get_deformation(save=True)
+# grid_slider = Grid3dAxes_slider(deform, color_grid = "k")
+# grid_slider.show()
+
+# vg =VisualizeGeodesicOptim(mr, name)
+# vg.show()
+
+
+#%% Test Image3dAxes_slider
+# path = "/home/turtlefox/Documents/11_metamorphoses/data/pixyl/aligned/PSL_001/"
+# file = "PSL_001_longitudinal_rigid.pt"
+# data = torch.load(os.path.join(path, file))
+# print(data.keys())
+# months = data["months_list"]
+# flair = data["flair_longitudinal"]
+# t1ce = data["t1ce_longitudinal"]
+# pred = data["pred_longitudinal"]
+#
+# flair /= flair.max()
+# t1ce /= t1ce.max()
+#
+# # img = flair
+# # img = tb.temporal_img_cmp(flair, t1ce)
+# img = torch.clip(pred, 0, 10)
+# # img = flair[-1,0]
+# ias = Image3dAxes_slider(img)
+# # ias.change_image(pred, cmap='tab10')
+# # ias.go_on_slice(168,176,53)
+#
+# plt.show()
+
+
+#%%
+
+class Landmark3dAxes_slider(Base3dAxes_slider):
+    def __init__(self, landmarks, image_shape, dx_convention="pixel", color = "green",**kwargs):
+        self.landmarks = landmarks
+        self.shape = image_shape
+        print("Land shape", self.shape)
+        super().__init__( **kwargs)  # dummy image
+
+        # if ax is None:
+        #     white_img = np.ones((H,W))
+        #     white_img[0,0] = 0
+        #
+        #     self.ax[0].imshow(white_img)
+        #     self.ax[1].imshow(white_img)
+        #     self.ax[2].imshow(white_img)
+        self.color = color
+        self._init_4d_sliders()
+        self.landmark_artists = [[], [], []]  # one per axis
+        self.update(None)  # draw once initially
+
+
+    def clear_landmarks(self):
+        for artists in self.landmark_artists:
+            for art in artists:
+                art.remove()
+        self.landmark_artists = [[], [], []]
+
+    def update(self, val):
+        """Redraws landmarks on each view."""
+        x_slider, y_slider, z_slider, t_slider = self.sliders
+        x, y, z = x_slider.val, y_slider.val, z_slider.val
+
+        self.clear_landmarks()
+
+        self.landmark_artists[0] = self._add_landmarks_to_ax(
+            ax=self.ax[0], dim=2, depth=z, color=self.color
+        )
+        self.landmark_artists[1] = self._add_landmarks_to_ax(
+            ax=self.ax[1], dim=1, depth=y, color=self.color
+        )
+        self.landmark_artists[2] = self._add_landmarks_to_ax(
+            ax=self.ax[2], dim=0, depth=x, color=self.color
+        )
+
+        self.fig.canvas.draw_idle()
+
+    def _add_landmarks_to_ax(self, ax, dim, depth, color):
+        """
+        Plot 3D landmarks on a given slice and return the list of matplotlib artists.
+        """
+        ms_max = 10
+        dist_d = self.landmarks[:, dim] - depth
+        artists = []
+        if dim == 0:
+            dim_x, dim_y = 1,2
+        elif dim == 1:
+            dim_x, dim_y = 2,0
+        elif dim == 2:
+            dim_x, dim_y = 1,0
+        else:
+            raise ValueError(f"Dimension {dim} is not supported.")
+
+        def affine_dist(dist):
+            return (
+                ms_max
+                - (torch.abs(dist) * ms_max)
+                / (dist_d.abs().max().float() + 10)
+            )
+
+        for i, l in enumerate(self.landmarks):
+            if dist_d[i] == 0:
+                art = ax.plot(l[dim_x], l[dim_y], marker="o", color=color, markersize=ms_max)[0]
+            elif dist_d[i] < 0:
+                ms = affine_dist(dist_d[i])
+                art = ax.plot(l[dim_x], l[dim_y], marker=7, color=color, markersize=ms)[0]
+            else:
+                ms = affine_dist(dist_d[i])
+                art = ax.plot(l[dim_x], l[dim_y], marker=6, color=color, markersize=ms)[0]
+
+            txt = ax.text(
+                l[1] + 2, l[0] - 2, f"{i}", fontsize=8, color=color
+            )
+            artists.extend([art, txt])
+
+        return artists
+
+
+#%%
+path = "/home/turtlefox/Documents/11_metamorphoses/data/pixyl/aligned/PSL_001/"
+file = "PSL_001_longitudinal_rigid.pt"
+data = torch.load(os.path.join(path, file))
+print(data.keys())
+months = data["months_list"]
+flair = data["flair_longitudinal"]
+t1ce = data["t1ce_longitudinal"]
+pred = data["pred_longitudinal"]
+
+flair /= flair.max()
+t1ce /= t1ce.max()
+
+img = flair
+# img = tb.temporal_img_cmp(flair, t1ce)
+# img = torch.clip(pred, 0, 10)
+# img = flair[-1,0]
+# ias = Image3dAxes_slider(img)
+# ias.change_image(pred, cmap='tab10')
+# ias.go_on_slice(168,176,53)
+
+
+
+_,_,H,W,D  = img.shape
+lh = torch.randint(0,H,(10,1))
+lw = torch.randint(0,W,(10,1))
+ld = torch.randint(0,D,(10,1))
+
+landmarks = torch.cat((lh, lw, ld), dim=1)
+noise = torch.randint(-3,3,landmarks.shape)
+# landmarks
+# las = Landmark3dAxes_slider(landmarks, image_shape = (1,H,W,D,1), ax = ias.ax)
+# plt.show()
+#%%
+#%%
+
+
+def compare_images_with_landmarks(
+    image0: torch.Tensor,
+    image1: torch.Tensor,
+    landmarks0: torch.Tensor,
+    landmarks1: torch.Tensor,
+    method: str = "compose",
+    cmap: str = "gray"
+):
+    """
+    Visualise une paire d'images et leurs landmarks, avec boutons pour alterner affichage image0, image1 ou la comparaison.
+    """
+
+    # --------- Standardise image shape (B, C, D, H, W)
+    def ensure_shape(img):
+        if img.ndim == 4:  # (1, D, H, W)
+            return img[:, None]
+        elif img.ndim == 5:
+            return img
+        else:
+            raise ValueError("Image shape must be (1, D, H, W) or (1, 1, D, H, W)")
+
+    image0 = ensure_shape(image0)
+    image1 = ensure_shape(image1)
+    cmp_img = tb.temporal_img_cmp(image0, image1, method=method)  # (1, D, H, W, 3)
+
+    # --------- Create image viewer
+    ias = Image3dAxes_slider(cmp_img, cmap=cmap)
+
+    # --------- Add landmark overlays
+    Landmark3dAxes_slider(landmarks0, image_shape=ias.shape, color="green", ax=ias.ax)
+    Landmark3dAxes_slider(landmarks1, image_shape=ias.shape, color="red", ax=ias.ax)
+
+    # --------- Store state
+    state = {
+        "image0": img_torch_to_plt(image0),
+        "image1": img_torch_to_plt(image1),
+        "compose": cmp_img,
+        "current": "compose"
+    }
+
+    # --------- Button callbacks
+    def set_image(name, button_label=None):
+        def inner(event):
+            if state["current"] == name:
+                return
+            ias.change_image(state[name])
+            state["current"] = name
+            ias.update(None)
+        return inner
+
+    # --------- Buttons
+    ax_b0 = plt.axes([0.1, 0.88, 0.1, 0.04])
+    ax_b1 = plt.axes([0.21, 0.88, 0.1, 0.04])
+    ax_bc = plt.axes([0.32, 0.88, 0.1, 0.04])
+
+    b0 = Button(ax_b0, "image0", color=(0.6, 0.8, 0.6, 1))
+    b1 = Button(ax_b1, "image1", color=(0.8, 0.6, 0.6, 1))
+    bc = Button(ax_bc, "compose", color=(0.6, 0.6, 0.8, 1))
+
+    b0.on_clicked(set_image("image0"))
+    b1.on_clicked(set_image("image1"))
+    bc.on_clicked(set_image("compose"))
+
+    plt.show()
+
+
+# compare_images_with_landmarks(
+#     image0=flair[-1],
+#     image1=t1ce[-1],
+#     landmarks0=landmarks,
+#     landmarks1=landmarks + noise,
+#     method="compose"
+# )
+
+
+
+#%%
+
+'''class VisualizeGeodesicOptim:
     """
     Visualize_GeodesicOptim_plt
 
@@ -980,237 +1499,4 @@ class VisualizeGeodesicOptim:
     def show(self):
         """Display the interactive plot."""
         plt.show()
-
-
-#
-# file = "3D_20250517_BraTSReg_086_train_flair_turtlefox_000.pk1"
-# file = "3D_02_02_2025_ball_for_hanse_hanse_w_ball_Metamorphosis_000.pk1"
-# mr = mt.load_optimize_geodesicShooting(
-#     file,
-#     # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/saved_optim/'),
-#     # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/'),
-#
-# )
-# name = file.split('.')[0]
-#
-# deform =  mr.mp.get_deformation(save=True)
-# grid_slider = Grid3dAxes_slider(deform, color_grid = "k")
-# grid_slider.show()
-
-# vg =VisualizeGeodesicOptim(mr, name)
-# vg.show()
-
-
-#%% Test Image3dAxes_slider
-# path = "/home/turtlefox/Documents/11_metamorphoses/data/pixyl/aligned/PSL_001/"
-# file = "PSL_001_longitudinal_rigid.pt"
-# data = torch.load(os.path.join(path, file))
-# print(data.keys())
-# months = data["months_list"]
-# flair = data["flair_longitudinal"]
-# t1ce = data["t1ce_longitudinal"]
-# pred = data["pred_longitudinal"]
-#
-# flair /= flair.max()
-# t1ce /= t1ce.max()
-#
-# # img = flair
-# # img = tb.temporal_img_cmp(flair, t1ce)
-# img = torch.clip(pred, 0, 10)
-# # img = flair[-1,0]
-# ias = Image3dAxes_slider(img)
-# # ias.change_image(pred, cmap='tab10')
-# # ias.go_on_slice(168,176,53)
-#
-# plt.show()
-
-
-#%%
-
-class Landmark3dAxes_slider(Base3dAxes_slider):
-    def __init__(self, landmarks, image_shape, dx_convention="pixel", color = "green",**kwargs):
-        self.landmarks = landmarks
-        self.shape = image_shape
-        print("Land shape", self.shape)
-        super().__init__( **kwargs)  # dummy image
-
-        # if ax is None:
-        #     white_img = np.ones((H,W))
-        #     white_img[0,0] = 0
-        #
-        #     self.ax[0].imshow(white_img)
-        #     self.ax[1].imshow(white_img)
-        #     self.ax[2].imshow(white_img)
-        self.color = color
-        self._init_4d_sliders()
-        self.landmark_artists = [[], [], []]  # one per axis
-        self.update(None)  # draw once initially
-
-
-    def clear_landmarks(self):
-        for artists in self.landmark_artists:
-            for art in artists:
-                art.remove()
-        self.landmark_artists = [[], [], []]
-
-    def update(self, val):
-        """Redraws landmarks on each view."""
-        x_slider, y_slider, z_slider, t_slider = self.sliders
-        x, y, z = x_slider.val, y_slider.val, z_slider.val
-
-        self.clear_landmarks()
-
-        self.landmark_artists[0] = self._add_landmarks_to_ax(
-            ax=self.ax[0], dim=2, depth=z, color=self.color
-        )
-        self.landmark_artists[1] = self._add_landmarks_to_ax(
-            ax=self.ax[1], dim=1, depth=y, color=self.color
-        )
-        self.landmark_artists[2] = self._add_landmarks_to_ax(
-            ax=self.ax[2], dim=0, depth=x, color=self.color
-        )
-
-        self.fig.canvas.draw_idle()
-
-    def _add_landmarks_to_ax(self, ax, dim, depth, color):
-        """
-        Plot 3D landmarks on a given slice and return the list of matplotlib artists.
-        """
-        ms_max = 10
-        dist_d = self.landmarks[:, dim] - depth
-        artists = []
-        if dim == 0:
-            dim_x, dim_y = 1,2
-        elif dim == 1:
-            dim_x, dim_y = 2,0
-        elif dim == 2:
-            dim_x, dim_y = 1,0
-        else:
-            raise ValueError(f"Dimension {dim} is not supported.")
-
-        def affine_dist(dist):
-            return (
-                ms_max
-                - (torch.abs(dist) * ms_max)
-                / (dist_d.abs().max().float() + 10)
-            )
-
-        for i, l in enumerate(self.landmarks):
-            if dist_d[i] == 0:
-                art = ax.plot(l[dim_x], l[dim_y], marker="o", color=color, markersize=ms_max)[0]
-            elif dist_d[i] < 0:
-                ms = affine_dist(dist_d[i])
-                art = ax.plot(l[dim_x], l[dim_y], marker=7, color=color, markersize=ms)[0]
-            else:
-                ms = affine_dist(dist_d[i])
-                art = ax.plot(l[dim_x], l[dim_y], marker=6, color=color, markersize=ms)[0]
-
-            txt = ax.text(
-                l[1] + 2, l[0] - 2, f"{i}", fontsize=8, color=color
-            )
-            artists.extend([art, txt])
-
-        return artists
-
-
-#%%
-path = "/home/turtlefox/Documents/11_metamorphoses/data/pixyl/aligned/PSL_001/"
-file = "PSL_001_longitudinal_rigid.pt"
-data = torch.load(os.path.join(path, file))
-print(data.keys())
-months = data["months_list"]
-flair = data["flair_longitudinal"]
-t1ce = data["t1ce_longitudinal"]
-pred = data["pred_longitudinal"]
-
-flair /= flair.max()
-t1ce /= t1ce.max()
-
-img = flair
-# img = tb.temporal_img_cmp(flair, t1ce)
-# img = torch.clip(pred, 0, 10)
-# img = flair[-1,0]
-ias = Image3dAxes_slider(img)
-# ias.change_image(pred, cmap='tab10')
-# ias.go_on_slice(168,176,53)
-
-
-
-_,_,H,W,D  = img.shape
-lh = torch.randint(0,H,(10,1))
-lw = torch.randint(0,W,(10,1))
-ld = torch.randint(0,D,(10,1))
-
-landmarks = torch.cat((lh, lw, ld), dim=1)
-noise = torch.randint(-3,3,landmarks.shape)
-landmarks
-las = Landmark3dAxes_slider(landmarks, image_shape = (1,H,W,D,1), ax = ias.ax)
-plt.show()
-#%%
-#%%
-
-
-def compare_images_with_landmarks(
-    image0: torch.Tensor,
-    image1: torch.Tensor,
-    landmarks0: torch.Tensor,
-    landmarks1: torch.Tensor,
-    method: str = "compose",
-    cmap: str = "gray"
-):
-    """
-    Visualise une paire d'images et leurs landmarks, avec boutons pour alterner affichage image0, image1 ou la comparaison.
-    """
-
-    # --------- Standardise image shape (B, C, D, H, W)
-    def ensure_shape(img):
-        if img.ndim == 4:  # (1, D, H, W)
-            return img[:, None]
-        elif img.ndim == 5:
-            return img
-        else:
-            raise ValueError("Image shape must be (1, D, H, W) or (1, 1, D, H, W)")
-
-    image0 = ensure_shape(image0)
-    image1 = ensure_shape(image1)
-    cmp_img = tb.temporal_img_cmp(image0, image1, method=method)  # (1, D, H, W, 3)
-
-    # --------- Create image viewer
-    ias = Image3dAxes_slider(cmp_img, cmap=cmap)
-
-    # --------- Add landmark overlays
-    Landmark3dAxes_slider(landmarks0, image_shape=cmp_img.shape, color="green", ax=ias.ax)
-    Landmark3dAxes_slider(landmarks1, image_shape=cmp_img.shape, color="red", ax=ias.ax)
-
-    # --------- Store state
-    state = {
-        "image0": img_torch_to_plt(image0),
-        "image1": img_torch_to_plt(image1),
-        "compose": cmp_img,
-        "current": "compose"
-    }
-
-    # --------- Button callbacks
-    def set_image(name, button_label=None):
-        def inner(event):
-            if state["current"] == name:
-                return
-            ias.change_image(state[name])
-            state["current"] = name
-            ias.update(None)
-        return inner
-
-    # --------- Buttons
-    ax_b0 = plt.axes([0.1, 0.88, 0.1, 0.04])
-    ax_b1 = plt.axes([0.21, 0.88, 0.1, 0.04])
-    ax_bc = plt.axes([0.32, 0.88, 0.1, 0.04])
-
-    b0 = Button(ax_b0, "image0", color=(0.6, 0.8, 0.6, 1))
-    b1 = Button(ax_b1, "image1", color=(0.8, 0.6, 0.6, 1))
-    bc = Button(ax_bc, "compose", color=(0.6, 0.6, 0.8, 1))
-
-    b0.on_clicked(set_image("image0"))
-    b1.on_clicked(set_image("image1"))
-    bc.on_clicked(set_image("compose"))
-
-    plt.show()
+'''
