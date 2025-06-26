@@ -2,7 +2,7 @@ import warnings
 
 import numpy as np
 import torch
-
+from IPython.core.pylabtools import figsize
 
 import demeter.metamorphosis as mt
 from demeter.constants import *
@@ -144,50 +144,47 @@ import numpy as np
 from matplotlib.widgets import Slider
 from ipywidgets import IntSlider, HBox, VBox
 from IPython.display import display, clear_output
-# def init_jupyter_sliders(fig=None,
-#                              bottom=0.02,
-#                              spacing=0.05,
-#                              height=0.03,
-#                              left=0.25,
-#                              width=0.5,
-#                              ):
-#         """
-#         Creates 4 Axes inside the given Matplotlib figure to host sliders for x,y, z, t.
-#
-#         Parameters
-#         ----------
-#         fig : matplotlib.figure.Figure, optional
-#             The figure to which the slider axes will be added. If None, uses `plt.gcf()`.
-#
-#         bottom : float
-#             Y-coordinate of the bottommost slider.
-#
-#         spacing : float
-#             Vertical spacing between sliders.
-#
-#         height : float
-#             Height of each slider axis.
-#
-#         left : float
-#             Left position of each slider (0–1 relative to figure).
-#
-#         width : float
-#             Width of each slider (0–1 relative to figure).
-#
-#         Returns
-#         -------
-#         List[matplotlib.axes.Axes]
-#             A list of 4 Axes instances: [ax_x, ax_y, ax_z, ax_t], ordered for use in _init_4d_sliders.
-#         """
-#         if fig is None:
-#             fig = plt.gcf()
-#
-#         ax_z = fig.add_axes([left, bottom, width, height])
-#         ax_y = fig.add_axes([left, bottom + spacing, width, height])
-#         ax_x = fig.add_axes([left, bottom + 2 * spacing, width, height])
-#         ax_t = fig.add_axes([left, bottom + 3 * spacing, width, height])
-#
-#         return [ax_x, ax_y, ax_z, ax_t]
+
+
+import importlib.util
+import matplotlib
+
+def diagnose_matplotlib_widget_backend():
+    print("🔍 Vérification de l'environnement Matplotlib interactif...")
+
+    # 1. Vérifie si ipympl est installé
+    ipympl_installed = importlib.util.find_spec("ipympl") is not None
+
+    if not ipympl_installed:
+        print("❌ ipympl (nécessaire pour `%matplotlib widget`) n'est pas installé.")
+        print("👉 Exécute : `pip install ipympl` dans une cellule ou un terminal.")
+        return
+
+    print("✅ ipympl est installé.")
+
+    # 2. Essaie de passer en backend 'widget'
+    try:
+        get_ipython().run_line_magic("matplotlib", "widget")
+        print("✅ `%matplotlib widget` activé avec succès.")
+    except Exception as e:
+        print(f"❌ Impossible d'activer `%matplotlib widget` : {e}")
+        return
+
+    # 3. Vérifie le backend courant
+    backend = matplotlib.get_backend()
+    if "widget" in backend.lower():
+        print(f"✅ Backend interactif actif : {backend}")
+    else:
+        print(f"⚠️ Backend actuel : {backend} — ce n'est pas `widget`.")
+        print("👉 Vérifie que tu as bien exécuté `%matplotlib widget` en haut du notebook.")
+        print("   Et que tu n'as pas de `%matplotlib inline` après.")
+        return
+
+    # 4. Test final
+    print("🎉 Environnement prêt pour les mises à jour dynamiques avec `.set_data()` et sliders interactifs !")
+
+# TODO : Uncomment this
+# diagnose_matplotlib_widget_backend()
 
 
 
@@ -250,10 +247,14 @@ class Base3dAxes_slider:
                  ax=None,
                  color_txt=(0.7, 0.7, 0.7, 1),
                  color_bg=(0.1, 0.1, 0.1, 1),
-                jupyter_sliders=False
+                jupyter_sliders=None
                  ):
-        self._init_context_(shared_context, ax, color_txt, color_bg)
+
+        if jupyter_sliders is None:
+            jupyter_sliders = self._detect_jupyter_notebook()
         self.use_ipywidgets = jupyter_sliders
+
+        self._init_context_(shared_context, ax, color_txt, color_bg)
         self.fig = self.ctx.fig
         self.ax = self.ctx.ax
         self.sliders = getattr(self.ctx, 'sliders', None)
@@ -294,7 +295,7 @@ class Base3dAxes_slider:
             self.ctx.children = []
 
             if ax is None:
-                self.ctx.fig, self.ctx.ax = plt.subplots(1, 3, constrained_layout=False)
+                self.ctx.fig, self.ctx.ax = plt.subplots(1, 3, figsize = (15,10), constrained_layout=False)
             else:
                 self.ctx.ax = ax
                 self.ctx.fig = ax[0].get_figure() if isinstance(ax, np.ndarray) else ax.get_figure()
@@ -340,6 +341,16 @@ class Base3dAxes_slider:
         self.sliders = sliders
         return sliders
 
+    @staticmethod
+    def _detect_jupyter_notebook():
+        try:
+            from IPython import get_ipython
+            shell = get_ipython().__class__.__name__
+            return shell == 'ZMQInteractiveShell'  # Jupyter Notebook / Lab
+        except (NameError, ImportError):
+            return False
+
+
     def _init_ipywidgets_sliders(self, init_x=None, init_y=None, init_z=None):
         T, D, H, W, _ = self.shape
         init_x = init_x if init_x is not None else D // 2
@@ -362,6 +373,7 @@ class Base3dAxes_slider:
     def _init_4d_sliders(self, init_x=None, init_y=None, init_z=None, slider_axes=None):
         if hasattr(self.ctx, 'sliders'):
             warnings.warn("Sliders already present in shared context, skipping slider creation.", stacklevel=2)
+            self.sliders = self.ctx.sliders
             return self.ctx.sliders
 
         if self.use_ipywidgets:
@@ -470,8 +482,7 @@ class Image3dAxes_slider(Base3dAxes_slider):
                 # ----- Init fig ------------
         super().__init__(**kwargs)
 
-        if not hasattr(self.ctx, "sliders"):
-            self._init_4d_sliders()
+        self._init_4d_sliders()
 
         self._connect_keypress()
         self.fig.canvas.mpl_connect('key_press_event', self.on_keypress)
@@ -492,7 +503,6 @@ class Image3dAxes_slider(Base3dAxes_slider):
         T, D, H, W, C = self.shape
         init_x_coord, init_y_coord, init_z_coord = D // 2, H // 2, W // 2
         tr_tpl = self._make_transpose_tpl_()
-        ic(self.shown_image.shape, init_x_coord, init_y_coord, init_z_coord, tr_tpl)
 
         im_1 = tb.image_slice(self.shown_image, init_z_coord, dim=2).transpose(*tr_tpl)
         im_2 = tb.image_slice(self.shown_image, init_y_coord, dim=1).transpose(*tr_tpl)
@@ -556,10 +566,6 @@ class Image3dAxes_slider(Base3dAxes_slider):
         # img = np.clip(self.shown_image, 0, 1)
 
         tr_tpl = self._make_transpose_tpl_()
-        # slice = tb.image_slice(img, z_slider.val, 2)
-        # ic(tr_tpl, slice.shape)
-        # slice = slice.transpose(*tr_tpl)
-        ic(x, y, z, t, tr_tpl)
 
         im_1 = tb.image_slice(self.shown_image, z, dim=2).transpose(*tr_tpl)
         im_2 = tb.image_slice(self.shown_image, y, dim=1).transpose(*tr_tpl)
@@ -646,28 +652,28 @@ class Image3dAxes_slider(Base3dAxes_slider):
 
 
 #%%
-if __name__ == '__main__':
-
-    path = "/home/turtlefox/Documents/11_metamorphoses/data/pixyl/aligned/PSL_001/"
-    file = "PSL_001_longitudinal_rigid.pt"
-    data = torch.load(os.path.join(path, file))
-    print(data.keys())
-    months = data["months_list"]
-    flair = data["flair_longitudinal"]
-    t1ce = data["t1ce_longitudinal"]
-    pred = data["pred_longitudinal"]
-
-    flair /= flair.max()
-    t1ce /= t1ce.max()
-
-    img = flair
-    # img = tb.temporal_img_cmp(flair, t1ce)
-    # img = torch.clip(pred, 0, 10)
-    # img = flair[-1,0]
-    ias = Image3dAxes_slider(img)
-    # ias.change_image(pred, cmap='tab10')
-    # ias.go_on_slice(168,176,53)
-    plt.show()
+# if __name__ == '__main__':
+#
+#     path = "/home/turtlefox/Documents/11_metamorphoses/data/pixyl/aligned/PSL_001/"
+#     file = "PSL_001_longitudinal_rigid.pt"
+#     data = torch.load(os.path.join(path, file))
+#     print(data.keys())
+#     months = data["months_list"]
+#     flair = data["flair_longitudinal"]
+#     t1ce = data["t1ce_longitudinal"]
+#     pred = data["pred_longitudinal"]
+#
+#     flair /= flair.max()
+#     t1ce /= t1ce.max()
+#
+#     img = flair
+#     # img = tb.temporal_img_cmp(flair, t1ce)
+#     # img = torch.clip(pred, 0, 10)
+#     # img = flair[-1,0]
+#     ias = Image3dAxes_slider(img)
+#     # ias.change_image(pred, cmap='tab10')
+#     # ias.go_on_slice(168,176,53)
+#     plt.show()
 
 #%%
 class Grid3dAxes_slider(Base3dAxes_slider):
@@ -887,41 +893,143 @@ class Flow3dAxes_slider(Base3dAxes_slider):
 
 #%%
 
+# class Landmark3dAxes_slider(Base3dAxes_slider):
+#     def __init__(self, landmarks, image_shape, dx_convention="pixel", color = "green",**kwargs):
+#         self.landmarks = landmarks
+#         self.shape = image_shape
+#         print("Land shape", self.shape)
+#         super().__init__( **kwargs)  # dummy image
+#
+#         # if ax is None:
+#         #     white_img = np.ones((H,W))
+#         #     white_img[0,0] = 0
+#         #
+#         #     self.ax[0].imshow(white_img)
+#         #     self.ax[1].imshow(white_img)
+#         #     self.ax[2].imshow(white_img)
+#         self.color = color
+#         self._init_4d_sliders()
+#         self.landmark_artists = [[], [], []]  # one per axis
+#         self.update(None)  # draw once initially
+#
+#
+#     def clear_landmarks(self):
+#         for artists in self.landmark_artists:
+#             for art in artists:
+#                 art.remove()
+#         self.landmark_artists = [[], [], []]
+#
+#     def update(self, val):
+#         """Redraws landmarks on each view."""
+#         x_slider, y_slider, z_slider, t_slider = self.sliders
+#         x, y, z = x_slider.val, y_slider.val, z_slider.val
+#
+#         self.clear_landmarks()
+#
+#         self.landmark_artists[0] = self._add_landmarks_to_ax(
+#             ax=self.ax[0], dim=2, depth=z, color=self.color
+#         )
+#         self.landmark_artists[1] = self._add_landmarks_to_ax(
+#             ax=self.ax[1], dim=1, depth=y, color=self.color
+#         )
+#         self.landmark_artists[2] = self._add_landmarks_to_ax(
+#             ax=self.ax[2], dim=0, depth=x, color=self.color
+#         )
+#
+#         self.fig.canvas.draw_idle()
+#
+#     def _add_landmarks_to_ax(self, ax, dim, depth, color):
+#         """
+#         Plot 3D landmarks on a given slice and return the list of matplotlib artists.
+#         """
+#         ms_max = 10
+#         dist_d = self.landmarks[:, dim] - depth
+#         artists = []
+#         if dim == 0:
+#             dim_x, dim_y = 1,2
+#         elif dim == 1:
+#             dim_x, dim_y = 2,0
+#         elif dim == 2:
+#             dim_x, dim_y = 1,0
+#         else:
+#             raise ValueError(f"Dimension {dim} is not supported.")
+#
+#         def affine_dist(dist):
+#             return (
+#                 ms_max
+#                 - (torch.abs(dist) * ms_max)
+#                 / (dist_d.abs().max().float() + 10)
+#             )
+#
+#         for i, l in enumerate(self.landmarks):
+#             if dist_d[i] == 0:
+#                 art = ax.plot(l[dim_x], l[dim_y], marker="o", color=color, markersize=ms_max)[0]
+#             elif dist_d[i] < 0:
+#                 ms = affine_dist(dist_d[i])
+#                 art = ax.plot(l[dim_x], l[dim_y], marker=7, color=color, markersize=ms)[0]
+#             else:
+#                 ms = affine_dist(dist_d[i])
+#                 art = ax.plot(l[dim_x], l[dim_y], marker=6, color=color, markersize=ms)[0]
+#
+#             txt = ax.text(
+#                 l[1] + 2, l[0] - 2, f"{i}", fontsize=8, color=color
+#             )
+#             artists.extend([art, txt])
+#
+#         return artists
+
 class Landmark3dAxes_slider(Base3dAxes_slider):
-    def __init__(self, landmarks, image_shape, dx_convention="pixel", color = "green",**kwargs):
+    """
+    Affiche une série de landmarks 3D sur les trois vues orthogonales synchronisées
+    (X/Y/Z) à partir d'un ensemble de coordonnées (N, 3), avec des marqueurs dépendants
+    de la profondeur.
+
+    Paramètres
+    ----------
+    landmarks : torch.Tensor
+        Tableau (N, 3) représentant les coordonnées spatiales des landmarks.
+
+    image_shape : tuple
+        Shape du tenseur image cible : (T, D, H, W, C), utilisé pour positionner les sliders.
+
+    dx_convention : str, optional
+        Convention spatiale, pas encore utilisée.
+
+    color : str or tuple, optional
+        Couleur utilisée pour les marqueurs. Default: "green".
+
+    kwargs : autres arguments passés à Base3dAxes_slider, notamment shared_context.
+    """
+    def __init__(self, landmarks, image_shape, dx_convention="pixel", color="green", **kwargs):
         self.landmarks = landmarks
-        self.shape = image_shape
-        print("Land shape", self.shape)
-        super().__init__( **kwargs)  # dummy image
-
-        # if ax is None:
-        #     white_img = np.ones((H,W))
-        #     white_img[0,0] = 0
-        #
-        #     self.ax[0].imshow(white_img)
-        #     self.ax[1].imshow(white_img)
-        #     self.ax[2].imshow(white_img)
+        self.shape = image_shape  # nécessaire pour les sliders
         self.color = color
-        self._init_4d_sliders()
-        self.landmark_artists = [[], [], []]  # one per axis
-        self.update(None)  # draw once initially
 
+        super().__init__(**kwargs)
+
+        # if not hasattr(self.ctx, "sliders"):
+        #     print("\nLandmarks are initing sliders")
+        self._init_4d_sliders()
+
+        self.landmark_artists = [[], [], []]  # Un ensemble d'artistes par axe
+        self.update(None)
 
     def clear_landmarks(self):
         for artists in self.landmark_artists:
             for art in artists:
-                art.remove()
+                try:
+                    art.remove()
+                except Exception:
+                    pass  # peut être déjà supprimé
         self.landmark_artists = [[], [], []]
 
-    def update(self, val):
-        """Redraws landmarks on each view."""
-        x_slider, y_slider, z_slider, t_slider = self.sliders
-        x, y, z = x_slider.val, y_slider.val, z_slider.val
-
+    def update(self, val=None):
+        """Met à jour dynamiquement l'affichage des landmarks sur les 3 vues."""
+        x, y, z, _ = self.get_sliders_val()
         self.clear_landmarks()
 
         self.landmark_artists[0] = self._add_landmarks_to_ax(
-            ax=self.ax[0], dim=2, depth=z, color=self.color
+            ax=self.ax[0], dim=1, depth=x, color=self.color
         )
         self.landmark_artists[1] = self._add_landmarks_to_ax(
             ax=self.ax[1], dim=1, depth=y, color=self.color
@@ -934,19 +1042,19 @@ class Landmark3dAxes_slider(Base3dAxes_slider):
 
     def _add_landmarks_to_ax(self, ax, dim, depth, color):
         """
-        Plot 3D landmarks on a given slice and return the list of matplotlib artists.
+        Affiche les landmarks sur une coupe selon l'axe donné.
+        Utilise des marqueurs directionnels (7, 6, o) en fonction de la profondeur relative.
+
+        Returns
+        -------
+        artists : list of matplotlib Artist
         """
         ms_max = 10
         dist_d = self.landmarks[:, dim] - depth
         artists = []
-        if dim == 0:
-            dim_x, dim_y = 1,2
-        elif dim == 1:
-            dim_x, dim_y = 2,0
-        elif dim == 2:
-            dim_x, dim_y = 1,0
-        else:
-            raise ValueError(f"Dimension {dim} is not supported.")
+
+        # Mapping des axes orthogonaux à projeter
+        dim_x, dim_y = {0: (1, 2), 1: (2, 0), 2: (1, 0)}[dim]
 
         def affine_dist(dist):
             return (
@@ -956,18 +1064,18 @@ class Landmark3dAxes_slider(Base3dAxes_slider):
             )
 
         for i, l in enumerate(self.landmarks):
+            xval, yval = l[dim_x].item(), l[dim_y].item()
+
             if dist_d[i] == 0:
-                art = ax.plot(l[dim_x], l[dim_y], marker="o", color=color, markersize=ms_max)[0]
+                art = ax.plot(yval, xval, marker="o", color=color, markersize=ms_max)[0]
             elif dist_d[i] < 0:
                 ms = affine_dist(dist_d[i])
-                art = ax.plot(l[dim_x], l[dim_y], marker=7, color=color, markersize=ms)[0]
+                art = ax.plot(xval, yval, marker=7, color=color, markersize=ms)[0]
             else:
                 ms = affine_dist(dist_d[i])
-                art = ax.plot(l[dim_x], l[dim_y], marker=6, color=color, markersize=ms)[0]
+                art = ax.plot(xval, yval, marker=6, color=color, markersize=ms)[0]
 
-            txt = ax.text(
-                l[1] + 2, l[0] - 2, f"{i}", fontsize=8, color=color
-            )
+            txt = ax.text(xval + 2, yval - 2, f"{i}", fontsize=8, color=color)
             artists.extend([art, txt])
 
         return artists
@@ -990,7 +1098,6 @@ img = flair
 # img = tb.temporal_img_cmp(flair, t1ce)
 # img = torch.clip(pred, 0, 10)
 # img = flair[-1,0]
-# ias = Image3dAxes_slider(img)
 # ias.change_image(pred, cmap='tab10')
 # ias.go_on_slice(168,176,53)
 
@@ -1000,12 +1107,19 @@ _,_,H,W,D  = img.shape
 lh = torch.randint(0,H,(10,1))
 lw = torch.randint(0,W,(10,1))
 ld = torch.randint(0,D,(10,1))
+ld = torch.tensor([193, 200, 158, 178, 205, 212])[None]
+lh = torch.tensor([231,160, 151, 269, 225, 93])[None]
+lw = torch.tensor([50, 50, 54, 65, 85, 47])[None]
 
-landmarks = torch.cat((lh, lw, ld), dim=1)
+
+
+landmarks = torch.cat((ld, lw, lh), dim=0)
+print('\n Iandmark shape: ', landmarks.shape)
 noise = torch.randint(-3,3,landmarks.shape)
+ias = Image3dAxes_slider(img)
 # landmarks
-# las = Landmark3dAxes_slider(landmarks, image_shape = (1,H,W,D,1), ax = ias.ax)
-# plt.show()
+las = Landmark3dAxes_slider(landmarks, image_shape = (1,H,W,D,1), shared_context=ias.ctx)
+plt.show()
 #%%
 #%%
 
@@ -1016,10 +1130,35 @@ def compare_images_with_landmarks(
     landmarks0: torch.Tensor,
     landmarks1: torch.Tensor,
     method: str = "compose",
-    cmap: str = "gray"
+    cmap: str = "gray",
+    jupyter_sliders: bool = None
 ):
     """
-    Visualise une paire d'images et leurs landmarks, avec boutons pour alterner affichage image0, image1 ou la comparaison.
+    Visualise une paire d'images 3D+t avec superposition de landmarks,
+    et des boutons pour alterner entre image0, image1 ou leur composition.
+
+    Parameters
+    ----------
+    image0 : torch.Tensor
+        Image source (shape: (1, D, H, W) or (1, 1, D, H, W) or (1, D, H, W, 1)).
+
+    image1 : torch.Tensor
+        Image cible, même format que image0.
+
+    landmarks0 : torch.Tensor
+        Landmarks associés à image0, format (N, 3).
+
+    landmarks1 : torch.Tensor
+        Landmarks associés à image1, format (N, 3).
+
+    method : str
+        Méthode de composition pour `temporal_img_cmp` (ex: "compose", "checker", etc.).
+
+    cmap : str
+        Colormap matplotlib.
+
+    jupyter_sliders : bool or None
+        Si True : utilise les sliders ipywidgets. Si None : détecte automatiquement.
     """
 
     # --------- Standardise image shape (B, C, D, H, W)
@@ -1033,16 +1172,22 @@ def compare_images_with_landmarks(
 
     image0 = ensure_shape(image0)
     image1 = ensure_shape(image1)
-    cmp_img = tb.temporal_img_cmp(image0, image1, method=method)  # (1, D, H, W, 3)
+    cmp_img = tb.temporal_img_cmp(image0, image1, method=method)[None]  # shape (1, D, H, W, 3)
+    print("cmp_img", cmp_img.shape)
+    # --------- Shared contex
 
     # --------- Create image viewer
-    ias = Image3dAxes_slider(cmp_img, cmap=cmap)
+    # ias = Image3dAxes_slider(cmp_img, cmap=cmap, jupyter_sliders=jupyter_sliders)
+    ias = Image3dAxes_slider(img_torch_to_plt(image0), cmap=cmap, jupyter_sliders=jupyter_sliders)
+
+
+    ctx = ias.ctx
 
     # --------- Add landmark overlays
-    Landmark3dAxes_slider(landmarks0, image_shape=ias.shape, color="green", ax=ias.ax)
-    Landmark3dAxes_slider(landmarks1, image_shape=ias.shape, color="red", ax=ias.ax)
+    Landmark3dAxes_slider(landmarks0, image_shape=ias.shape, color="green", shared_context=ctx)
+    # Landmark3dAxes_slider(landmarks1, image_shape=ias.shape, color="red", shared_context=ctx)
 
-    # --------- Store state
+    # --------- Store state for image switching
     state = {
         "image0": img_torch_to_plt(image0),
         "image1": img_torch_to_plt(image1),
@@ -1050,8 +1195,7 @@ def compare_images_with_landmarks(
         "current": "compose"
     }
 
-    # --------- Button callbacks
-    def set_image(name, button_label=None):
+    def set_image(name):
         def inner(event):
             if state["current"] == name:
                 return
@@ -1060,10 +1204,10 @@ def compare_images_with_landmarks(
             ias.update(None)
         return inner
 
-    # --------- Buttons
-    ax_b0 = plt.axes([0.1, 0.88, 0.1, 0.04])
-    ax_b1 = plt.axes([0.21, 0.88, 0.1, 0.04])
-    ax_bc = plt.axes([0.32, 0.88, 0.1, 0.04])
+    # --------- Add buttons
+    ax_b0 = ctx.fig.add_axes([0.1, 0.88, 0.1, 0.04])
+    ax_b1 = ctx.fig.add_axes([0.21, 0.88, 0.1, 0.04])
+    ax_bc = ctx.fig.add_axes([0.32, 0.88, 0.1, 0.04])
 
     b0 = Button(ax_b0, "image0", color=(0.6, 0.8, 0.6, 1))
     b1 = Button(ax_b1, "image1", color=(0.8, 0.6, 0.6, 1))
@@ -1073,12 +1217,45 @@ def compare_images_with_landmarks(
     b1.on_clicked(set_image("image1"))
     bc.on_clicked(set_image("compose"))
 
+    # --------- Done
     plt.show()
-
-
+#
+# path = "/home/turtlefox/Documents/11_metamorphoses/data/pixyl/aligned/PSL_001/"
+# file = "PSL_001_longitudinal_rigid.pt"
+# data = torch.load(os.path.join(path, file))
+# print(data.keys())
+# months = data["months_list"]
+# flair = data["flair_longitudinal"]
+# t1ce = data["t1ce_longitudinal"]
+# pred = data["pred_longitudinal"]
+#
+# flair /= flair.max()
+# t1ce /= t1ce.max()
+#
+# img = flair
+# # img = tb.temporal_img_cmp(flair, t1ce)
+# # img = torch.clip(pred, 0, 10)
+# # img = flair[-1,0]
+# # ias = Image3dAxes_slider(img)
+# # ias.change_image(pred, cmap='tab10')
+# # ias.go_on_slice(168,176,53)
+#
+#
+#
+# _,_,H,W,D  = img.shape
+# # lh = torch.randint(0,H,(10,1))
+# # lw = torch.randint(0,W,(10,1))
+# # ld = torch.randint(0,D,(10,1))
+# ld = torch.tensor([[193, 200, 158, 178, 205, 212]])
+# lh = torch.tensor([[231,160, 151, 269, 225, 93]])
+# lw = torch.tensor([[50, 50, 54, 65, 85, 47]])
+#
+# landmarks = torch.cat((ld, lh, lw), dim=1)
+# noise = torch.randint(-3,3,landmarks.shape)
+#
 # compare_images_with_landmarks(
-#     image0=flair[-1],
-#     image1=t1ce[-1],
+#     image0=flair[-1][None],
+#     image1=t1ce[-1][None],
 #     landmarks0=landmarks,
 #     landmarks1=landmarks + noise,
 #     method="compose"
