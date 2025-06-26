@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.widgets import Slider, Button
-from ipywidgets import IntSlider, HBox, VBox
+from ipywidgets import IntSlider, HBox, VBox, ToggleButton
 from IPython.display import display, clear_output
 import importlib.util
 import matplotlib
@@ -365,7 +365,6 @@ class Base3dAxes_slider:
 
     def _init_4d_sliders(self, init_x=None, init_y=None, init_z=None, slider_axes=None):
         if hasattr(self.ctx, 'sliders'):
-            warnings.warn("Sliders already present in shared context, skipping slider creation.", stacklevel=2)
             self.sliders = self.ctx.sliders
             return self.ctx.sliders
 
@@ -376,6 +375,73 @@ class Base3dAxes_slider:
 
         self.sliders = self.ctx.sliders
         return self.sliders
+
+    def _create_button(self, *,
+                   label: str,
+                   callback: callable,
+                   position: list = None,
+                   tooltip: str = None,
+                   color: tuple = None,
+                   hovercolor: tuple = (1, 1, 1, 0.2),
+                   jupyter_container=True):
+        """
+        Create a button, either for Matplotlib or ipywidgets depending on context.
+
+        Parameters
+        ----------
+        label : str
+            Text shown on the button.
+
+        callback : callable
+            Function to call when the button is clicked/toggled.
+
+        position : list of float, optional
+            [left, bottom, width, height] in figure coordinates (Matplotlib only).
+
+        tooltip : str, optional
+            Tooltip for Jupyter button.
+
+        color : tuple, optional
+            RGBA color for Matplotlib button.
+
+        hovercolor : tuple, optional
+            Hover color for Matplotlib button.
+
+        jupyter_container : bool
+            Whether to `display()` the button inside a VBox (Jupyter only).
+
+        Returns
+        -------
+        button : Matplotlib Button or ipywidgets ToggleButton
+        """
+        if self.use_ipywidgets:
+            btn = ToggleButton(
+                value=False,
+                description=label,
+                tooltip=tooltip or label,
+                layout=dict(width="auto"),
+            )
+
+            def _wrap(change):
+                if change["name"] == "value":
+                    callback(change["new"])
+
+            btn.observe(_wrap, names="value")
+
+            if jupyter_container:
+                display(VBox([btn]))
+            else:
+                display(btn)
+
+            return btn
+        else:
+            ax_btn = plt.axes(position or [0.05, 0.9, 0.1, 0.05])
+            btn = Button(ax_btn, label,
+                         color=color or self.ctx.color_txt,
+                         hovercolor=hovercolor)
+            btn.on_clicked(callback)
+            return btn
+
 
     def _notify_all_ipywidgets(self, change):
         for obj in getattr(self.ctx, 'children', []):
@@ -652,37 +718,55 @@ class Image3dAxes_slider(Base3dAxes_slider):
 #%%
 class Grid3dAxes_slider(Base3dAxes_slider):
     def __init__(self, deformation: torch.Tensor,
+                 dx_convention = "pixel",
                  step = 10,
                  alpha=0.2,
                  color_grid = "k",
-                 button_position=[0.05, 0.85, 0.1, 0.05],
+                 button_position=(0.05, 0.85, 0.1, 0.05),
                  **kwargs
                  ):
         """
+        Visualize a deformation field as a grid overlaid on 3 orthogonal planes with interactive sliders.
+
         Parameters
         ----------
         deformation : torch.Tensor
-            Expected shape: (T, D, H, W, 3)
-        button_position : list of float
-            Position of the grid toggle button [left, bottom, width, height]
+            Expected shape: (T, D, H, W, 3) - Temporal vector field data.
+
+        dx_convention : str
+            "pixel" or "square" or "2square".
+
         step : int or None
-            Grid step size. If None, it will be computed to get at least 15 lines in each direction.
-        color_txt: Tuple[float, float, float, float]  default
-                             color_txt=(0.7, 0.7, 0.7, 1)  # dark gray
-        color_bg: Tuple[float, float, float, float]  default
-                 color_bg=(0.1, 0.1, 0.1, 1),  # very light gray
+            Grid step size. If None, it is computed to ensure approximately 15 lines per direction.
 
+        alpha : float
+            Transparency of the grid lines.
+
+        color_grid : str
+            Color of the deformation grid.
+
+        button_position : list of float
+            Position of the toggle button [left, bottom, width, height] (in figure coordinates).
+
+        kwargs : dict
+            Passed to `Base3dAxes_slider`, allowing shared context or standalone setup.
         """
-        super().__init__(**kwargs)
-        assert deformation.ndim == 5 and deformation.shape[-1] == 3, "Expected deformation of shape (T, D, H, W, 3)"
+        if dx_convention == "pixel":
+            self.deformation = deformation
+        elif dx_convention == "square":
+            self.deformation = tb.square_to_pixel_convention(deformation,True)
+        elif dx_convention == "2square":
+            self.deformation = tb.square2_to_pixel_convention(deformation,True)
+        else:
+            raise NotImplementedError(f"Only 'pixel', 'square', or '2square' are supported. got {dx_convention}")
 
-        self.deformation = deformation
-        # self.color_txt = color_txt
-        # self.color_bg = color_bg
+        assert deformation.ndim == 5 and deformation.shape[-1] == 3, \
+            "Expected deformation of shape (T, D, H, W, 3)"
+        self.shape = self.deformation.shape  # Needed for slider init
+        super().__init__(**kwargs)
+
         self.button_position = button_position
 
-
-        self.shape = self.deformation.shape  # (T, D, H, W, 3)
         T, D, H, W, _ = self.shape
         if step is None:
             step = max(1, min(D, H, W) // 15)
@@ -695,35 +779,55 @@ class Grid3dAxes_slider(Base3dAxes_slider):
         self._init_button()
 
     def _init_button(self):
-        ax_button = plt.axes(self.button_position)
-        self.btn = Button(ax_button, "Show Grid", color=self.color_txt, hovercolor=(1, 1, 1, 0.2))
-        self.btn.on_clicked(self._toggle_grid)
+        def toggle(val=None):
+            x, y, z, t = self.get_sliders_val()
+            if not self.grid_was_init:
+                self.lines = self._make_grid(t, x, y, z)
+                self.grid_was_init = True
+                self.flag_grid = True
+            else:
+                self.flag_grid = not self.flag_grid if val is None else val
+                for line in self.lines:
+                    line.set_visible(self.flag_grid)
+            self.fig.canvas.draw_idle()
+
+        self.btn = self._create_button(
+            label="Show Grid",
+            callback=toggle,
+            position=self.button_position,
+            tooltip="Toggle the deformation grid",
+        )
 
     def _make_grid(self, t, x, y, z):
         deform_x = self.deformation[t, :, :, z, 1:][None].flip(-1)
         deform_y = self.deformation[t, :, y, :, [0, -1]][None].flip(-1)
         deform_z = self.deformation[t, x, :, :, :-1][None].flip(-1)
+        # deform_x = self.deformation[t, :, :, z, :-1][None].flip(-1)
+        # deform_y = self.deformation[t, :, y, :, [0, -1]][None].flip(-1)
+        # deform_z = self.deformation[t, x, :, :, 1:][None].flip(-1)
 
-        _, lines_x = tb.gridDef_plot_2d(deform_x, ax=self.ax[0], **self.kw_grid)
+
+
+        _, lines_x = tb.gridDef_plot_2d(deform_z, ax=self.ax[0], **self.kw_grid)
         _, lines_y = tb.gridDef_plot_2d(deform_y, ax=self.ax[1], **self.kw_grid)
-        _, lines_z = tb.gridDef_plot_2d(deform_z, ax=self.ax[2], **self.kw_grid)
+        _, lines_z = tb.gridDef_plot_2d(deform_x, ax=self.ax[2], **self.kw_grid)
 
         return lines_x + lines_y + lines_z
 
-    def _toggle_grid(self, event):
-        t, x, y, z = [int(s.val) for s in self.sliders[::-1]]
-        if not self.grid_was_init:
-            self.lines = self._make_grid(t, x, y, z)
-            self.grid_was_init = True
-            self.flag_grid = True
-        else:
-            self.flag_grid = not self.flag_grid
-            for line in self.lines:
-                try:
-                    line.set_visible(self.flag_grid)
-                except ValueError:
-                    pass
-        self.fig.canvas.draw_idle()
+    # def _toggle_grid(self, event):
+    #     t, x, y, z = [int(s.val) for s in self.sliders[::-1]]
+    #     if not self.grid_was_init:
+    #         self.lines = self._make_grid(t, x, y, z)
+    #         self.grid_was_init = True
+    #         self.flag_grid = True
+    #     else:
+    #         self.flag_grid = not self.flag_grid
+    #         for line in self.lines:
+    #             try:
+    #                 line.set_visible(self.flag_grid)
+    #             except ValueError:
+    #                 pass
+    #     self.fig.canvas.draw_idle()
 
     def update(self, val):
         if self.grid_was_init and self.flag_grid:
@@ -732,12 +836,9 @@ class Grid3dAxes_slider(Base3dAxes_slider):
                     line.remove()
                 except ValueError:
                     pass
-            t, x, y, z = [int(s.val) for s in self.sliders[::-1]]
+            x, y, z, t = self.get_sliders_val()
             self.lines = self._make_grid(t, x, y, z)
         self.fig.canvas.draw_idle()
-
-    def show(self):
-        plt.show()
 
 
 class Flow3dAxes_slider(Base3dAxes_slider):
