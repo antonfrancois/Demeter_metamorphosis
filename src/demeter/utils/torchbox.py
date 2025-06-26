@@ -682,7 +682,7 @@ def imCmp(I1, I2, method=None):
         )
 
 
-def temporal_img_cmp(img_1, img2, method="compose"):
+def temporal_img_cmp(img_1, img_2, method="compose"):
     """
     Stack two gray-scales images to compare them. The images must have the same
     height and width and depth (for 3d). Images can be temporal meaning that
@@ -692,7 +692,7 @@ def temporal_img_cmp(img_1, img2, method="compose"):
     ----------
     img_1 : torch.Tensor
         [T_1,C,H,W] or [T_1,C,D,H,W] tensor C = 1
-    img2 : torch.Tensor
+    img_2 : torch.Tensor
         [T_2,C,H,W] or [T_2,C,D,H,W] tensor C = 1
     .. note:
 
@@ -703,38 +703,38 @@ def temporal_img_cmp(img_1, img2, method="compose"):
 
     """
     T1, C1, D1, H1, W1 = img_1.shape
-    T2, C2, D2, H2, W2 = img2.shape
+    T2, C2, D2, H2, W2 = img_2.shape
     if D1 != D2 or H1 != H2 or W1 != W2:
         raise ValueError(
-            f"The images must have the same shape, got img_1 : {img_1.shape} and img_2 : {img2.shape}"
+            f"The images must have the same shape, got img_1 : {img_1.shape} and img_2 : {img_2.shape}"
         )
     if C1 > 1 or C2 > 1:
         raise ValueError(
-            f"The images must have only one channel, got img_1 : {img_1.shape} and img_2 : {img2.shape}"
+            f"The images must have only one channel, got img_1 : {img_1.shape} and img_2 : {img_2.shape}"
         )
 
     if T1 == T2 and T1 == 1:
-        return imCmp(img_1, img2, method=method)
+        return imCmp(img_1, img_2, method=method)
     elif T2 > T1 and T1 == 1:
-        buffer_img = img2
-        img2 = img_1
+        buffer_img = img_2
+        img_2 = img_1
         img_1 = buffer_img
         T1, T2 = T2, T1
 
     if T1 > T2 and T2 == 1:
         t_img = np.zeros((T1, D1, H1, W1, 4))
         for t, im1 in enumerate(img_1):
-            t_img[t] = imCmp(im1[None], img2, method=method)
+            t_img[t] = imCmp(im1[None], img_2, method=method)
         return t_img
 
     elif T1 == T2 and T1 > 1:
         t_img = np.zeros((T1, D1, H1, W1, 4))
-        for t, im1, im2 in enumerate(zip(img_1, img2)):
+        for t, (im1, im2) in enumerate(zip(img_1, img_2)):
             t_img[t] = imCmp(im1[None], im2[None], method=method)
         return t_img
     else:
         raise ValueError(
-            f"Supports only temporal images with the same number of time of one temporal image and one static image, got img_1 : {img_1.shape} and img_2 : {img2.shape}"
+            f"Supports only temporal images with the same number of time of one temporal image and one static image, got img_1 : {img_1.shape} and img_2 : {img_2.shape}"
         )
 
 

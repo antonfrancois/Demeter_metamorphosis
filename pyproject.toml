@@ -6,14 +6,14 @@ build-backend = "setuptools.build_meta"
 name = "demeter_metamorphosis"
 # Lorsque tu veux changer la version mineure, il va falloir aussi changer le numéro de version dans le ficher
 # .bumpversion.cfg
-version = "0.2.10"
+version = "0.2.11"
 description = "Efficient and flexible optimization of metamorphoses in images"
 authors = [
     { name = "Anton François", email = "anton.francois@ens-paris-saclay.fr" }
 ]
 license = { text = "MIT" }
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -22,19 +22,23 @@ classifiers = [
 ]
 dependencies = [
     "torch>=2.4.1",
-    "numpy>=2.2.0",
     "matplotlib>=3.3.2",
     "sphinx>=4.0.2",
     "sphinx-gallery>=0.9.0",
+    "numpy==1.26.4; python_version < '3.12'",
+    "tensorflow==2.18.0; python_version < '3.12'",
+    "numpy==2.2.0; python_version >= '3.12'",
     "scikit_image==0.25.0",
     "kornia==0.7.1",
     "pytest",
     "icecream",
     "nibabel",
     "napari",
+    "dotenv"
 ]
 
 [project.optional-dependencies]
+
 img_basics = [
     "scipy",
     "nibabel",      # for reading nifti files
