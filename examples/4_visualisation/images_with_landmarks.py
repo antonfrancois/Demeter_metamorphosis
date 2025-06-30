@@ -87,7 +87,8 @@ ias = a3s.Image3dAxes_slider(img)
  # Add landmark viewer using the shared context from ias
 las = a3s.Landmark3dAxes_slider(landmarks,
                             image_shape = (1,H,W,D,1),
-                            shared_context=ias.ctx
+                            shared_context=ias.ctx,
+                            label="Home brewed"
                             )
 las.show()
 

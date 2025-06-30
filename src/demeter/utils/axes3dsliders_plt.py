@@ -1070,24 +1070,58 @@ class Landmark3dAxes_slider(Base3dAxes_slider):
     dx_convention : str, optional
         Convention spatiale, pas encore utilisée.
 
-    color : str or tuple, optional
-        Couleur utilisée pour les marqueurs. Default: "green".
+    label : str, optional
+        Nom global du groupe de landmarks, affiché dans la légende et les boutons. Default: "Landmarks".
+
+    show_landmarks : bool, optional
+        Affichage initial des landmarks. Default: True.
 
     kwargs : autres arguments passés à Base3dAxes_slider, notamment shared_context.
     """
-    def __init__(self, landmarks, image_shape, dx_convention="pixel", color="green", **kwargs):
+    def __init__(self, landmarks,
+             image_shape,
+             color="green",
+            label="Landmarks",
+             show_landmarks=True,
+            button_position = [0.82, 0.85, 0.1, 0.03],
+             **kwargs):
         self.landmarks = landmarks
         self.shape = image_shape  # nécessaire pour les sliders
         self.color = color
+        self.label = label
+        self.show_landmarks = show_landmarks
+        self.button_position = button_position
 
         super().__init__(**kwargs)
 
-        # if not hasattr(self.ctx, "sliders"):
-        #     print("\nLandmarks are initing sliders")
         self._init_4d_sliders()
 
         self.landmark_artists = [[], [], []]  # Un ensemble d'artistes par axe
+        self._init_landmark_toggle_button()
         self.update(None)
+
+    def _init_landmark_toggle_button(self):
+        """Initialise le bouton show/hide pour les landmarks."""
+        self.lm_toggle_button = self._create_button(
+            label=self._landmark_button_label(),
+            position=self.button_position,
+            color=self.color,
+            callback=self._toggle_landmarks,
+        )
+
+    def _landmark_button_label(self):
+        """Construit le texte du bouton toggle."""
+        return f"{'Hide' if self.show_landmarks else 'Show'} {self.label}"
+
+    def _toggle_landmarks(self, event=None):
+        self.show_landmarks = not self.show_landmarks
+
+        new_label = self._landmark_button_label()
+        if hasattr(self, "lm_toggle_button"):
+            self.lm_toggle_button.label.set_text(new_label)
+
+        self.update()
+
 
     def clear_landmarks(self):
         for artists in self.landmark_artists:
@@ -1099,18 +1133,19 @@ class Landmark3dAxes_slider(Base3dAxes_slider):
         self.landmark_artists = [[], [], []]
 
     def update(self, val=None):
-        """Met à jour dynamiquement l'affichage des landmarks sur les 3 vues."""
         x, y, z, _ = self.get_sliders_val()
         self.clear_landmarks()
-        self.landmark_artists[0] = self._add_landmarks_to_ax(
-            ax=self.ax[0], dim=2, depth=z, color=self.color
-        )
-        self.landmark_artists[1] = self._add_landmarks_to_ax(
-            ax=self.ax[1], dim=1, depth=y, color=self.color
-        )
-        self.landmark_artists[2] = self._add_landmarks_to_ax(
-            ax=self.ax[2], dim=0, depth=x, color=self.color
-        )
+
+        if self.show_landmarks:
+            self.landmark_artists[0] = self._add_landmarks_to_ax(
+                ax=self.ax[0], dim=0, depth=z, color=self.color
+            )
+            self.landmark_artists[1] = self._add_landmarks_to_ax(
+                ax=self.ax[1], dim=2, depth=y, color=self.color
+            )
+            self.landmark_artists[2] = self._add_landmarks_to_ax(
+                ax=self.ax[2], dim=1, depth=x, color=self.color
+            )
 
         self.fig.canvas.draw_idle()
 
@@ -1128,8 +1163,8 @@ class Landmark3dAxes_slider(Base3dAxes_slider):
         artists = []
 
         # Mapping des axes orthogonaux à projeter
-        # dim_x, dim_y = {0: (1, 2), 1: (2, 0), 2: (2, 0)}[dim]
-        dim_x, dim_y = {0: (1, 2), 1: (0, 2), 2: (0, 1)}[dim]
+        # dim_x, dim_y = {0: (1, 2), 1: (0, 2), 2: (0, 1)}[dim]
+        dim_x, dim_y = {0: (1, 2), 1: (2, 0), 2: (1, 0)}[dim]
 
 
         def affine_dist(dist):
@@ -1138,10 +1173,10 @@ class Landmark3dAxes_slider(Base3dAxes_slider):
                 - (torch.abs(dist) * ms_max)
                 / (dist_d.abs().max().float() *1.5)
             )
-
+        ic(self.shape)
         for i, l in enumerate(self.landmarks):
-            if dim == 2:
-                xval, yval = l[dim_x].item(), self.shape[1] - l[dim_y].item()
+            if dim == 1:
+                xval, yval = self.shape[2] - l[dim_x].item(), l[dim_y].item()
             else:
                 xval, yval = l[dim_x].item(), l[dim_y].item()
 
@@ -1222,7 +1257,8 @@ def compare_images_with_landmarks(
 
     # --------- Add landmark overlays
     Landmark3dAxes_slider(landmarks0, image_shape=ias.shape, color="green", shared_context=ctx)
-    Landmark3dAxes_slider(landmarks1, image_shape=ias.shape, color="red", shared_context=ctx)
+    Landmark3dAxes_slider(landmarks1, image_shape=ias.shape, color="red", shared_context=ctx,
+                          button_position=[0.82, 0.82, 0.1, 0.03],)
 
     # --------- Store state for image switching
     state = {
