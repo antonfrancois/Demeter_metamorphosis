@@ -43,7 +43,6 @@ class Metamorphosis_integrator(Geodesic_integrator):
          over the geodesic integration
     """
 
-    @monitor_gpu
     def __init__(self, method,
                  rho=1.,
                  # sigma_v= (1,1,1),

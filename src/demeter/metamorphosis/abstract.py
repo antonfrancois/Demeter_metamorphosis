@@ -157,7 +157,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     def step(self, image, momentum):
         pass
 
-    @monitor_gpu
     def forward(
         self,
         image,
@@ -1024,7 +1023,6 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         self.closure = closure
 
-    @monitor_gpu
     def _step_LBFGS_(self):
         self.optimizer.step(self.closure)
 
@@ -1157,9 +1155,11 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.target = self.target.to(device)
         self.data_term.to_device(device)
         # self.target = self.target.to(device)
-        self.parameter = self.parameter.to(device)
-        self.id_grid = self.id_grid.to(device)
-        self.data_term.to_device(device)
+        try:
+            self.parameter = self.parameter.to(device)
+            self.id_grid = self.id_grid.to(device)
+        except AttributeError:
+            pass
         try:
             # To analyse might not have been initialized yet.
             self.to_analyse = (

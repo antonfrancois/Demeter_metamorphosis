@@ -9,9 +9,10 @@ from . import classic as cl
 from . import constrained as cn
 from . import simplex as sp
 from . import joined as jn
+from .data_cost import DataCost
 
 from ..utils import torchbox as tb
-from ..utils.decorators import time_it
+from ..utils.decorators import time_it, monitor_gpu
 
 
 def _commun_before(momentum_ini, source):
@@ -359,12 +360,12 @@ def joined_metamorphosis(
 
 
 def simplex_metamorphosis(
-    source,
-    target,
-    momentum_ini,
+    source: torch.Tensor,
+    target: torch.Tensor,
+    momentum_ini : int | float | torch.Tensor,
     kernelOperator,
-    rho,
-    data_term,
+    rho : float,
+    data_term : DataCost,
     dx_convention="pixel",
     integration_steps=10,
     n_iter=1000,
