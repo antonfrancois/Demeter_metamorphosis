@@ -15,9 +15,46 @@ from demeter.constants import *
 import demeter.utils.torchbox as tb
 
 
-# TODO: move to utils.rotate (file to be made)
+def prepare_momenta(image_shape,
+                    image : bool = True,
+                    rotation : bool = True,
+                    translation : bool = True,
+                    rot_prior = None,
+                    trans_prior= None,
+                    device = "cuda:0",
+                    requires_grad = True):
+    dim = 2 if len(image_shape) == 4 else 3
+    if rot_prior is None:
+        rot_prior = torch.zeros((dim,))
+    if trans_prior is None:
+        trans_prior = [0] * dim
+    momenta = {}
+    kwargs = {
+        "dtype":torch.float32,
+        "device":device
+    }
+    if image:
+        momenta["momentum_I"]= torch.zeros(S.shape,**kwargs)
+    if rotation:
+        if len(rot_prior.shape)==2:
+            momenta["momentum_R"] = torch.tensor(rot_prior,**kwargs)
+        elif len(rot_prior.shape)==1:
+            r1, r2, r3 = rot_prior
+            momenta["momentum_R"] = torch.tensor(
+            [[0,-r1, -r2 ],
+                     [r1, 0, -r3],
+                     [r2, r3, 0]],
+                    dtype=torch.float32, device='cuda:0')
+        else:
+            raise ValueError("Rotation prior must be 2 or 1 dimensional")
+    if translation:
+        momenta["momentum_T"]= torch.tensor(trans_prior,
+                                            **kwargs)
 
+    for keys in momenta.keys():
+        momenta[keys].requires_grad=requires_grad
 
+    return momenta
 
 
 class RigidMetamorphosis_integrator(Geodesic_integrator):
