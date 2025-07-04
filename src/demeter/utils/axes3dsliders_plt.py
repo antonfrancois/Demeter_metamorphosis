@@ -549,7 +549,7 @@ class Image3dAxes_slider(Base3dAxes_slider):
         self._connect_keypress()
         self.fig.canvas.mpl_connect('key_press_event', self.on_keypress)
         self.fig.canvas.mpl_connect('button_press_event', self.on_click)
-
+        self.fig.canvas.mpl_connect('scroll_event', self.on_scroll)
 
         self._init_images()
         self._add_lines_on_plt_()
@@ -710,6 +710,28 @@ class Image3dAxes_slider(Base3dAxes_slider):
             t_slider.set_val(min(current_t + 1, max_t))
         elif event.key == "left":
             t_slider.set_val(max(current_t - 1, 0))
+
+    def on_scroll(self, event):
+        """Handle mouse scroll to change slice on the relevant axis."""
+        if event.inaxes is None:
+            return
+
+        # Step direction: +1 (scroll up) or -1 (scroll down)
+        step = 1 if event.step > 0 else -1
+
+        if event.inaxes == self.ax[0]:
+            slider = self.ctx.sliders[2]  # z
+        elif event.inaxes == self.ax[1]:
+            slider = self.ctx.sliders[1]  # y
+        elif event.inaxes == self.ax[2]:
+            slider = self.ctx.sliders[0]  # x
+        else:
+            return
+
+        val = int(slider.val) + step
+        val = max(slider.valmin, min(slider.valmax, val))
+        slider.set_val(val)
+
 
 
 
