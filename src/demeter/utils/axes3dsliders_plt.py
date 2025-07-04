@@ -1222,6 +1222,7 @@ def compare_images_with_landmarks(
     image1: torch.Tensor,
     landmarks0: torch.Tensor,
     landmarks1: torch.Tensor,
+    labels : list[str] | None = None,
     method: str = "compose",
     cmap: str = "gray",
     jupyter_sliders: bool = None
@@ -1243,6 +1244,9 @@ def compare_images_with_landmarks(
 
     landmarks1 : torch.Tensor
         Landmarks associés à image1, format (N, 3).
+
+    lables: list[str]
+        A list of two elements with the names of the iamges and landmarks.
 
     method : str
         Méthode de composition pour `temporal_img_cmp` (ex: "compose", "checker", etc.).
@@ -1277,8 +1281,8 @@ def compare_images_with_landmarks(
     ctx = ias.ctx
 
     # --------- Add landmark overlays
-    Landmark3dAxes_slider(landmarks0, image_shape=ias.shape, color="green", shared_context=ctx)
-    Landmark3dAxes_slider(landmarks1, image_shape=ias.shape, color="red", shared_context=ctx,
+    Landmark3dAxes_slider(landmarks0, image_shape=ias.shape, color="green", shared_context=ctx, label=labels[0])
+    Landmark3dAxes_slider(landmarks1, image_shape=ias.shape, color="red", shared_context=ctx, label=labels[1],
                           button_position=[0.82, 0.82, 0.1, 0.03],)
 
     # --------- Store state for image switching
@@ -1303,12 +1307,12 @@ def compare_images_with_landmarks(
     ax_b1 = ctx.fig.add_axes([0.21, 0.88, 0.1, 0.04])
     ax_bc = ctx.fig.add_axes([0.32, 0.88, 0.1, 0.04])
 
-    b0 = Button(ax_b0, "image0", color=(0.6, 0.8, 0.6, 1))
-    b1 = Button(ax_b1, "image1", color=(0.8, 0.6, 0.6, 1))
+    b0 = Button(ax_b0, "image0"if labels is None else labels[0], color=(0.6, 0.8, 0.6, 1))
+    b1 = Button(ax_b1, "image1"if labels is None else labels[1], color=(0.8, 0.6, 0.6, 1))
     bc = Button(ax_bc, "compose", color=(0.6, 0.6, 0.8, 1))
 
-    b0.on_clicked(set_image("image0"))
-    b1.on_clicked(set_image("image1"))
+    b0.on_clicked(set_image("image0" ))
+    b1.on_clicked(set_image("image1" ))
     bc.on_clicked(set_image("compose"))
 
     # --------- Done
