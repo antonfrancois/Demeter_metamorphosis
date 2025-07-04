@@ -1163,10 +1163,10 @@ class Landmark3dAxes_slider(Base3dAxes_slider):
                 ax=self.ax[0], dim=0, depth=z, color=self.color
             )
             self.landmark_artists[1] = self._add_landmarks_to_ax(
-                ax=self.ax[1], dim=2, depth=y, color=self.color
+                ax=self.ax[1], dim=1, depth=y, color=self.color
             )
             self.landmark_artists[2] = self._add_landmarks_to_ax(
-                ax=self.ax[2], dim=1, depth=x, color=self.color
+                ax=self.ax[2], dim=2, depth=x, color=self.color
             )
 
         self.fig.canvas.draw_idle()
@@ -1186,7 +1186,7 @@ class Landmark3dAxes_slider(Base3dAxes_slider):
 
         # Mapping des axes orthogonaux à projeter
         # dim_x, dim_y = {0: (1, 2), 1: (0, 2), 2: (0, 1)}[dim]
-        dim_x, dim_y = {0: (1, 2), 1: (2, 0), 2: (1, 0)}[dim]
+        dim_x, dim_y = {0: (2, 1), 1: (2, 0), 2: (1, 0)}[dim]
 
 
         def affine_dist(dist):
@@ -1195,10 +1195,9 @@ class Landmark3dAxes_slider(Base3dAxes_slider):
                 - (torch.abs(dist) * ms_max)
                 / (dist_d.abs().max().float() *1.5)
             )
-        ic(self.shape)
         for i, l in enumerate(self.landmarks):
-            if dim == 1:
-                xval, yval = self.shape[2] - l[dim_x].item(), l[dim_y].item()
+            if dim == 0:
+                xval, yval =  l[dim_x].item(),  self.shape[dim_y + 1] - l[dim_y].item()
             else:
                 xval, yval = l[dim_x].item(), l[dim_y].item()
 
