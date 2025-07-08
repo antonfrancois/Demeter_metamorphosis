@@ -1222,7 +1222,7 @@ def compare_images_with_landmarks(
     image1: torch.Tensor,
     landmarks0: torch.Tensor,
     landmarks1: torch.Tensor,
-    labels : list[str] | None = None,
+    labels : list[str] | list[None] = [None, None],
     method: str = "compose",
     cmap: str = "gray",
     jupyter_sliders: bool = None

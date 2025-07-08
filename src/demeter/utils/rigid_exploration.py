@@ -2,8 +2,32 @@ import torch
 from demeter.utils.decorators import time_it
 import demeter.utils.torchbox as tb
 import demeter.utils.cost_functions as cf
-from demeter.metamorphosis.wraps import rigid_along_metamorphosis
 import  demeter.metamorphosis.rotate as mtrt
+
+def compute_img_barycentre(img, id_grid = None, dx_convention= '2square'):
+    if id_grid is None:
+        id_grid = tb.make_regular_grid(img.shape[2:],dx_convention=dx_convention,)
+
+    img_bin = (img[0,0,...,None] * id_grid[0])
+    bary = img_bin.sum(dim=[0,1,2]) / img.sum()
+    return bary
+
+def align_barycentres(img_1, img_2, verbose = False):
+    """
+
+    """
+    assert img_1.shape == img_2.shape
+    id_grid = tb.make_regular_grid(img_1.shape[2:],dx_convention="2square",)
+    b_1 = compute_img_barycentre(img_1, id_grid)
+    b_2 = compute_img_barycentre(img_2, id_grid)
+    if verbose:
+        print("S compute barycentre :",b_1)
+        print("T compute barycentre :",b_2)
+        print("diff : ", b_2 - b_1)
+
+    img_1_b = tb.imgDeform(img_1, (id_grid + b_1))
+    img_2_b = tb.imgDeform(img_2, (id_grid + b_2))
+    return img_1_b, img_2_b, b_1, b_2
 
 def _insert_(entry, top_losses, top_k = 10):
     # Insert in sorted position
@@ -25,7 +49,7 @@ def _insert_(entry, top_losses, top_k = 10):
     return top_losses
 
 @time_it
-def initial_exploration(source, target, integration_steps, r_step = 4, max_output = 10, verbose:bool = True):
+def initial_exploration(rigid_meta_optim, r_step = 4, max_output = 10, verbose:bool = True):
     r_list = torch.linspace(-torch.pi, torch.pi, r_step)
     r_combi = torch.cartesian_prod(r_list,r_list,r_list)
     top_losses = []
@@ -33,23 +57,18 @@ def initial_exploration(source, target, integration_steps, r_step = 4, max_outpu
         if verbose:
             print(f"Init search : {i+1} / {len(r_combi)}")
         momenta =mtrt.prepare_momenta(
-            source.shape,
+            rigid_meta_optim.source.shape,
             image=False,rotation=True,translation=False,
             rot_prior=params_r,trans_prior=(0,0,0),
             requires_grad=False
         )
-        mp = mtrt.RigidMetamorphosis_integrator(
-            rho=1,
-            n_step=integration_steps,
-            kernelOperator=None,
-            dx_convention="2square"
-        )
-        mp.forward(source, momenta)
 
-        rot_def =   tb.apply_rot_mat(mp.id_grid,  mp.rot_mat.T)
-        img_rot = tb.imgDeform(source, rot_def.to('cpu'), dx_convention='2square')
+        rigid_meta_optim.forward(rigid_meta_optim.source, momenta)
+
+        rot_def =   tb.apply_rot_mat(rigid_meta_optim.mp.id_grid, rigid_meta_optim. mp.rot_mat.T)
+        img_rot = tb.imgDeform(rigid_meta_optim.source, rot_def.to('cpu'), dx_convention='2square')
         # img_rot = torch.clip(img_rot, 0, 1)
-        loss_val = cf.SumSquaredDifference(target)(img_rot)
+        loss_val = cf.SumSquaredDifference(rigid_meta_optim.target)(img_rot)
 
         # keep a list of the N best loss_val related with the corresponding param_r
         entry = (loss_val.detach(), params_r.detach())

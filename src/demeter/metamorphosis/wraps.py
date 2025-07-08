@@ -24,6 +24,8 @@ def _commun_before(momentum_ini, source):
 
 
 def _commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef):
+    if n_iter == 0:
+        return mr
     if not safe_mode:
         mr.forward(momentum_ini, n_iter=n_iter, grad_coef=grad_coef)
     else:
@@ -413,7 +415,7 @@ def rigid_along_metamorphosis(
         data_term,
         # dx_convention="2square",
         n_steps=10,
-        n_iter=10,
+        n_iter=0,
         grad_coef=2,
         cost_cst=0.001,
         plot=False,
@@ -432,12 +434,13 @@ def rigid_along_metamorphosis(
     if you want to do not optimise over one of the above don't
 
     """
-    for key in momenta_ini.keys():
-        if not key in ['momentum_I', 'momentum_R', 'momentum_T']:
-            raise ValueError("momenta_ini must be a dictionary containing the keywords:"
-                    " - 'momentum_I' for the image"
-                    " - 'momentum_R' for the rotation"
-                    " - 'momentum_T' for the translation")
+    if n_iter > 0 and momenta_ini == 0:
+        for key in momenta_ini.keys():
+            if not key in ['momentum_I', 'momentum_R', 'momentum_T']:
+                raise ValueError("momenta_ini must be a dictionary containing the keywords:"
+                        " - 'momentum_I' for the image"
+                        " - 'momentum_R' for the rotation"
+                        " - 'momentum_T' for the translation")
 
     if save_gpu_memory:
         raise NotImplementedError("GPU memory saving is not implemented yet.")
