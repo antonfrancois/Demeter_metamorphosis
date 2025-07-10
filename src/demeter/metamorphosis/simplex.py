@@ -218,7 +218,7 @@ class Simplex_sqrt_Metamorphosis_integrator_bis(Geodesic_integrator):
     def step(self, image, momentum):
 
         ## 1. Compute the vector field
-        field = self._update_field_(image, momentum)
+        field = self._update_field_(momentum, image)
 
         ## 2. Compute the residuals
         residuals, pi_q = self._update_residuals_simplex(momentum, image)
