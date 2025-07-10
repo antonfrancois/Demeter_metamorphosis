@@ -513,7 +513,7 @@ class GaussianRKHS(torch.nn.Module):
     """
 
     def __init__(self,sigma : Tuple,
-                 border_type: str = 'replicate',
+                 border_type: str = 'constant',
                  normalized: bool = True,
                  kernel_reach = 3,
                  **kwargs
@@ -872,7 +872,7 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
         #     self.kernel /= self.kernel.sum()
 
 
-        self.border_type = 'replicate'
+        self.border_type = 'constant'
 
     def init_kernel(self,image):
         for sig in self.list_sigma:

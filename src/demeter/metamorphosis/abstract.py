@@ -331,14 +331,13 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         """
 
         # C = residuals.shape[1]
-        field_momentum = -(momentum.unsqueeze(2) * grad_image).sum(dim=1)
+        field_momentum = (grad_image * momentum.unsqueeze(2)).sum(dim=1)
         field =  self.kernelOperator(field_momentum)
-
         norm_v = None
         if self.flag_hamiltonian_integration:
             norm_v = .5 * self.rho * (field_momentum.clone() * field.clone()).sum()
 
-        return tb.im2grid(field), norm_v
+        return -tb.im2grid(field), norm_v
 
     def _compute_vectorField_multimodal_(self, momentum, grad_image):
         r"""operate the equation $K \star (z_t \cdot \nabla I_t)$
@@ -380,7 +379,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     def _update_field_(self, momentum, image):
         grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
         # ic(grad_image.min().item(), grad_image.max().item(),self.dx_convention)
-        field,self.norm_v_i = self._compute_vectorField_(momentum, grad_image)
+        field, self.norm_v_i = self._compute_vectorField_(momentum, grad_image)
         # self.field *= self._field_cst_mult()
         # self.field *= sqrt(self.rho)
 

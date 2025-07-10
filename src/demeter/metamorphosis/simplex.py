@@ -66,13 +66,11 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
 
         ## 1. Compute the vector field
         ## 1.1 Compute the gradient of the image by finite differences
-        # grad_simplex = tb.spatialGradient(image, dx_convention="pixel")
+        # grad_simplex = tb.spatialGradient( image, dx_convention=self.dx_convention)
         # field_momentum = (grad_simplex * momentum.unsqueeze(2)).sum(dim=1)# / C
         # field = self.kernelOperator(field_momentum)
-        # field = -self.rho * tb.im2grid(field)
-        #
-        # assert not field.isnan().any(), "Field is Nan"
-        field = self._update_field_(image, momentum)
+
+        field = self._update_field_(momentum, image)
 
         try:
             volDelta = prod(self.kernelOperator.dx)
@@ -138,7 +136,7 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
         )
 
 
-()
+
 class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
     # TODO: add docstring
     def __init__(
