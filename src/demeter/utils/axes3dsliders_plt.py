@@ -288,7 +288,7 @@ class Base3dAxes_slider:
             self.ctx.children = []
 
             if ax is None:
-                self.ctx.fig, self.ctx.ax = plt.subplots(1, 3, figsize = (15,10), constrained_layout=False)
+                self.ctx.fig, self.ctx.ax = plt.subplots(1, 3, figsize = (15,10), constrained_layout=True)
             else:
                 self.ctx.ax = ax
                 self.ctx.fig = ax[0].get_figure() if isinstance(ax, np.ndarray) else ax.get_figure()
@@ -531,6 +531,8 @@ class Image3dAxes_slider(Base3dAxes_slider):
                  ):
          # ---------- init image shape
         self.image = img_torch_to_plt(image)
+
+        ic(self.image.shape)
         self.shown_image = self.image[-1]
         self.shape = self.image.shape
         assert len(self.shape) == 5, f"The optimised image is not a 3D image got {self.shape}"
@@ -571,7 +573,7 @@ class Image3dAxes_slider(Base3dAxes_slider):
         im_3 = tb.image_slice(self.shown_image, init_x_coord, dim=0).transpose(*tr_tpl)
         self.plt_img_x = self.ax[0].imshow(
             im_1,
-            extent=[0, H, 0, D], aspect=H / D,
+            extent=[0, D, 0, H], aspect=D/ H,
             **self.kw_image,
         )
         self.plt_img_y = self.ax[1].imshow(
@@ -1269,6 +1271,7 @@ def compare_images_with_landmarks(
 
     image0 = ensure_shape(image0)
     image1 = ensure_shape(image1)
+    ic("image_0", image0.shape)
     cmp_img = tb.temporal_img_cmp(image0, image1, method=method)[None]  # shape (1, D, H, W, 3)
     cmp_img = np.clip(cmp_img,0,1)
     # --------- Shared contex
