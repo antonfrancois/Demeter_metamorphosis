@@ -601,6 +601,7 @@ class Image3dAxes_slider(Base3dAxes_slider):
         line_color = "green"
         T, D, H, W, C = self.shape
         x, y, z = D // 2, H // 2, W // 2
+        ic(x,y,z)
         self._l_x_v = self.ax[0].axvline(x=x, color=line_color, alpha=0.6)
         self._l_x_h = self.ax[0].axhline(y=y, color=line_color, alpha=0.6)
         self._l_y_v = self.ax[1].axvline(x=x, color=line_color, alpha=0.6)
@@ -613,7 +614,7 @@ class Image3dAxes_slider(Base3dAxes_slider):
     def _update_lines(self, x, y, z):
         T, D, H, W, C = self.shape
         self._l_x_v.set_xdata([x, x])
-        self._l_x_h.set_ydata([D- y, D - y])
+        self._l_x_h.set_ydata([H- y, H - y])
         self._l_y_v.set_xdata([x, x])
         self._l_y_h.set_ydata([z, z])
         self._l_z_v.set_xdata([y, y])
