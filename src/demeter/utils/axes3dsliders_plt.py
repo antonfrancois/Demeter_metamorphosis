@@ -579,13 +579,13 @@ class Image3dAxes_slider(Base3dAxes_slider):
         self.plt_img_y = self.ax[1].imshow(
             im_2,
             origin="lower",
-            extent=[0, H, 0, W], aspect=H / W,
+            extent=[0, D, 0, W], aspect=D / W,
             **self.kw_image,
         )
         self.plt_img_z = self.ax[2].imshow(
             im_3,
             origin="lower",
-            extent=[0, D, 0, W], aspect=D / W,
+            extent=[0, H, 0, W], aspect=H / W,
             **self.kw_image,
         )
         self.ax[0].set_xlabel("X")
@@ -604,9 +604,9 @@ class Image3dAxes_slider(Base3dAxes_slider):
         ic(x,y,z)
         self._l_x_v = self.ax[0].axvline(x=x, color=line_color, alpha=0.6)
         self._l_x_h = self.ax[0].axhline(y=y, color=line_color, alpha=0.6)
-        self._l_y_v = self.ax[1].axvline(x=x, color=line_color, alpha=0.6)
+        self._l_y_v = self.ax[1].axvline(x=y, color=line_color, alpha=0.6)
         self._l_y_h = self.ax[1].axhline(y=z, color=line_color, alpha=0.6)
-        self._l_z_v = self.ax[2].axvline(x=y, color=line_color, alpha=0.6)
+        self._l_z_v = self.ax[2].axvline(x=x, color=line_color, alpha=0.6)
         self._l_z_h = self.ax[2].axhline(y=z, color=line_color, alpha=0.6)
 
         self.ax[0].margins(x=0)
@@ -615,8 +615,10 @@ class Image3dAxes_slider(Base3dAxes_slider):
         T, D, H, W, C = self.shape
         self._l_x_v.set_xdata([x, x])
         self._l_x_h.set_ydata([H- y, H - y])
+
         self._l_y_v.set_xdata([x, x])
         self._l_y_h.set_ydata([z, z])
+
         self._l_z_v.set_xdata([y, y])
         self._l_z_h.set_ydata([z, z])
 
@@ -689,18 +691,12 @@ class Image3dAxes_slider(Base3dAxes_slider):
         xdata, ydata = int(event.xdata), int(event.ydata)
 
         if ax == self.ax[0]:
-            self.go_on_slice(x=xdata, y=D - ydata)
-            # self.sliders[0].set_val(xdata)
-            # self.sliders[1].set_val(ydata)
+            self.go_on_slice(x=xdata, y=H - ydata)
 
         elif ax == self.ax[1]:
-            # self.sliders[0].set_val(xdata)
-            # self.sliders[2].set_val(ydata)
             self.go_on_slice(x=xdata, z=ydata)
 
         elif ax == self.ax[2]:
-            # self.sliders[1].set_val(xdata)
-            # self.sliders[2].set_val(ydata)
             self.go_on_slice(y=xdata, z=ydata)
 
     def on_keypress(self, event):
