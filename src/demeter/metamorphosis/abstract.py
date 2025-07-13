@@ -1098,6 +1098,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         :param verbose: (bool) display advancement
 
         """
+        print("momenta type", type(momenta_ini))
+        print("momenta keys", momenta_ini.keys())
         device = next((tensor.device for tensor in momenta_ini.values() if tensor.is_cuda), 'cpu')
 
         self.source = self.source.to(device)

@@ -27,17 +27,17 @@ def prepare_momenta(image_shape,
     if rot_prior is None:
         rot_prior = torch.zeros((dim,))
     if trans_prior is None:
-        trans_prior = [0] * dim
+        trans_prior = torch.zeros((dim,))
     momenta = {}
     kwargs = {
         "dtype":torch.float32,
         "device":device
     }
     if image:
-        momenta["momentum_I"]= torch.zeros(S.shape,**kwargs)
+        momenta["momentum_I"]= torch.zeros(image_shape,**kwargs)
     if rotation:
         if len(rot_prior.shape)==2:
-            momenta["momentum_R"] = torch.tensor(rot_prior,**kwargs)
+            momenta["momentum_R"] = rot_prior.to(kwargs["dtype"]).to(kwargs["device"])
         elif len(rot_prior.shape)==1:
             r1, r2, r3 = rot_prior
             momenta["momentum_R"] = torch.tensor(
@@ -48,8 +48,7 @@ def prepare_momenta(image_shape,
         else:
             raise ValueError("Rotation prior must be 2 or 1 dimensional")
     if translation:
-        momenta["momentum_T"]= torch.tensor(trans_prior,
-                                            **kwargs)
+        momenta["momentum_T"]= trans_prior.to(kwargs["dtype"]).to(kwargs["device"])
 
     for keys in momenta.keys():
         momenta[keys].requires_grad=requires_grad

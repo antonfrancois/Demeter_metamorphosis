@@ -50,7 +50,20 @@ def _insert_(entry, top_losses, top_k = 10):
 
 @time_it
 def initial_exploration(rigid_meta_optim, r_step = 4, max_output = 10, verbose:bool = True):
-    r_list = torch.linspace(-torch.pi, torch.pi, r_step)
+    """
+    Shoot in given directions, gives you the best outputs
+
+    Parameters
+    -----------
+    rigid_meta_optim : metamorphosis.Optimize_geodesicShooting
+
+    r_step : int
+        Step of the angles grid
+    max_output : int
+        number of output to return
+
+    """
+    r_list = torch.linspace(-torch.pi, torch.pi * (1 - 2/r_step) , r_step)
     r_combi = torch.cartesian_prod(r_list,r_list,r_list)
     top_losses = []
     for i,params_r in  enumerate(r_combi):
@@ -62,8 +75,8 @@ def initial_exploration(rigid_meta_optim, r_step = 4, max_output = 10, verbose:b
             rot_prior=params_r,trans_prior=(0,0,0),
             requires_grad=False
         )
-
-        rigid_meta_optim.forward(rigid_meta_optim.source, momenta)
+        print(momenta.keys())
+        rigid_meta_optim.mp.forward(rigid_meta_optim.source, momenta)
 
         rot_def =   tb.apply_rot_mat(rigid_meta_optim.mp.id_grid, rigid_meta_optim. mp.rot_mat.T)
         img_rot = tb.imgDeform(rigid_meta_optim.source, rot_def.to('cpu'), dx_convention='2square')
@@ -86,13 +99,15 @@ def initial_exploration(rigid_meta_optim, r_step = 4, max_output = 10, verbose:b
 
 
 
-
+import matplotlib.pyplot as plt
 #%% rigid optimisation
 def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False):
     best_loss = top_params[0][0]
     for i,(val,params_r) in  enumerate(top_params):
-        print(">"*10)
-        ic(params_r)
+        if verbose:
+            print(">"*10)
+            print(f"{i}/{len(top_params)} Optimize wit params {params_r.tolist()}")
+
         momenta = mtrt.prepare_momenta(
             mr.source.shape,
             image=False,rotation=True,translation=True,
@@ -111,19 +126,19 @@ def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False)
         #     debug =  False
         # )
 
-
         best = False
         if mr.data_loss < best_loss or mr.data_loss == 0:
             best_loss = mr.data_loss
             best_momentum = mr.to_analyse[0]["momentum_R"]
             best_translation = mr.mp.translation
             best = True
+            best_rot = mr.mp.rot_mat
+
         # mr.plot_cost(
         # )
         # plt.show()
         if verbose:
-            print(f"i : {i} / {len(top_params)}, best = {best}")
-            print(aff_mat)
+            print(f"best = {best}")
             print(mr.mp.translation)
             print(mr.mp.rot_mat)
             print("best mom",best_momentum)
@@ -138,4 +153,4 @@ def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False)
         print(best_loss)
         print(best_momentum)
         print(best_translation)
-    return best_loss, best_momentum, best_translation
+    return best_loss, best_momentum, best_translation, best_rot

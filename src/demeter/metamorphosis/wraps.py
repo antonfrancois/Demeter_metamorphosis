@@ -414,7 +414,7 @@ def rigid_along_metamorphosis(
         rho,
         data_term,
         # dx_convention="2square",
-        n_steps=10,
+        integration_steps=10,
         n_iter=0,
         grad_coef=2,
         cost_cst=0.001,
@@ -447,7 +447,7 @@ def rigid_along_metamorphosis(
 
     mp = rd.RigidMetamorphosis_integrator(
         rho=rho,
-        n_step=n_steps,
+        n_step=integration_steps,
         kernelOperator=kernelOperator,
         dx_convention="2square",
         debug=debug,
