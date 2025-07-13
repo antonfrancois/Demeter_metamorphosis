@@ -5,16 +5,11 @@ import os
 
 import demeter.utils.torchbox as tb
 from demeter.constants import *
-import demeter.utils.image_3d_plotter as i3p
 import demeter.metamorphosis.rotate as mtrt
 import demeter.metamorphosis as mt
-import demeter.utils.cost_functions as cf
 import demeter.utils.reproducing_kernels as rk
 import demeter.utils.axes3dsliders_plt as a3s
 import demeter.utils.rigid_exploration as rg
-#%%
-import pandas as pd
-import nibabel as nib
 import brats_utils as bu
 
 from scipy.spatial.transform import Rotation as R

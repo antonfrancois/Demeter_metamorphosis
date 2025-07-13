@@ -11,7 +11,12 @@ from nibabel import load as nib_load
 
 ROOT_DIRECTORY = os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))
-))
+)) + "/data/"
+flag_drive = False
+if "content" in ROOT_DIRECTORY:
+  ROOT_DIRECTORY = "/content/drive/MyDrive/demeter_data"
+  flag_drive = True
+
 
 # TODO : Test and document this file.
 
@@ -44,7 +49,7 @@ def open_nib(folder_name,irm_type,data_base,format= '.nii.gz',normalize=True, to
     elif data_base == 'brats_2021':
         path = ROOT_DIRECTORY+ '/data/brats_2021/'
     elif data_base == 'bratsreg_2022':
-        path = ROOT_DIRECTORY+'/data/bratsreg_2022/BraTSReg_Training_Data_v3/'
+        path = ROOT_DIRECTORY+'/bratsreg_2022/BraTSReg_Training_Data_v3/'
     else:
         path = data_base
     img_nib = nib_load(path+folder_name+'/'+folder_name+'_'+irm_type+format)
@@ -99,10 +104,10 @@ class parse_brats:
             self.brats_folder = ROOT_DIRECTORY+'/data/brats_2021/'
             self.flag_brats_2021 = True
         elif "2022_valid" in brats_folder:
-            self.brats_folder = ROOT_DIRECTORY+'/data/bratsreg_2022/BraTSReg_Validation_Data/'
+            self.brats_folder = ROOT_DIRECTORY+'/bratsreg_2022/BraTSReg_Validation_Data/'
             self.flag_bratsReg_2022 = True
         elif "2022" in brats_folder:
-            self.brats_folder = ROOT_DIRECTORY+'/data/bratsreg_2022/BraTSReg_Training_Data_v3/'
+            self.brats_folder = ROOT_DIRECTORY+'/bratsreg_2022/BraTSReg_Training_Data_v3/'
             # print(f"\n!!!!!! {self.flag_bratsReg_2022} <<<<<<<<\n")
             self.flag_bratsReg_2022 = True
 
@@ -288,9 +293,9 @@ class parse_brats:
 
         # Segmentation !
         if 'Training_Data' in path:
-            seg_path = ROOT_DIRECTORY+"/data/bratsreg_2022/Train_seg/"
+            seg_path = ROOT_DIRECTORY+"/bratsreg_2022/Train_seg/"
         elif 'Validation' in path:
-            seg_path = ROOT_DIRECTORY+"/data/bratsreg_2022/Valid_seg/"
+            seg_path = ROOT_DIRECTORY+"/bratsreg_2022/Valid_seg/"
         else:
             raise ValueError("Something went wrong.")
         seg_img_0 = nib_load(seg_path+folder_name+'_seg_00_.nii.gz').get_fdata()
