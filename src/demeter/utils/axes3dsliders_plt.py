@@ -1219,8 +1219,8 @@ class Landmark3dAxes_slider(Base3dAxes_slider):
 def compare_images_with_landmarks(
     image0: torch.Tensor,
     image1: torch.Tensor,
-    landmarks0: torch.Tensor,
-    landmarks1: torch.Tensor,
+    landmarks0 : torch.Tensor | None =None ,
+    landmarks1 : torch.Tensor | None  = None ,
     labels : list[str] | list[None] = [None, None],
     method: str = "compose",
     cmap: str = "gray",
@@ -1281,8 +1281,10 @@ def compare_images_with_landmarks(
     ctx = ias.ctx
 
     # --------- Add landmark overlays
-    Landmark3dAxes_slider(landmarks0, image_shape=ias.shape, color="green", shared_context=ctx, label=labels[0])
-    Landmark3dAxes_slider(landmarks1, image_shape=ias.shape, color="red", shared_context=ctx, label=labels[1],
+    if landmarks0 is not None:
+        Landmark3dAxes_slider(landmarks0, image_shape=ias.shape, color="green", shared_context=ctx, label=labels[0])
+    if landmarks1 is not None:
+        Landmark3dAxes_slider(landmarks1, image_shape=ias.shape, color="red", shared_context=ctx, label=labels[1],
                           button_position=[0.82, 0.82, 0.1, 0.03],)
 
     # --------- Store state for image switching
