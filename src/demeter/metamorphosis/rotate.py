@@ -26,8 +26,12 @@ def prepare_momenta(image_shape,
     dim = 2 if len(image_shape) == 4 else 3
     if rot_prior is None:
         rot_prior = torch.zeros((dim,))
+    if not torch.is_tensor(rot_prior):
+        rot_prior = torch.tensor(rot_prior)
     if trans_prior is None:
         trans_prior = torch.zeros((dim,))
+    if not torch.is_tensor(trans_prior):
+        trans_prior = torch.tensor(trans_prior)
     momenta = {}
     kwargs = {
         "dtype":torch.float32,
