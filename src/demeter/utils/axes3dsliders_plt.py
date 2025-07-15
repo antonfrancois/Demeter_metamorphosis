@@ -135,12 +135,6 @@ def img_torch_to_plt(image):
         raise TypeError("Input must be a torch.Tensor or np.ndarray")
 
 
-img = torch.randn(5, 1, 10, 64, 64)
-out = img_torch_to_plt(img)
-
-
-
-
 
 def diagnose_matplotlib_widget_backend():
     print("🔍 Vérification de l'environnement Matplotlib interactif...")
@@ -177,7 +171,7 @@ def diagnose_matplotlib_widget_backend():
     print("🎉 Environnement prêt pour les mises à jour dynamiques avec `.set_data()` et sliders interactifs !")
 
 # TODO : Uncomment this
-# diagnose_matplotlib_widget_backend()
+diagnose_matplotlib_widget_backend()
 
 
 
@@ -532,7 +526,6 @@ class Image3dAxes_slider(Base3dAxes_slider):
          # ---------- init image shape
         self.image = img_torch_to_plt(image)
 
-        ic(self.image.shape)
         self.shown_image = self.image[-1]
         self.shape = self.image.shape
         assert len(self.shape) == 5, f"The optimised image is not a 3D image got {self.shape}"
@@ -1305,17 +1298,27 @@ def compare_images_with_landmarks(
         return inner
 
     # --------- Add buttons
-    ax_b0 = ctx.fig.add_axes([0.1, 0.88, 0.1, 0.04])
-    ax_b1 = ctx.fig.add_axes([0.21, 0.88, 0.1, 0.04])
-    ax_bc = ctx.fig.add_axes([0.32, 0.88, 0.1, 0.04])
-
-    b0 = Button(ax_b0, "image0"if labels is None else labels[0], color=(0.6, 0.8, 0.6, 1))
-    b1 = Button(ax_b1, "image1"if labels is None else labels[1], color=(0.8, 0.6, 0.6, 1))
-    bc = Button(ax_bc, "compose", color=(0.6, 0.6, 0.8, 1))
-
-    b0.on_clicked(set_image("image0" ))
-    b1.on_clicked(set_image("image1" ))
-    bc.on_clicked(set_image("compose"))
+    b0 = ias._create_button(
+        label="image0" if labels is None else labels[0],
+        callback=set_image("image0"),
+        position=[0.1, 0.88, 0.1, 0.04],
+        color= (0.6, 0.8, 0.6, 1),
+        tooltip=f"Display image :  {labels[0] if labels is not None else ''}",
+    )
+    b1 = ias._create_button(
+        label="image1" if labels is None else labels[1],
+        callback=set_image("image1"),
+        position=[0.21, 0.88, 0.1, 0.04],
+        color= (0.8, 0.6, 0.6, 1),
+        tooltip=f"Display image :  {labels[1] if labels is not None else ''}",
+    )
+    b2 = ias._create_button(
+        label="compose",
+        callback=set_image("compose"),
+        position=[0.32, 0.88, 0.1, 0.04],
+        color= (0.6, 0.6, 0.8, 1),
+        tooltip=f"compose both images ",
+    )
 
     # --------- Done
     plt.show()
