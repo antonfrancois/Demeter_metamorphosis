@@ -135,12 +135,6 @@ def img_torch_to_plt(image):
         raise TypeError("Input must be a torch.Tensor or np.ndarray")
 
 
-img = torch.randn(5, 1, 10, 64, 64)
-out = img_torch_to_plt(img)
-
-
-
-
 
 def diagnose_matplotlib_widget_backend():
     print("🔍 Vérification de l'environnement Matplotlib interactif...")
@@ -177,7 +171,7 @@ def diagnose_matplotlib_widget_backend():
     print("🎉 Environnement prêt pour les mises à jour dynamiques avec `.set_data()` et sliders interactifs !")
 
 # TODO : Uncomment this
-# diagnose_matplotlib_widget_backend()
+diagnose_matplotlib_widget_backend()
 
 
 
@@ -288,7 +282,7 @@ class Base3dAxes_slider:
             self.ctx.children = []
 
             if ax is None:
-                self.ctx.fig, self.ctx.ax = plt.subplots(1, 3, figsize = (15,10), constrained_layout=False)
+                self.ctx.fig, self.ctx.ax = plt.subplots(1, 3, figsize = (15,10), constrained_layout=True)
             else:
                 self.ctx.ax = ax
                 self.ctx.fig = ax[0].get_figure() if isinstance(ax, np.ndarray) else ax.get_figure()
@@ -531,6 +525,7 @@ class Image3dAxes_slider(Base3dAxes_slider):
                  ):
          # ---------- init image shape
         self.image = img_torch_to_plt(image)
+
         self.shown_image = self.image[-1]
         self.shape = self.image.shape
         assert len(self.shape) == 5, f"The optimised image is not a 3D image got {self.shape}"
@@ -549,7 +544,7 @@ class Image3dAxes_slider(Base3dAxes_slider):
         self._connect_keypress()
         self.fig.canvas.mpl_connect('key_press_event', self.on_keypress)
         self.fig.canvas.mpl_connect('button_press_event', self.on_click)
-
+        self.fig.canvas.mpl_connect('scroll_event', self.on_scroll)
 
         self._init_images()
         self._add_lines_on_plt_()
@@ -571,19 +566,19 @@ class Image3dAxes_slider(Base3dAxes_slider):
         im_3 = tb.image_slice(self.shown_image, init_x_coord, dim=0).transpose(*tr_tpl)
         self.plt_img_x = self.ax[0].imshow(
             im_1,
-            extent=[0, H, 0, D], aspect=H / D,
+            extent=[0, D, 0, H], aspect=D/ H,
             **self.kw_image,
         )
         self.plt_img_y = self.ax[1].imshow(
             im_2,
             origin="lower",
-            extent=[0, H, 0, W], aspect=H / W,
+            extent=[0, D, 0, W], aspect=D / W,
             **self.kw_image,
         )
         self.plt_img_z = self.ax[2].imshow(
             im_3,
             origin="lower",
-            extent=[0, D, 0, W], aspect=D / W,
+            extent=[0, H, 0, W], aspect=H / W,
             **self.kw_image,
         )
         self.ax[0].set_xlabel("X")
@@ -599,11 +594,12 @@ class Image3dAxes_slider(Base3dAxes_slider):
         line_color = "green"
         T, D, H, W, C = self.shape
         x, y, z = D // 2, H // 2, W // 2
+        ic(x,y,z)
         self._l_x_v = self.ax[0].axvline(x=x, color=line_color, alpha=0.6)
         self._l_x_h = self.ax[0].axhline(y=y, color=line_color, alpha=0.6)
-        self._l_y_v = self.ax[1].axvline(x=x, color=line_color, alpha=0.6)
+        self._l_y_v = self.ax[1].axvline(x=y, color=line_color, alpha=0.6)
         self._l_y_h = self.ax[1].axhline(y=z, color=line_color, alpha=0.6)
-        self._l_z_v = self.ax[2].axvline(x=y, color=line_color, alpha=0.6)
+        self._l_z_v = self.ax[2].axvline(x=x, color=line_color, alpha=0.6)
         self._l_z_h = self.ax[2].axhline(y=z, color=line_color, alpha=0.6)
 
         self.ax[0].margins(x=0)
@@ -611,9 +607,11 @@ class Image3dAxes_slider(Base3dAxes_slider):
     def _update_lines(self, x, y, z):
         T, D, H, W, C = self.shape
         self._l_x_v.set_xdata([x, x])
-        self._l_x_h.set_ydata([D- y, D - y])
+        self._l_x_h.set_ydata([H- y, H - y])
+
         self._l_y_v.set_xdata([x, x])
         self._l_y_h.set_ydata([z, z])
+
         self._l_z_v.set_xdata([y, y])
         self._l_z_h.set_ydata([z, z])
 
@@ -686,18 +684,12 @@ class Image3dAxes_slider(Base3dAxes_slider):
         xdata, ydata = int(event.xdata), int(event.ydata)
 
         if ax == self.ax[0]:
-            self.go_on_slice(x=xdata, y=D - ydata)
-            # self.sliders[0].set_val(xdata)
-            # self.sliders[1].set_val(ydata)
+            self.go_on_slice(x=xdata, y=H - ydata)
 
         elif ax == self.ax[1]:
-            # self.sliders[0].set_val(xdata)
-            # self.sliders[2].set_val(ydata)
             self.go_on_slice(x=xdata, z=ydata)
 
         elif ax == self.ax[2]:
-            # self.sliders[1].set_val(xdata)
-            # self.sliders[2].set_val(ydata)
             self.go_on_slice(y=xdata, z=ydata)
 
     def on_keypress(self, event):
@@ -710,6 +702,28 @@ class Image3dAxes_slider(Base3dAxes_slider):
             t_slider.set_val(min(current_t + 1, max_t))
         elif event.key == "left":
             t_slider.set_val(max(current_t - 1, 0))
+
+    def on_scroll(self, event):
+        """Handle mouse scroll to change slice on the relevant axis."""
+        if event.inaxes is None:
+            return
+
+        # Step direction: +1 (scroll up) or -1 (scroll down)
+        step = 1 if event.step > 0 else -1
+
+        if event.inaxes == self.ax[0]:
+            slider = self.ctx.sliders[2]  # z
+        elif event.inaxes == self.ax[1]:
+            slider = self.ctx.sliders[1]  # y
+        elif event.inaxes == self.ax[2]:
+            slider = self.ctx.sliders[0]  # x
+        else:
+            return
+
+        val = int(slider.val) + step
+        val = max(slider.valmin, min(slider.valmax, val))
+        slider.set_val(val)
+
 
 
 
@@ -1070,24 +1084,58 @@ class Landmark3dAxes_slider(Base3dAxes_slider):
     dx_convention : str, optional
         Convention spatiale, pas encore utilisée.
 
-    color : str or tuple, optional
-        Couleur utilisée pour les marqueurs. Default: "green".
+    label : str, optional
+        Nom global du groupe de landmarks, affiché dans la légende et les boutons. Default: "Landmarks".
+
+    show_landmarks : bool, optional
+        Affichage initial des landmarks. Default: True.
 
     kwargs : autres arguments passés à Base3dAxes_slider, notamment shared_context.
     """
-    def __init__(self, landmarks, image_shape, dx_convention="pixel", color="green", **kwargs):
+    def __init__(self, landmarks,
+             image_shape,
+             color="green",
+            label="Landmarks",
+             show_landmarks=True,
+            button_position = [0.82, 0.85, 0.1, 0.03],
+             **kwargs):
         self.landmarks = landmarks
         self.shape = image_shape  # nécessaire pour les sliders
         self.color = color
+        self.label = label
+        self.show_landmarks = show_landmarks
+        self.button_position = button_position
 
         super().__init__(**kwargs)
 
-        # if not hasattr(self.ctx, "sliders"):
-        #     print("\nLandmarks are initing sliders")
         self._init_4d_sliders()
 
         self.landmark_artists = [[], [], []]  # Un ensemble d'artistes par axe
+        self._init_landmark_toggle_button()
         self.update(None)
+
+    def _init_landmark_toggle_button(self):
+        """Initialise le bouton show/hide pour les landmarks."""
+        self.lm_toggle_button = self._create_button(
+            label=self._landmark_button_label(),
+            position=self.button_position,
+            color=self.color,
+            callback=self._toggle_landmarks,
+        )
+
+    def _landmark_button_label(self):
+        """Construit le texte du bouton toggle."""
+        return f"{'Hide' if self.show_landmarks else 'Show'} {self.label}"
+
+    def _toggle_landmarks(self, event=None):
+        self.show_landmarks = not self.show_landmarks
+
+        new_label = self._landmark_button_label()
+        if hasattr(self, "lm_toggle_button"):
+            self.lm_toggle_button.label.set_text(new_label)
+
+        self.update()
+
 
     def clear_landmarks(self):
         for artists in self.landmark_artists:
@@ -1099,18 +1147,19 @@ class Landmark3dAxes_slider(Base3dAxes_slider):
         self.landmark_artists = [[], [], []]
 
     def update(self, val=None):
-        """Met à jour dynamiquement l'affichage des landmarks sur les 3 vues."""
         x, y, z, _ = self.get_sliders_val()
         self.clear_landmarks()
-        self.landmark_artists[0] = self._add_landmarks_to_ax(
-            ax=self.ax[0], dim=2, depth=z, color=self.color
-        )
-        self.landmark_artists[1] = self._add_landmarks_to_ax(
-            ax=self.ax[1], dim=1, depth=y, color=self.color
-        )
-        self.landmark_artists[2] = self._add_landmarks_to_ax(
-            ax=self.ax[2], dim=0, depth=x, color=self.color
-        )
+
+        if self.show_landmarks:
+            self.landmark_artists[0] = self._add_landmarks_to_ax(
+                ax=self.ax[0], dim=0, depth=z, color=self.color
+            )
+            self.landmark_artists[1] = self._add_landmarks_to_ax(
+                ax=self.ax[1], dim=1, depth=y, color=self.color
+            )
+            self.landmark_artists[2] = self._add_landmarks_to_ax(
+                ax=self.ax[2], dim=2, depth=x, color=self.color
+            )
 
         self.fig.canvas.draw_idle()
 
@@ -1128,8 +1177,8 @@ class Landmark3dAxes_slider(Base3dAxes_slider):
         artists = []
 
         # Mapping des axes orthogonaux à projeter
-        # dim_x, dim_y = {0: (1, 2), 1: (2, 0), 2: (2, 0)}[dim]
-        dim_x, dim_y = {0: (1, 2), 1: (0, 2), 2: (0, 1)}[dim]
+        # dim_x, dim_y = {0: (1, 2), 1: (0, 2), 2: (0, 1)}[dim]
+        dim_x, dim_y = {0: (2, 1), 1: (2, 0), 2: (1, 0)}[dim]
 
 
         def affine_dist(dist):
@@ -1138,10 +1187,9 @@ class Landmark3dAxes_slider(Base3dAxes_slider):
                 - (torch.abs(dist) * ms_max)
                 / (dist_d.abs().max().float() *1.5)
             )
-
         for i, l in enumerate(self.landmarks):
-            if dim == 2:
-                xval, yval = l[dim_x].item(), self.shape[1] - l[dim_y].item()
+            if dim == 0:
+                xval, yval =  l[dim_x].item(),  self.shape[dim_y + 1] - l[dim_y].item()
             else:
                 xval, yval = l[dim_x].item(), l[dim_y].item()
 
@@ -1164,8 +1212,9 @@ class Landmark3dAxes_slider(Base3dAxes_slider):
 def compare_images_with_landmarks(
     image0: torch.Tensor,
     image1: torch.Tensor,
-    landmarks0: torch.Tensor,
-    landmarks1: torch.Tensor,
+    landmarks0 : torch.Tensor | None =None ,
+    landmarks1 : torch.Tensor | None  = None ,
+    labels : list[str] | list[None] = [None, None],
     method: str = "compose",
     cmap: str = "gray",
     jupyter_sliders: bool = None
@@ -1188,6 +1237,9 @@ def compare_images_with_landmarks(
     landmarks1 : torch.Tensor
         Landmarks associés à image1, format (N, 3).
 
+    lables: list[str]
+        A list of two elements with the names of the iamges and landmarks.
+
     method : str
         Méthode de composition pour `temporal_img_cmp` (ex: "compose", "checker", etc.).
 
@@ -1209,6 +1261,7 @@ def compare_images_with_landmarks(
 
     image0 = ensure_shape(image0)
     image1 = ensure_shape(image1)
+    ic("image_0", image0.shape)
     cmp_img = tb.temporal_img_cmp(image0, image1, method=method)[None]  # shape (1, D, H, W, 3)
     cmp_img = np.clip(cmp_img,0,1)
     # --------- Shared contex
@@ -1221,8 +1274,11 @@ def compare_images_with_landmarks(
     ctx = ias.ctx
 
     # --------- Add landmark overlays
-    Landmark3dAxes_slider(landmarks0, image_shape=ias.shape, color="green", shared_context=ctx)
-    Landmark3dAxes_slider(landmarks1, image_shape=ias.shape, color="red", shared_context=ctx)
+    if landmarks0 is not None:
+        Landmark3dAxes_slider(landmarks0, image_shape=ias.shape, color="green", shared_context=ctx, label=labels[0])
+    if landmarks1 is not None:
+        Landmark3dAxes_slider(landmarks1, image_shape=ias.shape, color="red", shared_context=ctx, label=labels[1],
+                          button_position=[0.82, 0.82, 0.1, 0.03],)
 
     # --------- Store state for image switching
     state = {
@@ -1242,17 +1298,27 @@ def compare_images_with_landmarks(
         return inner
 
     # --------- Add buttons
-    ax_b0 = ctx.fig.add_axes([0.1, 0.88, 0.1, 0.04])
-    ax_b1 = ctx.fig.add_axes([0.21, 0.88, 0.1, 0.04])
-    ax_bc = ctx.fig.add_axes([0.32, 0.88, 0.1, 0.04])
-
-    b0 = Button(ax_b0, "image0", color=(0.6, 0.8, 0.6, 1))
-    b1 = Button(ax_b1, "image1", color=(0.8, 0.6, 0.6, 1))
-    bc = Button(ax_bc, "compose", color=(0.6, 0.6, 0.8, 1))
-
-    b0.on_clicked(set_image("image0"))
-    b1.on_clicked(set_image("image1"))
-    bc.on_clicked(set_image("compose"))
+    b0 = ias._create_button(
+        label="image0" if labels is None else labels[0],
+        callback=set_image("image0"),
+        position=[0.1, 0.88, 0.1, 0.04],
+        color= (0.6, 0.8, 0.6, 1),
+        tooltip=f"Display image :  {labels[0] if labels is not None else ''}",
+    )
+    b1 = ias._create_button(
+        label="image1" if labels is None else labels[1],
+        callback=set_image("image1"),
+        position=[0.21, 0.88, 0.1, 0.04],
+        color= (0.8, 0.6, 0.6, 1),
+        tooltip=f"Display image :  {labels[1] if labels is not None else ''}",
+    )
+    b2 = ias._create_button(
+        label="compose",
+        callback=set_image("compose"),
+        position=[0.32, 0.88, 0.1, 0.04],
+        color= (0.6, 0.6, 0.8, 1),
+        tooltip=f"compose both images ",
+    )
 
     # --------- Done
     plt.show()
