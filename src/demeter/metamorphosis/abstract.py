@@ -50,7 +50,7 @@ from ..utils.toolbox import (
     fig_to_image,
     save_gif_with_plt,
 )
-from ..utils.decorators import time_it
+from ..utils.decorators import time_it, monitor_gpu
 from ..utils import cost_functions as cf
 from ..utils import fill_saves_overview as fill_saves_overview
 
@@ -337,14 +337,13 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         """
 
         # C = residuals.shape[1]
-        field_momentum = -(momentum.unsqueeze(2) * grad_image).sum(dim=1)
+        field_momentum = (grad_image * momentum.unsqueeze(2)).sum(dim=1)
         field =  self.kernelOperator(field_momentum)
-
         norm_v = None
         if self.flag_hamiltonian_integration:
             norm_v = .5 * self.rho * (field_momentum.clone() * field.clone()).sum()
 
-        return tb.im2grid(field), norm_v
+        return -tb.im2grid(field), norm_v
 
     def _compute_vectorField_multimodal_(self, momentum, grad_image):
         r""" operate the equation $K \star (z_t \cdot \nabla I_t)$
@@ -386,7 +385,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     def _update_field_(self, momentum, image):
         grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
         # ic(grad_image.min().item(), grad_image.max().item(),self.dx_convention)
-        field,self.norm_v_i = self._compute_vectorField_(momentum, grad_image)
+        field, self.norm_v_i = self._compute_vectorField_(momentum, grad_image)
         # self.field *= self._field_cst_mult()
         # self.field *= sqrt(self.rho)
 
@@ -844,6 +843,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         cost_cst,
         data_term=None,
         optimizer_method: str = 'LBFGS_torch',
+        lbfgs_max_iter: int = 20,
+        lbfgs_history_size: int = 100,
         hamiltonian_integration=False,
         debug=False,
         **kwargs
@@ -864,6 +865,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.dx_convention = self.mp.dx_convention
         self.source = source
         self.target = target
+        self.lbfgs_max_iter = lbfgs_max_iter
+        self.lbfgs_history_size = lbfgs_history_size
         self.debug = debug
 
         self.flag_hamiltonian_integration = hamiltonian_integration
@@ -996,11 +999,11 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.optimizer.step(verbose=False)
 
     # LBFGS
-    def _initialize_LBFGS_(self, dt_step, max_iter=20):
+    def _initialize_LBFGS_(self, dt_step):
         self.optimizer = torch.optim.LBFGS(
                 [v for k, v in self.parameter.items()],
-               max_eval=30,
-               max_iter=max_iter,
+                max_iter=self.lbfgs_max_iter,
+                history_size=self.lbfgs_history_size,
                lr=dt_step,
                line_search_fn='strong_wolfe'
             )
@@ -1123,8 +1126,6 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             )
 
         self.cost({k: v.detach() for k, v in self.parameter.items()})
-        # if self.debug:
-        #     raise Error("et oui")
 
         loss_stock = self._cost_saving_(n_iter, None)  # initialisation
         loss_stock = self._cost_saving_(0, loss_stock)

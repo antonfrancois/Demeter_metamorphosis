@@ -5,6 +5,8 @@ import kornia
 # from kornia.filters.kernels import normalize_kernel2d
 import kornia.filters.filter as flt
 from math import prod, sqrt, log
+from scipy.special import exp1, erf
+import numpy as np
 import matplotlib.pyplot as plt
 
 from .fft_conv import fft_conv
@@ -511,9 +513,9 @@ class GaussianRKHS(torch.nn.Module):
     """
 
     def __init__(self,sigma : Tuple,
-                 border_type: str = 'replicate',
+                 border_type: str = 'constant',
                  normalized: bool = True,
-                 kernel_reach = 6,
+                 kernel_reach = 3,
                  **kwargs
                  ):
         # big_odd = lambda val : max(6,int(val*6)) + (1 - max(6,int(val*6)) %2)
@@ -618,7 +620,7 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
     r"""
     A kernel that preserves the value of the norm $V$ for different images resolution.
 
-    Let $\sigma=(\sigma_h)_{1\leq h\leq d}$ be the standard deviation along the different coordinate in $\R^d$ and $B=B(0,1)$ the closed ball of radius $1$.  We denote $D=\text{diag}(\sigma_h^2)$ and we consider the kernel
+    Let $\sigma=(\sigma_h)_{1\leq h\leq d}$ be the standard deviation along the different coordinate in $\mathbb R^d$ and $B=B(0,1)$ the closed ball of radius $1$.  We denote $D=\text{diag}(\sigma_h^2)$ and we consider the kernel
 
     $$K(x,y)=\frac{1}{\mathrm{Vol}(D^{1/2} B)}\exp\left(-\frac{1}{2}\langle D^{-1}(x-y),(x-y)\rangle\right)D\,.$$
 
@@ -656,7 +658,7 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
                  sigma_convention= 'pixel',
                  dx = (1,),
                  border_type: str = 'constant',
-                 kernel_reach = 6,
+                 kernel_reach = 3,
                  **kwargs
                  ):
 
@@ -665,6 +667,7 @@ class VolNormalizedGaussianRKHS(torch.nn.Module):
         self._dim = len(sigma)
         self.dx = dx_convention_handler(dx,self._dim)
         self.sigma_convention = sigma_convention
+        self.kernel_reach = kernel_reach
         if sigma_convention == 'pixel':
             self.sigma = torch.tensor(sigma)
             self.sigma_continuous = torch.tensor(
@@ -869,7 +872,7 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
         #     self.kernel /= self.kernel.sum()
 
 
-        self.border_type = 'replicate'
+        self.border_type = 'constant'
 
     def init_kernel(self,image):
         for sig in self.list_sigma:
@@ -937,6 +940,160 @@ class Multi_scale_GaussianRKHS_notAverage(torch.nn.Module):
         for gauss_rkhs in self.gauss_list:
             output += gauss_rkhs(input)/len(self.gauss_list)
         return output
+
+
+class All_Scale_Anisotropic_Normalized_Gaussian_RKHS(torch.nn.Module):
+
+    def __init__(self,
+                 sigma,
+                 k,
+                 dx,
+                 kernel_size = None,
+                 sigma_convention = 'pixel'
+                 ):
+        super(All_Scale_Anisotropic_Normalized_Gaussian_RKHS, self).__init__()
+        self.dx = dx
+        if sigma_convention == 'pixel':
+            self.sigma = torch.tensor(sigma)
+            self.sigma_continuous = torch.tensor(
+                [s*d for d,s in zip(self.dx, sigma)]
+            )
+        elif sigma_convention == 'continuous':
+            self.sigma_continuous = torch.tensor(sigma)
+            self.sigma = torch.tensor(
+                [s/d for d,s in zip(self.dx, sigma)]
+            )
+        else:
+            raise ValueError("argument sigma_convention must be 'pixel' or 'continuous'"
+                             f"got {sigma_convention}")
+        self._dim = len(sigma)
+        self.k = k
+        self.kernel_size = kernel_size
+        if self._dim == 2:
+            self.kernel = torch.Tensor(self._build_kernel_2d(self.sigma.numpy(), k, kernel_size))[None]
+        elif self._dim == 3:
+            self.kernel = torch.Tensor(self._build_kernel_3d(self.sigma.numpy(), k, kernel_size))[None]
+        else:
+            raise NotImplementedError("Only 2D and 3D are supported")
+
+        self.filter = fft_filter
+        self.kwargs_filter = {'border_type':'constant',
+                              }
+
+    def init_kernel(self,image):
+        if isinstance(self.sigma, tuple) and len(self.sigma) != len(image.shape[2:]) :
+            raise ValueError(f"kernelOperator :{self.__class__.__name__}"
+                             f"was initialised to be {len(self.sigma)}D"
+                             f" with sigma = {self.sigma} and got image "
+                             f"source.size() = {image.shape}"
+                             )
+        self.sigma_continuous = self.sigma_continuous.to(image.device)
+        self.sigma = self.sigma.to(image.device)
+
+    def get_all_arguments(self):
+        return {
+            'name':self.__class__.__name__,
+            'sigma':self.sigma,
+            'k':self.k,
+            'kernel_size':self.kernel_size
+        }
+
+    def __repr__(self):
+        return (f"{self.__class__.__name__}+\
+            (\n\tsigma={self.sigma},"
+                f"\n\tsigma_continuous={self.sigma_continuous},"
+                f"\n\t k={self.k},"
+                f"\n\t dx={self.dx},"
+                f"\n\t kernel_size={self.kernel.shape}\n)")
+
+    def _build_x_(self, sigma, kernel_size = None) -> torch.Tensor:
+        dx = 1  # pixel size
+        if kernel_size is None:
+            s = 5
+
+            kernel_size = [
+                max(s, int(sig * s / dx)) + (1 - max(s, int(sig * s / dx)) % 2)
+                for sig in sigma
+            ]
+        arr_list = [
+            np.arange(ks, dtype=np.float32) - (ks // 2)
+            for ks in kernel_size
+        ]
+        mesh = tuple(
+            list(
+                np.meshgrid(*arr_list, indexing='ij')
+             )#[::-1]  # reverse the order of the list
+        )
+        x = np.stack(mesh, axis = -1)
+
+        x[x==0] = 1e-6
+        return x
+
+    def   _build_kernel_2d(self,sigma, k, kernel_size = None) -> torch.Tensor:
+        def norm(x):
+            # return np.abs(x).sum(axis = -1)**2
+            return np.sum(x**2,axis = -1)
+
+        if sigma is not np.ndarray:
+            sigma = np.array(sigma)
+        print(sigma.shape)
+        if sigma.shape[0] != 2:
+            raise ValueError("sigma must be a 2 elements vector")
+
+        x = self._build_x_(sigma,  kernel_size)
+        norm_x = norm(x / sigma[None,None]) / 2
+
+        vol = np.prod(sigma)
+        exp1_1 = exp1(norm_x)
+        exp1_2 = exp1(norm_x * 2**(2 * (k + 1) ))
+        print(np.isnan(exp1_1).sum(),np.isnan(exp1_2).sum())
+        exp1_diff =  exp1(norm_x) - exp1(norm_x * 2**(2 * (k + 1) ))
+
+        return exp1_diff / (2 * log(2) * vol)
+
+    def _build_kernel_3d(self, sigma, k, kernel_size = None) -> torch.Tensor:
+        def norm(x):
+            # return np.abs(x).sum(axis = -1)**2
+            return np.sqrt(np.sum(x**2,axis = -1))
+
+        if sigma is not np.ndarray:
+            sigma = np.array(sigma)
+        print(sigma.shape)
+        if sigma.shape[0] != 3:
+            raise ValueError("sigma must be a 3 elements vector")
+
+        x = self._build_x_(sigma,  kernel_size)
+        norm_x = norm(x / sigma[None,None]) / sqrt(2)
+
+        diff_erf = erf(norm_x * 2**(k + 1)) - erf(norm_x)
+        vol = np.prod(sigma)
+
+        return np.sqrt(2 *  np.pi) *  diff_erf / ( log(2) * vol * norm_x)
+
+    def forward(self, input):
+        """
+        Convolve the input tensor with the  kernel.
+
+        Args:
+        -------
+        input (torch.Tensor):
+            the input tensor with shape of :math:`(B, C, H, W)` or :math:`(B, C, D, H, W)`
+
+        Returns:
+        -----------
+        torch.Tensor: the convolved tensor of same size and numbers of channels as the input.
+        """
+
+        if (self._dim == 2 and len(input.shape) == 4) or (self._dim == 3 and len(input.shape) == 5):
+            view_sig = (1,-1) + (1,)*(len(input.shape)-2)
+            # input *= self.sigma_continuous.to(input.device).view(view_sig)**2
+            convol = self.filter(input,self.kernel,**self.kwargs_filter)
+            convol *= self.sigma.to(input.device).view(view_sig)**2
+            return convol
+        else:
+            raise ValueError(f"{self.__class__.__name__} was initialized "
+                             f"with a {self._dim}D mask and input shape is : "
+                             f"{input.shape}")
 
 def _get_sigma_monodim(X,nx,c=.1):
     """

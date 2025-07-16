@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import sys
 import os
+from math import floor, log, pow
 import torch
 from demeter.constants import ROOT_DIRECTORY
 DEFAULT_DATA_PATH = 'put_file_path_here'
@@ -56,6 +57,7 @@ def update_progress(progress,message = None):
         text += f' ({message[0]} ,{message[1]:8.4f}).'
     sys.stdout.write(text)
     sys.stdout.flush()
+    print()
 
 def format_time(seconds):
     m, s = divmod(seconds, 60)
@@ -83,6 +85,18 @@ def get_size(obj, seen=None):
         size += sum([get_size(i, seen) for i in obj])
     return size
 
+
+def convert_bytes_size(size_bytes):
+    if size_bytes is None:
+        return "None"
+    if size_bytes == 0:
+        return "0B"
+    size_name = ("B", "KB", "MB", "GB")
+    i = int(floor(log(size_bytes, 1024)))
+    p = pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return "%s %s" % (s, size_name[i])
+import time
 
 def heatmap(data, row_labels, col_labels, ax=None,
             cbar_kw={}, cbarlabel="", **kwargs):

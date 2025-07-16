@@ -3,6 +3,7 @@ import inspect
 import warnings
 from time import time
 from .toolbox import  format_time
+import torch.cuda as cuda
 
 def time_it(func):
     """
@@ -28,6 +29,29 @@ def time_it(func):
     return wrap_func
 
 string_types = (type(b''), type(u''))
+
+enable_gpu_print = False
+def monitor_gpu(fn):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        # Check if called as a method by inspecting 'self'
+        if enable_gpu_print:
+            instance = args[0] if args else None
+            class_name = type(instance).__name__ if hasattr(instance, '__class__') else None
+
+            cuda.reset_peak_memory_stats()
+        result = fn(*args, **kwargs)
+        if enable_gpu_print:
+            max_allocated = cuda.max_memory_allocated() / 1024**2
+            max_reserved = cuda.max_memory_reserved() / 1024**2
+
+            context = f"{class_name}." if class_name else ""
+            print(f"[{context}{fn.__name__}] \n\tMax Allocated: {max_allocated:.2f} MB | Max Reserved: {max_reserved:.2f} MB")
+        return result
+    return wrapper
+
+def print_gpumemory(message):
+    print(f">{message}:\n\tMax Allocated: {cuda.max_memory_allocated() / 1024**2:.2f} MB | Max Reserved: {cuda.max_memory_reserved() / 1024**2:.2f} MB")
 
 
 def deprecated(reason):

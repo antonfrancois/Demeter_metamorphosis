@@ -143,6 +143,8 @@ def metamorphosis(
     optimizer_method="LBFGS_torch",
     dx_convention="pixel",
     hamiltonian_integration=False,
+    lbfgs_max_iter: int = 20,
+    lbfgs_history_size: int = 100,
     save_gpu_memory = False,
 ):
     """
@@ -170,6 +172,8 @@ def metamorphosis(
         data_term=data_term,
         # optimizer_method='LBFGS_torch')
         optimizer_method=optimizer_method,
+        lbfgs_max_iter=lbfgs_max_iter,
+        lbfgs_history_size=lbfgs_history_size,
         hamiltonian_integration=hamiltonian_integration,
     )
 
@@ -365,14 +369,16 @@ def simplex_metamorphosis(
     rho,
     data_term,
     dx_convention="pixel",
-    n_step=10,
+    integration_steps=10,
     n_iter=1000,
     grad_coef=2,
     cost_cst=0.001,
     plot=False,
     safe_mode=False,
     ham=False,
-   save_gpu_memory = False
+   save_gpu_memory = False,
+    lbfgs_max_iter: int = 20,
+    lbfgs_history_size: int = 100,
 ):
 
     if type(momentum_ini) in [int, float]:
@@ -384,7 +390,7 @@ def simplex_metamorphosis(
     mp = sp.Simplex_sqrt_Metamorphosis_integrator(
         rho=rho,
         kernelOperator=kernelOperator,
-        n_step=n_step,
+        n_step=integration_steps,
         dx_convention=dx_convention,
         save_gpu_memory = save_gpu_memory
         # debug=True
@@ -398,6 +404,8 @@ def simplex_metamorphosis(
         optimizer_method="LBFGS_torch",
         # optimizer_method='adadelta'
         hamiltonian_integration=ham,
+        lbfgs_history_size=lbfgs_history_size,
+        lbfgs_max_iter=lbfgs_max_iter
     )
     if safe_mode:
         mr.forward_safe_mode(momentum_ini, n_iter, grad_coef, plot)
