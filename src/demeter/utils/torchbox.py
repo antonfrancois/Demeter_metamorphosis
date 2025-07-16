@@ -715,18 +715,19 @@ def gridDef_plot_2d(deformation: torch.Tensor,
     else:
         step_x, step_y = step
 
+    start = 0 if origin == 'lower' else deform.size(2)
     sign = 1 if origin == 'lower' else -1
     # kw = dict(color=color,linewidth=linewidth)
     l_a = ax.plot(deform[0, :, ::step_y, 0].numpy(),
-                  sign * deform[0, :, ::step_y, 1].numpy(), **kwargs)
+                  start +sign * deform[0, :, ::step_y, 1].numpy(), **kwargs)
     l_b = ax.plot(deform[0, ::step_x, :, 0].numpy().T,
-                  sign * deform[0, ::step_x, :, 1].numpy().T, **kwargs)
+                  start +sign * deform[0, ::step_x, :, 1].numpy().T, **kwargs)
 
     # add the last lines on the right and bottom edges
     l_c = ax.plot(deform[0, :, -1, 0].numpy(),
-                  sign * deform[0, :, -1, 1].numpy(), **kwargs)
+                  start +sign * deform[0, :, -1, 1].numpy(), **kwargs)
     l_d = ax.plot(deform[0, -1, :, 0].numpy().T,
-                  sign * deform[0, -1, :, 1].numpy().T, **kwargs)
+                  start +sign * deform[0, -1, :, 1].numpy().T, **kwargs)
 
     lines = l_a + l_b + l_c + l_d
 
