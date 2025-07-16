@@ -36,7 +36,8 @@ ias = a3s.Image3dAxes_slider(img)
 grid_slider = a3s.Grid3dAxes_slider(deform,
                                     dx_convention=mr.dx_convention,
                                     shared_context=ias.ctx,
-                                    color_grid = "w"
+                                    color_grid = "r",
+                                    alpha=.7
 )
 grid_slider.show()
 
