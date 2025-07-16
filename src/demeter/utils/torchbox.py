@@ -477,11 +477,15 @@ def imCmp(I1, I2, method=None):
     Parameters
     ----------
     I1 : torch.Tensor
-        [B,C,H,W] or [B,C,K,H,W] tensor C = 1, B = 1
+        [B,C,H,W] or [B,C,D,H,W] tensor C = 1, B = 1
     I2 : torch.Tensor
-        [B,C,H,W] or [B,C,K,H,W] tensor C = 1, B = 1
+        [B,C,H,W] or [B,C,D,H,W] tensor C = 1, B = 1
     method: str
         method to compare the images, among {'compose','seg','segw','segh'}
+
+    Returns
+    ---------
+    image : numpy.array of shape (1, H, W, 4) or (1, D, H, W, 4)
     """
     from numpy import concatenate, zeros, ones, maximum, exp
     if len(I1.shape) in [4, 5]:
@@ -496,7 +500,7 @@ def imCmp(I1, I2, method=None):
     I2 = I2[0, 0, ...]
 
     if method is None:
-        return concatenate((I2[..., None], I1[..., None], zeros(shape_to_fill)), axis=-1)
+        return concatenate((I2[..., None], I1[..., None], zeros(shape_to_fill)), axis=-1)[None]
     elif 'seg' in method:
         u = I2[..., None] * I1[..., None]
         if 'w' in method:
@@ -516,7 +520,7 @@ def imCmp(I1, I2, method=None):
             )
             rgb = np.clip(rgb, 0, 1)
             # print(f"r {r.min()};{r.max()}")
-            return rgb
+            return rgb[None]
         if 'k' in method:
             return concatenate(
                 (
@@ -526,7 +530,7 @@ def imCmp(I1, I2, method=None):
                     ones(shape_to_fill)
                     # np.maximum(I2[:,:,None], I1[:, :, None])
                 ), axis=-1
-            )
+            )[None]
         if 'h' in method:
             d = I1[..., None] - I2[..., None]
             # z = np.ones(d.shape)
@@ -538,7 +542,7 @@ def imCmp(I1, I2, method=None):
             rgb = concatenate(
                 (r, g, b, ones(shape_to_fill)), axis=-1
             )
-            return rgb
+            return rgb[None]
         else:
             return concatenate(
                 (
@@ -547,7 +551,7 @@ def imCmp(I1, I2, method=None):
                     I2[..., None] - u,
                     ones(shape_to_fill)
                 ), axis=-1
-            )
+            )[None]
     elif 'compose' in method:
         return concatenate(
             (
@@ -556,7 +560,7 @@ def imCmp(I1, I2, method=None):
                 I2[..., None],
                 ones(shape_to_fill)
             ), axis=-1
-        )
+        )[None]
 
 
 def temporal_img_cmp(img_1, img_2, method="compose"):
