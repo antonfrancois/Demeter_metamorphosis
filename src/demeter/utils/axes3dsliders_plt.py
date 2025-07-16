@@ -9,6 +9,7 @@ from ipywidgets import IntSlider, HBox, VBox, ToggleButton
 from IPython.display import display, clear_output
 import importlib.util
 import matplotlib
+from matplotlib import cm
 
 
 # from demeter.utils.image_3d_plotter import *
@@ -118,7 +119,7 @@ def img_torch_to_plt(image):
             if C in [1, 3, 4]:
                 return image
             else:
-                raise ValueError(f"Unsupported number of channels in 3D numpy image: {C}")
+                raise ValueError(f"Unsupported number of channels in 3D numpy image: {C}; image shape : {image.shape}")
 
         elif image.ndim == 4:
             # (D, H, W, C)
@@ -377,6 +378,7 @@ class Base3dAxes_slider:
                    tooltip: str = None,
                    color: tuple = None,
                    hovercolor: tuple = (1, 1, 1, 0.2),
+                    toggle_colors: dict = None,
                    jupyter_container=True):
         """
         Create a button, either for Matplotlib or ipywidgets depending on context.
@@ -404,6 +406,10 @@ class Base3dAxes_slider:
         jupyter_container : bool
             Whether to `display()` the button inside a VBox (Jupyter only).
 
+        toggle_colors : dict, optional
+            If provided, button behaves as an ON/OFF toggle and changes color.
+            Should contain 'on' and 'off' RGBA colors.
+
         Returns
         -------
         button : Matplotlib Button or ipywidgets ToggleButton
@@ -414,10 +420,20 @@ class Base3dAxes_slider:
                 description=label,
                 tooltip=tooltip or label,
                 layout=dict(width="auto"),
+                style=dict(
+                button_color=f"rgba({int(toggle_colors['off'][0]*255)}, "
+                             f"{int(toggle_colors['off'][1]*255)}, "
+                             f"{int(toggle_colors['off'][2]*255)}, "
+                             f"{toggle_colors['off'][3]})"
+                ) if toggle_colors else None
             )
 
             def _wrap(change):
                 if change["name"] == "value":
+                    if toggle_colors:
+                        new_color = toggle_colors["on"] if change["new"] else toggle_colors["off"]
+                        rgba = f"rgba({int(new_color[0]*255)}, {int(new_color[1]*255)}, {int(new_color[2]*255)}, {new_color[3]})"
+                        btn.style.button_color = rgba
                     callback(change["new"])
 
             btn.observe(_wrap, names="value")
@@ -433,8 +449,27 @@ class Base3dAxes_slider:
             btn = Button(ax_btn, label,
                          color=color or self.ctx.color_txt,
                          hovercolor=hovercolor)
-            btn.on_clicked(callback)
-            return btn
+            if toggle_colors is None:
+                btn.on_clicked(callback)
+            else:  # if toggle_colors is passed
+                btn._toggle_state = False  # Inject attribute dynamically
+                btn._toggle_colors = toggle_colors
+
+                def toggle_wrapper(event):
+                    btn._toggle_state = not btn._toggle_state
+                    new_color = btn._toggle_colors['on'] if btn._toggle_state else btn._toggle_colors['off']
+                    btn.color = new_color
+                    btn.ax.set_facecolor(new_color)
+                    callback(btn._toggle_state)
+                    self.fig.canvas.draw_idle()
+
+                btn.on_clicked(toggle_wrapper)
+
+                # Set initial color
+                btn.color = toggle_colors['off']
+                btn.ax.set_facecolor(toggle_colors['off'])
+
+        return btn
 
 
     def _notify_all_ipywidgets(self, change):
@@ -461,7 +496,6 @@ class Base3dAxes_slider:
 
     def show(self):
         plt.show()
-
 
 # %%
 
@@ -645,6 +679,7 @@ class Image3dAxes_slider(Base3dAxes_slider):
         """
         Replace the current image and optionally update the display colormap and intensity range.
         """
+        new_image = img_torch_to_plt(new_image)
         if new_image.shape[1:-1] != self.shape[1:-1]:
             raise ValueError(f"Shape mismatch: {new_image.shape} != {self.shape}")
         self.image = img_torch_to_plt(new_image)
@@ -724,7 +759,143 @@ class Image3dAxes_slider(Base3dAxes_slider):
         val = max(slider.valmin, min(slider.valmax, val))
         slider.set_val(val)
 
+def lighten(color, factor=0.5):
+    """
+    Lighten a color by blending it with white.
 
+    Parameters
+    ----------
+    color : array-like, shape (3,)
+        RGB values between 0 and 1.
+    factor : float
+        Blend factor, 0=no change, 1=white.
+
+    Returns
+    -------
+    lighter_color : array-like
+    """
+    return (1 - factor) * np.array(color) + factor
+
+class ToggleImage3D:
+    """
+    Manage interactive toggle buttons to show/hide multiple 3D+t images
+    within a shared `Image3dAxes_slider` context. Supports composing up to 2 images.
+
+    Attributes
+    ----------
+    images : list[np.ndarray]
+        List of images in (T, D, H, W, C) format.
+    labels : list[str]
+        List of labels corresponding to the images
+    ctx : SimpleNamespace
+        Shared visualization context from Base3dAxes_slider.
+    img_viewer : Image3dAxes_slider
+        Viewer used to display images.
+    buttons : list
+        Toggle buttons for each image.
+    active : list[int]
+        Indices of currently active images.
+    """
+
+    def __init__(self, img_viewer: Image3dAxes_slider,
+                 list_images: list[dict],
+                 button_position=None,
+                 button_offset : float = 0.11,
+                 ):
+        """
+        Parameters
+        ----------
+        img_viewer : Image3dAxes_slider
+            Existing image viewer sharing the context.
+        list_images : list[dict]
+            List of dicts with fields:
+                'name': str, label for the button.
+                'image': np.ndarray or callable returning an image.
+            List of images in (T, D, H, W, C) format of function returning such an image
+            to toggle between.
+        """
+        self.img_viewer = img_viewer
+        self.ctx = img_viewer.ctx
+        self.images = [d["image"] for d in list_images]
+        self.labels =  [d["name"] for d in list_images]
+
+        try:
+            self.images[0]()
+            self.flag_callable = True
+        except TypeError:
+            self.flag_callable = False
+
+        self.active = []
+
+        # Use a pastel colormap for N buttons
+        cmap = cm.get_cmap('gist_rainbow', 10)
+
+        # Store on/off colors per button
+        self.colors = []
+        self.buttons = []
+
+        if button_position is None:
+            button_position = [0.04, 0.95, 0.1, 0.04]
+        x0, y0, w, h = button_position
+        dx = button_offset
+        positions = [
+            [x0 + dx * i, y0, w, h] for i in range(len(list_images))
+        ]
+
+        for i in range(len(list_images)):
+            base_color = cmap(i)[:3]
+            off_color = lighten(base_color, .2)
+            on_color = lighten(base_color, 0.5)
+            btn = img_viewer._create_button(
+                label = self.labels[i],
+                callback = lambda val, idx=i: self.toggle_image(idx),
+                position = positions[i],
+                toggle_colors={"off": off_color, "on": on_color},
+            )
+            self.buttons.append(btn)
+
+        self.update_display()
+
+    def toggle_image(self, idx):
+        """
+        Toggle ON/OFF the image associated with the given index.
+        If a third image is turned ON, deactivate the oldest active one.
+        """
+        if idx in self.active:
+            self.active.remove(idx)
+        else:
+            if len(self.active) >= 2:
+                self.active.pop(0)
+            self.active.append(idx)
+
+        self.update_display()
+
+
+    def update_display(self):
+        """
+        Update the image viewer according to active toggles.
+        - No active images: blank
+        - One active image: show it
+        - Two active images: show their sum, normalized
+        """
+        def _cl_(img):
+            return img() if self.flag_callable else img
+        print("\nbegin Toggle_image.update_display:")
+        for i in self.active:
+            print(f"label {i} : {self.labels[i]} : {_cl_(self.images[i]).shape}")
+
+        if not self.active:
+            img = np.zeros_like(img_torch_to_plt(_cl_(self.images[0])))
+        elif len(self.active) == 1:
+            img = _cl_(self.images[self.active[0]])
+        else:
+            imgs = [_cl_(self.images[i]) for i in self.active]
+            assert len(imgs) == 2
+            img = tb.temporal_img_cmp(imgs[0], imgs[1])
+
+        print(f"img final :  {img.shape}")
+        self.img_viewer.change_image(img)
+        self.img_viewer.update(None)
 
 
 # TODO: Adapt Grid3dAxes_sliders to new version of Base
@@ -787,27 +958,40 @@ class Grid3dAxes_slider(Base3dAxes_slider):
         self.kw_grid = dict(color=color_grid, step=step, alpha=alpha)
         self.grid_was_init = False
         self.flag_grid = False
-        self.lines = []
+        self.lines = None
 
         self._init_4d_sliders()
         self._init_button()
 
+    def toggle_grid(self, event):
+        x, y, z, t = self.get_sliders_val()
+
+        if self.lines is None:
+            # store aspect of the figure
+            axis_limits = [(ax.get_xlim(), ax.get_ylim(), ax.get_aspect()) for ax in self.ax]
+
+            self.lines = self._make_grid(t, x, y, z)
+
+            # Restore original axis view
+            for ax, (xlim, ylim, aspect) in zip(self.ax, axis_limits):
+                ax.set_xlim(xlim)
+                ax.set_ylim(ylim)
+                ax.set_aspect(aspect)
+            self.flag_grid = True
+        else:
+            # Just toggle visibility
+            self.flag_grid = not self.flag_grid
+            for line in self.lines:
+                line.set_visible(self.flag_grid)
+
+        self.fig.canvas.draw_idle()
+
+
     def _init_button(self):
-        def toggle(val=None):
-            x, y, z, t = self.get_sliders_val()
-            if not self.grid_was_init:
-                self.lines = self._make_grid(t, x, y, z)
-                self.grid_was_init = True
-                self.flag_grid = True
-            else:
-                self.flag_grid = not self.flag_grid if val is None else val
-                for line in self.lines:
-                    line.set_visible(self.flag_grid)
-            self.fig.canvas.draw_idle()
 
         self.btn = self._create_button(
             label="Show Grid",
-            callback=toggle,
+            callback=self.toggle_grid,
             position=self.button_position,
             tooltip="Toggle the deformation grid",
         )
@@ -816,32 +1000,12 @@ class Grid3dAxes_slider(Base3dAxes_slider):
         deform_x = self.deformation[t, :, :, z, 1:][None].flip(-1)
         deform_y = self.deformation[t, :, y, :, [0, -1]][None].flip(-1)
         deform_z = self.deformation[t, x, :, :, :-1][None].flip(-1)
-        # deform_x = self.deformation[t, :, :, z, :-1][None].flip(-1)
-        # deform_y = self.deformation[t, :, y, :, [0, -1]][None].flip(-1)
-        # deform_z = self.deformation[t, x, :, :, 1:][None].flip(-1)
 
-
-
-        _, lines_x = tb.gridDef_plot_2d(deform_z, ax=self.ax[0], **self.kw_grid)
+        _, lines_x = tb.gridDef_plot_2d(deform_x, ax=self.ax[0],origin="boom", **self.kw_grid)
         _, lines_y = tb.gridDef_plot_2d(deform_y, ax=self.ax[1], **self.kw_grid)
-        _, lines_z = tb.gridDef_plot_2d(deform_x, ax=self.ax[2], **self.kw_grid)
+        _, lines_z = tb.gridDef_plot_2d(deform_z, ax=self.ax[2], **self.kw_grid)
 
         return lines_x + lines_y + lines_z
-
-    # def _toggle_grid(self, event):
-    #     t, x, y, z = [int(s.val) for s in self.sliders[::-1]]
-    #     if not self.grid_was_init:
-    #         self.lines = self._make_grid(t, x, y, z)
-    #         self.grid_was_init = True
-    #         self.flag_grid = True
-    #     else:
-    #         self.flag_grid = not self.flag_grid
-    #         for line in self.lines:
-    #             try:
-    #                 line.set_visible(self.flag_grid)
-    #             except ValueError:
-    #                 pass
-    #     self.fig.canvas.draw_idle()
 
     def update(self, val):
         if self.grid_was_init and self.flag_grid:
@@ -936,136 +1100,6 @@ class Flow3dAxes_slider(Base3dAxes_slider):
 
 
 
-
-#
-# file = "3D_20250517_BraTSReg_086_train_flair_turtlefox_000.pk1"
-# file = "3D_02_02_2025_ball_for_hanse_hanse_w_ball_Metamorphosis_000.pk1"
-# mr = mt.load_optimize_geodesicShooting(
-#     file,
-#     # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/saved_optim/'),
-#     # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/'),
-#
-# )
-# name = file.split('.')[0]
-#
-# deform =  mr.mp.get_deformation(save=True)
-# grid_slider = Grid3dAxes_slider(deform, color_grid = "k")
-# grid_slider.show()
-
-# vg =VisualizeGeodesicOptim(mr, name)
-# vg.show()
-
-
-#%% Test Image3dAxes_slider
-# path = "/home/turtlefox/Documents/11_metamorphoses/data/pixyl/aligned/PSL_001/"
-# file = "PSL_001_longitudinal_rigid.pt"
-# data = torch.load(os.path.join(path, file))
-# print(data.keys())
-# months = data["months_list"]
-# flair = data["flair_longitudinal"]
-# t1ce = data["t1ce_longitudinal"]
-# pred = data["pred_longitudinal"]
-#
-# flair /= flair.max()
-# t1ce /= t1ce.max()
-#
-# # img = flair
-# # img = tb.temporal_img_cmp(flair, t1ce)
-# img = torch.clip(pred, 0, 10)
-# # img = flair[-1,0]
-# ias = Image3dAxes_slider(img)
-# # ias.change_image(pred, cmap='tab10')
-# # ias.go_on_slice(168,176,53)
-#
-# plt.show()
-
-
-#%%
-
-# class Landmark3dAxes_slider(Base3dAxes_slider):
-#     def __init__(self, landmarks, image_shape, dx_convention="pixel", color = "green",**kwargs):
-#         self.landmarks = landmarks
-#         self.shape = image_shape
-#         print("Land shape", self.shape)
-#         super().__init__( **kwargs)  # dummy image
-#
-#         # if ax is None:
-#         #     white_img = np.ones((H,W))
-#         #     white_img[0,0] = 0
-#         #
-#         #     self.ax[0].imshow(white_img)
-#         #     self.ax[1].imshow(white_img)
-#         #     self.ax[2].imshow(white_img)
-#         self.color = color
-#         self._init_4d_sliders()
-#         self.landmark_artists = [[], [], []]  # one per axis
-#         self.update(None)  # draw once initially
-#
-#
-#     def clear_landmarks(self):
-#         for artists in self.landmark_artists:
-#             for art in artists:
-#                 art.remove()
-#         self.landmark_artists = [[], [], []]
-#
-#     def update(self, val):
-#         """Redraws landmarks on each view."""
-#         x_slider, y_slider, z_slider, t_slider = self.sliders
-#         x, y, z = x_slider.val, y_slider.val, z_slider.val
-#
-#         self.clear_landmarks()
-#
-#         self.landmark_artists[0] = self._add_landmarks_to_ax(
-#             ax=self.ax[0], dim=2, depth=z, color=self.color
-#         )
-#         self.landmark_artists[1] = self._add_landmarks_to_ax(
-#             ax=self.ax[1], dim=1, depth=y, color=self.color
-#         )
-#         self.landmark_artists[2] = self._add_landmarks_to_ax(
-#             ax=self.ax[2], dim=0, depth=x, color=self.color
-#         )
-#
-#         self.fig.canvas.draw_idle()
-#
-#     def _add_landmarks_to_ax(self, ax, dim, depth, color):
-#         """
-#         Plot 3D landmarks on a given slice and return the list of matplotlib artists.
-#         """
-#         ms_max = 10
-#         dist_d = self.landmarks[:, dim] - depth
-#         artists = []
-#         if dim == 0:
-#             dim_x, dim_y = 1,2
-#         elif dim == 1:
-#             dim_x, dim_y = 2,0
-#         elif dim == 2:
-#             dim_x, dim_y = 1,0
-#         else:
-#             raise ValueError(f"Dimension {dim} is not supported.")
-#
-#         def affine_dist(dist):
-#             return (
-#                 ms_max
-#                 - (torch.abs(dist) * ms_max)
-#                 / (dist_d.abs().max().float() + 10)
-#             )
-#
-#         for i, l in enumerate(self.landmarks):
-#             if dist_d[i] == 0:
-#                 art = ax.plot(l[dim_x], l[dim_y], marker="o", color=color, markersize=ms_max)[0]
-#             elif dist_d[i] < 0:
-#                 ms = affine_dist(dist_d[i])
-#                 art = ax.plot(l[dim_x], l[dim_y], marker=7, color=color, markersize=ms)[0]
-#             else:
-#                 ms = affine_dist(dist_d[i])
-#                 art = ax.plot(l[dim_x], l[dim_y], marker=6, color=color, markersize=ms)[0]
-#
-#             txt = ax.text(
-#                 l[1] + 2, l[0] - 2, f"{i}", fontsize=8, color=color
-#             )
-#             artists.extend([art, txt])
-#
-#         return artists
 
 class Landmark3dAxes_slider(Base3dAxes_slider):
     """
@@ -1322,461 +1356,6 @@ def compare_images_with_landmarks(
 
     # --------- Done
     plt.show()
-#
-# path = "/home/turtlefox/Documents/11_metamorphoses/data/pixyl/aligned/PSL_001/"
-# file = "PSL_001_longitudinal_rigid.pt"
-# data = torch.load(os.path.join(path, file))
-# print(data.keys())
-# months = data["months_list"]
-# flair = data["flair_longitudinal"]
-# t1ce = data["t1ce_longitudinal"]
-# pred = data["pred_longitudinal"]
-#
-# flair /= flair.max()
-# t1ce /= t1ce.max()
-#
-# img = flair
-# # img = tb.temporal_img_cmp(flair, t1ce)
-# # img = torch.clip(pred, 0, 10)
-# # img = flair[-1,0]
-# # ias = Image3dAxes_slider(img)
-# # ias.change_image(pred, cmap='tab10')
-# # ias.go_on_slice(168,176,53)
-#
-#
-#
-# _,_,H,W,D  = img.shape
-# # lh = torch.randint(0,H,(10,1))
-# # lw = torch.randint(0,W,(10,1))
-# # ld = torch.randint(0,D,(10,1))
-# ld = torch.tensor([[193, 200, 158, 178, 205, 212]])
-# lh = torch.tensor([[231,160, 151, 269, 225, 93]])
-# lw = torch.tensor([[50, 50, 54, 65, 85, 47]])
-#
-# landmarks = torch.cat((ld, lh, lw), dim=1)
-# noise = torch.randint(-3,3,landmarks.shape)
-#
-# compare_images_with_landmarks(
-#     image0=flair[-1][None],
-#     image1=t1ce[-1][None],
-#     landmarks0=landmarks,
-#     landmarks1=landmarks + noise,
-#     method="compose"
-# )
-
 
 
 #%%
-
-'''class VisualizeGeodesicOptim:
-    """
-    Visualize_GeodesicOptim_plt
-
-
-    Visualization tool for geodesic optimization of 3D images using matplotlib.
-    This replaces vedo-based tools and supports temporal and spatial inspection
-    with sliders and overlays.
-
-    Parameters
-    ----------
-    geodesicOptim : object
-        An object with image_stock, source, target, deformation, etc.
-    name : str
-        Title name for the figure.
-    path_save : str, optional
-        Path where images will be saved.
-    imgcmp_method : str, default='compose'
-        Method for comparing temporal images with the target. One of {"compose", "segh", "segw"}.
-    """
-
-    def __init__(
-            self,
-            geodesicOptim,
-            name: str,
-            path_save: str | None = None,
-            imgcmp_method='compose'
-    ):
-        # Constants:
-        self.my_white = (0.7, 0.7, 0.7, 1)
-        self.my_dark = (0.1, 0.1, 0.1, 1)
-        # self.imcmp_method = "seg"  # compose
-        self.imcmp_method = imgcmp_method
-
-        self.geodesicOptim = geodesicOptim  # .to_device("cpu")
-        self.path = (
-            "examples/results/plt_mr_visualization" if path_save is None else path_save
-        )
-        self.name = name
-
-        self.shape = self.geodesicOptim.mp.image_stock.shape
-
-        self.flag_simplex_visu = True if C > 1 else False
-        if self.flag_simplex_visu:
-            self._build_simplex_img()
-
-        # Add 3 image panels
-        # shown_image will be the displayed image at all time
-        self.shown_image = self.temporal_image_cmp_with_target()[-1]
-        self.shown_attribute = self.temporal_image_cmp_with_target
-        self.deformation = self.geodesicOptim.mp.get_deformation(save=True)
-        if self.geodesicOptim.dx_convention == "square":
-            self.deformation = tb.square_to_pixel_convention(
-                self.deformation, is_grid=True
-            )
-
-        # add init lines
-
-        self.ax[0].margins(x=0)
-
-        # adjust the main plot to make room for the sliders
-        plt.subplots_adjust(left=0.1, right=0.9, bottom=0.25)
-
-        # add a button to save all images
-        kw_button = {"color": self.my_white, "hovercolor": (0.8, 0.8, 0.8, 1)}
-        ax_button_save = plt.axes((0.8, 0.025, 0.1, 0.04))
-        ax_button_imgtype = plt.axes((0.1, 0.125, 0.1, 0.04))
-        ax_button_grid = plt.axes((0.1, 0.075, 0.1, 0.04))
-        ax_button_quiver = plt.axes((0.1, 0.025, 0.1, 0.04))
-        self.button_save = Button(ax_button_save, "Save All times", **kw_button)
-        self.button_save.on_clicked(self.save_all_times)
-
-        self.button_grid = Button(ax_button_grid, "show grid", **kw_button)
-        self.button_grid.on_clicked(self._toggle_grid)
-        self.flag_grid = False
-        self.grid_was_init = False
-
-        self.button_quiver = Button(ax_button_quiver, "show_flow", **kw_button)
-        self.button_quiver.on_clicked(self._toggle_quiver)
-        self.flow_was_init = False
-        self.flag_quiver = False
-
-        self.button_img_type = Button(ax_button_imgtype, "compare", **kw_button)
-        self.button_img_type.on_clicked(self._toggle_imgcmp)
-        # will modify self.shown_image, self.shown_attribute
-        self.current_shown_attribute_index = 0
-        self.shown_attribute_list = [
-            self.temporal_image_cmp_with_target,
-            self.temporal_image,
-            self.target,
-            self.source,
-        ]
-
-        # register the update function with each slider
-        for slider in self.sliders:
-            slider.on_changed(self.update)
-
-    def _build_simplex_img(self):
-        self.splx_target = SimplexToHSV(self.geodesicOptim.target, is_last_background=True).to_rgb()
-        self.splx_img_stock = SimplexToHSV(self.geodesicOptim.mp.image_stock, is_last_background=True).to_rgb()
-        self.splx_source = SimplexToHSV(self.geodesicOptim.source, is_last_background=True).to_rgb()
-
-        print("splx_target", self.splx_target.shape)
-        print("splx_img_stock", self.splx_img_stock.shape)
-        print("splx_source", self.splx_source.shape)
-
-    def temporal_image_cmp_with_target(self):
-        try:
-            return self.tmp_img_cmp_w_target
-        except AttributeError:
-            def mult_clip(img, factor):
-                return torch.clip(img * factor, 0, 1)
-
-            if self.flag_simplex_visu:
-                img_stk = self.geodesicOptim.mp.image_stock.argmax(dim=1)[:, None].to(torch.float32)
-                target = self.geodesicOptim.target.argmax(dim=1)[None].to(torch.float32)
-
-                img_stk /= self.shape[1]
-                target /= self.shape[1]
-            else:
-                img_stk = self.geodesicOptim.mp.image_stock
-                target = self.geodesicOptim.target
-
-            self.tmp_img_cmp_w_target = tb.temporal_img_cmp(
-                # mult_clip(self.geodesicOptim.mp.image_stock, 1.5),
-                # mult_clip(self.geodesicOptim.target, 1.5),
-                img_stk,
-                target,
-                method=self.imcmp_method,
-            )
-            print("tmp_img_cmp_w_target", self.tmp_img_cmp_w_target.shape)
-            return self.tmp_img_cmp_w_target
-
-    def temporal_image(self):
-        t_img = self.geodesicOptim.mp.image_stock
-        if t_img.shape[1] == 1:
-            return self.geodesicOptim.mp.image_stock[:, 0]
-        else:
-            return self.splx_img_stock
-
-    def target(self):
-        if self.flag_simplex_visu:
-            return self.splx_target
-        else:
-            return self.geodesicOptim.target[:, 0]
-
-    def source(self):
-        if self.flag_simplex_visu:
-            return self.splx_source
-        else:
-            return self.geodesicOptim.source[:, 0]
-
-    def _make_grid(self, t_val, x_val, y_val, z_val):
-        t = t_val
-        deform_x = self.deformation[t, :, :, z_val, 1:][None].flip(-1)
-        deform_y = self.deformation[t, :, y_val, :, [0, -1]][None].flip(-1)
-        deform_z = self.deformation[t, x_val, :, :, :-1][None].flip(-1)
-
-        _, lines_x = tb.gridDef_plot_2d(deform_x, ax=self.ax[0], **self.kw_grid)
-        _, lines_y = tb.gridDef_plot_2d(deform_y, ax=self.ax[1], **self.kw_grid)
-        _, lines_z = tb.gridDef_plot_2d(deform_z, ax=self.ax[2], **self.kw_grid)
-
-        lines = lines_x + lines_y + lines_z
-        return lines
-
-    def _make_flow(self):
-        print("Building flow")
-        deform = self.geodesicOptim.mp.get_deformator(save=True)
-
-        # TODO : vérifier que vf est déjà bien un cv intégré  (les fleches de vraient
-        # se suivre)
-        self.vector_field = torch.cat(
-            [
-                deform[0][None] - self.geodesicOptim.mp.id_grid,
-                deform[:-1] - deform[1:],
-            ],
-            dim=0,
-        )
-        # if self.geodesicOptim.dx_convention == "square":
-        #     self.vector_field = tb.square_to_pixel_convention(
-        #         deform, is_grid = False
-        #     )
-        print("... done")
-
-    def _debug_flow(self):
-        self.vector_field = torch.ones_like(self.geodesicOptim.mp.get_deformator(save=True)) * 5
-
-        # 0
-        self.vector_field[0, ..., 0] *= 0
-        self.vector_field[0, ..., 1] *= 0
-        # 1
-        self.vector_field[1, ..., 0] *= 0
-        self.vector_field[1, ..., 2] *= 0
-        # 2
-        self.vector_field[2, ..., 1] *= 0
-        self.vector_field[2, ..., 2] *= 0
-        # 3
-        self.vector_field[3, ..., 0] *= 0
-        self.vector_field[3, ..., 1] *= 0
-        self.vector_field[3, ..., 2] *= -1
-        # 4
-        self.vector_field[4, ..., 0] *= 0
-        self.vector_field[4, ..., 1] *= -1
-        self.vector_field[4, ..., 2] *= 0
-        # # 5
-        # self.vector_field[5, ..., 0] *= -1
-        # self.vector_field[5, ..., 1] *= 0
-        # self.vector_field[5, ..., 2] *= 0
-        # # 6
-        # self.vector_field[6, ..., 0] *= 0
-        # self.vector_field[6, ..., 1] *= 1
-        # self.vector_field[6, ..., 2] *= 0
-
-    def _make_arrows(self, t_val, x_val, y_val, z_val):
-
-        # deform_x = self.deformation[t, :, :, z_val, 1:][None].flip(-1)
-        # deform_y = self.deformation[t, :, y_val, :, [0, -1]][None].flip(-1)
-        # deform_z = self.deformation[t, x_val, :, :, :-1][None].flip(-1)
-
-        T, C, D, H, W = self.shape
-        d, h, w = (20, 20, 20)  # TODO: move this somewhere intelligent
-        kw_quiver = dict(color="red", scale_units=None)  # 'xy
-        lx: torch.Tensor = torch.linspace(0, D - 1, d, dtype=torch.int)
-        ly: torch.Tensor = torch.linspace(0, H - 1, h, dtype=torch.int)
-        lz: torch.Tensor = torch.linspace(0, W - 1, w, dtype=torch.int)
-        mx, my, mz = torch.meshgrid([lx, ly, lz])
-        mx = mx.flatten()
-        my = my.flatten()
-        mz = mz.flatten()
-
-        # self.vector_field = torch.ones_like(self.vector_field)
-        # self.vector_field[...,0] *= 0
-        # # self.vector_field[..., 1] *= 0
-        # self.vector_field[...,2] *= 0
-
-        arrows = []
-        pts = tb.make_regular_grid(self.vector_field.shape, dx_convention="pixel")[0]
-        vf = self.vector_field[0]
-
-        for t in range(t_val):
-            pts_x = pts[:, :, z_val, 1:].flip(-1)
-            vf_x = vf[:, :, z_val, 1:].flip(-1)
-            pts_y = pts[:, y_val, :, [0, -1]].flip(-1)
-            vf_y = vf[:, y_val, :, [0, -1]].flip(-1)
-            pts_z = pts[x_val, :, :, :-1].flip(-1)
-            vf_z = vf[x_val, :, :, :-1].flip(-1)
-
-            ic(pts_x.shape, vf_x.shape)
-            ic(pts_y.shape, vf_y.shape)
-            ic(pts_z.shape, vf_z.shape)
-            arrows_x = self.ax[0].quiver(
-                pts_x[mx, my, 0], pts_x[mx, my, 1], vf_x[mx, my, 0], vf_x[mx, my, 1], **kw_quiver
-            )
-            arrows_y = self.ax[1].quiver(
-                pts_y[mx, mz, 0], pts_y[mx, mz, 1], vf_y[mx, mz, 0], vf_y[mx, mz, 1], **kw_quiver
-            )
-            arrows_z = self.ax[2].quiver(
-                pts_z[my, mz, 0], pts_z[my, mz, 1], vf_z[my, mz, 0], vf_z[my, mz, 1], **kw_quiver
-            )
-            ic(arrows_x, arrows_y, arrows_z)
-            arrows.append([arrows_x, arrows_y, arrows_z])
-
-            pts += vf
-            vf = self.vector_field[t]
-
-        ic(vf[mx, my, 0], pts[mx, my, 1])
-
-        return arrows
-
-    def _toggle_grid(self, event):
-        if not self.grid_was_init:
-            self.lines = self._make_grid(
-                self.sliders[3].val,
-                self.sliders[0].val,
-                self.sliders[1].val,
-                self.sliders[2].val,
-            )
-            self.grid_was_init = True
-            self.flag_grid = True
-        else:
-            self.flag_grid = not self.flag_grid
-
-            for line in self.lines:
-                line.set_visible(self.flag_grid)
-        self.fig.canvas.draw_idle()
-
-    def _toggle_quiver(self, event):
-        if not self.flow_was_init:
-            # self._make_flow()
-            self._debug_flow()
-            self.arrows = self._make_arrows(
-                self.sliders[3].val,
-                self.sliders[0].val,
-                self.sliders[1].val,
-                self.sliders[2].val,
-            )
-            self.flow_was_init = True
-            self.flag_quiver = True
-        else:
-            self.flag_quiver = not self.flag_quiver
-
-            for arr in self.arrows:
-                arr.set_visible(self.flag_quiver)
-        self.fig.canvas.draw_idle()
-
-    def _toggle_imgcmp(self, event):
-        self.current_shown_attribute_index = (self.current_shown_attribute_index + 1) % len(
-            self.shown_attribute_list)  # Incrément circulaire
-        self.shown_attribute = self.shown_attribute_list[self.current_shown_attribute_index]
-        # self.shown_image = self.shown_attribute()
-
-        self.button_img_type.label.set_text(self.shown_attribute.__name__)
-
-        self.update(0)
-        # self.fig.canvas.draw_idle()
-
-    def update(self, val):
-        """Update the plot when the sliders change."""
-        x_slider, y_slider, z_slider, t_slider = self.sliders
-        img_3D_to_show = self.shown_attribute()
-        ic(self.shown_attribute.__name__, img_3D_to_show.shape)
-        t = t_slider.val if img_3D_to_show.shape[0] > 1 else 0
-        self.shown_image = img_3D_to_show[t]
-        ic(self.shown_image.shape, self.flag_grid, t)
-
-        img = np.clip(self.shown_image, 0, 1)
-
-        tr_tpl = (1, 0, 2) if len(self.shown_image.shape) == 4 else (0, 1)
-        slice = tb.image_slice(img, z_slider.val, 2)
-        ic(tr_tpl, slice.shape)
-        slice = slice.transpose(*tr_tpl)
-
-        self.plt_img_x.set_data(tb.image_slice(img, z_slider.val, 2).transpose(*tr_tpl))
-        self.plt_img_y.set_data(tb.image_slice(img, y_slider.val, 1).transpose(*tr_tpl))
-        self.plt_img_z.set_data(tb.image_slice(img, x_slider.val, 0).transpose(*tr_tpl))
-
-        # update lines
-        self._l_x_v.set_xdata([x_slider.val, x_slider.val])
-        self._l_x_h.set_ydata([y_slider.val, y_slider.val])
-        self._l_y_v.set_xdata([x_slider.val, x_slider.val])
-        self._l_y_h.set_ydata([z_slider.val, z_slider.val])
-        self._l_z_v.set_xdata([y_slider.val, y_slider.val])
-        self._l_z_h.set_ydata([z_slider.val, z_slider.val])
-
-        # update grid
-        if self.flag_grid:
-            # Supprimer les anciennes lignes de la grille
-            for line in self.lines:
-                line.remove()
-            # Créer et ajouter les nouvelles lignes de la grille
-            self.lines = self._make_grid(
-                t_slider.val, x_slider.val, y_slider.val, z_slider.val
-            )
-
-        if self.flag_quiver:
-            for arr in self.arrows:
-                for a in arr:
-                    a.remove()
-            self.arrows = self._make_arrows(
-                t_slider.val, x_slider.val, y_slider.val, z_slider.val
-            )
-
-        self.fig.canvas.draw_idle()
-
-    def save_all_times(self, event):
-        """Iterate over all time frames, update the slider, and save the figure."""
-        image_folder = os.path.join(self.path, "frames")
-        os.makedirs(image_folder, exist_ok=True)
-
-        for t in range(self.shape[0]):
-            self.sliders[3].set_val(t)
-            self.update(t)
-            file_path = os.path.join(
-                image_folder, f"{self.name}_{self.shown_attribute.__name__}_t{t}.png"
-            )
-            self.fig.savefig(file_path)
-
-            # Redimensionner l'image pour que la largeur et la hauteur soient divisibles par 2
-            img = Image.open(file_path)
-            width, height = img.size
-            new_width = width if width % 2 == 0 else width - 1
-            new_height = height if height % 2 == 0 else height - 1
-            img = img.resize((new_width, new_height), Image.LANCZOS)
-            img.save(file_path)
-
-        print(f"Images saved in {image_folder}")
-
-        # Create a video using ffmpeg
-        video_path = os.path.join(
-            self.path, f"{self.name}_{self.shown_attribute.__name__}.mp4"
-        )
-        ffmpeg_command = [
-            "ffmpeg",
-            "-framerate",
-            "1",  # Adjust the framerate as needed
-            "-i",
-            os.path.join(
-                image_folder, f"{self.name}_{self.shown_attribute.__name__}_t%d.png"
-            ),
-            "-c:v",
-            "libx264",
-            "-pix_fmt",
-            "yuv420p",
-            video_path,
-        ]
-        subprocess.run(ffmpeg_command, check=True)
-        print(f"Video saved as {video_path}")
-
-    def show(self):
-        """Display the interactive plot."""
-        plt.show()
-'''
