@@ -4,6 +4,7 @@ import warnings
 from types import SimpleNamespace
 import matplotlib.pyplot as plt
 import numpy as np
+from ipywidgets.widgets.widget_bool import ToggleButtonStyle
 from matplotlib.widgets import Slider, Button
 from ipywidgets import IntSlider, HBox, VBox, ToggleButton
 from IPython.display import display, clear_output
@@ -415,17 +416,21 @@ class Base3dAxes_slider:
         button : Matplotlib Button or ipywidgets ToggleButton
         """
         if self.use_ipywidgets:
+            style = ToggleButtonStyle()
+            if toggle_colors:
+                rgba = (f"rgba({int(toggle_colors['off'][0]*255)},"
+                        f" {int(toggle_colors['off'][1]*255)},"
+                        f" {int(toggle_colors['off'][2]*255)},"
+                        f" {toggle_colors['off'][3]})")
+                style.button_color = rgba
+
+
             btn = ToggleButton(
                 value=False,
                 description=label,
                 tooltip=tooltip or label,
                 layout=dict(width="auto"),
-                style=dict(
-                button_color=f"rgba({int(toggle_colors['off'][0]*255)}, "
-                             f"{int(toggle_colors['off'][1]*255)}, "
-                             f"{int(toggle_colors['off'][2]*255)}, "
-                             f"{toggle_colors['off'][3]})"
-                ) if toggle_colors else None
+                style= style
             )
 
             def _wrap(change):
