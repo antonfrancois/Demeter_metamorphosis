@@ -430,6 +430,8 @@ def rigid_along_metamorphosis(
         safe_mode=False,
         hamiltonian_integration=False,
        save_gpu_memory = False,
+        lbfgs_max_iter = 20,
+        lbfgs_history_size = 100,
         debug=False
     ):
     """
@@ -469,7 +471,9 @@ def rigid_along_metamorphosis(
         data_term=data_term,
         hamiltonian_integration=hamiltonian_integration,
         # optimizer_method="adadelta",
-        debug = debug
+        debug = debug,
+        lbfgs_max_iter = lbfgs_max_iter,
+        lbfgs_history_size = lbfgs_history_size,
     )
     mr = _commun_after(mr, momenta_ini, safe_mode, n_iter, grad_coef)
 
