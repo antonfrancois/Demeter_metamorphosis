@@ -452,8 +452,6 @@ def rigid_along_metamorphosis(
                         " - 'momentum_R' for the rotation"
                         " - 'momentum_T' for the translation")
 
-    if save_gpu_memory:
-        raise NotImplementedError("GPU memory saving is not implemented yet.")
 
     mp = rd.RigidMetamorphosis_integrator(
         rho=rho,
@@ -461,6 +459,7 @@ def rigid_along_metamorphosis(
         kernelOperator=kernelOperator,
         dx_convention="2square",
         debug=debug,
+        save_gpu_memory = save_gpu_memory
     )
 
     mr = rd.RigidMetamorphosis_Optimizer(
@@ -475,6 +474,9 @@ def rigid_along_metamorphosis(
         lbfgs_max_iter = lbfgs_max_iter,
         lbfgs_history_size = lbfgs_history_size,
     )
+    # state_dict = mr.state_dict()
+    # for i, (name, tensor) in enumerate(state_dict.items()):
+    #     print(f"{i}: {name} → shape={tensor.shape}, dtype={tensor.dtype}")
     mr = _commun_after(mr, momenta_ini, safe_mode, n_iter, grad_coef)
 
     return mr

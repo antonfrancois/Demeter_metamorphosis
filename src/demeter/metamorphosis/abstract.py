@@ -67,6 +67,7 @@ from ..metamorphosis import data_cost as dt
 # See them as a toolkit
 
 
+
 class Geodesic_integrator(torch.nn.Module, ABC):
     """The Geodesic_integrator class is an abstract class that inherits from
     torch.nn.Module and ABC (Abstract Base Class). It is designed to define
@@ -178,17 +179,171 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                 for v in tensor.values():
                     self.check_nan(v)
 
+    def _flatten_momenta(self,momenta_dict):
+        flat_tensors = []
+        shapes = {}
+        for k, v in momenta_dict.items():
+            shapes[k] = v.shape
+            flat_tensors.append(v.reshape(-1))
+        flat = torch.cat(flat_tensors)
+        self.momenta_shape = shapes
+        return flat
+
+
+    def _unflatten_momenta(self,flat_tensor, device=None):
+        out = {}
+        idx = 0
+        for k, shape in self.momenta_shape.items():
+            numel = torch.tensor(shape).prod().item()
+            out[k] = flat_tensor[idx:idx+numel].reshape(shape)
+            if device is not None:
+                out[k] = out[k].to(device)
+            idx += numel
+        return out
+
+    # def forward(self,
+    #              image,
+    #               momenta,
+    #             save=True,
+    #             plot=0,
+    #             t_max=1,
+    #             verbose=False,
+    #             sharp=None,
+    #             # debug=False,
+    #             hamiltonian_integration=False
+    #     ):
+    #     r""" This method is doing the temporal loop using the good method `_step_`
+    #
+    #     Parameters
+    #     ----------
+    #     image : tensor array of shape [1,1,H,W]
+    #         Source image ($I_0$)
+    #     momentum_ini : tensor array of shape [1,1,H,W]
+    #         Momentum ($p_0$) or residual ($z_0$)
+    #     save : bool, optional
+    #         Option to save the integration intermediary steps, by default True
+    #         it saves the image, field and momentum at each step in the attributes
+    #         `image_stock`, `field_stock`, `residuals_stock` and `momentum_stock`.
+    #     plot : int, optional
+    #         Positive int lower than `self.n_step` to plot the indicated number of
+    #         intermediary steps, by default 0
+    #     t_max : int, optional
+    #         The integration will be made on [0,t_max], by default 1
+    #     verbose : bool, optional
+    #         Option to print the progress of the integration, by default False
+    #     sharp : bool, optional
+    #         Option to use the sharp integration, by default None
+    #     debug : bool, optional
+    #         Option to print debug information, by default False
+    #     hamiltonian_integration : bool, optional
+    #         Choose to integrate over first time step only or whole hamiltonian, in
+    #         practice when True, the Regulation norms of the Hamiltonian are computed
+    #         and saved in the good attributes (usually `norm_v` and `norm_z`),
+    #          by default False
+    #
+    #     """
+    #     # if len(momenta.shape) not in [4, 5]:
+    #     #     raise ValueError(f"residual_ini must be of shape [B,C,H,W] or [B,C,D,H,W] got {momenta.shape}")
+    #     device = next((tensor.device for tensor in momenta.values() if tensor.is_cuda), 'cpu')
+    #     # print(f'sharp = {sharp} flag_sharp : {self.flag_sharp},{self._phis}')
+    #     self._init_sharp_(sharp)
+    #     self.source = image.detach().to(device)
+    #     self.image = image.clone().to(device)
+    #     self.momenta = momenta
+    #     # self.debug = debug
+    #     self.flag_hamiltonian_integration = hamiltonian_integration
+    #     try:
+    #         self.save = True if self._force_save else save
+    #     except AttributeError:
+    #         self.save = save
+    #
+    #     self.id_grid = tb.make_regular_grid(self.image.shape[2:],
+    #                                         dx_convention=self.dx_convention,
+    #                                         device=device)
+    #     assert self.id_grid != None
+    #
+    #     # field initialization to a regular grid
+    #     field = self.id_grid.clone().to(device)
+    #
+    #     if plot > 0:
+    #         self.save = True
+    #
+    #     if self.save:
+    #         self.image_stock = torch.zeros((t_max * self.n_step,) + image.shape[1:])
+    #         self.field_stock = torch.zeros(
+    #             (t_max * self.n_step,) + field.shape[1:]
+    #         )
+    #         self.momentum_stock = [
+    #             {k: torch.zeros_like(v) for k, v in momenta.items()}
+    #             for _ in range(t_max * self.n_step)
+    #         ]
+    #         self.residuals_stock = torch.zeros((t_max * self.n_step,) + image.shape[1:])
+    #
+    #     if self.flag_hamiltonian_integration:
+    #         self.norm_v = 0
+    #         self.norm_z = 0
+    #
+    #     for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step)):
+    #         self._i = i
+    #
+    #         # print(self.step.__name__)
+    #         if self.save_gpu_memory:
+    #             use_reentrant =  False # set to true speed thing up but don't work with rigid.
+    #             momenta, self.image , self.field, self.residuals = torch.utils.checkpoint.checkpoint(
+    #                 self.step,
+    #                 self.image,
+    #                 momenta,
+    #                 use_reentrant = use_reentrant,
+    #             )
+    #             self.momenta = self._unflatten_momenta(momenta)
+    #         else:
+    #             self.momenta, self.image, field, residuals = self.step(self.image, self.momenta)
+    #
+    #         self._test_nan_(self.image, self.momenta)
+    #
+    #         if self.flag_hamiltonian_integration:
+    #             self.norm_v += self.norm_v_i / self.n_step
+    #             self.norm_z += self.norm_z_i / self.n_step
+    #             # self.ham_integration += self.ham_value / self.n_step
+    #         # ic(self._i,self.field.min().item(),self.field.max().item(),
+    #         #    self.momentum.min().item(),self.momentum.max().item(),
+    #         #     self.image.min().item(),self.image.max().item())
+    #
+    #
+    #         if self.save:
+    #             if self._detach_image:
+    #                 self.image_stock[i] = self.image[0].detach().to("cpu")
+    #             else:
+    #                 self.image_stock[i] = self.image[0]
+    #             self.field_stock[i] = field[0].detach().to("cpu")
+    #             for k, v in self.momenta.items():
+    #                 self.momentum_stock[i][k] = v.detach().to("cpu")
+    #             self.residuals_stock[i] = residuals[0].detach().to("cpu")
+    #
+    #         if verbose:
+    #             update_progress(i / (t_max * self.n_step))
+    #             if self.flag_hamilt_integration:
+    #                 print('ham :', self.ham_value.detach().cpu().item(),
+    #                   self.norm_v.detach().cpu().item(),
+    #                   self.norm_z.detach().cpu().item())
+    #
+    #     # try:
+    #     #     _d_ = device if self._force_save else 'cpu'
+    #     #     self.field_stock = self.field_stock.to(device)
+    #     # except AttributeError: pass
+    #
+    #     if plot > 0:
+    #         self.plot(n_figs=plot)
+
     def forward(self,
-                 image,
-                  momenta,
+                image,
+                momenta,
                 save=True,
                 plot=0,
                 t_max=1,
                 verbose=False,
                 sharp=None,
-                # debug=False,
-                hamiltonian_integration=False
-        ):
+                hamiltonian_integration=False):
         r""" This method is doing the temporal loop using the good method `_step_`
 
         Parameters
@@ -219,96 +374,104 @@ class Geodesic_integrator(torch.nn.Module, ABC):
              by default False
 
         """
-        # if len(momenta.shape) not in [4, 5]:
-        #     raise ValueError(f"residual_ini must be of shape [B,C,H,W] or [B,C,D,H,W] got {momenta.shape}")
-        device = next((tensor.device for tensor in momenta.values() if tensor.is_cuda), 'cpu')
-        # print(f'sharp = {sharp} flag_sharp : {self.flag_sharp},{self._phis}')
+        device = self._get_device_from_momenta(momenta)
+        self._forward_initialize_integration(image, momenta, device, save, sharp, hamiltonian_integration, plot)
+
+        for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step)):
+            self._i = i
+            self._forward_single_step(verbose)
+
+        if plot > 0:
+            self.plot(n_figs=plot)
+
+
+    # ------------------ PRIVATE HELPERS ------------------
+
+
+    def _get_device_from_momenta(self, momenta):
+        return next((tensor.device for tensor in momenta.values() if tensor.is_cuda), 'cpu')
+
+
+    def _forward_initialize_integration(self, image, momenta, device, save, sharp, hamiltonian_integration, plot):
         self._init_sharp_(sharp)
         self.source = image.detach().to(device)
         self.image = image.clone().to(device)
         self.momenta = momenta
-        # self.debug = debug
         self.flag_hamiltonian_integration = hamiltonian_integration
-        try:
-            self.save = True if self._force_save else save
-        except AttributeError:
-            self.save = save
+        self.save = getattr(self, "_force_save", save)
 
-        self.id_grid = tb.make_regular_grid(self.image.shape[2:],
-                                            dx_convention=self.dx_convention,
-                                            device=device)
-        assert self.id_grid != None
-
-        # field initialization to a regular grid
-        field = self.id_grid.clone().to(device)
+        self.id_grid = tb.make_regular_grid(self.image.shape[2:], dx_convention=self.dx_convention, device=device)
+        assert self.id_grid is not None
+        self.field = self.id_grid.clone().to(device)
 
         if plot > 0:
             self.save = True
 
         if self.save:
-            self.image_stock = torch.zeros((t_max * self.n_step,) + image.shape[1:])
-            self.field_stock = torch.zeros(
-                (t_max * self.n_step,) + field.shape[1:]
-            )
-            self.momentum_stock = [
-                {k: torch.zeros_like(v) for k, v in momenta.items()}
-                for _ in range(t_max * self.n_step)
-            ]
-            self.residuals_stock = torch.zeros((t_max * self.n_step,) + image.shape[1:])
+            T = self.n_step
+            shape_image = self.image.shape[1:]
+            shape_field = self.field.shape[1:]
+            self.image_stock = torch.zeros((T,) + shape_image)
+            self.field_stock = torch.zeros((T,) + shape_field)
+            self.momentum_stock = [{k: torch.zeros_like(v) for k, v in momenta.items()} for _ in range(T)]
+            self.residuals_stock = torch.zeros((T,) + shape_image)
 
         if self.flag_hamiltonian_integration:
             self.norm_v = 0
             self.norm_z = 0
 
-        for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step)):
-            self._i = i
 
-            # print(self.step.__name__)
-            if self.save_gpu_memory:
-                self.momenta, self.image , self.field, self.residuals = torch.utils.checkpoint.checkpoint(
-                    self.step,
-                    self.image,
-                    self.momenta,
-                    use_reentrant = True,
-                )
-            else:
-                self.momenta, self.image, field, residuals = self.step(self.image, self.momenta)
+    def _forward_single_step(self, verbose):
+        if self.save_gpu_memory:
+            self._forward_checkpointed_step()
+        else:
+            self._forward_direct_step()
 
-            self._test_nan_(self.image, self.momenta)
+        self._test_nan_(self.image, self.momenta)
 
-            if self.flag_hamiltonian_integration:
-                self.norm_v += self.norm_v_i / self.n_step
-                self.norm_z += self.norm_z_i / self.n_step
-                # self.ham_integration += self.ham_value / self.n_step
-            # ic(self._i,self.field.min().item(),self.field.max().item(),
-            #    self.momentum.min().item(),self.momentum.max().item(),
-            #     self.image.min().item(),self.image.max().item())
+        if self.flag_hamiltonian_integration:
+            self.norm_v += self.norm_v_i / self.n_step
+            self.norm_z += self.norm_z_i / self.n_step
+
+        if self.save:
+            self._save_step()
+
+        if verbose:
+            self._log_step()
 
 
-            if self.save:
-                if self._detach_image:
-                    self.image_stock[i] = self.image[0].detach().to("cpu")
-                else:
-                    self.image_stock[i] = self.image[0]
-                self.field_stock[i] = field[0].detach().to("cpu")
-                for k, v in self.momenta.items():
-                    self.momentum_stock[i][k] = v.detach().to("cpu")
-                self.residuals_stock[i] = residuals[0].detach().to("cpu")
+    def _forward_checkpointed_step(self):
+        print("_forward_checkpointed_step, abstract")
 
-            if verbose:
-                update_progress(i / (t_max * self.n_step))
-                if self.flag_hamilt_integration:
-                    print('ham :', self.ham_value.detach().cpu().item(),
-                      self.norm_v.detach().cpu().item(),
-                      self.norm_z.detach().cpu().item())
+        use_reentrant = True # have to be false for rigid
+        momenta, self.image, self.field, self.residuals = torch.utils.checkpoint.checkpoint(
+            self.step,
+            self.image,
+            self.momenta,
+            use_reentrant=use_reentrant,
+        )
+        return 0
 
-        # try:
-        #     _d_ = device if self._force_save else 'cpu'
-        #     self.field_stock = self.field_stock.to(device)
-        # except AttributeError: pass
+    def _forward_direct_step(self):
+        self.momenta, self.image, self.field, self.residuals = self.step(self.image, self.momenta)
+        return 0
 
-        if plot > 0:
-            self.plot(n_figs=plot)
+    def _save_step(self):
+        i = self._i
+        self.image_stock[i] = self.image[0].detach().cpu() if self._detach_image else self.image[0]
+        self.field_stock[i] = self.field[0].detach().cpu()
+        for k, v in self.momenta.items():
+            self.momentum_stock[i][k] = v.detach().cpu()
+        self.residuals_stock[i] = self.residuals[0].detach().cpu()
+
+
+    def _log_step(self):
+        update_progress(self._i / self.n_step)
+        if getattr(self, "flag_hamilt_integration", False):
+            print('ham :', self.ham_value.detach().cpu().item(),
+                  self.norm_v.detach().cpu().item(),
+                  self.norm_z.detach().cpu().item())
+
 
     def _image_Eulerian_integrator_(self, image, vector_field, t_max, n_step):
         """ image integrator using an Eulerian scheme
@@ -1113,7 +1276,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.parameter = momenta_ini.copy()  # optimized variable
 
         # self.parameter = self._build_parameter_dict_(momenta_ini)
-        self._initialize_optimizer_(grad_coef, max_iter=n_iter)
+        self._initialize_optimizer_(grad_coef)
         self.n_iter = n_iter
 
         self.id_grid = tb.make_regular_grid(self.source.shape[2:],

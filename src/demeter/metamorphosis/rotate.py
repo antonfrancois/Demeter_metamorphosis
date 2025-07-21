@@ -273,142 +273,131 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
                 sqrt(self.rho) * self.field,
                 sqrt(1 - self.rho) * self.residuals)
 
-    def step(self, image, momenta):
+    def _compute_step_rotation_translation(self, momentum_R, rot_mat, momentum_T = None, translation= None):
+        momR_rotated = momentum_R @ rot_mat.T
+        pre_d_rot = momR_rotated #+ momT_translated
+
+        if momentum_T is not None:
+            momT_translated = momentum_T @ translation.T
+            pre_d_rot += momT_translated
+
+            translation = momentum_T  #
+
+        if self.debug:
+            print("rot mat", rot_mat)
+            print("momR_rotated",momR_rotated)
+        # momR_rotated =  (momR_rotated - momR_rotated.T) /2
+        #
+        d_rot = (pre_d_rot - pre_d_rot.T) / 2
+        if self._i == 0:
+            self._d_rot_ini = d_rot.clone()
+        # print('d_rot',self.d_rot)
+
+        exp_A = torch.linalg.matrix_exp(d_rot/self.n_step)
+        rot_mat = exp_A @ rot_mat
+
+        norm_l2_on_R = .5 * torch.trace( d_rot.T @ self._d_rot_ini)
+
+        momentum_R = momentum_R - d_rot.T @ momentum_R  / self.n_step
+        if momentum_T is not None:
+            momentum_T = momentum_T - d_rot.T @ momentum_T / self.n_step
+
+        return momentum_R, momentum_T, rot_mat, translation, d_rot, norm_l2_on_R
+
+    def step(self, image, momentum_I, momentum_R, momentum_T, rot_mat, translation):
         if self.debug:
             print("\n")
             print("="*25)
             print('step',self._i)
-        if self.flag_field:
-            momentum_I = momenta['momentum_I'].clone()
-            if self.debug:
-                print('momentum_I',momentum_I.min().item(),momentum_I.max().item())
-                print("momentum_I", momentum_I.shape)
 
-        if self.flag_translation:
-            momentum_T = momenta['momentum_T'].clone()
-            if self.debug:
-                print('momentum_T',momentum_T)
+        # frame = torch.utils.checkpoint.get_activation_checkpoint_state()
+        # print(f"[DEBUG - AVANT - step call {self._i}] weak_holders = {len(frame.weak_holders)} | recompute_counter = {frame.recomp_counter}")
+        # if self.flag_field:
+        # momentum_I = momenta['momentum_I'].clone()
+        if self.debug:
+            print('momentum_I',momentum_I.min().item(),momentum_I.max().item())
+            print("momentum_I", momentum_I.shape)
 
-        momentum_R = momenta['momentum_R'].clone()
+        # if self.flag_translation:
+        # momentum_T = momenta['momentum_T'].clone()
+        if self.debug:
+            print('momentum_T',momentum_T)
+
+        # momentum_R = momenta['momentum_R'].clone()
         if self.debug:
             print("momentum_R",momentum_R)
 
         # ----------------------------------------------
         ## 0 Contrainte
-        if self._i == 0 and self.flag_field:
+        if self._i == 0: # and self.flag_field:
             momentum_I = self._contrainte_(momentum_I, self.source)
 
 
         # -----------------------------------------------
-        # 1.a Compute the rotation
-        momR_rotated = momentum_R @ self.rot_mat.T
-        pre_d_rot = momR_rotated #+ momT_translated
+        # 1.a Compute the rotation and translation
+        momentum_R, momentum_T, rot_mat, translation, d_rot, norm_R_2 =\
+            self._compute_step_rotation_translation(momentum_R,rot_mat,  momentum_T, translation)
 
-        if self.flag_translation:
-            momT_translated = momentum_T @ self.translation.T
-            pre_d_rot += momT_translated
-
-        if self.debug:
-            print("rot mat",self.rot_mat)
-            print("momR_rotated",momR_rotated)
-        # momR_rotated =  (momR_rotated - momR_rotated.T) /2
-        #
-        self.d_rot = (pre_d_rot - pre_d_rot.T) / 2
-        if self._i == 0:
-            self.d_rot_ini = self.d_rot.clone()
-        # print('d_rot',self.d_rot)
-
-        exp_A = torch.linalg.matrix_exp(self.d_rot/self.n_step)
-        self.rot_mat = exp_A @ self.rot_mat
-
-
-        # print("rot mat * rot mat.T",self.rot_mat @ self.rot_mat.T)
-
-        # 1.b Compute the translation
-        if self.flag_translation:
-            self.translation = momentum_T
+        # frame = torch.utils.checkpoint.get_activation_checkpoint_state()
+        # print(f"[DEBUG - AFTER ROTATE - step call {self._i}] weak_holders = {len(frame.weak_holders)} | recompute_counter = {frame.recomp_counter}")
 
         # -----------------------------------------------
-        ## 2. apply the inverse rotation to the image
-        ## $$ \tilde I = R^{-1} I = R^{T} I$$
-        # rot_def =   tb.apply_rot_mat(self.id_grid,  self.rot_mat.T)
-        # image =  tb.imgDeform(image,rot_def,dx_convention='2square')
+        ## 1. Compute the vector field
+        grad_image = tb.spatialGradient(image, dx_convention = self.dx_convention)
+        field,norm_V = self._compute_vectorField_(
+            momentum_I, grad_image)
+        # field *= 0
+        # print('field min max',field.min(), field.max())
 
+        # -----------------------------------------------
+        # 2. Compute the residuals
+        residuals = (1 - self.rho) * momentum_I
 
-        if self.flag_field:
-            # -----------------------------------------------
-            ## 1. Compute the vector field
-            grad_image = tb.spatialGradient(image, dx_convention = self.dx_convention)
-            field,norm_V = self._compute_vectorField_(
-                momentum_I, grad_image)
-            # field *= 0
-            # print('field min max',field.min(), field.max())
+        # -----------------------------------------------
+        # 3. Update the image
+        deformation = self.id_grid - self.rho * field/self.n_step
+        image = self._update_image_semiLagrangian_(
+            momentum_I,
+            image,
+            deformation,
+            residuals
+        )
 
-            # -----------------------------------------------
-            # 2. Compute the residuals
-            residuals = (1 - self.rho) * momentum_I
-            # print("dx_convention",self.dx_convention)
-            # print("grid min max",self.id_grid.min().item(),self.id_grid.max().item())
-
-            # -----------------------------------------------
-            # 3. Update the image
-            deformation = self.id_grid - self.rho * field/self.n_step
-            image = self._update_image_semiLagrangian_(
-                momentum_I,
-                image,
+        # ------------------------------------------------
+        #  update momenta
+        momentum_I =  (
+            self._compute_div_momentum_semiLagrangian_(
                 deformation,
-                residuals
+                momentum_I,
+                cst = - sqrt(self.rho),
+                field = sqrt(self.rho) * field
             )
-
-            # ------------------------------------------------
-            #  update momenta
-            momentum_I =  (
-                self._compute_div_momentum_semiLagrangian_(
-                    deformation,
-                    momentum_I,
-                    cst = - sqrt(self.rho),
-                    field = sqrt(self.rho) * field
-                )
-            )
-            if self.flag_hamiltonian_integration:
-                # Norm L2 on z
-                norm_l2_on_z = .5 * (residuals ** 2).sum()
-                self.ham_value = norm_V + norm_l2_on_z
-        else:
-            # to return good stuff
-            field = torch.zeros((1,) + image.shape[2:] + (self._dim,))
-            residuals = torch.zeros_like(image)
-
+        )
         if self.flag_hamiltonian_integration:
+            # Norm L2 on z
+            norm_l2_on_z = .5 * (residuals ** 2).sum()
+            self.ham_value = norm_V + norm_l2_on_z + norm_R_2
 
-            # Norm L2 on R
-            norm_l2_on_R = .5 * torch.trace( self.d_rot.T @ self.d_rot_ini)
-            self.ham_value = norm_V + norm_l2_on_z + norm_l2_on_R
 
 
-        momentum_R = momentum_R - self.d_rot.T @ momentum_R  / self.n_step
+        # frame = torch.utils.checkpoint.get_activation_checkpoint_state()
+        # print(f"[DEBUG - AFTER ALL - step call {self._i}] weak_holders = {len(frame.weak_holders)} | recompute_counter = {frame.recomp_counter}")
 
-        momenta['momentum_R'] = momentum_R.clone()
-        if self.flag_field:
-            momenta['momentum_I'] = momentum_I.clone()
-        if self.flag_translation:
-            # print("translation :", self.translation)
-            momentum_T = momentum_T - self.d_rot.T @ momentum_T / self.n_step
-            momenta['momentum_T'] = momentum_T.clone()
 
         # print("rot mat",self.rot_mat)
         # print("arc ", torch.arcsin(exp_A[0,1])/torch.pi,
         #       torch.arccos(exp_A[0,1])/torch.pi)
 
         return (
-            momenta,
+            momentum_I,momentum_R,momentum_T,
             image,
             self.rho * field,
-            residuals
+            residuals,
+            rot_mat,
+            translation
         )
 
-    def forward(self, image, momenta,**kwargs):
-
+    def _forward_initialize_integration(self, image, momenta, device, save, sharp, hamiltonian_integration, plot):
         self._dim = 2 if len(image.shape) == 4 else 3
         self.rot_mat = torch.eye(self._dim)
         # r = momenta['r']
@@ -416,18 +405,81 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         #     [[0,r],
         #     [-r,0]],
         #     dtype=torch.float32)
-        self.flag_field = True if "momentum_I" in momenta.keys() else False
+        # self.flag_field = True if "momentum_I" in momenta.keys() else False
 
         momentum_R = momenta['momentum_R'].clone()
         momenta['momentum_R'] =  (momentum_R - momentum_R.T) /2
         self.to_device(momenta['momentum_R'].device)
-        try:
+        if "momentum_T" in momenta:
             self.translation = torch.zeros_like(momenta['momentum_T'])
             self.flag_translation = True
-        except KeyError:
+        else:
+            self.translation = None
             self.flag_translation = False
 
-        return super().forward(image,momenta,**kwargs)
+        self.flag_field =  True if  "momentum_I" in momenta.keys() else False
+
+        super()._forward_initialize_integration(image, momenta, device, save, sharp, hamiltonian_integration, plot)
+
+    def _forward_direct_step(self):
+        print("_forward_direct_step in rotate")
+        momentum_R = self.momenta["momentum_R"]
+        momentum_T = self.momenta["momentum_T"] if self.flag_translation else None
+
+        if  self.flag_field:
+
+            momentum_I = self.momenta["momentum_I"]
+
+            momentum_I,momentum_R,momentum_T, self.image, self.field, self.residuals, self.rot_mat, self.translation \
+                = self.step(
+                self.image,
+                momentum_I,
+                momentum_R,
+                momentum_T,
+                self.rot_mat,
+                self.translation
+            )
+            self.momenta["momentum_I"] = momentum_I
+        else:
+            momentum_R, momentum_T, self.rot_mat, self.translation, _, norm_l2_on_R =\
+                self._compute_step_rotation_translation(momentum_R, self.rot_mat, momentum_T,  self.translation)
+            return 0
+
+
+        self.momenta["momentum_R"] = momentum_R
+        self.momenta["momentum_T"] = momentum_T
+        return 0
+
+
+    def _forward_checkpointed_step(self):
+        print("_forward_checkpointed_step, rotate")
+        if not "momentum_I" in self.momenta.keys():
+            self._forward_direct_step()
+            return 0
+        momentum_I = self.momenta["momentum_I"]
+        momentum_R = self.momenta["momentum_R"]
+        if "momentum_T" in self.momenta.keys():
+            momentum_T = self.momenta["momentum_T"]
+        else:
+            momentum_T = None
+
+        use_reentrant = False  # safer for rigid
+        momentum_I,momentum_R,momentum_T, self.image, self.field, self.residuals, self.rot_mat, self.translation \
+        = torch.utils.checkpoint.checkpoint(
+                self.step,
+                self.image,
+                momentum_I,
+                momentum_R,
+                momentum_T,
+                self.rot_mat,
+                self.translation,
+                use_reentrant=use_reentrant,
+        )
+
+        self.momenta["momentum_I"] = momentum_I
+        self.momenta["momentum_R"] = momentum_R
+        self.momenta["momentum_T"] = momentum_T
+        return 0
 
     def plot(self, n_figs=5):
         if n_figs == -1:
@@ -571,7 +623,7 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
                 self.norm_l2_on_z = torch.tensor([0], device=self.data_loss.device)
 
             # Norm L2 on R
-            self.norm_l2_on_R = .5 * torch.trace( self.mp.d_rot_ini.T @ self.mp.d_rot_ini)
+            self.norm_l2_on_R = .5 * torch.trace( self.mp._d_rot_ini.T @ self.mp._d_rot_ini)
             # self.norm_l2_on_R *= 1000
             # ic(self.norm_l2_on_R)
 
