@@ -305,96 +305,57 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         return momentum_R, momentum_T, rot_mat, translation, d_rot, norm_l2_on_R
 
     def step(self, image, momentum_I, momentum_R, momentum_T, rot_mat, translation):
+        """
+        One integration step. Fully checkpoint-compliant: fixed number of outputs.
+        """
         if self.debug:
-            print("\n")
-            print("="*25)
-            print('step',self._i)
+            print("\n" + "="*25)
+            print('step', self._i)
 
-        # frame = torch.utils.checkpoint.get_activation_checkpoint_state()
-        # print(f"[DEBUG - AVANT - step call {self._i}] weak_holders = {len(frame.weak_holders)} | recompute_counter = {frame.recomp_counter}")
-        # if self.flag_field:
-        # momentum_I = momenta['momentum_I'].clone()
-        if self.debug:
-            print('momentum_I',momentum_I.min().item(),momentum_I.max().item())
-            print("momentum_I", momentum_I.shape)
+        if momentum_T is None:
+            momentum_T = torch.zeros_like(momentum_R)
 
-        # if self.flag_translation:
-        # momentum_T = momenta['momentum_T'].clone()
-        if self.debug:
-            print('momentum_T',momentum_T)
-
-        # momentum_R = momenta['momentum_R'].clone()
-        if self.debug:
-            print("momentum_R",momentum_R)
-
-        # ----------------------------------------------
-        ## 0 Contrainte
-        if self._i == 0: # and self.flag_field:
+        # --- Apply constraints ---
+        if self._i == 0:
             momentum_I = self._contrainte_(momentum_I, self.source)
 
+        # --- Rotation / Translation update ---
+        momentum_R, momentum_T, rot_mat, translation, d_rot, norm_R_2 = \
+            self._compute_step_rotation_translation(momentum_R, rot_mat, momentum_T, translation)
 
-        # -----------------------------------------------
-        # 1.a Compute the rotation and translation
-        momentum_R, momentum_T, rot_mat, translation, d_rot, norm_R_2 =\
-            self._compute_step_rotation_translation(momentum_R,rot_mat,  momentum_T, translation)
+        # --- Vector field and residuals ---
+        grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
+        field, norm_V = self._compute_vectorField_(momentum_I, grad_image)
 
-        # frame = torch.utils.checkpoint.get_activation_checkpoint_state()
-        # print(f"[DEBUG - AFTER ROTATE - step call {self._i}] weak_holders = {len(frame.weak_holders)} | recompute_counter = {frame.recomp_counter}")
-
-        # -----------------------------------------------
-        ## 1. Compute the vector field
-        grad_image = tb.spatialGradient(image, dx_convention = self.dx_convention)
-        field,norm_V = self._compute_vectorField_(
-            momentum_I, grad_image)
-        # field *= 0
-        # print('field min max',field.min(), field.max())
-
-        # -----------------------------------------------
-        # 2. Compute the residuals
         residuals = (1 - self.rho) * momentum_I
 
-        # -----------------------------------------------
-        # 3. Update the image
-        deformation = self.id_grid - self.rho * field/self.n_step
-        image = self._update_image_semiLagrangian_(
-            momentum_I,
-            image,
+        # --- Image update ---
+        deformation = self.id_grid - self.rho * field / self.n_step
+        image = self._update_image_semiLagrangian_(momentum_I, image, deformation, residuals)
+
+        # --- Momentum update ---
+        momentum_I = self._compute_div_momentum_semiLagrangian_(
             deformation,
-            residuals
+            momentum_I,
+            cst=-sqrt(self.rho),
+            field=sqrt(self.rho) * field
         )
 
-        # ------------------------------------------------
-        #  update momenta
-        momentum_I =  (
-            self._compute_div_momentum_semiLagrangian_(
-                deformation,
-                momentum_I,
-                cst = - sqrt(self.rho),
-                field = sqrt(self.rho) * field
-            )
-        )
+        # --- Hamiltonian Integration ---
         if self.flag_hamiltonian_integration:
-            # Norm L2 on z
             norm_l2_on_z = .5 * (residuals ** 2).sum()
             self.ham_value = norm_V + norm_l2_on_z + norm_R_2
 
-
-
-        # frame = torch.utils.checkpoint.get_activation_checkpoint_state()
-        # print(f"[DEBUG - AFTER ALL - step call {self._i}] weak_holders = {len(frame.weak_holders)} | recompute_counter = {frame.recomp_counter}")
-
-
-        # print("rot mat",self.rot_mat)
-        # print("arc ", torch.arcsin(exp_A[0,1])/torch.pi,
-        #       torch.arccos(exp_A[0,1])/torch.pi)
-
+        # --- Always output the same things ---
         return (
-            momentum_I,momentum_R,momentum_T,
-            image,
-            self.rho * field,
-            residuals,
-            rot_mat,
-            translation
+            momentum_I,            # Tensor
+            momentum_R,            # Tensor
+            momentum_T,            # Tensor
+            image,                 # Tensor
+            self.rho * field,      # Tensor
+            residuals,             # Tensor
+            rot_mat,               # Tensor
+            translation            # Tensor
         )
 
     def _forward_initialize_integration(self, image, momenta, device, save, sharp, hamiltonian_integration, plot):
@@ -454,32 +415,34 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
     def _forward_checkpointed_step(self):
         print("_forward_checkpointed_step, rotate")
         if not "momentum_I" in self.momenta.keys():
+            print("go to direct step")
             self._forward_direct_step()
-            return 0
-        momentum_I = self.momenta["momentum_I"]
-        momentum_R = self.momenta["momentum_R"]
-        if "momentum_T" in self.momenta.keys():
-            momentum_T = self.momenta["momentum_T"]
-        else:
-            momentum_T = None
 
-        use_reentrant = False  # safer for rigid
-        momentum_I,momentum_R,momentum_T, self.image, self.field, self.residuals, self.rot_mat, self.translation \
-        = torch.utils.checkpoint.checkpoint(
-                self.step,
-                self.image,
-                momentum_I,
-                momentum_R,
-                momentum_T,
-                self.rot_mat,
-                self.translation,
-                use_reentrant=use_reentrant,
+        print("Going to checjpoint")
+        momentum_I, momentum_R, momentum_T, image, field, residuals, rot_mat, translation = torch.utils.checkpoint.checkpoint(
+            self.step,
+            self.image,
+            self.momenta["momentum_I"],
+            self.momenta["momentum_R"],
+            self.momenta.get("momentum_T", torch.zeros_like(self.momenta["momentum_R"])),
+            self.rot_mat,
+            self.translation,
+            use_reentrant=False,
         )
-
+        print("[CHECKPOINT outputs]")
+        for x in [momentum_I, momentum_R, momentum_T, image, field, residuals, rot_mat, translation]:
+            print("\t", x.shape, x.requires_grad)
+            if x.requires_grad:
+                x.register_hook(lambda grad: print(f"\tGrad computed for tensor of shape {x.shape}\n"))
+        # Update attributes after checkpoint
+        self.image = image
+        self.field = field
+        self.residuals = residuals
         self.momenta["momentum_I"] = momentum_I
         self.momenta["momentum_R"] = momentum_R
         self.momenta["momentum_T"] = momentum_T
-        return 0
+        self.rot_mat = rot_mat
+        self.translation = translation
 
     def plot(self, n_figs=5):
         if n_figs == -1:

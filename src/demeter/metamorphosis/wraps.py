@@ -12,7 +12,7 @@ from . import joined as jn
 from . import rotate as rd
 
 from ..utils import torchbox as tb
-from ..utils.decorators import time_it
+from ..utils.decorators import time_it, monitor_gpu
 
 
 def _commun_before(momentum_ini, source):
@@ -413,7 +413,7 @@ def simplex_metamorphosis(
         mr.forward(momentum_ini, n_iter=n_iter, grad_coef=grad_coef, plot=plot)
     return mr
 
-
+@monitor_gpu
 def rigid_along_metamorphosis(
         source,
         target,
