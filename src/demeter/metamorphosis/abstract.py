@@ -398,7 +398,8 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self.image = image.clone().to(device)
         self.momenta = momenta
         self.flag_hamiltonian_integration = hamiltonian_integration
-        self.save = getattr(self, "_force_save", save)
+        self.save = True if self._force_save else save
+
 
         self.id_grid = tb.make_regular_grid(self.image.shape[2:], dx_convention=self.dx_convention, device=device)
         assert self.id_grid is not None
