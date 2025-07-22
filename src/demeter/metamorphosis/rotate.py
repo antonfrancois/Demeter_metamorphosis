@@ -444,6 +444,10 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         self.rot_mat = rot_mat
         self.translation = translation
 
+    def _save_step(self):
+        if self.flag_field:
+            super()._save_step()
+
     def plot(self, n_figs=5):
         if n_figs == -1:
             n_figs = self.n_step

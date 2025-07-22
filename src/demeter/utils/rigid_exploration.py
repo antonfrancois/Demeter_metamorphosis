@@ -76,7 +76,7 @@ def initial_exploration(rigid_meta_optim, r_step = 4, max_output = 10, verbose:b
             requires_grad=False
         )
         print(momenta.keys())
-        rigid_meta_optim.mp.forward(rigid_meta_optim.source, momenta)
+        rigid_meta_optim.mp.forward(rigid_meta_optim.source, momenta, save=False)
 
         rot_def =   tb.apply_rot_mat(rigid_meta_optim.mp.id_grid, rigid_meta_optim. mp.rot_mat.T)
         img_rot = tb.imgDeform(rigid_meta_optim.source, rot_def.to('cpu'), dx_convention='2square')
@@ -137,6 +137,21 @@ def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False)
         # mr.plot_cost(
         # )
         # plt.show()
+        # rot_def =   tb.apply_rot_mat(mr.mp.id_grid,  mr.mp.rot_mat.T)
+        # rot_def += mr.mp.translation
+        # rotated_source = tb.imgDeform(mr.source,rot_def,dx_convention='2square')
+        # img = rotated_source[0,0,..., mr.source.shape[-1]//2].detach().cpu()
+        # img_target = tb.imCmp(rotated_source[..., mr.source.shape[-1]//2].detach().cpu(), mr.target[..., mr.source.shape[-1]//2].detach().cpu(), "compose")[0]
+        # img_source = tb.imCmp(rotated_source[..., mr.source.shape[-1]//2].detach().cpu(), mr.source[..., mr.source.shape[-1]//2].detach().cpu(), "compose")[0]
+        # fig,ax = plt.subplots(1,3)
+        # fig.suptitle(f"best = {best}, loss = {mr.data_loss:.4f}")
+        # ax[0].imshow(img, cmap="gray")
+        # ax[0].set_title("Final image")
+        # ax[1].imshow(img_target, cmap="gray")
+        # ax[1].set_title("img vs target")
+        # ax[2].imshow(img_source, cmap="gray")
+        # ax[2].set_title("img vs source")
+        # plt.show()
         if verbose:
             print(f"best = {best}")
             print(mr.mp.translation)
@@ -150,7 +165,8 @@ def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False)
             break
     if verbose:
         print("Best find : ")
-        print(best_loss)
-        print(best_momentum)
-        print(best_translation)
+        print("loss :",best_loss)
+        print("best_momentum = torch.",best_momentum)
+        print("best_translation = torch.",best_translation)
+        print("best_rotation =", mr.mp.rot_mat)
     return best_loss, best_momentum, best_translation, best_rot
