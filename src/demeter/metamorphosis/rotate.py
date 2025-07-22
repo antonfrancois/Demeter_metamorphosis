@@ -383,7 +383,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         super()._forward_initialize_integration(image, momenta, device, save, sharp, hamiltonian_integration, plot)
 
     def _forward_direct_step(self):
-        print("_forward_direct_step in rotate")
+        # print("_forward_direct_step in rotate")
         momentum_R = self.momenta["momentum_R"]
         momentum_T = self.momenta["momentum_T"] if self.flag_translation else None
 
@@ -413,12 +413,12 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
 
 
     def _forward_checkpointed_step(self):
-        print("_forward_checkpointed_step, rotate")
+        # print("_forward_checkpointed_step, rotate")
         if not "momentum_I" in self.momenta.keys():
-            print("go to direct step")
+            # print("go to direct step")
             self._forward_direct_step()
 
-        print("Going to checjpoint")
+        # print("Going to checjpoint")
         momentum_I, momentum_R, momentum_T, image, field, residuals, rot_mat, translation = torch.utils.checkpoint.checkpoint(
             self.step,
             self.image,
@@ -429,11 +429,11 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
             self.translation,
             use_reentrant=False,
         )
-        print("[CHECKPOINT outputs]")
-        for x in [momentum_I, momentum_R, momentum_T, image, field, residuals, rot_mat, translation]:
-            print("\t", x.shape, x.requires_grad)
-            if x.requires_grad:
-                x.register_hook(lambda grad: print(f"\tGrad computed for tensor of shape {x.shape}\n"))
+        # print("[CHECKPOINT outputs]")
+        # for x in [momentum_I, momentum_R, momentum_T, image, field, residuals, rot_mat, translation]:
+        #     print("\t", x.shape, x.requires_grad)
+        #     if x.requires_grad:
+        #         x.register_hook(lambda grad: print(f"\tGrad computed for tensor of shape {x.shape}\n"))
         # Update attributes after checkpoint
         self.image = image
         self.field = field
