@@ -279,8 +279,8 @@ class parse_brats:
         img_1 = img_nib_1.get_fdata()
 
         # img_1[img_1 > 0] = match_histograms(img_1[img_1 > 0], img_0[img_0 > 0])
-        img_0 = (img_0 - img_0.min()) / (img_0.max() - img_0.min())
-        img_1 = (img_1 - img_1.min()) / (img_1.max() - img_1.min())
+        # img_0 = (img_0 - img_0.min()) / (img_0.max() - img_0.min())
+        # img_1 = (img_1 - img_1.min()) / (img_1.max() - img_1.min())
         # v_min, v_max = min(img_0.min(), img_1.min()), max(img_0.max(),img_1.max() )
         # v_min, v_max = img_0.min(),img_0.max()
         #
@@ -346,3 +346,78 @@ class parse_brats:
             return self._call_bratsReg_2022(index,to_torch,scale,rigidly_reg=rigidly_reg)
         # source = nib.Nifti1Image(source_img, self.template_affine)
         # return source.get_fdata()
+
+
+def normalize_mri_with_gliomas(img_1, img_2, seg_1, seg_2, verbose=False):
+    """
+    Normalize two MRI images based on their respective glioma segmentations.
+    Outliers outside segmentation are clipped, and both images are normalized
+    to [0, 1], then re-normalized to a common global maximum.
+
+    Parameters
+    ----------
+    img_1 : torch.Tensor
+        First MRI image.
+    img_2 : torch.Tensor
+        Second MRI image.
+    seg_1 : torch.Tensor
+        Segmentation mask for img_1.
+    seg_2 : torch.Tensor
+        Segmentation mask for img_2.
+    verbose : bool, optional
+        If True, prints debug information.
+
+    Returns
+    -------
+    img_1_norm : torch.Tensor
+        Normalized first image.
+    img_2_norm : torch.Tensor
+        Normalized second image.
+    """
+
+    def clip_outliers_outside_seg(image, seg_mask):
+        max_inside = image[seg_mask > 0].max()
+        outlier_mask = image >= max_inside
+        if outlier_mask.any():
+            min_outlier = image[outlier_mask].min()
+            image[outlier_mask] = min_outlier
+        max_outside = image[~outlier_mask].max()
+        return max_outside, outlier_mask
+
+    def normalize(image, vmin, vmax):
+        return (image - vmin) / (vmax - vmin)
+
+    # ---- Process img_1
+    if verbose:
+        print("\n[img_1]")
+    max_out_1, _ = clip_outliers_outside_seg(img_1, seg_1)
+    img_1 = normalize(img_1, 0, max_out_1)
+    if verbose:
+        print(f"  Normalized img_1 to [0, {max_out_1:.3f}]")
+
+    # ---- Process img_2
+    if verbose:
+        print("\n[img_2]")
+    max_out_2, _ = clip_outliers_outside_seg(img_2, seg_2)
+    img_2 = normalize(img_2, 0, max_out_2)
+    if verbose:
+        print(f"  Normalized img_2 to [0, {max_out_2:.3f}]")
+
+    # ---- SSD before shared normalization
+    if verbose:
+        ssd_before = ((img_1 - img_2) ** 2).sum()
+        print(f"\n→ SSD before common normalization: {ssd_before.item():.4f}")
+
+    # ---- Normalize both to common global max
+    global_max = max(img_1.max(), img_2.max())
+    img_1 = normalize(img_1, 0, global_max)
+    img_2 = normalize(img_2, 0, global_max)
+
+    if verbose:
+        print(f"\n→ Common max: {global_max.item():.3f}")
+        print(f"→ img_1 range: [{img_1.min().item():.3f}, {img_1.max().item():.3f}]")
+        print(f"→ img_2 range: [{img_2.min().item():.3f}, {img_2.max().item():.3f}]")
+        ssd_after = ((img_1 - img_2) ** 2).sum()
+        print(f"→ SSD after common normalization: {ssd_after.item():.4f}")
+
+    return img_1, img_2
