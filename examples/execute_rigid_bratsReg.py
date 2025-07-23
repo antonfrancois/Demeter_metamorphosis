@@ -135,11 +135,16 @@ scale_img = 1
 
 i = 0
 img_1,img_2,seg_1,seg_2,landmarks = pb(i,to_torch=True,scale=scale_img,modality=modality)
-
+img_1 = img_1/max(img_1.max(),img_2.max())
+img_2 = img_2/max(img_2.max(),img_1.max())
 # img_1 = torch.nn.functional.pad(img_1,(0,0,10,20,0,0), "constant",.5)
-print(landmarks[0].shape)
-print(img_1.shape)
-print(img_2.shape)
+
+#%% Normalize
+
+mi = mt.Rotation_Cost(img_2, mt.Mutual_Information, alpha=0)(img_1)
+
+print("mi =", mi)
+#%%
 # land_2square =  pixel_to_2square_landmark(landmarks[0], img_1.shape)
 # ic(landmarks,land_2square)
 land_1, land_2 = landmarks
@@ -148,9 +153,19 @@ print("landmarks 0 \n",land_1)
 print("landmarks 1 \n", land_2)
 id_grid = tb.make_regular_grid( img_1.shape[2:])
 
-# ias = a3s.Image3dAxes_slider(img_1)
+list_image = [
+    {"name": "source", "image":img_1},
+    {"name": "target", "image":img_2},
+    {"name": "seg_1", "image":seg_1},
+    {"name": "seg_2", "image":seg_2},
+]
+
+ias = a3s.Image3dAxes_slider(img_1)
+img_toggle = a3s.ToggleImage3D(ias,list_image)
+plt.show()
+# a3s.compare_images_with_landmarks(img_1, img_2, land_1, land_2)
 # plt.show()
-# raise Error("BOOM !")
+raise Error("BOOM !")
 #%%
 # centers_source =  [
 #     [99, 124, 199],
