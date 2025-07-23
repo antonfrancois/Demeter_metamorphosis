@@ -41,6 +41,8 @@ from icecream import ic
 from datetime import datetime
 from abc import ABC, abstractmethod
 
+from torch.onnx.symbolic_opset9 import detach
+
 from ..utils.optim import GradientDescent
 from demeter.constants import *
 from ..utils import torchbox as tb
@@ -66,6 +68,13 @@ from ..metamorphosis import data_cost as dt
 # =========================================================================
 # See them as a toolkit
 
+def _get_device_from_momenta( momenta_ini):
+    if isinstance(momenta_ini, dict):
+        return next((tensor.device for tensor in momenta_ini.values() if tensor.is_cuda), 'cpu')
+    elif isinstance(momenta_ini, torch.Tensor):
+        return momenta_ini.device
+    else:
+        raise ValueError("momenta_ini must be a tensor or a dict ")
 
 
 class Geodesic_integrator(torch.nn.Module, ABC):
@@ -374,7 +383,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
              by default False
 
         """
-        device = self._get_device_from_momenta(momenta)
+        device = _get_device_from_momenta(momenta)
         self._forward_initialize_integration(image, momenta, device, save, sharp, hamiltonian_integration, plot)
 
         for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step)):
@@ -388,8 +397,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     # ------------------ PRIVATE HELPERS ------------------
 
 
-    def _get_device_from_momenta(self, momenta):
-        return next((tensor.device for tensor in momenta.values() if tensor.is_cuda), 'cpu')
+
 
 
     def _forward_initialize_integration(self, image, momenta, device, save, sharp, hamiltonian_integration, plot):
@@ -414,7 +422,10 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             shape_field = self.field.shape[1:]
             self.image_stock = torch.zeros((T,) + shape_image)
             self.field_stock = torch.zeros((T,) + shape_field)
-            self.momentum_stock = [{k: torch.zeros_like(v) for k, v in momenta.items()} for _ in range(T)]
+            if isinstance(momenta, torch.Tensor):
+                self.momentum_stock =  torch.zeros((T,) + shape_image)
+            elif isinstance(momenta, dict):
+                self.momentum_stock = [{k: torch.zeros_like(v) for k, v in momenta.items()} for _ in range(T)]
             self.residuals_stock = torch.zeros((T,) + shape_image)
 
         if self.flag_hamiltonian_integration:
@@ -442,7 +453,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
 
     def _forward_checkpointed_step(self):
-        print("_forward_checkpointed_step, abstract")
+        # print("_forward_checkpointed_step, abstract")
 
         use_reentrant = True # have to be false for rigid
         momenta, self.image, self.field, self.residuals = torch.utils.checkpoint.checkpoint(
@@ -461,8 +472,11 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         i = self._i
         self.image_stock[i] = self.image[0].detach().cpu() if self._detach_image else self.image[0]
         self.field_stock[i] = self.field[0].detach().cpu()
-        for k, v in self.momenta.items():
-            self.momentum_stock[i][k] = v.detach().cpu()
+        if isinstance(self.momenta, dict):
+            for k, v in self.momenta.items():
+                self.momentum_stock[i][k] = v.detach().cpu()
+        elif isinstance(self.momenta, torch.Tensor):
+            self.momentum_stock[i] = self.momenta.detach().cpu()
         self.residuals_stock[i] = self.residuals[0].detach().cpu()
 
 
@@ -1162,10 +1176,17 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
     def _step_grad_descent_(self):
         self.optimizer.step(verbose=False)
 
+    def _dict_or_torch_parameter_(self):
+        if isinstance(self.parameter, dict):
+            return [v for k, v in self.parameter.items()]
+        elif isinstance(self.parameter, torch.Tensor):
+            return [self.parameter]
+
     # LBFGS
     def _initialize_LBFGS_(self, dt_step):
+
         self.optimizer = torch.optim.LBFGS(
-                [v for k, v in self.parameter.items()],
+                self._dict_or_torch_parameter_(),
                 max_iter=self.lbfgs_max_iter,
                 history_size=self.lbfgs_history_size,
                lr=dt_step,
@@ -1188,7 +1209,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.optimizer.step(self.closure)
 
     def _initialize_adadelta_(self, dt_step, max_iter=None):
-        self.optimizer = torch.optim.Adadelta([v for k, v in self.parameter.items()],
+        self.optimizer = torch.optim.Adadelta(self._dict_or_torch_parameter_(),
                                               lr=dt_step,
                                               rho=0.9,
                                               weight_decay=0)
@@ -1244,6 +1265,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                              "momentum_ini must be a tensor or a dict "
                              f"of tensors. Got : {type(momentum_ini)}")
 
+
+
+
     @time_it
     def forward(self,
                 momenta_ini,
@@ -1265,16 +1289,21 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         :param verbose: (bool) display advancement
 
         """
+        def _detach(p):
+            try:
+                return (p.detach().clone())
+            except AttributeError:
+                return {k: v.detach() for k, v in p.items()}.copy()
+
         print("momenta type", type(momenta_ini))
-        print("momenta keys", momenta_ini.keys())
-        device = next((tensor.device for tensor in momenta_ini.values() if tensor.is_cuda), 'cpu')
+        device = _get_device_from_momenta(momenta_ini)
 
         self.source = self.source.to(device)
         # self.target = self.target.to(z_0.device)
         # self.mp.kernelOperator.kernel = self.mp.kernelOperator.kernel.to(z_0.device)
         self.data_term.to_device(device)
 
-        self.parameter = momenta_ini.copy()  # optimized variable
+        self.parameter = momenta_ini#.copy()  # optimized variable
 
         # self.parameter = self._build_parameter_dict_(momenta_ini)
         self._initialize_optimizer_(grad_coef)
@@ -1289,7 +1318,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                 f"The initial momentum provided might have the wrong shape, got :{momenta_ini.shape}"
             )
 
-        self.cost({k: v.detach() for k, v in self.parameter.items()})
+
+        self.cost(_detach(self.parameter))
 
         loss_stock = self._cost_saving_(n_iter, None)  # initialisation
         loss_stock = self._cost_saving_(0, loss_stock)
@@ -1314,10 +1344,10 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             if plot and i in [n_iter // 4, n_iter // 2, 3 * n_iter // 4]:
                 self._plot_forward_()
 
-        detached_param = {k: v.detach().cpu() for k, v in self.parameter.items()}
+        detached_param = _detach(self.parameter)
         # for future plots compute shooting with save = True
         self.mp.forward(self.source.clone(),
-                        detached_param.copy(),
+                        detached_param,
                         save=True,
                         plot=0,
                         )
@@ -1330,8 +1360,10 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.mp.to_device(device)
         self.source = self.source.to(device)
         self.target = self.target.to(device)
-        self.parameter = {k: v.to(device) for k, v in self.parameter.items()}
-        # self.parameter = self.parameter.to(device)
+        if isinstance(self.source, dict):
+            self.parameter = {k: v.to(device) for k, v in self.parameter.items()}
+        else:
+            self.parameter = self.parameter.to(device)
         self.id_grid = self.id_grid.to(device)
         self.data_term.to_device(device)
         try:
