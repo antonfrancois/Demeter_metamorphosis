@@ -439,19 +439,17 @@ class Rotation_Ssd_Cost(DataCost):
         return self.alpha * ssd_rot + (1-self.alpha) * ssd
 
 #
-class Rotation_Cost(DataCost):
+class Rotation_MutualInformation_Cost(DataCost):
     """
     This class combine a DataCost object with rotation.
     """
-    def __init__(self, target, data_cost : DataCost, alpha : float, **kwargs):
+    def __init__(self, target, alpha : float, **kwargs):
 
-        super(Rotation_Cost, self).__init__(target)
-        self.data_cost = data_cost(target)
+        super(Rotation_MutualInformation_Cost, self).__init__(target)
+        self.mutual_info = cf.Mutual_Information()
         self.alpha = alpha
 
-    def set_optimizer(self, optimizer):
-        super().set_optimizer(optimizer)
-        self.data_cost.set_optimizer(optimizer)
+
 
     def __call__(self,at_step=None):
         # if at_step == -1:
@@ -463,7 +461,7 @@ class Rotation_Cost(DataCost):
         rotated_image =  tb.imgDeform(self.optimizer.mp.image,rot_def,dx_convention='2square')
         rotated_source = tb.imgDeform(self.optimizer.source,rot_def,dx_convention='2square')
 
-        cost = self.data_cost(rotated_image)
-        ssd_rot = self.data_cost(rotated_source)
+        cost = self.mutual_info(rotated_image, self.target)
+        ssd_rot = self.mutual_info(rotated_source, self.target)
 
         return self.alpha * ssd_rot + (1-self.alpha) * cost
