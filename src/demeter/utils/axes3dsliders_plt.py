@@ -378,7 +378,7 @@ class Base3dAxes_slider:
                    position: list = None,
                    tooltip: str = None,
                    color: tuple = None,
-                   hovercolor: tuple = (1, 1, 1, 0.2),
+                   hovercolor: tuple[float,float, float, float] = (1, 1, 1, 0.2),
                     toggle_colors: dict = None,
                    jupyter_container=True):
         """
@@ -421,7 +421,8 @@ class Base3dAxes_slider:
                 rgba = (f"rgba({int(toggle_colors['off'][0]*255)},"
                         f" {int(toggle_colors['off'][1]*255)},"
                         f" {int(toggle_colors['off'][2]*255)},"
-                        f" {toggle_colors['off'][3]})")
+                        # f" {toggle_colors['off'][3]})"
+                        )
                 style.button_color = rgba
 
 
@@ -465,6 +466,9 @@ class Base3dAxes_slider:
                     new_color = btn._toggle_colors['on'] if btn._toggle_state else btn._toggle_colors['off']
                     btn.color = new_color
                     btn.ax.set_facecolor(new_color)
+
+                    ax_btn.patch.set_edgecolor('red' if btn._toggle_state else 'black' )    # Border color
+                    btn.ax.patch.set_linewidth(2 if btn._toggle_state else 0)        # Border thickness
                     callback(btn._toggle_state)
                     self.fig.canvas.draw_idle()
 
@@ -850,7 +854,7 @@ class ToggleImage3D:
         for i in range(len(list_images)):
             base_color = cmap(i)[:3]
             off_color = lighten(base_color, .2)
-            on_color = lighten(base_color, 0.5)
+            on_color = lighten(base_color, 0.8)
             btn = img_viewer._create_button(
                 label = self.labels[i],
                 callback = lambda val, idx=i: self.toggle_image(idx),
