@@ -131,7 +131,7 @@ brats_folder= '2022_valid' if valid else '2022_train'
 modality = 'flair'
 pb = bu.parse_brats(brats_list=brats_list,brats_folder=brats_folder,modality=modality)
 save_folder = None
-scale_img = 1
+scale_img = .8
 
 i = 0
 img_1,img_2,seg_1,seg_2,landmarks = pb(i,to_torch=True,scale=scale_img,modality=modality)
