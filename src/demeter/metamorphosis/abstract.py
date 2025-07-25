@@ -1360,7 +1360,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.mp.to_device(device)
         self.source = self.source.to(device)
         self.target = self.target.to(device)
-        if isinstance(self.source, dict):
+        if isinstance(self.parameter, dict):
             self.parameter = {k: v.to(device) for k, v in self.parameter.items()}
         else:
             self.parameter = self.parameter.to(device)
