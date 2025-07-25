@@ -76,8 +76,10 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
     def to_device(self,device):
         try:
             self.rot_mat = self.rot_mat.to(device)
+            self.translation = self.translation.to(device)
         except AttributeError:
             pass
+        super().to_device(device)
 
     def projection(self, c, p):
         cp = (c * p).sum()
