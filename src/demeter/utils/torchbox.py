@@ -140,7 +140,7 @@ def pad_to_same_size(img_1, img_2):
     return (img_1_padded, img_2_padded)
 
 
-def apply_rot_mat(grid,rot_mat):
+def grid_from_rotation(grid, rot_mat):
     if tuple(rot_mat.shape) == (2,2) and len(grid.shape) == 4:
         return  torch.einsum('ij,bhwj->bhwi',rot_mat, grid)
         # return rotated_grid
@@ -153,6 +153,11 @@ def apply_rot_mat(grid,rot_mat):
             f"got grid.shape : {grid.shape} and rot_mat.shape = {rot_mat.shape}"
         )
 
+def grid_from_rotation_translation(grid, rot_mat, translation):
+
+        trans_grid  = grid + translation
+        rot_def =   grid_from_rotation(trans_grid, rot_mat)
+        return rot_def
 
 def multiply_grid_vectors(grid_1, grid_2):
     if grid_1.shape != grid_2.shape:

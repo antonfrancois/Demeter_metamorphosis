@@ -217,7 +217,7 @@ def initial_exploration(integration_steps, r_step = 4, max_output = 10, verbose:
         )
         mp.forward(S, momenta)
 
-        rot_def =   tb.apply_rot_mat(mp.id_grid,  mp.rot_mat.T)
+        rot_def =   tb.grid_from_rotation(mp.id_grid, mp.rot_mat.T)
         img_rot = tb.imgDeform(S_b, rot_def.to('cpu'), dx_convention='2square')
         # img_rot = torch.clip(img_rot, 0, 1)
         loss_val = cf.SumSquaredDifference(T_b)(img_rot)
@@ -345,7 +345,7 @@ mr.plot_cost()
 # plt.show()
 
 #%%
-rot_def =   tb.apply_rot_mat(mr.mp.id_grid,  mr.mp.rot_mat.T)
+rot_def =   tb.grid_from_rotation(mr.mp.id_grid, mr.mp.rot_mat.T)
 if mr.mp.flag_translation:
     rot_def += mr.mp.translation
 img_rot = tb.imgDeform(mr.mp.image, rot_def.to('cpu'),

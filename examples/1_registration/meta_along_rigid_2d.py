@@ -51,7 +51,7 @@ theta = -torch.pi/3
 tau = torch.tensor([.1,-.25])
 
 rot = create_rot_mat(theta)
-rot_grid = tb.apply_rot_mat(id_grid,rot) + tau
+rot_grid = tb.grid_from_rotation(id_grid, rot) + tau
 newimg_r = tb.imgDeform(new_img,rot_grid,dx_convention='2square')
 
 
@@ -174,7 +174,7 @@ plt.show()
 
 #%%
 
-rot_def =   tb.apply_rot_mat(mr.mp.id_grid,  mr.mp.rot_mat.T)
+rot_def =   tb.grid_from_rotation(mr.mp.id_grid, mr.mp.rot_mat.T)
 if mr.mp.flag_translation:
     rot_def += mr.mp.translation
     print(mr.mp.translation)
@@ -212,7 +212,7 @@ fig, ax = plt.subplots(1,2)
 shape =  mr.source.shape[2:]
 id_grid = tb.make_regular_grid(shape, dx_convention = "2square")
 rot = mr.mp.rot_mat.T
-rot_grid_end = tb.apply_rot_mat(id_grid, rot)
+rot_grid_end = tb.grid_from_rotation(id_grid, rot)
 ax[0].imshow(mr.mp.image[0,0], cmap='gray', origin="lower")
 tb.gridDef_plot_2d(rot_grid_end,
                    ax=ax[0],
