@@ -426,12 +426,21 @@ class Rotation_Ssd_Cost(DataCost):
     def __call__(self,at_step=None):
         super().__call__()
         # if at_step == -1:
-        rot_def =   tb.apply_rot_mat(self.optimizer.mp.id_grid,  self.optimizer.mp.rot_mat.T)
-        # if self.optimizer.mp.flag_translation:
-            # raise Error("Ca va bugger, fait une expe avant.")
-        rot_def += self.optimizer.mp.translation
-        rotated_image =  tb.imgDeform(self.optimizer.mp.image,rot_def,dx_convention='2square')
-        rotated_source = tb.imgDeform(self.optimizer.source,rot_def,dx_convention='2square')
+        # old
+        # grid_rt =   tb.grid_from_rotation(self.optimizer.mp.id_grid,  self.optimizer.mp.rot_mat.T)
+        # grid_rt += self.optimizer.mp.translation
+        grid_rt = self.optimizer.mp.get_rotator_translator()
+        # new ?
+        # trans_grid  = self.optimizer.mp.id_grid - self.optimizer.mp.translation
+        # rot_def =   tb.apply_rot_mat(trans_grid,  self.optimizer.mp.rot_mat.T)
+        # grid_rt = tb.grid_from_rotation_translation(
+        #     self.optimizer.mp.id_grid,
+        #     self.optimizer.mp.rot_mat.T,
+        #     self.optimizer.mp.translation
+        # )
+
+        rotated_image =  tb.imgDeform(self.optimizer.mp.image,grid_rt,dx_convention='2square')
+        rotated_source = tb.imgDeform(self.optimizer.source,grid_rt,dx_convention='2square')
 
         ssd = self.ssd(rotated_image)
         ssd_rot = self.ssd(rotated_source)
@@ -454,7 +463,8 @@ class Rotation_MutualInformation_Cost(DataCost):
     def __call__(self,at_step=None):
         # if at_step == -1:
         super().__call__()
-        rot_def =   tb.apply_rot_mat(self.optimizer.mp.id_grid,  self.optimizer.mp.rot_mat.T)
+        # rot_def =   tb.grid_from_rotation(self.optimizer.mp.id_grid, self.optimizer.mp.rot_mat.T)
+        rot_def = self.optimizer.mp.get_rotator_translator()
         # if self.optimizer.mp.flag_translation:
             # raise Error("Ca va bugger, fait une expe avant.")
         rot_def += self.optimizer.mp.translation
