@@ -17,6 +17,7 @@ from .joined import (
     Weighted_joinedMask_Metamorphosis_Shooting,
 )
 from .simplex import Simplex_sqrt_Metamorphosis_integrator, Simplex_sqrt_Shooting
+from .rotate import RigidMetamorphosis_integrator, RigidMetamorphosis_Optimizer
 from ..utils.reproducing_kernels import (
     GaussianRKHS,
     VolNormalizedGaussianRKHS,
@@ -38,8 +39,10 @@ def _find_meta_optimiser_from_repr_(repr_str):
         )
     if "Simplex_sqrt_Shooting" in repr_str:
         return Simplex_sqrt_Metamorphosis_integrator, Simplex_sqrt_Shooting
+    if "RigidMetamorphosis_Optimizer" in repr_str:
+        return RigidMetamorphosis_integrator, RigidMetamorphosis_Optimizer
     else:
-        raise ValueError("No class found for the given repr_str")
+        raise ValueError(f"No class found for the given repr_str : {repr_str}")
 
 
 def _find_kernelOp_from_repr_(repr_str):
@@ -200,9 +203,9 @@ def _load_heavy_optim(opti_dict, verbose):
 
     else:
         new_optim = optimizer(
-            opti_dict["source"],
-            opti_dict["target"],
-            opti_dict["mp"],
+            source=opti_dict["source"],
+            target=opti_dict["target"],
+            geodesic=opti_dict["mp"],
             cost_cst=opti_dict["cost_cst"],
             optimizer_method=opti_dict["optimizer_method_name"],
             hamiltonian_integration=opti_dict["args"]["hamiltonian_integration"],

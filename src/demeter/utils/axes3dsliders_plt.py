@@ -820,6 +820,7 @@ class ToggleImage3D:
             List of dicts with fields:
                 'name': str, label for the button.
                 'image': np.ndarray or callable returning an image.
+                'cmap': str
             List of images in (T, D, H, W, C) format of function returning such an image
             to toggle between.
         """
@@ -827,6 +828,7 @@ class ToggleImage3D:
         self.ctx = img_viewer.ctx
         self.images = [d["image"] for d in list_images]
         self.labels =  [d["name"] for d in list_images]
+        self.cmaps = [d["cmap"] for d in list_images]
 
         try:
             self.images[0]()
@@ -850,20 +852,23 @@ class ToggleImage3D:
         positions = [
             [x0 + dx * i, y0, w, h] for i in range(len(list_images))
         ]
-
+        self.toggle_colors = []
         for i in range(len(list_images)):
             base_color = cmap(i)[:3]
             off_color = lighten(base_color, .2)
             on_color = lighten(base_color, 0.8)
+            self.toggle_colors.append({"off": off_color, "on": on_color})
             btn = img_viewer._create_button(
                 label = self.labels[i],
                 callback = lambda val, idx=i: self.toggle_image(idx),
                 position = positions[i],
                 toggle_colors={"off": off_color, "on": on_color},
             )
+            print("btn type:", type(btn))
             self.buttons.append(btn)
 
-        self.update_display()
+        print(matplotlib.get_backend())
+        self.update()
 
     def toggle_image(self, idx):
         """
@@ -872,15 +877,29 @@ class ToggleImage3D:
         """
         if idx in self.active:
             self.active.remove(idx)
+            self._set_button_color(idx, active=False)
         else:
             if len(self.active) >= 2:
-                self.active.pop(0)
+                idx_to_remove = self.active.pop(0)
+                self._set_button_color(idx_to_remove, active=False)
             self.active.append(idx)
+            self._set_button_color(idx, active=True)
 
-        self.update_display()
+        self.update()
+
+    def _set_button_color(self, idx, active: bool):
+        """
+        Update the background color of the button manually.
+        """
+        if not hasattr(self.buttons[idx], "ax"):
+            return  # Skip if not a Matplotlib button
+        ax = self.buttons[idx].ax
+        color = self.toggle_colors[idx]["on"] if active else self.toggle_colors[idx]["off"]
+        ax.patch.set_facecolor(color)
+        ax.figure.canvas.draw_idle()
 
 
-    def update_display(self):
+    def update(self):
         """
         Update the image viewer according to active toggles.
         - No active images: blank
@@ -889,22 +908,30 @@ class ToggleImage3D:
         """
         def _cl_(img):
             return img() if self.flag_callable else img
-        print("\nbegin Toggle_image.update_display:")
-        for i in self.active:
-            print(f"label {i} : {self.labels[i]} : {_cl_(self.images[i]).shape}")
 
+        print("\nbegin Toggle_image.update_display:")
+        str_title = ""
+        for i in self.active:
+            str_title += f"[{self.labels[i]}] "
+            print(f"label {i} : {self.labels[i]} : {_cl_(self.images[i]).shape}")
+        print(str_title)
+        self.ctx.fig.suptitle(str_title, color=self.ctx.color_txt)
+
+        cmap = None
         if not self.active:
             img = np.zeros_like(img_torch_to_plt(_cl_(self.images[0])))
         elif len(self.active) == 1:
             img = _cl_(self.images[self.active[0]])
+            cmap = self.cmaps[self.active[0]]
         else:
             imgs = [_cl_(self.images[i]) for i in self.active]
             assert len(imgs) == 2
             img = tb.temporal_img_cmp(imgs[0], imgs[1])
 
-        print(f"img final :  {img.shape}")
-        self.img_viewer.change_image(img)
+
+        self.img_viewer.change_image(img, new_cmap=cmap, vmin=img.min(), vmax=img.max())
         self.img_viewer.update(None)
+        # self.ctx.fig.canvas.draw_idle()
 
 
 # TODO: Adapt Grid3dAxes_sliders to new version of Base
