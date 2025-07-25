@@ -222,7 +222,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         # id_rot = apply_rot_mat(self.id_grid, - sqrt(self.rho) * self.d_rot)
         eye = torch.eye(self._dim).to(self.image.device)
         # id_rot = self.id_grid - apply_rot_mat(self.id_grid, self.d_rot/self.n_step)
-        id_rot = tb.apply_rot_mat(self.id_grid, eye+ self.d_rot/self.n_step)
+        id_rot = tb.grid_from_rotation(self.id_grid, eye + self.d_rot / self.n_step)
 
         deform_rot = id_rot - sqrt(self.rho) *  self.field/self.n_step
 
@@ -273,15 +273,13 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
                 sqrt(self.rho) * self.field,
                 sqrt(1 - self.rho) * self.residuals)
 
-    def _compute_step_rotation_translation(self, momentum_R, rot_mat, momentum_T = None, translation= None):
+    def _compute_step_rotation_translation(self, momentum_R, rot_mat, momentum_T , translation):
         momR_rotated = momentum_R @ rot_mat.T
         pre_d_rot = momR_rotated #+ momT_translated
 
-        if momentum_T is not None:
-            momT_translated = momentum_T @ translation.T
-            pre_d_rot += momT_translated
+        momT_translated = momentum_T @ translation.T
+        pre_d_rot += momT_translated
 
-            translation = momentum_T  #
 
         if self.debug:
             print("rot mat", rot_mat)
@@ -295,12 +293,12 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
 
         exp_A = torch.linalg.matrix_exp(d_rot/self.n_step)
         rot_mat = exp_A @ rot_mat
+        translation =translation +  (d_rot.T @ translation + momentum_T) /self.n_step #
 
         norm_l2_on_R = .5 * torch.trace( d_rot.T @ self._d_rot_ini)
 
         momentum_R = momentum_R - d_rot.T @ momentum_R  / self.n_step
-        if momentum_T is not None:
-            momentum_T = momentum_T - d_rot.T @ momentum_T / self.n_step
+        momentum_T = momentum_T - d_rot.T @ momentum_T / self.n_step
 
         return momentum_R, momentum_T, rot_mat, translation, d_rot, norm_l2_on_R
 
@@ -311,9 +309,6 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         if self.debug:
             print("\n" + "="*25)
             print('step', self._i)
-
-        if momentum_T is None:
-            momentum_T = torch.zeros_like(momentum_R)
 
         # --- Apply constraints ---
         if self._i == 0:
@@ -371,12 +366,13 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         momentum_R = momenta['momentum_R'].clone()
         momenta['momentum_R'] =  (momentum_R - momentum_R.T) /2
         self.to_device(momenta['momentum_R'].device)
-        if "momentum_T" in momenta:
-            self.translation = torch.zeros_like(momenta['momentum_T'])
-            self.flag_translation = True
-        else:
-            self.translation = None
-            self.flag_translation = False
+        # if "momentum_T" in momenta:
+        #     self.translation = torch.zeros_like(momenta['momentum_T'])
+        #     self.flag_translation = True
+        # else:
+        #     self.translation = None
+        #     self.flag_translation = False
+        self.translation = torch.zeros((momentum_R.shape[-1],), device=device)
 
         self.flag_field =  True if  "momentum_I" in momenta.keys() else False
 
@@ -385,7 +381,10 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
     def _forward_direct_step(self):
         # print("_forward_direct_step in rotate")
         momentum_R = self.momenta["momentum_R"]
-        momentum_T = self.momenta["momentum_T"] if self.flag_translation else None
+        if "momentum_T" in self.momenta.keys():
+            momentum_T = self.momenta["momentum_T"]
+        else:
+            momentum_T = torch.zeros((momentum_R.shape[-1],), device=momentum_R.device)
 
         if  self.flag_field:
 
@@ -443,6 +442,20 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         self.momenta["momentum_T"] = momentum_T
         self.rot_mat = rot_mat
         self.translation = translation
+
+    def get_rotator_translator(self):
+        """
+        return a grid ready to apply the rotation and translation estimated
+
+        Example:
+        ---------
+        >>>rot_def = mr.mp.get_rotator_translator()
+        >>>rotated_source = tb.imgDeform(source,rot_def,dx_convention='2square')
+        """
+        return tb.grid_from_rotation_translation(self.id_grid, self.rot_mat.T, - self.translation)
+
+    def get_rotation_translation(self):
+        return tb.grid_from_rotation_translation(self.id_grid, self.rot_mat, self.translation)
 
     def _save_step(self):
         if self.flag_field:
@@ -518,7 +531,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         shape = self.source.shape[2:]
         id_grid = tb.make_regular_grid(shape, dx_convention = "2square")
         rot = self.mp.rot_mat
-        rot_grid_end = tb.apply_rot_mat(id_grid, rot)
+        rot_grid_end = tb.grid_from_rotation(id_grid, rot)
         ax[0].imshow(self.mp.image[0,0], cmap='gray', origin="lower")
         tb.gridDef_plot_2d(rot_grid_end,
                            ax=ax[0],
