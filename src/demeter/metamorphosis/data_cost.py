@@ -415,7 +415,11 @@ class Longitudinal_DataCost(DataCost):
 
 
 class Rotation_Ssd_Cost(DataCost):
+    """
+    Mixture of data costs
 
+    D(I,T) =  alpha *| I_1 \cdot A.T  - T |^2 + (1 - alpha) * | S \cdot A.T - T|^2
+    """
     def __init__(self, target, alpha, **kwargs):
 
         super(Rotation_Ssd_Cost, self).__init__(target)
