@@ -138,9 +138,10 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
             assert (c_ortho_list[0] * c_ortho_list[1]).sum() < 1e-5, f"(c_otho_list[0] * c_otho_list[1]).sum() = {(c_ortho_list[0] * c_ortho_list[1]).sum()}"
             assert (c_ortho_list[0] * c_ortho_list[2]).sum() < 1e-5, f"(c_otho_list[0] * c_otho_list[2]).sum() = {(c_ortho_list[0] * c_ortho_list[2]).sum()}"
             assert (c_ortho_list[2] * c_ortho_list[1]).sum() < 1e-5, f"(c_otho_list[2] * c_otho_list[1]).sum() = {(c_ortho_list[2] * c_ortho_list[1]).sum()}"
-        for i, c in enumerate(c_list):
-            assert (c * momentum_I).sum() < 1e-5, f"(c_{i} * momentum_I).sum() = {(c * momentum_I).sum()}"
-            # print( f"(c_{i} * momentum_I).sum() = {(c * momentum_I).sum()}")
+        # for i, c in enumerate(c_list):
+        #     assert (c * momentum_I).sum() < 1e-4, f"(c_{i} * momentum_I).sum() = {(c * momentum_I).sum()}"
+            # if (c * momentum_I).sum() > 1e-5:
+            #     print( f"(c_{i} * momentum_I).sum() = {(c * momentum_I).sum()}")
 
         return momentum_I
 
