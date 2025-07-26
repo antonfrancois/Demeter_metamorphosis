@@ -63,7 +63,7 @@ def initial_exploration(rigid_meta_optim, r_step = 4, max_output = 10, verbose:b
         number of output to return
 
     """
-    r_list = torch.linspace(-torch.pi, torch.pi * (1 - 2/r_step) , r_step)
+    r_list = torch.linspace(0, 2*torch.pi * (1 - 2/r_step) , r_step)
     r_combi = torch.cartesian_prod(r_list,r_list,r_list)
     top_losses = []
     for i,params_r in  enumerate(r_combi):
@@ -129,8 +129,8 @@ def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False)
         best = False
         if mr.data_loss < best_loss or mr.data_loss == 0:
             best_loss = mr.data_loss
-            best_momentum = mr.to_analyse[0]["momentum_R"]
-            best_translation = mr.mp.translation
+            best_momentum_R = mr.to_analyse[0]["momentum_R"]
+            best_momentum_T = mr.mp.translation
             best = True
             best_rot = mr.mp.rot_mat
 
@@ -166,7 +166,7 @@ def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False)
     if verbose:
         print("Best find : ")
         print("loss :",best_loss)
-        print("best_momentum = torch.",best_momentum)
-        print("best_translation = torch.",best_translation)
+        print("best_momentum_R = torch.",best_momentum_R)
+        print("best_momentum_T = torch.",best_momentum_T)
         print("best_rotation =", mr.mp.rot_mat)
-    return best_loss, best_momentum, best_translation, best_rot
+    return best_loss, best_momentum_R, best_momentum_T, best_rot
