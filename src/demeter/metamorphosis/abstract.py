@@ -1429,21 +1429,15 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             idx = (0,) + tuple([int(j) for j in l.flip(0)])
             deform_landmark.append(deformation[idx].tolist())
 
-        def land_dist(land_1, land_2):
-            # print(f"land type : {land_1.dtype}, {land_2.dtype}")
-            # print(f"round {round}")
-            if  not round or land_2.dtype == torch.int :
-                return (land_1 - land_2).abs().mean()
-            else:
-                return (land_1 - land_2.round()).abs().mean()
+
 
         self.source_landmark = source_landmark
         self.target_landmark = target_landmark
         self.deform_landmark = torch.Tensor(deform_landmark)
         if target_landmark is None:
             return self.deform_landmark
-        self.landmark_dist = land_dist(target_landmark, self.deform_landmark)
-        dist_source_target = land_dist(target_landmark, source_landmark)
+        self.landmark_dist = tb.landmark_distance(target_landmark, self.deform_landmark, round)
+        dist_source_target = tb.landmark_distance(target_landmark, source_landmark, round)
         if verbose:
             print(
                 f"Landmarks:\n\tBefore : {dist_source_target}\n\tAfter : {self.landmark_dist}"

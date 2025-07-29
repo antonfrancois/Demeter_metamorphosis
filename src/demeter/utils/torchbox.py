@@ -267,6 +267,23 @@ def affine_to_grid_3d(affine_mat,img_shape):
     aff_grid = torch.einsum('ij,hklmj->hklmi', affine_mat, id_grid_aug)
     return aff_grid[...,:-1]
 
+def landmark_distance(land_1, land_2, round:bool=False):
+    """
+    compute the distance between two landmarks
+    return (land_1 - land_2.round()).abs().mean()
+
+    Parameters
+    -----------
+    land_1 : tensor [N,3]
+    land_2 : tensor [N,3]
+    """
+    # print(f"land type : {land_1.dtype}, {land_2.dtype}")
+    # print(f"round {round}")
+    if  not round or land_2.dtype == torch.int :
+        return (land_1 - land_2).abs().mean()
+    else:
+        return (land_1 - land_2.round()).abs().mean()
+
 
 def addGrid2im(img, n_line, cst=0.1, method='dots'):
     """ draw a grid to the image

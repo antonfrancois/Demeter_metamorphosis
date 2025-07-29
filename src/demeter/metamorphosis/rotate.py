@@ -627,6 +627,15 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
         return loss_stock
 
+    # def compute_landmark_dist(
+    #     self,
+    #         source_landmark,
+    #         target_landmark=None,
+    #         forward=True,
+    #         verbose=True,
+    #         round = False
+    # ):
+
     def plot_cost(self,y_log=False):
         fig1, ax1 = plt.subplots(1, 2,figsize=(10,10))
         if y_log:

@@ -30,7 +30,7 @@ def time_it(func):
 
 string_types = (type(b''), type(u''))
 
-enable_gpu_print = False
+enable_gpu_print = True
 def monitor_gpu(fn):
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
