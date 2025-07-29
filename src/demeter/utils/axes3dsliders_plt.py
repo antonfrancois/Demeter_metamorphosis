@@ -104,7 +104,8 @@ def img_torch_to_plt(image):
             if C == 3:
                 return image[np.newaxis, ...]  # (1, H, W, C)
             else:
-                raise ValueError(f"Unsupported channel count in 2D numpy image: {C}")
+                raise ValueError(f"Unsupported channel count in 2D numpy image: {C};"
+                                 f" Numpy 3d images can be passed in the form [B,D,H,W], got {image.shape}")
 
         elif image.ndim == 4:
             # (B, D, H, W)
@@ -808,7 +809,7 @@ class ToggleImage3D:
 
     def __init__(self, img_viewer: Image3dAxes_slider,
                  list_images: list[dict],
-                 button_position=None,
+                 button_position: list[float] =[0.04, 0.9, 0.1, 0.04],
                  button_offset : float = 0.11,
                  ):
         """
@@ -845,8 +846,6 @@ class ToggleImage3D:
         self.colors = []
         self.buttons = []
 
-        if button_position is None:
-            button_position = [0.04, 0.9, 0.1, 0.04]
         x0, y0, w, h = button_position
         dx = button_offset
         positions = [
@@ -1331,8 +1330,10 @@ def compare_images_with_landmarks(
 
     image0 = ensure_shape(image0)
     image1 = ensure_shape(image1)
+    # image0 = img_torch_to_plt(image0)
+    # image1 = img_torch_to_plt(image1)
     ic("image_0", image0.shape)
-    cmp_img = tb.temporal_img_cmp(image0, image1, method=method)[None]  # shape (1, D, H, W, 3)
+    cmp_img = tb.temporal_img_cmp(image0, image1, method=method)  # shape (1, D, H, W, 3)
     cmp_img = np.clip(cmp_img,0,1)
     # --------- Shared contex
 
@@ -1405,7 +1406,7 @@ class Visualize_GeodesicOptim_plt:
 
         self._detect_special_cases()
         # Images to show
-        # T, C, D, H, W = self.geodesicOptim.mp.image_stock.shape
+        self.shape = self.geodesicOptim.mp.image_stock.shape
         image_list = [    # list of functions that returns the image to show
             [self.temporal_image,"gray"],
             [self.residuals,"cividis"],
@@ -1426,7 +1427,8 @@ class Visualize_GeodesicOptim_plt:
         grid = Grid3dAxes_slider(deformation,
                                      shared_context=self.ctx,
                                      dx_convention=self.geodesicOptim.dx_convention,
-                                     color_grid='blue'
+                                     color_grid='blue',
+                                    button_position = [0.8, 0.9, 0.1, 0.04]
                                      )
 
         # Buttons
@@ -1443,6 +1445,8 @@ class Visualize_GeodesicOptim_plt:
         self.image_axes = img_ctx
         self.grid = grid
 
+
+
         self._init_special_case()
         img_ctx.show()
 
@@ -1452,6 +1456,11 @@ class Visualize_GeodesicOptim_plt:
         if self.geodesicOptim.__class__.__name__ == "RigidMetamorphosis_Optimizer":
             self.flag_rigid = True
 
+        self.flag_landmark = False
+        if hasattr(self.geodesicOptim,"source_landmark"):
+            self.flag_landmark = True
+        print("flag_landmark", self.flag_landmark)
+
         self.flag_simplex_visu = True if self.geodesicOptim.mp.image_stock.shape[1] > 1 else False
 
     def _init_special_case(self):
@@ -1459,7 +1468,32 @@ class Visualize_GeodesicOptim_plt:
             self._init_rigid_()
         if self.flag_simplex_visu:
             self._build_simplex_img()
+        if self.flag_landmark:
+            self._init_landmarks()
 
+    def _init_landmarks(self):
+
+        Landmark3dAxes_slider(self.geodesicOptim.source_landmark,
+                              image_shape=self.shape,
+                              color="green",
+                              shared_context=self.ctx,
+                              label="source_landmark",
+                              button_position=[0.375, 0.825, 0.1, 0.03],
+                              )
+        Landmark3dAxes_slider(self.geodesicOptim.target_landmark,
+                      image_shape=self.shape,
+                      color="yellow",
+                      shared_context=self.ctx,
+                      label="target_landmark",
+                      button_position=[0.275, 0.825, 0.1, 0.03],
+                      )
+        Landmark3dAxes_slider(self.geodesicOptim.deform_landmark,
+              image_shape=self.shape,
+              color="red",
+              shared_context=self.ctx,
+              label="displaced_landmark",
+              button_position=[0.175, 0.825, 0.1, 0.03],
+              )
 
     def _init_rigid_(self):
         self.flag_rigid = True
