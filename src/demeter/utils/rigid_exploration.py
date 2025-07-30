@@ -64,7 +64,12 @@ def initial_exploration(rigid_meta_optim, r_step = 4, max_output = 10, verbose:b
 
     """
     r_list = torch.linspace(-torch.pi, torch.pi  , r_step)
-    r_combi = torch.cartesian_prod(r_list,r_list,r_list)
+    # r_combi = torch.cartesian_prod(r_list,r_list,r_list)
+    r_combi = torch.cartesian_prod(
+        torch.linspace(-torch.pi, torch.pi  , r_step),
+        torch.linspace(0, torch.pi  , r_step//2),
+        torch.tensor([0.])
+    )
     top_losses = []
     for i,params_r in  enumerate(r_combi):
         if verbose:
