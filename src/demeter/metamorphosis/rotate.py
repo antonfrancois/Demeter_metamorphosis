@@ -8,6 +8,8 @@ import torch
 import __init__
 from math import prod, sqrt
 
+from kornia.geometry import scale
+
 from demeter.utils.decorators import time_it
 from demeter.metamorphosis import Geodesic_integrator,Optimize_geodesicShooting
 
@@ -19,19 +21,26 @@ def prepare_momenta(image_shape,
                     image : bool = True,
                     rotation : bool = True,
                     translation : bool = True,
+                    scaling : bool = True,
                     rot_prior = None,
                     trans_prior= None,
+                    scale_prior= None,
                     device = "cuda:0",
                     requires_grad = True):
     dim = 2 if len(image_shape) == 4 else 3
     if rot_prior is None:
-        rot_prior = torch.zeros((dim,))
+        rot_prior = torch.zeros((dim,)) if dim == 3 else torch.tensor([0.])
     if not torch.is_tensor(rot_prior):
         rot_prior = torch.tensor(rot_prior)
     if trans_prior is None:
         trans_prior = torch.zeros((dim,))
     if not torch.is_tensor(trans_prior):
         trans_prior = torch.tensor(trans_prior)
+    if scale_prior is None:
+        scale_prior = torch.zeros((dim,))
+    if not torch.is_tensor(scale_prior):
+        scale_prior = torch.tensor(scale_prior)
+
     momenta = {}
     kwargs = {
         "dtype":torch.float32,
@@ -43,16 +52,25 @@ def prepare_momenta(image_shape,
         if len(rot_prior.shape)==2:
             momenta["momentum_R"] = rot_prior.to(kwargs["dtype"]).to(kwargs["device"])
         elif len(rot_prior.shape)==1:
-            r1, r2, r3 = rot_prior
-            momenta["momentum_R"] = torch.tensor(
-            [[0,-r1, -r2 ],
-                     [r1, 0, -r3],
-                     [r2, r3, 0]],
-                    dtype=torch.float32, device='cuda:0')
+            if dim == 2:
+                momenta["momentum_R"] = torch.tensor(
+                [ [0, rot_prior],
+                             [-rot_prior, 0],
+                         ],
+                        dtype=torch.float32, device='cuda:0')
+            elif dim == 3:
+                r1, r2, r3 = rot_prior
+                momenta["momentum_R"] = torch.tensor(
+                [[0,-r1, -r2 ],
+                         [r1, 0, -r3],
+                         [r2, r3, 0]],
+                        dtype=torch.float32, device='cuda:0')
         else:
             raise ValueError("Rotation prior must be 2 or 1 dimensional")
     if translation:
         momenta["momentum_T"]= trans_prior.to(kwargs["dtype"]).to(kwargs["device"])
+    if scaling:
+        momenta["momentum_S"] = scale_prior.to(kwargs["dtype"]).to(kwargs["device"])
 
     for keys in momenta.keys():
         momenta[keys].requires_grad=requires_grad
@@ -77,6 +95,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         try:
             self.rot_mat = self.rot_mat.to(device)
             self.translation = self.translation.to(device)
+            self.scale = self.scale.to(device)
         except AttributeError:
             pass
         super().to_device(device)
@@ -253,9 +272,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
                 field = sqrt(self.rho) * self.field
             )
         )
-#         ic(momentum_I.device)
         momentum_R = momentum_R - self.d_rot.T @ momentum_R  / self.n_step
-#         ic(momentum_R.device)
         self.momenta['momentum_I'] = momentum_I.clone()
         self.momenta['momentum_R'] = momentum_R.clone()
 
@@ -276,12 +293,15 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
                 sqrt(self.rho) * self.field,
                 sqrt(1 - self.rho) * self.residuals)
 
-    def _compute_step_rotation_translation(self, momentum_R, rot_mat, momentum_T , translation):
+    def _compute_step_rotation_translation(self,
+                                           momentum_R, rot_mat,
+                                           momentum_T , translation,
+                                           momentum_S, scale):
         momR_rotated = momentum_R @ rot_mat.T
-        pre_d_rot = momR_rotated #+ momT_translated
+        pre_rot_inf = momR_rotated #+ momT_translated
 
         momT_translated = momentum_T @ translation.T
-        pre_d_rot += momT_translated
+        pre_rot_inf += momT_translated
 
 
         if self.debug:
@@ -289,23 +309,31 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
             print("momR_rotated",momR_rotated)
         # momR_rotated =  (momR_rotated - momR_rotated.T) /2
         #
-        d_rot = (pre_d_rot - pre_d_rot.T) / 2
-        if self._i == 0:
-            self._d_rot_ini = d_rot.clone()
+        d_rot = (pre_rot_inf - pre_rot_inf.T) / 2
         # print('d_rot',self.d_rot)
+
+        scale_inf = momentum_S * scale + momentum_T * translation
+        scale = scale * (1 +  scale_inf / self.n_step)
+        ic(scale_inf, scale)
+
+        if self._i == 0:
+            self._rot_inf_ini = d_rot.clone()
+            self.scale_inf_ini = scale_inf.clone()
 
         exp_A = torch.linalg.matrix_exp(d_rot/self.n_step)
         rot_mat = exp_A @ rot_mat
-        translation =translation +  (d_rot.T @ translation + momentum_T) /self.n_step #
+        translation =translation +  ((d_rot.T + torch.diag(scale_inf)) @ translation + momentum_T) /self.n_step #
 
-        norm_l2_on_R = .5 * torch.trace( d_rot.T @ self._d_rot_ini)
+
+        norm_l2_on_R = .5 * torch.trace(d_rot.T @ self._rot_inf_ini)
+        norm_l2_on_S = .5 * (scale_inf ** 2).sum()
 
         momentum_R = momentum_R - d_rot.T @ momentum_R  / self.n_step
         momentum_T = momentum_T - d_rot.T @ momentum_T / self.n_step
+        momentum_S = momentum_S - scale_inf * momentum_S /self.n_step
+        return momentum_R, momentum_T, momentum_S, rot_mat, translation, scale, d_rot, norm_l2_on_R, norm_l2_on_S
 
-        return momentum_R, momentum_T, rot_mat, translation, d_rot, norm_l2_on_R
-
-    def step(self, image, momentum_I, momentum_R, momentum_T, rot_mat, translation):
+    def step(self, image, momentum_I, momentum_R, momentum_T, momentum_S, rot_mat, translation, scale):
         """
         One integration step. Fully checkpoint-compliant: fixed number of outputs.
         """
@@ -318,8 +346,12 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
             momentum_I = self._contrainte_(momentum_I, self.source)
 
         # --- Rotation / Translation update ---
-        momentum_R, momentum_T, rot_mat, translation, d_rot, norm_R_2 = \
-            self._compute_step_rotation_translation(momentum_R, rot_mat, momentum_T, translation)
+        momentum_R, momentum_T, momentum_S, rot_mat, translation, scale, d_rot, norm_R_2, norm_S_2 = \
+            self._compute_step_rotation_translation(
+                momentum_R, rot_mat,
+                momentum_T, translation,
+                momentum_S, scale
+            )
 
         # --- Vector field and residuals ---
         grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
@@ -346,14 +378,16 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
 
         # --- Always output the same things ---
         return (
-            momentum_I,            # Tensor
-            momentum_R,            # Tensor
-            momentum_T,            # Tensor
-            image,                 # Tensor
-            self.rho * field,      # Tensor
-            residuals,             # Tensor
-            rot_mat,               # Tensor
-            translation            # Tensor
+            momentum_I,
+            momentum_R,
+            momentum_T,
+            momentum_S,
+            image,
+            self.rho * field,
+            residuals,
+            rot_mat,
+            translation,
+            scale
         )
 
     def _forward_initialize_integration(self, image, momenta, device, save, sharp, hamiltonian_integration, plot):
@@ -376,6 +410,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         #     self.translation = None
         #     self.flag_translation = False
         self.translation = torch.zeros((momentum_R.shape[-1],), device=device)
+        self.scale = torch.ones((momentum_R.shape[-1],), device=device)
 
         self.flag_field =  True if  "momentum_I" in momenta.keys() else False
 
@@ -388,30 +423,40 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
             momentum_T = self.momenta["momentum_T"]
         else:
             momentum_T = torch.zeros((momentum_R.shape[-1],), device=momentum_R.device)
+        if "momentum_S" in self.momenta.keys():
+            momentum_S = self.momenta["momentum_S"]
+            ic("getting momentum S", momentum_S)
+        else:
+            momentum_S = torch.zeros((momentum_R.shape[-1],), device=momentum_R.device)
+        print(self.momenta.keys())
 
         if  self.flag_field:
 
             momentum_I = self.momenta["momentum_I"]
-
-            momentum_I,momentum_R,momentum_T, self.image, self.field, self.residuals, self.rot_mat, self.translation \
+            momentum_I,momentum_R,momentum_T, momentum_S, self.image, self.field, self.residuals, self.rot_mat, self.translation, self.scale \
                 = self.step(
                 self.image,
                 momentum_I,
                 momentum_R,
                 momentum_T,
+                momentum_S,
                 self.rot_mat,
-                self.translation
+                self.translation,
+                self.scale
             )
             self.momenta["momentum_I"] = momentum_I
         else:
-            momentum_R, momentum_T, self.rot_mat, self.translation, _, norm_l2_on_R =\
-                self._compute_step_rotation_translation(momentum_R, self.rot_mat, momentum_T,  self.translation)
-            return 0
+            momentum_R, momentum_T, momentum_S, self.rot_mat, self.translation, self.scale, _, _,_ =\
+                self._compute_step_rotation_translation(
+                    momentum_R, self.rot_mat,
+                    momentum_T,  self.translation,
+                    momentum_S, self.scale
+                )
 
 
         self.momenta["momentum_R"] = momentum_R
         self.momenta["momentum_T"] = momentum_T
-        return 0
+        self.momenta["momentum_S"] = momentum_S
 
 
     def _forward_checkpointed_step(self):
@@ -446,19 +491,22 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         self.rot_mat = rot_mat
         self.translation = translation
 
-    def get_rotator_translator(self):
+    def get_rigidor(self):
         """
         return a grid ready to apply the rotation and translation estimated
 
         Example:
         ---------
-        >>>rot_def = mr.mp.get_rotator_translator()
+        >>>rot_def = mr.mp.get_rigidor()
         >>>rotated_source = tb.imgDeform(source,rot_def,dx_convention='2square')
         """
-        return tb.grid_from_rotation_translation(self.id_grid, self.rot_mat.T, - self.translation)
+        return tb.grid_from_rotation_translation_scaling(
+            self.id_grid, self.rot_mat.T, - self.translation, 1/self.scale
+        )
 
-    def get_rotation_translation(self):
-        return tb.grid_from_rotation_translation(self.id_grid, self.rot_mat, self.translation)
+    def get_rigid(self):
+        return tb.grid_from_rotation_translation(
+            self.id_grid, self.rot_mat, self.translation, self.scale)
 
     def _save_step(self):
         if self.flag_field:
@@ -606,12 +654,12 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
                 self.norm_l2_on_z = torch.tensor([0], device=self.data_loss.device)
 
             # Norm L2 on R
-            self.norm_l2_on_R = .5 * torch.trace( self.mp._d_rot_ini.T @ self.mp._d_rot_ini)
-            # self.norm_l2_on_R *= 1000
-            # ic(self.norm_l2_on_R)
+            self.norm_l2_on_R = .5 * torch.trace( self.mp._rot_inf_ini.T @ self.mp._rot_inf_ini)
+
+            self.norm_S_2 = .5 *  ((self.mp.scale_inf_ini)**2).sum()
 
         self.total_cost = self.data_loss + \
-                          self.cost_cst * (self.norm_v_2 + self.norm_l2_on_z + self.norm_l2_on_R)
+                          self.cost_cst * (self.norm_v_2 + self.norm_l2_on_z + self.norm_l2_on_R + self.norm_S_2)
 
         return self.total_cost
 

@@ -159,6 +159,12 @@ def grid_from_rotation_translation(grid, rot_mat, translation):
         rot_def =   grid_from_rotation(trans_grid, rot_mat)
         return rot_def
 
+def grid_from_rotation_translation_scaling(grid, rot_mat, translation, scale):
+    grid = grid_from_rotation_translation(grid, rot_mat, translation)
+    grid *= scale
+    print(scale, scale.shape, grid.shape)
+    return grid
+
 def multiply_grid_vectors(grid_1, grid_2):
     if grid_1.shape != grid_2.shape:
         raise ValueError(f"grid_1 and grid_2 must have same shape, got {grid_1.shape} and {grid_2.shape}")

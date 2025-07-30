@@ -433,7 +433,7 @@ class Rotation_Ssd_Cost(DataCost):
         # old
         # grid_rt =   tb.grid_from_rotation(self.optimizer.mp.id_grid,  self.optimizer.mp.rot_mat.T)
         # grid_rt += self.optimizer.mp.translation
-        grid_rt = self.optimizer.mp.get_rotator_translator()
+        grid_rt = self.optimizer.mp.get_rigidor()
         # new ?
         # trans_grid  = self.optimizer.mp.id_grid - self.optimizer.mp.translation
         # rot_def =   tb.apply_rot_mat(trans_grid,  self.optimizer.mp.rot_mat.T)
@@ -468,7 +468,7 @@ class Rotation_MutualInformation_Cost(DataCost):
         # if at_step == -1:
         super().__call__()
         # rot_def =   tb.grid_from_rotation(self.optimizer.mp.id_grid, self.optimizer.mp.rot_mat.T)
-        rot_def = self.optimizer.mp.get_rotator_translator()
+        rot_def = self.optimizer.mp.get_rigidor()
         # if self.optimizer.mp.flag_translation:
             # raise Error("Ca va bugger, fait une expe avant.")
         rot_def += self.optimizer.mp.translation
