@@ -189,12 +189,9 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         # self.field *= 0
         # self.field *= sqrt(self.rho)
         print('field min max',self.field.min(),self.field.max())
-        # ic(self.field.device)
         # ----------------------------------------------
         # 1.2 Compute the rotation
 
-        # ic(grad_image.shape)
-#         ic(grad_image.shape,self.id_grid.shape,momentum_I.shape)
         momI_gradI = tb.im2grid(momentum_I * grad_image[0])
         # momIgradI_x = torch.einsum('ijkl,ijkm->ijklm', momI_gradI, self.id_grid)
         # x_momIgradI = torch.einsum('ijkl,ijkm->ijklm',self.id_grid,momI_gradI)
@@ -215,7 +212,6 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         if self._i == 0:
             self.d_rot_ini = self.d_rot.clone()
         print('d_rot',self.d_rot)
-#         ic(self.d_rot.device)
 
         # self.d_rot = (
         #         momentum_R * self.rot_mat
@@ -235,7 +231,6 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         # 2. Compute the residuals
         self.residuals = (sqrt(1 - self.rho) *
                           momentum_I)
-#         ic(self.residuals.device)
         print("dx_convention",self.dx_convention)
         print("grid min max",self.id_grid.min().item(),self.id_grid.max().item())
 
@@ -314,7 +309,6 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
 
         scale_inf = momentum_S * scale + momentum_T * translation
         scale = scale * (1 +  scale_inf / self.n_step)
-        ic(scale_inf, scale)
 
         if self._i == 0:
             self._rot_inf_ini = d_rot.clone()
@@ -425,10 +419,8 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
             momentum_T = torch.zeros((momentum_R.shape[-1],), device=momentum_R.device)
         if "momentum_S" in self.momenta.keys():
             momentum_S = self.momenta["momentum_S"]
-            ic("getting momentum S", momentum_S)
         else:
             momentum_S = torch.zeros((momentum_R.shape[-1],), device=momentum_R.device)
-        print(self.momenta.keys())
 
         if  self.flag_field:
 
@@ -636,7 +628,6 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
                         )
         # Compute the data_term. Default is the Ssd
         self.data_loss = self.data_term()
-        # ic(self.data_loss)
 
         if self.flag_hamiltonian_integration:
             self.total_cost = self.data_loss + (self.cost_cst) * self.mp.ham_integration
