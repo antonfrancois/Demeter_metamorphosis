@@ -25,6 +25,8 @@ file = "3D_20250725_BraTSReg_021_rigid_metamorphosis_rho0_colab_root_000.pk1"
 file = "3D_20250727_BraTSReg_021_rigid_metamorphosis_rho0.05_colab_root_000.pk1"
 file = "3D_20250730_IXI002_to_template_rigid_metamorphosis_colab_root_000.pk1"
 file = "3D_20250730_IXI002_to_template_flirt_LDDMM_colab_root_001.pk1"
+file = "3D_20250730_IXI002_to_template_flirt_LDDMM_colab_root_002.pk1"
+file = "3D_20250730_IXI002_to_template_ixibrain_rigidscalingLDDMM_colab_root_000.pk1"
 mr = mt.load_optimize_geodesicShooting(
     file,
     # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/saved_optim/'),

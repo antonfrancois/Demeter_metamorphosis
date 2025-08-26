@@ -162,7 +162,6 @@ def grid_from_rotation_translation(grid, rot_mat, translation):
 def grid_from_rotation_translation_scaling(grid, rot_mat, translation, scale):
     grid = grid_from_rotation_translation(grid, rot_mat, translation)
     grid *= scale
-    print(scale, scale.shape, grid.shape)
     return grid
 
 def multiply_grid_vectors(grid_1, grid_2):
