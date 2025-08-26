@@ -201,6 +201,7 @@ class Mutual_Information(nn.Module):
 
         # Check for valid inputs
         assert im1.size() == im2.size(), "(MI_pytorch) Inputs should have the same dimensions."
+        assert im1.dtype == im2.dtype, f"(MI_pytorch) Inputs should have the same dtype. got im1.type = {im1.dtype} and im2.type = {im2.dtype}."
 
         batch_size = im1.size()[0]
 
