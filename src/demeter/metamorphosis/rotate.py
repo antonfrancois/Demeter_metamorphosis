@@ -110,14 +110,11 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         return p - cst
 
     def _contrainte_(self, momentum_I, source):
-        # print("\n CONTRAINTE:")
         grad_source = tb.spatialGradient(source, dx_convention = self.dx_convention)
         IgradI_x = tb.multiply_grid_vectors(tb.im2grid(grad_source[0]), self.id_grid)
         x_IgradI = tb.multiply_grid_vectors(self.id_grid, tb.im2grid(grad_source[0]))
-        # print("\t", (IgradI_x - x_IgradI).sum(dim=[1,2]))
 
         # contrainte rotation
-        # print("dim : ",self._dim)
         if self._dim == 2:
             c_list = [(IgradI_x - x_IgradI)[...,0,1][None]]
         elif self._dim == 3:
@@ -599,7 +596,6 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
 class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
     def __init__(self,**kwargs):
-        print(kwargs.keys())
         super().__init__(**kwargs)
         self._cost_saving_ = self._rotating_cost_saving_
 
@@ -620,7 +616,6 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
         rho = self._get_rho_()
         self.to_device(momenta['momentum_R'].device)
-        # print(f"cost iter {self._iter}: mom_R {momenta['momentum_R']}")
         self.mp.forward(self.source,momenta,
                         save=False,
                         plot=0,
