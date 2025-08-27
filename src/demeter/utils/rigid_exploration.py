@@ -115,11 +115,13 @@ def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False)
 
         momenta = mtrt.prepare_momenta(
             mr.source.shape,
-            image=False,rotation=True,translation=True,
+            image=False,rotation=True,translation=True,scaling= True,
             rot_prior=params_r,trans_prior=(0,0,0),
         )
-
-        mr.forward(momenta, n_iter = n_iter, grad_coef= grad_coef)
+        try:
+            mr.forward(momenta, n_iter = n_iter, grad_coef= grad_coef)
+        except OverflowError:
+            print("xxxxxx Optimization diverged xxxxxx")
         # mr = rigid_along_metamorphosis(
         #     source,target,momenta, kernelOperator,
         #     rho= rho,
@@ -135,7 +137,8 @@ def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False)
         if mr.data_loss < best_loss or mr.data_loss == 0:
             best_loss = mr.data_loss
             best_momentum_R = mr.to_analyse[0]["momentum_R"]
-            best_momentum_T = mr.mp.translation
+            best_momentum_T = mr.to_analyse[0]["momentum_T"]
+            best_momentum_S = mr.to_analyse[0]["momentum_S"]
             best = True
             best_rot = mr.mp.rot_mat
 
@@ -159,8 +162,9 @@ def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False)
         # plt.show()
         if verbose:
             print(f"best = {best}")
-            print(mr.mp.translation)
-            print(mr.mp.rot_mat)
+            print("translation = ",mr.mp.translation)
+            print("rotation matrix = ",mr.mp.rot_mat)
+            print("scaling = ", mr.mp.scale)
             # print("best mom",best_momentum)
             # print("anti best mom", (best_momentum - best_momentum.T)/2)
             # print("best loss",mr.data_loss)
@@ -173,5 +177,6 @@ def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False)
         print("loss :",best_loss)
         print("best_momentum_R = torch.",best_momentum_R)
         print("best_momentum_T = torch.",best_momentum_T)
+        print("best_momentum_S = torch.",best_momentum_S)
         print("best_rotation =", mr.mp.rot_mat)
-    return best_loss, best_momentum_R, best_momentum_T, best_rot
+    return best_loss, best_momentum_R, best_momentum_T, best_momentum_S, best_rot
