@@ -472,10 +472,9 @@ class Rotation_MutualInformation_Cost(DataCost):
         # if self.optimizer.mp.flag_translation:
             # raise Error("Ca va bugger, fait une expe avant.")
         rot_def += self.optimizer.mp.translation
-        print(f"mp.image dtype:  {self.optimizer.mp.image.dtype}")
+
         rotated_image =  tb.imgDeform(self.optimizer.mp.image,rot_def,dx_convention='2square')
         rotated_source = tb.imgDeform(self.optimizer.source,rot_def,dx_convention='2square')
-        print(f"rotated_image.dtype: {rotated_image.dtype}")
 
         cost = self.mutual_info(rotated_image, self.target.to(rotated_image.dtype))
         ssd_rot = self.mutual_info(rotated_source, self.target.to(rotated_source.dtype))
