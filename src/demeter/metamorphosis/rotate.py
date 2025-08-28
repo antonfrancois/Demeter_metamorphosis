@@ -661,6 +661,51 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
         return loss_stock
 
+    def compute_DICE(
+        self, source_segmentation, target_segmentation, plot=False, forward=True, verbose=True
+    ):
+        """Compute the DICE score of a regristration. Given the segmentations of
+        a structure  (ex: ventricules) that should be present in both source and target image.
+        it gives a score close to one if the segmentations are well matching after transformation.
+        Compute the Dice scores:
+        - Rigid + diffeo
+        - Rigid only
+
+        :param source_segmentation: Tensor of source size?
+        :param target_segmentation:
+        :return: (dict[float]) a dict of DICE scores with the names:
+        {
+            "reg dice", "rigid dice"
+        }
+        """
+        if len(source_segmentation.shape) == 2 or (len(source_segmentation.shape)) == 3:
+            source_segmentation = source_segmentation[None, None]
+
+        # TODO : Probablement à supprimer
+        # diffeo_dice, _ = super().compute_DICE(source_segmentation, target_segmentation, plot, forward, verbose)
+
+        # print(f"diffeo dice : {diffeo_dice}")
+        rigidor = self.mp.get_rigidor()
+        rotated_source = tb.imgDeform(source_segmentation,rigidor,
+                                      dx_convention='2square',
+                                      mode="nearest"
+                                      )
+        rotation_dice = tb.average_dice(rotated_source, target_segmentation, verbose)
+        print(f"Rigid dice : {rotation_dice}")
+
+        deformator = self.mp.get_deformator() if forward else self.mp.get_deformation()
+        device = source_segmentation.device
+        source_deformed = tb.imgDeform(
+            rotated_source, deformator.to(device),
+            dx_convention=self.dx_convention,
+            mode = 'nearest'
+        )
+
+        reg_dice = tb.average_dice(source_deformed, target_segmentation, verbose)
+
+        return (rotation_dice, reg_dice), (rotated_source, source_deformed)
+
+
     # def compute_landmark_dist(
     #     self,
     #         source_landmark,

@@ -1451,7 +1451,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             return "not computed"
 
     def compute_DICE(
-        self, source_segmentation, target_segmentation, plot=False, forward=True
+        self, source_segmentation, target_segmentation, plot=False, forward=True, verbose=True
     ):
         """Compute the DICE score of a regristration. Given the segmentations of
         a structure  (ex: ventricules) that should be present in both source and target image.
@@ -1469,14 +1469,17 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         if len(source_segmentation.shape) == 2 or (len(source_segmentation.shape)) == 3:
             source_segmentation = source_segmentation[None, None]
         source_deformed = tb.imgDeform(
-            source_segmentation, deformator.to(device), dx_convention=self.dx_convention
+            source_segmentation, deformator.to(device),
+            dx_convention=self.dx_convention,
+            mode = 'nearest'
         )
         # source_deformed[source_deformed>1e-2] =1
         # prod_seg = source_deformed * target_segmentation
         # sum_seg = source_deformed + target_segmentation
         #
         # self.dice = 2*prod_seg.sum() / sum_seg.sum()
-        self.dice = tb.dice(source_deformed, target_segmentation)
+        # self.dice = tb.dice(source_deformed, target_segmentation)
+        self.dice = tb.average_dice(source_deformed, target_segmentation, verbose=verbose)
         if plot:
             fig, ax = plt.subplots()
             ax.imshow(tb.imCmp(target_segmentation, source_deformed))

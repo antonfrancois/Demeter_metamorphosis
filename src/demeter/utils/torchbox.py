@@ -36,7 +36,8 @@ def reg_open(number, size=None, requires_grad=False, device='cpu'):
 
 def resize_image(image: torch.Tensor | list[torch.Tensor],
                  scale_factor: float | int | Iterable = None,
-                 to_shape = None
+                 to_shape = None,
+                 mode = 'bilinear'
                  ):
     """
     Resize an image by a scale factor $s = (s1,s2,s3)$ or set it to
@@ -71,7 +72,7 @@ def resize_image(image: torch.Tensor | list[torch.Tensor],
     i_s = []
     for i in image:
         i_s.append(
-            torch.nn.functional.grid_sample(i.to(device), id_grid, **DLT_KW_GRIDSAMPLE)
+            torch.nn.functional.grid_sample(i.to(device), id_grid, mode, **DLT_KW_GRIDSAMPLE)
         )
     if len(i_s) == 1:
         return i_s[0]
@@ -289,6 +290,41 @@ def landmark_distance(land_1, land_2, round:bool=False):
     else:
         return (land_1 - land_2.round()).abs().mean()
 
+
+def dice(img_1, img_2):
+    prod_im = img_1 * img_2
+    sum_im = img_1 + img_2
+
+    return 2 * prod_im.sum() / sum_im.sum()
+
+def average_dice(segs_1, segs_2, verbose = False):
+    print(type(segs_1))
+    uni_1 = torch.unique(segs_1)
+    uni_2 = torch.unique(segs_2)
+
+    print(uni_1, uni_2)
+    assert torch.equal(uni_1, uni_2), f"segs_1 and segs_2 are not equal, got  {uni_1} and {uni_2}"
+
+    mask_1 = torch.zeros_like(segs_1)
+    mask_2 = torch.zeros_like(segs_2)
+    dice_stock = []
+    for c in uni_1:
+        if c == 0:
+            continue
+        mask_1[segs_1 == c] = 1
+        mask_1[segs_1 != c] = 0
+        mask_2[segs_2 == c] = 1
+        mask_2[segs_2 != c] = 0
+        dice_stock.append(
+            dice(mask_1, mask_2)
+        )
+        if verbose:
+            print(f"\tdice for value {c} is {dice_stock[-1]}")
+
+    av_dice = sum(dice_stock) / len(dice_stock)
+    if verbose:
+        print(f"\taverage dice is {av_dice}")
+    return av_dice
 
 def addGrid2im(img, n_line, cst=0.1, method='dots'):
     """ draw a grid to the image
@@ -1138,7 +1174,7 @@ def field2diffeo(in_vectField, N=None, save=False, forward=True):
     return vff.FieldIntegrator(method='fast_exp')(in_vectField.clone(), forward=forward)
 
 
-def imgDeform(img, deform_grid, dx_convention='2square', clamp=False):
+def imgDeform(img, deform_grid, dx_convention='2square', clamp=False, mode = 'bilinear'):
     """
     Apply a deformation grid to an image
 
@@ -1152,6 +1188,8 @@ def imgDeform(img, deform_grid, dx_convention='2square', clamp=False):
         convention of the deformation grid (default '2square')
     clamp : bool, optional
         if True, clamp the image between 0 and 1 if the max value is less than 1 else between 0 and 255 (default False)
+    mode : str, optional
+        torch grid_sample argument for interpolation mode.
 
     Returns
     -------
@@ -1167,6 +1205,7 @@ def imgDeform(img, deform_grid, dx_convention='2square', clamp=False):
         deform_grid = square_to_2square_convention(deform_grid)
     deformed = F.grid_sample(img.to(deform_grid.dtype),
                              deform_grid,
+                             mode = mode,
                              **DLT_KW_GRIDSAMPLE
                              )
     # if len(I.shape) == 5:
