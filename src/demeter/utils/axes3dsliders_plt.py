@@ -15,6 +15,8 @@ from matplotlib import cm
 
 # from demeter.utils.image_3d_plotter import *
 import demeter.utils.torchbox as tb
+from demeter import DLT_SEG_CMAP
+
 
 def img_torch_to_plt(image):
     """
@@ -711,6 +713,26 @@ class Image3dAxes_slider(Base3dAxes_slider):
             self.plt_img_z.set_clim(vmin, vmax)
 
         self.update(None)
+
+    def add_image_overlay(self, image, alpha =.5, cmap=None):
+        image = img_torch_to_plt(image)
+        assert image.shape[1:-1] == self.shape[1:-1] , f"Shape mismatch: new image {image.shape} != previous shape {self.shape}"
+        x, y, z, t = self.get_sliders_val()
+
+        image = image[t if image.shape[0] > 1 else 0, ..., 0]
+        ic(image.shape)
+
+        im_1 = tb.image_slice(image[:,::-1], z, dim=2).transpose(1,0)
+        im_2 = tb.image_slice(image, y, dim=1).transpose(1,0)
+        im_3 = tb.image_slice(image, x, dim=0).transpose(1,0)
+        img_kwargs = dict(alpha= alpha,
+                          cmap= DLT_SEG_CMAP if cmap is None else cmap,
+                          vmin= image.min(),
+                          vmax= image.max()
+                          )
+        self.ctx.ax[0].imshow(im_1,**img_kwargs)
+        self.ctx.ax[1].imshow(im_2,**img_kwargs)
+        self.ctx.ax[2].imshow(im_3,**img_kwargs)
 
     def go_on_slice(self, x=None, y=None, z=None):
         if x is not None:
@@ -1463,6 +1485,8 @@ class Visualize_GeodesicOptim_plt:
 
         self.flag_simplex_visu = True if self.geodesicOptim.mp.image_stock.shape[1] > 1 else False
 
+        self.flag_segmentation = self.geodesicOptim.is_DICE_cmp
+
     def _init_special_case(self):
         if self.flag_rigid:
             self._init_rigid_()
@@ -1470,6 +1494,8 @@ class Visualize_GeodesicOptim_plt:
             self._build_simplex_img()
         if self.flag_landmark:
             self._init_landmarks()
+        if self.flag_segmentation:
+            self._init_segmentation()
 
     def _init_landmarks(self):
 
@@ -1504,10 +1530,24 @@ class Visualize_GeodesicOptim_plt:
             toggle_colors={"off": self.dft_off_color, "on": self.dft_on_color}
         )
 
+    def _init_segmentation(self):
+        self.segs_state = 0
+        self.btn_seg = self.image_axes._create_button(
+            label="show segs",
+            callback=self.toggle_segs,
+            position=[0.8, 0.875, 0.1, 0.04],
+            toggle_colors={"off": self.dft_off_color, "on": self.dft_on_color}
+        )
+
     def toggle_rigid(self, event):
         self.flag_rigid = not self.flag_rigid
         print("flag_rigid :",self.flag_rigid)
         self.img_toggle.update()
+
+    def toggle_segs(self, event):
+        self.segs_state = self.segs_state + 1 if self.segs_state < 2 else 0
+        print("segs_state :",self.segs_state)
+
 
     def _build_simplex_img(self):
         self.splx_target = SimplexToHSV(self.geodesicOptim.target, is_last_background=True).to_rgb()
