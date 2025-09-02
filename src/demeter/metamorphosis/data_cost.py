@@ -415,10 +415,10 @@ class Longitudinal_DataCost(DataCost):
 
 
 class Rotation_Ssd_Cost(DataCost):
-    """
+    r"""
     Mixture of data costs
 
-    D(I,T) =  alpha *| I_1 \cdot A.T  - T |^2 + (1 - alpha) * | S \cdot A.T - T|^2
+    D(I,T) =  alpha *| S \cdot A.T  - T |^2 + (1 - alpha) * | I_1 \cdot A.T - T|^2
     """
     def __init__(self, target, alpha, **kwargs):
 
@@ -426,6 +426,8 @@ class Rotation_Ssd_Cost(DataCost):
         self.ssd = cf.SumSquaredDifference(target)
         self.alpha = alpha
 
+    def __repr__(self):
+        return super().__repr__() + f" alpha = {self.alpha}"
 
     def __call__(self,at_step=None):
         super().__call__()
@@ -448,6 +450,8 @@ class Rotation_Ssd_Cost(DataCost):
 
         ssd = self.ssd(rotated_image)
         ssd_rot = self.ssd(rotated_source)
+
+        print(f"\t[{self.__repr__()}] : ssd = {ssd}, ssd_rot = {ssd_rot}")
 
         return self.alpha * ssd_rot + (1-self.alpha) * ssd
 
