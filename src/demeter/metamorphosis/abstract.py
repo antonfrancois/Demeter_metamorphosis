@@ -1468,23 +1468,28 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         device = source_segmentation.device
         if len(source_segmentation.shape) == 2 or (len(source_segmentation.shape)) == 3:
             source_segmentation = source_segmentation[None, None]
-        source_deformed = tb.imgDeform(
+        self.source_seg_deformed = tb.imgDeform(
             source_segmentation, deformator.to(device),
             dx_convention=self.dx_convention,
             mode = 'nearest'
         )
+
+        self.source_segmentation = source_segmentation
+        self.target_segmentation = target_segmentation
+
+
         # source_deformed[source_deformed>1e-2] =1
         # prod_seg = source_deformed * target_segmentation
         # sum_seg = source_deformed + target_segmentation
         #
         # self.dice = 2*prod_seg.sum() / sum_seg.sum()
         # self.dice = tb.dice(source_deformed, target_segmentation)
-        self.dice = tb.average_dice(source_deformed, target_segmentation, verbose=verbose)
+        self.dice = tb.average_dice(self.source_seg_deformed, target_segmentation, verbose=verbose)
         if plot:
             fig, ax = plt.subplots()
-            ax.imshow(tb.imCmp(target_segmentation, source_deformed))
+            ax.imshow(tb.imCmp(target_segmentation, self.source_seg_deformed))
             plt.show()
-        return self.dice, source_deformed
+        return self.dice, self.source_seg_deformed
 
     def get_DICE(self):
         # if self.is_DICE_cmp :
@@ -1644,6 +1649,16 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             )
         except AttributeError:
             # print('No landmark detected')
+            pass
+        try:
+            dict_copy["segmentations"] = (
+                self.source_segmentation,
+                self.target_segmentation,
+                self.source_seg_deformed
+            )
+            if "Rigid" in self.__class__.__name__:
+                dict_copy["segmentations"] += (self.source_seg_rotated,)
+        except AttributeError:
             pass
 
         with open(os.path.join(path, file_save), "wb") as f:

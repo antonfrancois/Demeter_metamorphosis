@@ -681,29 +681,29 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
         if len(source_segmentation.shape) == 2 or (len(source_segmentation.shape)) == 3:
             source_segmentation = source_segmentation[None, None]
 
-        # TODO : Probablement à supprimer
-        # diffeo_dice, _ = super().compute_DICE(source_segmentation, target_segmentation, plot, forward, verbose)
+        self.source_segmentation = source_segmentation
+        self.target_segmentation = target_segmentation
 
         # print(f"diffeo dice : {diffeo_dice}")
         rigidor = self.mp.get_rigidor()
-        rotated_source = tb.imgDeform(source_segmentation,rigidor,
+        self.source_seg_rotated = tb.imgDeform(source_segmentation,rigidor,
                                       dx_convention='2square',
                                       mode="nearest"
                                       )
-        rotation_dice = tb.average_dice(rotated_source, target_segmentation, verbose)
+        rotation_dice = tb.average_dice(self.source_seg_rotated, target_segmentation, verbose)
         print(f"Rigid dice : {rotation_dice}")
 
         deformator = self.mp.get_deformator() if forward else self.mp.get_deformation()
         device = source_segmentation.device
-        source_deformed = tb.imgDeform(
-            rotated_source, deformator.to(device),
+        self.source_seg_deformed = tb.imgDeform(
+            self.source_seg_rotated, deformator.to(device),
             dx_convention=self.dx_convention,
             mode = 'nearest'
         )
 
-        reg_dice = tb.average_dice(source_deformed, target_segmentation, verbose)
+        reg_dice = tb.average_dice(self.source_seg_deformed, target_segmentation, verbose)
 
-        return (rotation_dice, reg_dice), (rotated_source, source_deformed)
+        return (rotation_dice, reg_dice), (self.source_seg_rotated, self.source_seg_deformed)
 
 
     # def compute_landmark_dist(
