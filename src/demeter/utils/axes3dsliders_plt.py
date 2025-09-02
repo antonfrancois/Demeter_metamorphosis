@@ -681,11 +681,36 @@ class Image3dAxes_slider(Base3dAxes_slider):
         self.plt_img_y.set_data(im_2)
         self.plt_img_z.set_data(im_3)
 
+        self._update_overlay(x,y,z,t)
+
         # update lines
         self._update_lines(x, y, z)
 
 
         self.fig.canvas.draw_idle()
+
+    def _update_overlay(self, x, y, z, t):
+        # ---- Optional overlay update ----
+        if hasattr(self, "overlay_image"):
+            t = min(t, self.overlay_image.shape[0]-1)
+            overlay = self.overlay_image[t, ..., 0]
+
+            ov1 = tb.image_slice(overlay[:, ::-1], z, dim=2).transpose(1, 0)
+            ov2 = tb.image_slice(overlay, y, dim=1).transpose(1, 0)
+            ov3 = tb.image_slice(overlay, x, dim=0).transpose(1, 0)
+
+            self.overlay_artists[0].set_data(ov1)
+            self.overlay_artists[1].set_data(ov2)
+            self.overlay_artists[2].set_data(ov3)
+
+    def clear_overlay(self):
+        if hasattr(self, "overlay_artists"):
+            for artist in self.overlay_artists:
+                if artist is not None:
+                    artist.remove()
+            self.overlay_artists = [None, None, None]
+        if hasattr(self, "overlay_image"):
+            del self.overlay_image
 
     def change_image(self, new_image, new_cmap=None, vmin=None, vmax=None):
         """
@@ -714,25 +739,49 @@ class Image3dAxes_slider(Base3dAxes_slider):
 
         self.update(None)
 
-    def add_image_overlay(self, image, alpha =.5, cmap=None):
+    def add_image_overlay(self, image, alpha=0.5, cmap=None):
+        """
+        Add an image overlay that will be updated with sliders.
+        Parameters
+        ----------
+        image : torch.Tensor or np.ndarray
+            The overlay image to display, same shape as the main image.
+        alpha : float
+            Opacity of the overlay.
+        cmap : str or Colormap
+            Colormap to use for the overlay.
+
+        Example
+        ---------
+        >>>dou = a3s.Image3dAxes_slider(mr.source)
+        >>>dou.add_image_overlay(mr.source_segmentation)
+        >>># dou.add_image_overlay(mr.target_segmentation)
+        >>># dou.clear_overlay()
+        >>>plt.show()
+        """
         image = img_torch_to_plt(image)
-        assert image.shape[1:-1] == self.shape[1:-1] , f"Shape mismatch: new image {image.shape} != previous shape {self.shape}"
-        x, y, z, t = self.get_sliders_val()
+        assert image.shape[1:-1] == self.shape[1:-1], f"Shape mismatch: {image.shape} vs {self.shape}"
 
-        image = image[t if image.shape[0] > 1 else 0, ..., 0]
-        ic(image.shape)
+        self.overlay_image = image
+        self.overlay_alpha = alpha
+        self.overlay_cmap = DLT_SEG_CMAP if cmap is None else cmap
 
-        im_1 = tb.image_slice(image[:,::-1], z, dim=2).transpose(1,0)
-        im_2 = tb.image_slice(image, y, dim=1).transpose(1,0)
-        im_3 = tb.image_slice(image, x, dim=0).transpose(1,0)
-        img_kwargs = dict(alpha= alpha,
-                          cmap= DLT_SEG_CMAP if cmap is None else cmap,
-                          vmin= image.min(),
-                          vmax= image.max()
-                          )
-        self.ctx.ax[0].imshow(im_1,**img_kwargs)
-        self.ctx.ax[1].imshow(im_2,**img_kwargs)
-        self.ctx.ax[2].imshow(im_3,**img_kwargs)
+        # Create overlay artists if not already present
+        if not hasattr(self, "overlay_artists"):
+            self.overlay_artists = [None, None, None]
+
+        for i in range(3):
+            if self.overlay_artists[i] is None:
+                # Create blank images initially
+                self.overlay_artists[i] = self.ax[i].imshow(
+                    tb.image_slice(self.image[0], 0, dim=i),  # dummy image
+                    alpha=self.overlay_alpha,
+                    cmap=self.overlay_cmap,
+                    vmin=self.overlay_image.min(),
+                    vmax=self.overlay_image.max()
+                )
+
+        self.update(0)
 
     def go_on_slice(self, x=None, y=None, z=None):
         if x is not None:
