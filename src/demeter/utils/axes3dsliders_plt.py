@@ -693,15 +693,59 @@ class Image3dAxes_slider(Base3dAxes_slider):
         # ---- Optional overlay update ----
         if hasattr(self, "overlay_image"):
             t = min(t, self.overlay_image.shape[0]-1)
-            overlay = self.overlay_image[t, ..., 0]
+            overlay = self.overlay_image[t]
 
-            ov1 = tb.image_slice(overlay[:, ::-1], z, dim=2).transpose(1, 0)
-            ov2 = tb.image_slice(overlay, y, dim=1).transpose(1, 0)
-            ov3 = tb.image_slice(overlay, x, dim=0).transpose(1, 0)
+            tr_tpl = (1, 0, 2) if len(overlay.shape) == 4 else (1, 0)
+            ov1 = tb.image_slice(overlay, z, dim=2).transpose(*tr_tpl)
+            ov2 = tb.image_slice(overlay, y, dim=1).transpose(*tr_tpl)
+            ov3 = tb.image_slice(overlay, x, dim=0).transpose(*tr_tpl)
 
             self.overlay_artists[0].set_data(ov1)
             self.overlay_artists[1].set_data(ov2)
             self.overlay_artists[2].set_data(ov3)
+
+            # ensure current alpha is applied (in case slider changed)
+            for a in self.overlay_artists:
+                if a is not None:
+                    a.set_alpha(self.overlay_alpha)
+
+    def _ensure_overlay_alpha_slider(self):
+        if hasattr(self, "_overlay_alpha_slider"):
+            # keep slider in sync if created earlier
+            self._overlay_alpha_slider.set_val(self.overlay_alpha)
+            return
+
+        # Choose a sane default location; adjust if your layout differs
+        ax = self.fig.add_axes([0.8, 0.75, 0.1, 0.02])
+        self._overlay_alpha_slider = Slider(
+            ax=ax,
+            label="Overlay α",
+            valmin=0.0,
+            valmax=1.0,
+            valinit=float(self.overlay_alpha),
+            valstep=0.01,
+        )
+        self._overlay_alpha_slider.label.set_color(self.ctx.color_txt)
+        self._overlay_alpha_slider.valtext.set_color(self.ctx.color_txt)
+        # self._overlay_alpha_slider.on_changed(self._notify_all)
+        self._overlay_alpha_slider.on_changed(self._on_overlay_alpha_change)
+        self._overlay_alpha_ax = ax  # keep a ref to remove later
+
+    # slider callback
+    def _on_overlay_alpha_change(self, val):
+        self.overlay_alpha = float(val)
+        if hasattr(self, "overlay_artists"):
+            for a in self.overlay_artists:
+                if a is not None:
+                    a.set_alpha(self.overlay_alpha)
+
+
+        self.fig.canvas.draw_idle()
+
+    def set_overlay_alpha(self, alpha: float):
+        self._on_overlay_alpha_change(alpha)
+        if hasattr(self, "_overlay_alpha_slider"):
+            self._overlay_alpha_slider.set_val(float(alpha))
 
     def clear_overlay(self):
         if hasattr(self, "overlay_artists"):
@@ -711,6 +755,15 @@ class Image3dAxes_slider(Base3dAxes_slider):
             self.overlay_artists = [None, None, None]
         if hasattr(self, "overlay_image"):
             del self.overlay_image
+
+                # remove the slider if present
+        if hasattr(self, "_overlay_alpha_slider"):
+            try:
+                self._overlay_alpha_ax.remove()
+            except Exception:
+                pass
+            del self._overlay_alpha_slider
+            del self._overlay_alpha_ax
 
     def change_image(self, new_image, new_cmap=None, vmin=None, vmax=None):
         """
@@ -770,6 +823,8 @@ class Image3dAxes_slider(Base3dAxes_slider):
         if not hasattr(self, "overlay_artists"):
             self.overlay_artists = [None, None, None]
 
+        main_imgs = [self.plt_img_x, self.plt_img_y, self.plt_img_z]
+
         for i in range(3):
             if self.overlay_artists[i] is None:
                 # Create blank images initially
@@ -778,8 +833,13 @@ class Image3dAxes_slider(Base3dAxes_slider):
                     alpha=self.overlay_alpha,
                     cmap=self.overlay_cmap,
                     vmin=self.overlay_image.min(),
-                    vmax=self.overlay_image.max()
+                    vmax=self.overlay_image.max(),
+                    extent=main_imgs[i].get_extent(),
+                    aspect=self.ax[i].get_aspect(),
+                    origin=main_imgs[i].origin,
                 )
+
+        self._ensure_overlay_alpha_slider()
 
         self.update(0)
 
@@ -878,11 +938,9 @@ class ToggleImage3D:
         Indices of currently active images.
     """
 
-    def __init__(self, img_viewer: Image3dAxes_slider,
-                 list_images: list[dict],
-                 button_position: list[float] =[0.04, 0.9, 0.1, 0.04],
-                 button_offset : float = 0.11,
-                 ):
+    def __init__(self, list_images: list[dict],
+                 img_viewer: Image3dAxes_slider | None = None,
+                 button_position: list[float] = [0.04, 0.9, 0.1, 0.04], button_offset: float = 0.11):
         """
         Parameters
         ----------
@@ -892,21 +950,34 @@ class ToggleImage3D:
             List of dicts with fields:
                 'name': str, label for the button.
                 'image': np.ndarray or callable returning an image.
+                'seg' : [Optional] If the image comes with a segmentation, it will show as an overlay.
                 'cmap': str
             List of images in (T, D, H, W, C) format of function returning such an image
             to toggle between.
         """
-        self.img_viewer = img_viewer
-        self.ctx = img_viewer.ctx
+        try:
+            list_images[0]["image"]()
+            self.flag_callable = True
+        except TypeError:
+            self.flag_callable = False
+
+        if img_viewer is None:
+            self.img_viewer = Image3dAxes_slider(self._cl_(list_images[0]["image"]), cmap=list_images[0]["cmap"])
+        else:
+            self.img_viewer = img_viewer
+
+        self.ctx = self.img_viewer.ctx
         self.images = [d["image"] for d in list_images]
         self.labels =  [d["name"] for d in list_images]
         self.cmaps = [d["cmap"] for d in list_images]
 
-        try:
-            self.images[0]()
-            self.flag_callable = True
-        except TypeError:
-            self.flag_callable = False
+        # Si au moin une image à une segmentation faire un attribut segs
+        self.flag_seg = any("seg" in d for d in list_images)
+        if self.flag_seg:
+            self.segs = [d["seg"] if "seg" in d else np.zeros_like(d['image'][0]) for d in list_images ]
+
+        for s in self.segs:
+            print(np.unique(s))
 
         self.active = []
 
@@ -928,7 +999,7 @@ class ToggleImage3D:
             off_color = lighten(base_color, .2)
             on_color = lighten(base_color, 0.8)
             self.toggle_colors.append({"off": off_color, "on": on_color})
-            btn = img_viewer._create_button(
+            btn = self.img_viewer._create_button(
                 label = self.labels[i],
                 callback = lambda val, idx=i: self.toggle_image(idx),
                 position = positions[i],
@@ -940,11 +1011,16 @@ class ToggleImage3D:
         print(matplotlib.get_backend())
         self.update()
 
+    def _cl_(self,img):
+        """decide if object is callable or not"""
+        return img() if self.flag_callable else img
+
     def toggle_image(self, idx):
         """
         Toggle ON/OFF the image associated with the given index.
         If a third image is turned ON, deactivate the oldest active one.
         """
+        # self.active is a list of int
         if idx in self.active:
             self.active.remove(idx)
             self._set_button_color(idx, active=False)
@@ -953,6 +1029,7 @@ class ToggleImage3D:
                 idx_to_remove = self.active.pop(0)
                 self._set_button_color(idx_to_remove, active=False)
             self.active.append(idx)
+            print('active',self.active)
             self._set_button_color(idx, active=True)
 
         self.update()
@@ -976,31 +1053,46 @@ class ToggleImage3D:
         - One active image: show it
         - Two active images: show their sum, normalized
         """
-        def _cl_(img):
-            return img() if self.flag_callable else img
+
 
         print("\nbegin Toggle_image.update_display:")
         str_title = ""
         for i in self.active:
             str_title += f"[{self.labels[i]}] "
-            print(f"label {i} : {self.labels[i]} : {_cl_(self.images[i]).shape}")
+            print(f"label {i} : {self.labels[i]} : {self._cl_(self.images[i]).shape}")
         print(str_title)
         self.ctx.fig.suptitle(str_title, color=self.ctx.color_txt)
 
         cmap = None
         if not self.active:
-            img = np.zeros_like(img_torch_to_plt(_cl_(self.images[0])))
+            img = np.zeros_like(img_torch_to_plt(self._cl_(self.images[0])))
+            seg = img
+            # self.img_viewer.clear_overlay()
         elif len(self.active) == 1:
-            img = _cl_(self.images[self.active[0]])
+            print('active', self.active)
+            img = self._cl_(self.images[self.active[0]])
             cmap = self.cmaps[self.active[0]]
+            if self.flag_seg:
+                seg = self.segs[self.active[0]]
         else:
-            imgs = [_cl_(self.images[i]) for i in self.active]
+            imgs = [self._cl_(self.images[i]) for i in self.active]
             assert len(imgs) == 2
             img = tb.temporal_img_cmp(imgs[0], imgs[1])
-
+            if self.flag_seg:
+                segs = [self.segs[self.active[0]], self.segs[self.active[1]]]
+                # print("seg 0", segs[0].shape)
+                # print("seg 1", segs[1].shape)
+                seg, legend = tb.segCmp(segs[0][0,0], segs[1][0,0])
+        print("seg shape", seg.shape)
 
         self.img_viewer.change_image(img, new_cmap=cmap, vmin=img.min(), vmax=img.max())
+        if self.flag_seg:
+            if len(self.active) > 0:
+                self.img_viewer.add_image_overlay(seg)
+            else:
+                self.img_viewer.clear_overlay()
         self.img_viewer.update(None)
+
         # self.ctx.fig.canvas.draw_idle()
 
 
@@ -1488,9 +1580,9 @@ class Visualize_GeodesicOptim_plt:
         # img_cmp = self.temporal_image_cmp_with_target()
         img = image_list[0]["image"]()
         print(img.shape)
-        img_ctx = Image3dAxes_slider(img, cmap='gray')
-        self.ctx = img_ctx.ctx
-        self.img_toggle = ToggleImage3D(img_ctx, image_list)
+        self.img_slider = Image3dAxes_slider(img, cmap='gray')
+        self.ctx = self.img_slider.ctx
+        self.img_toggle = ToggleImage3D(image_list, self.img_slider)
 
 
         # Deformation grid
@@ -1506,20 +1598,20 @@ class Visualize_GeodesicOptim_plt:
         self.dft_off_color = [.7]*4
         self.dft_on_color = [.4]*4
         self.btn_grid = grid.btn
-        self.btn_save = img_ctx._create_button(
+        self.btn_save = self.img_slider._create_button(
             label="Save all times",
             callback=self.save_all_times,
             position=[0.8, 0.025, 0.1, 0.04],
             toggle_colors={"off": self.dft_off_color, "on": self.dft_on_color}
         )
         # You can add additional buttons similarly.
-        self.image_axes = img_ctx
+        self.image_axes = self.img_slider
         self.grid = grid
 
 
 
         self._init_special_case()
-        img_ctx.show()
+        self.img_slider.show()
 
     def _detect_special_cases(self):
         print(self.geodesicOptim.__class__.__name__)
@@ -1587,6 +1679,7 @@ class Visualize_GeodesicOptim_plt:
             position=[0.8, 0.875, 0.1, 0.04],
             toggle_colors={"off": self.dft_off_color, "on": self.dft_on_color}
         )
+        self.seg_to_show = torch.zeros(self.shape)
 
     def toggle_rigid(self, event):
         self.flag_rigid = not self.flag_rigid
@@ -1596,7 +1689,14 @@ class Visualize_GeodesicOptim_plt:
     def toggle_segs(self, event):
         self.segs_state = self.segs_state + 1 if self.segs_state < 2 else 0
         print("segs_state :",self.segs_state)
-
+        if self.segs_state == 0:
+            self.img_slider.clear_overlay()
+        elif self.segs_state == 1:
+            self.img_slider.add_image_overlay(self.seg_to_show, alpha=.5)
+        elif self.segs_state == 2:
+            self.img_slider.add_image_overlay(self.seg_to_show,alpha = 1)
+        else:
+            raise ValueError("segs_state :",self.segs_state)
 
     def _build_simplex_img(self):
         self.splx_target = SimplexToHSV(self.geodesicOptim.target, is_last_background=True).to_rgb()
@@ -1654,12 +1754,17 @@ class Visualize_GeodesicOptim_plt:
             return self.splx_img_stock
 
     def target(self):
+        # if self.segs_state > 1:
+        self.seg_to_show = self.geodesicOptim.target_segmentation
         if self.flag_simplex_visu:
             return self.splx_target
         else:
             return self.geodesicOptim.target
 
     def source(self):
+        # if self.segs_state > 0:
+        self.seg_to_show = self.geodesicOptim.target_segmentation
+
         if self.flag_simplex_visu:
             return self.splx_source
         else:
