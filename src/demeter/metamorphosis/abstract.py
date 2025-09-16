@@ -1654,10 +1654,10 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             dict_copy["segmentations"] = (
                 self.source_segmentation,
                 self.target_segmentation,
-                self.source_seg_deformed
+            #     self.source_seg_deformed
             )
-            if "Rigid" in self.__class__.__name__:
-                dict_copy["segmentations"] += (self.source_seg_rotated,)
+            # if "Rigid" in self.__class__.__name__:
+            #     dict_copy["segmentations"] += (self.source_seg_rotated,)
         except AttributeError:
             pass
 

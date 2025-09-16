@@ -678,6 +678,7 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
             "reg dice", "rigid dice"
         }
         """
+        self.is_DICE_cmp = True
         if len(source_segmentation.shape) == 2 or (len(source_segmentation.shape)) == 3:
             source_segmentation = source_segmentation[None, None]
 
@@ -690,7 +691,10 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
                                       dx_convention='2square',
                                       mode="nearest"
                                       )
-        rotation_dice = tb.average_dice(self.source_seg_rotated, target_segmentation, verbose)
+        rotation_dice = tb.average_dice(self.source_seg_rotated,
+                                        target_segmentation,
+                                        message = "(rotation only)",
+                                        verbose= verbose)
         print(f"Rigid dice : {rotation_dice}")
 
         deformator = self.mp.get_deformator() if forward else self.mp.get_deformation()
@@ -701,7 +705,10 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
             mode = 'nearest'
         )
 
-        reg_dice = tb.average_dice(self.source_seg_deformed, target_segmentation, verbose)
+        reg_dice = tb.average_dice(self.source_seg_deformed,
+                                   target_segmentation,
+                                   message = "(all)",
+                                   verbose= verbose)
 
         return (rotation_dice, reg_dice), (self.source_seg_rotated, self.source_seg_deformed)
 

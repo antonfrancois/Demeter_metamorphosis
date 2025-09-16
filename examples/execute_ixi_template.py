@@ -8,10 +8,16 @@ from pathlib import Path
 from nibabel.processing import resample_from_to
 
 import SimpleITK as sitk
+import itk
+
+# data base management
+import sqlite3, json, time, datetime
+from contextlib import contextmanager
 
 import demeter.metamorphosis as mt
 import demeter.utils.torchbox as tb
 import demeter.utils.rigid_exploration as rg
+import demeter.utils.reproducing_kernels as rk
 
 
 def to_torch(arr: np.ndarray) -> torch.Tensor:
@@ -142,7 +148,7 @@ def ensure_nifti(path: str | Path) -> Path:
     path = Path(path)
     # print("DEBUG:",path)
     # Case 1: Already .nii.gz
-    if path.suffixes == [".nii", ".gz"] or path.suffix == [".nii"]:
+    if path.suffixes == [".nii", ".gz"] or path.suffix == ".nii":
         return path
 
     # Case 2: .mgz → convert
@@ -219,23 +225,7 @@ def ensure_nrrd(in_path: str | Path, out_dir: str | Path | None = None) -> Path:
     sitk.WriteImage(sitk_img, str(out_path))
     return out_path
 
-# def load_raw_ixi(folder_path):
-#     path_img = "mri/orig_nu.mgz"
-#     ixi_segs_name = "mri/aseg.auto_noCCseg.mgz"      # discrete labels
-#     ixi_mask_name = "mri/mask.mgz"                   # brain mask
-#     ixi_img = load_canonical(os.path.join(folder_path, path_img))
-#     ixi_segs = load_canonical(os.path.join(folder_path, ixi_segs_name))
-#     ixi_mask = load_canonical(os.path.join(folder_path, ixi_mask_name))
-#
-#     print("IXI image shape:", ixi_img.shape)
-#     print("IXI image affine:\n", ixi_img.affine)
-#     print("IXI segs unique: ", np.unique( ixi_segs.get_fdata()))
-#
-#     # ---------- optional: mask IXI intensities in native space ----------
-#     ixi_img_data = ixi_img.get_fdata()
-#     ixi_mask_data = ixi_mask.get_fdata() > 0.5
-#     ixi_img_data = np.where(ixi_mask_data, ixi_img_data, 0.0)
-#     ixi_img_masked = ixi_img.__class__(ixi_img_data.astype(np.float32), ixi_img.affine, ixi_img.header)
+
 
 NumberArg = Optional[Union[int, List[int]]]
 
@@ -566,10 +556,10 @@ class IXIToTemplatePreprocessor:
 # ------------------------------------------------------------------------------
 # Start of the executing function:
 
-def execute_rigid_along_metamorphosis(pp, subjects_numbers, resize_factor):
+def execute_rigid_along_metamorphosis(pp, subjects_numbers):
 
     for paths, source, target, seg_source, seg_target in pp.get_subjects_aligned(
-        numbers=subjects_numbers, resize_factor=resize_factor, first_only=False, progress=True, tqdm_kwargs={"leave": True}
+        numbers=subjects_numbers, resize_factor=RESIZE_FACTOR, first_only=False, progress=True, tqdm_kwargs={"leave": True}
     ):
         # 2) Rigid search
         # 2.a  Align barycenters
@@ -601,6 +591,168 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers, resize_factor):
         # 3) [Optionnal] Check rigid search
 
         # 4) Apply LDDMM
+        sigma= [3,  7]
+        sigma = [(s,)*3 for s in sigma]
+        kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
+
+        # D(I,T) =  alpha *| S \cdot A.T  - T |^2 + (1 - alpha) * | I_1 \cdot A.T - T|^2
+        # datacost = mt.Rotation_MutualInformation_Cost(target_b, alpha=.5)
+        # for a in [0,.1,.2,.5]:
+        alpha = .3
+        datacost = mt.Rotation_Ssd_Cost(target_b.to("cuda:0"), alpha=alpha)
+        momenta = mt.prepare_momenta(
+            source_b.shape,
+            rot_prior=best_momentum_R.detach().clone(),trans_prior=best_momentum_T.detach().clone(),
+            scale_prior=best_momentum_S.detach().clone(),
+        )
+
+        rho = 1
+        cost_cst = .1
+        mr = mt.rigid_along_metamorphosis(
+          source_b, target_b, momenta_ini=momenta,
+          kernelOperator= kernelOperator,
+          rho = rho,
+          data_term=datacost ,
+          integration_steps = 10,
+          cost_cst=cost_cst,
+          n_iter=15,
+          save_gpu_memory=False,
+          lbfgs_max_iter = 20,
+          lbfgs_history_size = 20,
+        )
+
+        dices, _ =mr.compute_DICE(seg_source_b, seg_target_b, verbose=True)
+        file_save, path = mr.save(f"{paths["subject_dir"].name}_rigid_along_lddmm",
+                light_save=False,
+                save_path = os.path.join(result_folder, "rigid_along_lddmm")
+                )
+
+        dice = dices[0] | dices[1]
+        now = datetime.datetime.now()
+        log_metrics(
+            patient_id=paths["subject_dir"].name,
+            method="rigid_along_lddmm",
+            metrics={'rigid_along_lddmm ' + k: v for k,v in dice.items()},
+            run_id= str(now) + ' at ' + location,
+            step=0,
+            meta={"gpu":torch.cuda.get_device_name(),
+                  "parameters": f"alpha : {alpha}, rho : {rho}, cost_cst : {cost_cst}",
+                  "file": os.path.join(path, file_save)
+                  }
+        )
+
+
+def execute_subcmd(cmd):
+    print(">>> executing command:")
+    for arg in cmd:
+        print(f"  {arg}")
+    try:
+        result = subprocess.run(
+            cmd,
+            check=True,          # raises CalledProcessError if command fails
+            capture_output=True, # capture stdout & stderr
+            text=True            # decode as str instead of bytes
+        )
+        print("STDOUT:\n", result.stdout)
+        print("STDERR:\n", result.stderr)
+        # return result
+    except subprocess.CalledProcessError as e:
+        print("Error running unigradicon-register")
+        print("Return code:", e.returncode)
+        print("STDOUT:\n", e.stdout)
+        print("STDERR:\n", e.stderr)
+        # return e
+
+# ====================================================
+#     Begin unigradicon
+def itk_to_torch(image: "itk.Image[itk.F,3]", seg = False) -> torch.Tensor:
+    """
+    Convert an itk.ImageF3 (3D float image) to a PyTorch tensor.
+
+    Parameters
+    ----------
+    image : itk.Image[itk.F,3]
+        3D ITK image of floats.
+
+    Returns
+    -------
+    torch.Tensor
+        Tensor with shape (D, H, W) in float32.
+    """
+    # Step 1: ITK → NumPy (ITK gives array in z,y,x order)
+    np_array = itk.GetArrayFromImage(image)  # shape = (z, y, x)
+    if seg:
+        np_array = simplify_segs(np_array)
+
+    # Step 2: NumPy → Torch
+    tensor = torch.from_numpy(np_array.astype("float32"))
+    return tensor
+
+def _evalutate_unigradicon(transform_file, fixed_seg, moving_seg, fixed_img, moving_img, plot):
+    fixed_seg = itk.imread(ensure_nrrd(fixed_seg))
+    moving_seg = itk.imread(ensure_nrrd(moving_seg))
+    transform = itk.transformread(transform_file)[0]
+
+    dispfield_filter = itk.TransformToDisplacementFieldFilter[itk.Image[itk.Vector[itk.F, 3], 3], itk.D].New()
+
+    fixed_image = itk.imread(ensure_nrrd(fixed_img))
+    dispfield_filter.SetTransform(transform)
+    dispfield_filter.SetReferenceImage(fixed_image)
+    dispfield_filter.SetUseReferenceImage(True)
+
+    dispfield_filter.Update()
+
+    displacement_field = dispfield_filter.GetOutput()
+
+    displacement_field.GetLargestPossibleRegion().GetSize()
+
+
+    interpolator = itk.NearestNeighborInterpolateImageFunction[
+        type(moving_seg), itk.D
+    ].New()
+
+    warped_moving_seg = itk.warp_image_filter(
+        moving_seg,
+        output_origin=fixed_seg.GetOrigin(),
+        output_direction=fixed_seg.GetDirection(),
+        output_spacing=fixed_seg.GetSpacing(),
+        displacement_field=displacement_field,
+        interpolator=interpolator
+    )
+
+    dice = tb.average_dice(
+            itk_to_torch(fixed_seg, seg = True),
+            itk_to_torch(warped_moving_seg, seg = True),
+            verbose = True
+        )
+
+    if plot:
+        moving_image = itk.imread(moving_img)
+        warped_moving_image = itk.warp_image_filter(
+            moving_image,
+            output_origin=fixed_image.GetOrigin(),
+            output_direction=fixed_image.GetDirection(),
+            output_spacing=fixed_image.GetSpacing(),
+            displacement_field=displacement_field)
+
+        fig, ax = plt.subplots(2,4)
+        ax[0,0].imshow(fixed_image[50], cmap='gray')
+        ax[0,0].set_title("fixed image")
+        ax[0,1].imshow(warped_moving_image[50], cmap='gray')
+        ax[0,1].set_title("warped moving image")
+        ax[0,2].imshow(moving_image[50], cmap='gray')
+        ax[0,2].set_title("moving image")
+        ax[0,3].imshow(itk.checker_board_image_filter(fixed_image, warped_moving_image)[50], cmap='gray')
+        ax[1,0].imshow(fixed_seg[50], cmap='tab10')
+        ax[1,0].set_title("fixed image")
+        ax[1,1].imshow(warped_moving_seg[50], cmap='tab10')
+        ax[1,1].set_title("warped moving image")
+        ax[1,2].imshow(moving_seg[50], cmap='tab10')
+        ax[1,2].set_title("moving image")
+        ax[1,3].imshow(itk.checker_board_image_filter(fixed_seg, warped_moving_seg)[50], cmap= 'tab10')
+        plt.show()
+
+    return dice
 
 
 def execute_uniGradIcon(pp, subjects_numbers):
@@ -609,51 +761,313 @@ def execute_uniGradIcon(pp, subjects_numbers):
     print(temp_paths["image"])
 
     output_folder = os.path.join(result_folder, "unigradicon")
-
+    if subjects_numbers is None:
+        lsn =  len(list(pp.get_subjects_paths(subjects_numbers, require_all=True)))
+    else:
+        lsn = len(subjects_numbers)
     for i,p in enumerate(pp.get_subjects_paths(numbers=subjects_numbers)):
-        print(f"\n[uniGradIcon on Subject {i+1} on {len(subjects_numbers)}]:")
+        print(f"\n[uniGradIcon on Subject {i+1} on {lsn}]:")
         output_name = f"uGI_{os.path.basename(p["subject_dir"])}_to_template"
         print("output_name :", output_name)
-        # unigradicon-register
-        # --fixed= temp_paths["image"].name
-        # --fixed_modality=mri
-        # --fixed_segmentation=[temp_paths["mask"]]
-        # --moving=p["image"]
-        # --moving_modality=mri
-        # --moving_segmentation=[p["mask"]]
-        # --transform_out= os.path.join(output_folder, output_name + '.hdf5' )
-        # --warped_moving_out= os.path.join(output_folder, output_name + '.nii.gz' )
-        # --io_iterations None
 
-        cmd = [
-            "unigradicon-register",
-            f"--fixed={ensure_nrrd(temp_paths["image"])}" ,
-            f"--fixed_modality=mri",
-            f"--fixed_segmentation={ensure_nrrd(temp_paths["mask"])}",
-            f"--moving={ensure_nrrd(p["image"])}",
-            f"--moving_modality=mri",
-            f"--moving_segmentation={ensure_nrrd(p["mask"])}",
-            f"--transform_out={os.path.join(output_folder, output_name + '.hdf5' )}",
-            f"--warped_moving_out={os.path.join(output_folder, output_name + '.nii.gz' )}",
-            # f"--io_iterations None",
-        ]
+        fixed = ensure_nrrd(temp_paths["image"])
+        moving = ensure_nrrd(p["image"])
+        transform_out = os.path.join(output_folder, output_name + '.hdf5')
+        if not RECOMPUTE and  not os.path.exists(transform_out):
 
+            cmd = [
+                "unigradicon-register",
+                f"--fixed={fixed}" ,
+                f"--fixed_modality=mri",
+                f"--fixed_segmentation={ensure_nrrd(temp_paths["mask"])}",
+                f"--moving={moving}" ,
+                f"--moving_modality=mri",
+                f"--moving_segmentation={ensure_nrrd(p["mask"])}",
+                f"--transform_out={transform_out}",
+                f"--warped_moving_out={os.path.join(output_folder, output_name + '.nii.gz' )}",
+                # f"--io_iterations None",
+            ]
+            execute_subcmd(cmd)
+        else:
+            print(f"File exists, computation skipped : {transform_out}")
 
-        try:
-            result = subprocess.run(
-                cmd,
-                check=True,          # raises CalledProcessError if command fails
-                capture_output=True, # capture stdout & stderr
-                text=True            # decode as str instead of bytes
+        # aseg_out = os.path.join(output_folder, output_name + '_aseg.nii.gz' )
+        # cmd_wrap = [
+        #     "unigradicon-warp",
+        #     f"--fixed {fixed}",
+        #     f"--moving {ensure_nrrd(p["aseg"])}",
+        #     f"--transform {transform_out}",
+        #     f"--warped_moving_out {aseg_out}",
+        #     "--nearest_neighbor"
+        # ]
+        # execute_subcmd
+
+        dice  = _evalutate_unigradicon(transform_out,
+                               fixed_seg =  ensure_nrrd(temp_paths["aseg"]),
+                               moving_seg= ensure_nrrd(p["aseg"]),
+                               fixed_img=fixed,
+                               moving_img=moving,
+                               plot= False
             )
-            print("STDOUT:\n", result.stdout)
-            print("STDERR:\n", result.stderr)
-        except subprocess.CalledProcessError as e:
-            print("Error running unigradicon-register")
-            print("Return code:", e.returncode)
-            print("STDOUT:\n", e.stdout)
-            print("STDERR:\n", e.stderr)
+        now = datetime.datetime.now()
+        # Example per patient/method
+        log_metrics(
+            patient_id=p["subject_dir"].name,
+            method="unigradicon",
+            metrics={'unigradicon ' + k: v for k,v in dice.items()},
+            run_id= str(now) + ' at ' + location,
+            step=0,
+            meta={"gpu":torch.cuda.get_device_name()}
+        )
 
+
+# end unigradicon
+# ===================================================
+
+# ===================================================
+# Begin flirt + lddmm
+
+def compute_flirt(moving, fixed, output, interp="trilinear"):
+    # if output.endswith('nii.gz'):
+    #     output_mat = output[:-7] + ".mat"
+    # else:
+    #     output_mat = output + ".mat"
+    #     output = output + ".nii.gz"
+    if output.suffixes == [".nii", ".gz"]:
+        output_mat = output.with_suffix('').with_suffix('.mat')
+    else:
+        output_mat = output.with_suffix('.mat')
+    print("output_mat :", output_mat)
+
+    cmd = [
+        "flirt",
+        "-in", moving,
+        "-ref", fixed,
+        "-out", output,
+        "-omat", output_mat,
+        "-bins", "256",
+        "-cost", "corratio",
+        "-searchrx", "-90", "90",
+        "-searchry", "-90", "90",
+        "-searchrz", "-90", "90",
+        "-dof", "12",
+        "-interp", interp
+    ]
+    execute_subcmd(cmd)
+    return output_mat
+
+def apply_affine_mat_fsl(input_nii, reference_nii, transform_mat, output_nii, interp='nearestneighbour' ):
+    """
+    Applies an affine transformation to a NIfTI image using FSL's flirt.
+
+    Parameters:
+        input_nii (str): Path to the input NIfTI file.
+        reference_nii (str): Path to the reference NIfTI file (defines output space).
+        transform_mat (str): Path to the .mat affine transformation file.
+        output_nii (str): Path to save the transformed output NIfTI file.
+        interp (str, optional): Interpolation method ('trilinear', 'nearestneighbour', 'spline'). Default is 'trilinear'.
+
+    Returns:
+        bool: True if successful, False otherwise.
+    """
+
+
+    cmd = [
+        "flirt",
+        "-in", ensure_nifti(input_nii),
+        "-ref", reference_nii,
+        "-applyxfm",
+        "-init", transform_mat,
+        "-out", output_nii,
+        "-interp", interp
+    ]
+    execute_subcmd(cmd)
+
+def mask_mri(im_dict):
+        output_mask = im_dict["image"].with_name(im_dict["image"].stem +'_masked' + '.nii.gz')
+        print(f"Applying masks to produce : {output_mask}")
+
+        cmd_mask_ixi = [
+            "fslmaths",
+            ensure_nifti(im_dict["image"]),
+            "-mas",
+            ensure_nifti(im_dict["mask"]),
+            output_mask
+        ]
+        execute_subcmd(cmd_mask_ixi)
+        return output_mask
+
+def open_nib_to_torch(image, seg : bool, resize_factor):
+    img = load_canonical(image).get_fdata()
+
+    if seg:
+        img = to_torch(simplify_segs(img))
+        mode = "nearest"
+    else:
+        img = normalize(to_torch(img.astype(np.float32)))
+        mode = "bilinear"
+
+    if resize_factor != 1.0:
+        img = tb.resize_image(img, resize_factor, mode=mode)
+    return img
+
+def execute_flirt_lddmm(pp, subjects_numbers):
+    if subjects_numbers is None:
+        lsn = len(list(pp.get_subjects_paths(subjects_numbers, require_all=True)))
+    else:
+        lsn = len(subjects_numbers)
+    for i,p in enumerate(pp.get_subjects_paths(numbers=subjects_numbers)):
+        print(f"\n[flirt + lddmm on Subject {p["subject_dir"].name} : {i+1} on {lsn}]:")
+
+        temp_paths = pp.get_template_paths()
+        rigid_ixi = p["image"].with_name(f"flirt_img_to_template.nii.gz")
+        rigid_seg = p["aseg"].with_name(f"flirt_aseg_to_template.nii.gz")
+
+        if not RECOMPUTE and  not os.path.exists(rigid_ixi):
+            ixi_masked = mask_mri(p)
+            temp_masked = mask_mri(temp_paths)
+
+            output_mat = compute_flirt(ixi_masked, temp_masked, rigid_ixi)
+            apply_affine_mat_fsl(p["aseg"], temp_masked, output_mat, rigid_seg)
+        else:
+            print(f"Rigid registration found, skipping computation : {rigid_ixi}")
+            temp_masked = temp_paths["image"].with_name(temp_paths["image"].stem +'_masked' + '.nii.gz')
+
+        # # load images
+        source = open_nib_to_torch(rigid_ixi, seg = False, resize_factor = RESIZE_FACTOR)
+        target = open_nib_to_torch(temp_masked, seg = False, resize_factor = RESIZE_FACTOR)
+        source_seg = open_nib_to_torch(rigid_seg, seg = True,resize_factor = RESIZE_FACTOR)
+        target_seg = open_nib_to_torch(temp_paths["aseg"], seg = True, resize_factor = RESIZE_FACTOR)
+        print("image shape : ", source.shape)
+        source = source.to(device)
+        target =target.to(device)
+
+
+        dice_flirt = tb.average_dice(source_seg, target_seg, "(rigid only)", verbose = True)
+
+        sigma = [(3,3,3), (7,7,7)]
+        kernel_op = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
+        mr = mt.lddmm(source, target, 0, kernel_op,
+                 cost_cst=.001,
+                grad_coef=1,
+                 integration_steps=7,
+                 n_iter= 20,
+                lbfgs_history_size=15,
+        )
+        dice_lddmm, _ = mr.compute_DICE(source_seg, target_seg)
+        mr.save(f"{p["subject_dir"].name}_flirt_lddmm",
+                light_save=False,
+                save_path = os.path.join(result_folder, "flirt_lddmm")
+                )
+        dice = dice_flirt | dice_lddmm
+
+        now = datetime.datetime.now()
+        log_metrics(
+            patient_id=p["subject_dir"].name,
+            method="flirt_lddmm",
+            metrics={'flirt_lddmm ' + k: v for k,v in dice.items()},
+            run_id= str(now) + ' at ' + location,
+            step=0,
+            meta={"gpu":torch.cuda.get_device_name()}
+        )
+
+#                   end flirt + lddmm
+# ====================================================
+
+def execute_control(pp, subjects_numbers):
+
+    for paths, source, target, seg_source, seg_target in pp.get_subjects_aligned(
+        numbers=subjects_numbers, resize_factor=1, first_only=False, progress=True, tqdm_kwargs={"leave": True}
+    ):
+        print(paths["subject_dir"].name)
+        dice = tb.average_dice(seg_source, seg_target, "before reg", verbose = True)
+
+        now = datetime.datetime.now()
+        log_metrics(
+            patient_id=paths["subject_dir"].name,
+            method="before reg",
+            metrics=dice,
+            run_id= str(now) + ' at ' + location,
+            step=0,
+            meta={"gpu":torch.cuda.get_device_name()}
+        )
+
+#%%
+def execute_dummy(pp, subjects_numbers):
+    import random, string
+    if subjects_numbers is None:
+        lsn = paths_list = list(pp.get_subjects_paths(subjects_numbers, require_all=True))
+    else:
+        lsn = len(subjects_numbers)
+    for i,p in enumerate(pp.get_subjects_paths(numbers=subjects_numbers)):
+        print(f"\n[uniGradIcon on Subject {i+1} on {lsn}]:")
+        now = datetime.datetime.now()
+        dice = {''.join(random.choices(string.ascii_uppercase, k=4)) : random.random() for _ in range(7) }
+        # Example per patient/method
+        print("Execute dummy on ",p["subject_dir"].name)
+        run_id =  str(now) + ' at ' + location
+        print("\t",run_id)
+        metric = {'dummy ' + k: v for k,v in dice.items()}
+        print("\tmetrics :", metric)
+        log_metrics(
+            patient_id=p["subject_dir"].name,
+            method="dummy",
+            metrics=metric,
+            run_id= run_id,
+            step=0,
+            meta={"gpu":torch.cuda.get_device_name()}
+        )
+
+@contextmanager
+def get_conn():
+    conn = sqlite3.connect(db_path, timeout=30, isolation_level=None)  # autocommit
+    conn.execute("PRAGMA journal_mode=WAL;")       # better concurrency & durability
+    conn.execute("PRAGMA synchronous=NORMAL;")     # good balance safety/speed
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS results (
+        patient_id TEXT NOT NULL,
+        method     TEXT NOT NULL,
+        metric     TEXT NOT NULL,
+        value      REAL,
+        run_id     TEXT NOT NULL,
+        step       INTEGER DEFAULT 0,
+        meta_json  TEXT,               -- optional: store shapes, seeds, params
+        ts         REAL NOT NULL,      -- time.time()
+        PRIMARY KEY (patient_id, method, metric, run_id, step)
+    );
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_results_ts ON results(ts);")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_results_patient ON results(patient_id);")
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+def clean_method(db_name, method_name):
+    with sqlite3.connect(db_name) as conn:
+        conn.execute("DELETE FROM results WHERE method = ?", (method_name,))
+        conn.commit()
+
+def log_metrics(patient_id, method, metrics: dict, run_id, step=0, meta: dict=None):
+    """
+    metrics: {"dice": 0.91, "hausdorff95": 3.2, ...}
+    meta:    {"gpu_mem": 3.1, "seed": 42, "shape": [160,192,160]}  (optional)
+    """
+    ts = time.time()
+    meta_json = json.dumps(meta) if meta else None
+    with get_conn() as conn:
+        # UPSERT (idempotent if you re-run)
+        conn.executemany("""
+        INSERT INTO results(patient_id, method, metric, value, run_id, step, meta_json, ts)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(patient_id, method, metric, run_id, step) DO UPDATE SET
+            value=excluded.value,
+            meta_json=COALESCE(excluded.meta_json, results.meta_json),
+            ts=excluded.ts;
+        """, [
+            (patient_id, method, k, float(v), run_id, step, meta_json, ts)
+            for k, v in metrics.items()
+        ])
 
 if __name__ == '__main__':
     import subprocess
@@ -662,12 +1076,21 @@ if __name__ == '__main__':
         template_folder = "/content/drive/MyDrive/demeter_data/ixi-T1/"
         ixi_folder = "/content/drive/MyDrive/demeter_data/ixi-T1/"
         template_seg_path = ""
+        location = "colab"
+    elif "gpfs" in cwd:
+        template_folder = "/gpfs/workdir/francoisa/data/templates/mni_icbm152_nlin_asym_09c_nifti/mni_icbm152_nlin_asym_09c"
+        ixi_folder = "/gpfs/workdir/francoisa/data/IXI-T1_fastsurfer/"
+        template_seg_path = "fastsurfer_seg/mri/"
+        result_folder = "/gpfs/workdir/francoisa/data/IXI_results/"
+        location = 'meso'
+        # OPTIM_SAVE_DIR = "/gpfs/workdir/francoisa/saved_optim/"
     else:
         template_folder ="/home/turtlefox/Documents/11_metamorphoses/data/templates/mni_icbm152_nlin_asym_09c_nifti/mni_icbm152_nlin_asym_09c"
         ixi_folder = "/home/turtlefox/Documents/11_metamorphoses/data/IXI-T1_fastsurfer"
         template_seg_path = "fastsurfer_seg/mri/"
         result_folder = "/home/turtlefox/Documents/11_metamorphoses/data/IXI_results/"
-
+        location = 'local'
+    device = "cuda:0"
 
     pp = IXIToTemplatePreprocessor(
         ixi_root=ixi_folder,
@@ -675,9 +1098,89 @@ if __name__ == '__main__':
         template_seg_path=template_seg_path,
         do_plot=False,
     )
-    subjects_numbers = [40]
 
-    execute_uniGradIcon(pp, subjects_numbers)
+
+
+    subjects_numbers = [14,25,27,28,29,30,31,33,34]# Done
+    # = [35,36,37,38,39,41,42,43] Done
+    # [44,45,46,48,49,50,51,52,53,54, Done
+    # 55,56,57,58,59,60,61,62, Done
+    # subjects_numbers = [63,64,65,66,67,68,69]
+    # subjects_numbers = None
+    # subjects_numbers = [26]#, 40, 26, 50,2, 12]
+    RECOMPUTE = False
+    RESIZE_FACTOR = .8 if location == 'meso' else .3
+
+    # init_csv(result_folder)
+
+    # file_db = "ixi_results.db"
+    file_db = "ixi_results_meso_20250911.db"
+    db_path = os.path.join(result_folder, file_db)
+    # clean_method(db_path, "dummy")
+
+    # execute_dummy(pp, subjects_numbers)
+    # execute_control(pp,subjects_numbers)
+    # if location == 'meso':
+    # #     execute_uniGradIcon(pp, subjects_numbers)
+    #     execute_flirt_lddmm(pp, subjects_numbers)
+    # elif location == 'local':
+    execute_rigid_along_metamorphosis(pp, subjects_numbers)
+
+
+    #%%
+    # import pandas as pd
+    # with sqlite3.connect(db_path) as conn:
+    #     df = pd.read_sql_query("SELECT * FROM results", conn)
+    #
+    # print(df.keys())
+    # print(df["method"].unique())
+    # print(df["metric"].unique())
+    # #%%
+    # one_patient_df = df[df["patient_id"] == "IXI026-Guys-0696-T1"]
+    # print(one_patient_df['metric'].unique())
+    # list_metric = [
+    #     'unigradicon dice average',
+    #         'flirt_lddmm flirt dice average',
+    #         'flirt_lddmm  dice average',
+    #         'flirt_lddmm (rigid only) dice average'
+    # ]
+    # for metric in list_metric:
+    #     print(f"{metric} : value = {one_patient_df[one_patient_df["metric"] == metric]["value"]}")
+
+    #%%
+    # subdf_control = df[df["metric"] == 'before regbefore dice average']
+    # subdf_unigrad = df[df["metric"] == 'unigradicon dice average']
+    # subdf_flirt_lddmm_rigid = df[df["metric"] == 'flirt_lddmm flirt dice average']
+    # subdf_flirt_lddmm = df[df["metric"] == 'flirt_lddmm  dice average']
+    #
+    # groups = [
+    #     ("before reg",                 subdf_control["value"]),
+    #     ("unigradicon",                subdf_unigrad["value"]),
+    #     ("flirt+lddmm (rigid only)",        subdf_flirt_lddmm_rigid["value"]),
+    #     ("flirt+lddmm",                subdf_flirt_lddmm["value"]),
+    # ]
+    #
+    # for n, g in groups:
+    #     print(f"{n} dice:\t {g.mean():.2f}+-{g.std():.2f}")
+    # #%%
+    # # Clean and extract as numpy arrays (handles unequal lengths fine)
+    # data   = [s.dropna().to_numpy() for _, s in groups]
+    # labels = [name for name, _ in groups]
+    #
+    # plt.figure(figsize=(8, 6))
+    # plt.boxplot(data, labels=labels, showmeans=True)
+    # plt.ylabel("Dice score")
+    # plt.title("Dice score by method")
+    # plt.grid(axis="y", linestyle="--", alpha=0.7)
+    #
+    # # (Optional) overlay jittered points to see per-case values
+    # for i, y in enumerate(data, start=1):
+    #     if len(y) == 0:
+    #         continue
+    #     x = np.random.normal(loc=i, scale=0.04, size=len(y))
+    #     plt.plot(x, y, 'o', alpha=0.45, markersize=4)
+    #
+    # plt.show()
 
 
 

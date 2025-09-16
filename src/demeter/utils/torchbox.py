@@ -13,6 +13,8 @@ from . import bspline as mbs
 from . import vector_field_to_flow as vff
 from . import decorators as deco
 from demeter.constants import *
+import matplotlib.patches as mpatches
+
 
 
 # ================================================
@@ -297,17 +299,17 @@ def dice(img_1, img_2):
 
     return 2 * prod_im.sum() / sum_im.sum()
 
-def average_dice(segs_1, segs_2, verbose = False):
-    print(type(segs_1))
+def average_dice(segs_1, segs_2, message = '', verbose = False):
+    # print(type(segs_1))
     uni_1 = torch.unique(segs_1)
     uni_2 = torch.unique(segs_2)
 
-    print(uni_1, uni_2)
+    # print(uni_1, uni_2)
     assert torch.equal(uni_1, uni_2), f"segs_1 and segs_2 are not equal, got  {uni_1} and {uni_2}"
 
     mask_1 = torch.zeros_like(segs_1)
     mask_2 = torch.zeros_like(segs_2)
-    dice_stock = []
+    dice_stock = {}
     for c in uni_1:
         if c == 0:
             continue
@@ -315,16 +317,14 @@ def average_dice(segs_1, segs_2, verbose = False):
         mask_1[segs_1 != c] = 0
         mask_2[segs_2 == c] = 1
         mask_2[segs_2 != c] = 0
-        dice_stock.append(
-            dice(mask_1, mask_2)
-        )
-        if verbose:
-            print(f"\tdice for value {c} is {dice_stock[-1]}")
+        dice_stock[f'{message} dice val {c}'] = dice(mask_1, mask_2)
 
-    av_dice = sum(dice_stock) / len(dice_stock)
+    av_dice = sum(dice_stock.values()) / len(dice_stock)
+    dice_stock[f"{message} dice average"] = av_dice
     if verbose:
-        print(f"\taverage dice is {av_dice}")
-    return av_dice
+        for k,v in dice_stock.items():
+            print(f"\t {k} : {v}")
+    return dice_stock
 
 def addGrid2im(img, n_line, cst=0.1, method='dots'):
     """ draw a grid to the image
@@ -648,6 +648,229 @@ def get_sobel_kernel_3d():
 # =================================================
 #            PLOT
 # =================================================
+
+def img_torch_to_plt(image):
+    """
+    Converts a PyTorch tensor or NumPy array into a format suitable for Matplotlib or other
+    visualization libraries that expect channel-last layout.
+
+    Supported input formats and their corresponding outputs:
+
+
+    Parameters
+    ----------
+    image : torch.Tensor or np.ndarray
+        Input image data in one of the supported formats described above.
+
+    Returns
+    -------
+    np.ndarray
+        The image converted to a NumPy array in a layout compatible with visualization libraries.
+
+    Raises
+    ------
+    ValueError
+        If the input shape is not supported or inconsistent with the expected channel assumptions.
+    TypeError
+        If the input is neither a torch.Tensor nor a np.ndarray.
+
+    2d
+    input (B,C,H,W) torch tensor => output numpy (B,H,W, C) if C == 2
+    input (B,C,H,W) torch tensor => output numpy (B,H,W, 1) if C == 1
+    input (B,C,H,W) torch tensor => output numpy (B,H,W, 1) if C != 1 and C != 3 raises an Error wrong numbers of channels.
+
+    input (H,W) torch tensor => output numpy (1, H,W,1)
+    input (H, W, C) numpy => output numpy (1,H,W,C) if C == 3 else raise Error
+
+    3d
+    input (B,C, D, H,W) torch tensor => output numpy (B, D, H,W) if C != 3
+    input (B, C,D,H,W) torch tensor => output numpy (B, D, H,W,C) if C == 3
+    input (D,H,W) torch tensor => output numpy (1, D, H,W,1)
+    input (B, D, H, W) torch tensor => output numpy (B, D, H,W,1) if W != 3 else raise Error
+    input (D, H, W, C) numpy => output numpy (1,D,H,W,C) if C == 3 else raise Error
+    input(B, D, H,W,C) numpy => output numpy (B, D, H,W,C) if C in [1,3]  else raise Error
+    """
+    if isinstance(image, torch.Tensor):
+        image = image.detach().cpu()
+
+        if image.ndim == 4:
+            # (B, C, H, W)
+            B, C, H, W = image.shape
+            if C == 3:
+                return image.permute(0, 2, 3, 1).numpy()
+            elif C == 1:
+                return image.permute(0, 2, 3, 1).numpy()
+            else:
+                raise ValueError(f"Unsupported number of channels for 2D: {C}, got image shape {image.shape}")
+
+        elif image.ndim == 2:
+            # (H, W)
+            H, W = image.shape
+            return image.unsqueeze(0).unsqueeze(-1).numpy()  # (1, H, W, 1)
+
+        elif image.ndim == 5:
+            # (B, C, D, H, W)
+            B, C, D, H, W = image.shape
+            if C == 3:
+                return image.permute(0, 2, 3, 4, 1).numpy()  # (B, D, H, W, C)
+            else:
+                return image[:, 0, ...].unsqueeze(-1).numpy()  # (B, D, H, W, 1)
+
+        elif image.ndim == 4:
+            # Ambiguous: (B, D, H, W)
+            B, D, H, W = image.shape
+            if W == 3:
+                raise ValueError("Ambiguous input shape (B, D, H, W) with W == 3 is not allowed.")
+            return image.unsqueeze(-1).numpy()  # (B, D, H, W, 1)
+
+        elif image.ndim == 3:
+            # (D, H, W)
+            D, H, W = image.shape
+            return image.unsqueeze(0).unsqueeze(-1).numpy()  # (1, D, H, W, 1)
+
+        else:
+            raise ValueError(f"Unsupported tensor shape: {image.shape}")
+
+    elif isinstance(image, np.ndarray):
+        if image.ndim == 3:
+            H, W, C = image.shape
+            if C == 3:
+                return image[np.newaxis, ...]  # (1, H, W, C)
+            else:
+                raise ValueError(f"Unsupported channel count in 2D numpy image: {C};"
+                                 f" Numpy 3d images can be passed in the form [B,D,H,W], got {image.shape}")
+
+        elif image.ndim == 4:
+            # (B, D, H, W)
+            B, D, H, W = image.shape
+            if W == 3:
+                warnings.warn(f"Ambiguous shape (B, D, H, W) with W==3 in numpy, considered image to be 3d.")
+                return image[np.newaxis, ...] # (1,D, H, W, 3)
+            return image[..., np.newaxis]  # (B, D, H, W, 1)
+
+        elif image.ndim == 5:
+            # (B, D, H, W, C)
+            B, D, H, W, C = image.shape
+            if C in [1, 3, 4]:
+                return image
+            else:
+                raise ValueError(f"Unsupported number of channels in 3D numpy image: {C}; image shape : {image.shape}")
+
+        elif image.ndim == 4:
+            # (D, H, W, C)
+            D, H, W, C = image.shape
+            if C == 3:
+                return image[np.newaxis, ...]  # (1, D, H, W, C)
+            else:
+                raise ValueError(f"Unsupported channel count in (D, H, W, C): {C}")
+
+        else:
+            raise ValueError(f"Unsupported numpy shape: {image.shape}")
+
+    else:
+        raise TypeError("Input must be a torch.Tensor or np.ndarray")
+
+class SegmentationComparator:
+    """
+    Compare two segmentation maps and return a color-coded overlay image.
+
+    Attributes
+    ----------
+    labels_gt : list of int
+        List of labels in the ground truth segmentation.
+    labels_est : list of int
+        List of labels in the estimated segmentation.
+    green : list[float]
+        Color code for correct matches.
+    red : list[float]
+        Color code for missed detections (FN).
+    yellow : list[float]
+        Color code for false positives (FP).
+    blue : list[float]
+        Color code for mislabeling (wrong class match).
+    """
+
+    def __init__(self, labels_gt=None, labels_est=None,
+                 green=None, red=None, yellow=None, blue=None):
+        self.labels_gt = labels_gt
+        self.labels_est = labels_est
+
+        # Define colors as attributes
+        self.green =  [0, 1, 0, 1] if green is None else green     # Correct match
+        self.red =      [1, 0, 0, 1] if red is None else red       # Missed detection (FN)
+        self.yellow = [1, 1, 0, 1] if yellow is None else yellow    # False positive (FP)
+        self.blue =    [0, 0, 1, 1] if blue is None else blue      # Mislabeling
+
+    def __call__(self, gt, est):
+        """
+        Compare two segmentation maps.
+
+        Parameters
+        ----------
+        gt : np.ndarray
+            Ground truth segmentation (integer-labeled image).
+        est : np.ndarray
+            Estimated segmentation (integer-labeled image).
+
+        Returns
+        -------
+        color_img : np.ndarray
+            RGB overlay image, float32 in [0,1].
+        """
+        gt = img_torch_to_plt(gt)[...,0]
+        est = img_torch_to_plt(est)[...,0]
+        print('gt shape :', gt.shape )
+        print("est shape :", est.shape)
+        color_img = np.zeros(gt.shape + (4,), dtype=np.float32)
+        print("color img shape", color_img.shape)
+
+        labels_gt = self.labels_gt if self.labels_gt is not None else np.unique(gt)
+        labels_est = self.labels_est if self.labels_est is not None else np.unique(est)
+        print("labels_gt:", labels_gt)
+        print("labels_est:", labels_est)
+
+        gt_null = gt == 0
+        gt_smth = gt > 0
+        est_null = est == 0
+        est_smth = est > 0
+
+        for l_gt, l_est in zip(labels_gt, labels_est):
+            gt_mask = gt == l_gt
+            est_mask = est == l_est
+
+            match = gt_mask & est_mask         # Correct (green)
+            wrong = est_mask & ~gt_mask & gt_smth  # Mislabeling (blue)
+
+            color_img[match] += self.green
+            color_img[wrong] += self.blue
+
+        false = gt_null & est_smth     # False positive (yellow)
+        color_img[false] = self.yellow
+        miss = gt_smth & est_null      # Missed detection (red)
+        color_img[miss] = self.red
+        backgrd = gt_null & est_null
+        color_img[backgrd] -= [1,1,1,0]
+
+        return np.clip(color_img, 0, 1)
+
+    def get_legend_patches(self):
+        """
+        Return legend patches for matplotlib plots.
+
+        Returns
+        -------
+        list[matplotlib.patches.Patch]
+        """
+        return [
+            mpatches.Patch(color=self.green, label='Correct (match)'),
+            mpatches.Patch(color=self.red, label='Missed (in GT only)'),
+            mpatches.Patch(color=self.yellow, label='False positive (in Est only)'),
+            mpatches.Patch(color=self.blue, label='Wrong label (mismatch)')
+        ]
+
+def segCmp(seg_1, seg2):
+    return SegmentationComparator().__call__(seg_1, seg2)
+
 def imCmp(I1, I2, method=None):
     """
     Stack two gray-scales images to compare them. The images must have the same
@@ -687,16 +910,11 @@ def imCmp(I1, I2, method=None):
         u = I2[..., None] * I1[..., None]
         if 'w' in method:
             d = I1[..., None] - I2[..., None]
-            # z = np.zeros(d.shape)
-            # z[I1[..., None] + I2[...]] = 1
-            # print(f'd min = {d.min()},{d.max()}')
+
             r = maximum(d, 0) / np.abs(d).max()
             g = u + .1 * exp(-d ** 2) * u + maximum(-d, 0) * .2
             b = maximum(-d, 0) / np.abs(d).max()
-            # rr,gg,bb = r.copy(),g.copy(),b.copy()
-            # rr[r + g + b == 0] =1
-            # gg[r + g + b == 0] =1
-            # bb[r + g + b == 0] =1
+
             rgb = concatenate(
                 (r, g, b, ones(shape_to_fill)), axis=-1
             )
@@ -745,7 +963,7 @@ def imCmp(I1, I2, method=None):
         )[None]
 
 
-def temporal_img_cmp(img_1, img_2, method="compose"):
+def temporal_img_cmp(img_1, img_2, seg = False, **kwargs):
     """
     Stack two gray-scales images to compare them. The images must have the same
     height and width and depth (for 3d). Images can be temporal meaning that
@@ -757,6 +975,10 @@ def temporal_img_cmp(img_1, img_2, method="compose"):
         [T_1,C,H,W] or [T_1,C,D,H,W] tensor C = 1
     img_2 : torch.Tensor
         [T_2,C,H,W] or [T_2,C,D,H,W] tensor C = 1
+    seg : bool
+        tells the method to treat images as segmentation ot regular images. [default: False]
+    kwargs:
+        the additional arguments to pass to imCmp if seg = True,  or else segCmp
     .. note:
 
         T_1 = 1 and T_2 > 1 or T_1 > 1 and T_2 = 1 or T_1 = T_2 > 1 works, any other case will raise an error.
@@ -765,6 +987,8 @@ def temporal_img_cmp(img_1, img_2, method="compose"):
         method to compare the images, among {'compose','seg','segw','segh'}
 
     """
+    comparator  = segCmp if seg else imCmp
+    print('Comparator :', comparator)
     T1, C1, D1, H1, W1 = img_1.shape
     T2, C2, D2, H2, W2 = img_2.shape
     if D1 != D2 or H1 != H2 or W1 != W2:
@@ -777,7 +1001,7 @@ def temporal_img_cmp(img_1, img_2, method="compose"):
         )
 
     if T1 == T2 and T1 == 1:
-        return imCmp(img_1, img_2, method=method)
+        return comparator(img_1, img_2, **kwargs)
     elif T2 > T1 and T1 == 1:
         buffer_img = img_2
         img_2 = img_1
@@ -787,13 +1011,13 @@ def temporal_img_cmp(img_1, img_2, method="compose"):
     if T1 > T2 and T2 == 1:
         t_img = np.zeros((T1, D1, H1, W1, 4))
         for t, im1 in enumerate(img_1):
-            t_img[t] = imCmp(im1[None], img_2, method=method)
+            t_img[t] = comparator(im1[None], img_2, **kwargs)
         return t_img
 
     elif T1 == T2 and T1 > 1:
         t_img = np.zeros((T1, D1, H1, W1, 4))
         for t, (im1, im2) in enumerate(zip(img_1, img_2)):
-            t_img[t] = imCmp(im1[None], im2[None], method=method)
+            t_img[t] = comparator(im1[None], im2[None], **kwargs)
         return t_img
     else:
         raise ValueError(

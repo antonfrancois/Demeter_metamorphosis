@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import csv
 
 from icecream import ic
+from matplotlib.colors import ListedColormap
 
 # Charger les variables d'environnement à partir du fichier .env
 load_dotenv()
@@ -121,7 +122,17 @@ DLT_KW_RESIDUALS = dict(cmap='RdYlBu_r',
 DLT_KW_GRIDSAMPLE = dict(padding_mode="border",
                          align_corners=True
                          )
-
+DLT_SEG_CMAP = ListedColormap(
+    [[0,0,0,0],
+     # '#08B2E3',# Process Cyan
+     # "#F6AE2D",#Hunyardi Yellow
+     # '#C65CC0', #French mauve
+     "#FFCFD2", # Tea rose
+     "#FF3366", # Folly (red)
+     "#2EC4B6", # Light sea green
+     "#D7F171", # Mindaro (mint green)
+     "#20A4F3", # Celestial blue
+     ])
 
 # What info to keep for optimisation in files.
 default_optim_csv = 'saves_overview.csv'

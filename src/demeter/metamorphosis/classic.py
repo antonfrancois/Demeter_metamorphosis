@@ -43,7 +43,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
          over the geodesic integration
     """
 
-    @monitor_gpu
+    # @monitor_gpu
     def __init__(self, method,
                  rho=1.,
                  # sigma_v= (1,1,1),
@@ -100,7 +100,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
 
         return (self.image, self.rho * self.field, (1 - self.rho) * self.momentum)
 
-    @monitor_gpu
+    # @monitor_gpu
     def _step_full_semiLagrangian(self, image, momentum):
 
         field = self._update_field_(
@@ -219,7 +219,7 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
          integration, by default False
     """
 
-    @monitor_gpu
+    # @monitor_gpu
     def __init__(self, source, target, geodesic, **kwargs):
         # super().__init__(source,target,geodesic,cost_cst,data_term,optimizer_method,hamiltonian_integration,**kwargs)
         super().__init__(source, target, geodesic, **kwargs)
@@ -245,7 +245,7 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
         }
         return {**params_all, **params_spe}
 
-    @monitor_gpu
+    # @monitor_gpu
     def cost(self, momentum_ini: torch.Tensor) -> torch.Tensor:
         r"""
         cost computation

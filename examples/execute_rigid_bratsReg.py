@@ -163,7 +163,7 @@ list_image = [
 
 
 ias = a3s.Image3dAxes_slider(img_1)
-img_toggle = a3s.ToggleImage3D(ias,list_image)
+img_toggle = a3s.ToggleImage3D(list_image, ias)
 plt.show()
 # a3s.compare_images_with_landmarks(img_1, img_2, land_1, land_2)
 # plt.show()

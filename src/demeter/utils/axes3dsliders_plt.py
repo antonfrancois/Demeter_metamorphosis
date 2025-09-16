@@ -18,126 +18,7 @@ import demeter.utils.torchbox as tb
 from demeter import DLT_SEG_CMAP
 
 
-def img_torch_to_plt(image):
-    """
-    Converts a PyTorch tensor or NumPy array into a format suitable for Matplotlib or other
-    visualization libraries that expect channel-last layout.
 
-    Supported input formats and their corresponding outputs:
-
-
-    Parameters
-    ----------
-    image : torch.Tensor or np.ndarray
-        Input image data in one of the supported formats described above.
-
-    Returns
-    -------
-    np.ndarray
-        The image converted to a NumPy array in a layout compatible with visualization libraries.
-
-    Raises
-    ------
-    ValueError
-        If the input shape is not supported or inconsistent with the expected channel assumptions.
-    TypeError
-        If the input is neither a torch.Tensor nor a np.ndarray.
-
-    2d
-    input (B,C,H,W) torch tensor => output numpy (B,H,W, C) if C == 2
-    input (B,C,H,W) torch tensor => output numpy (B,H,W, 1) if C == 1
-    input (B,C,H,W) torch tensor => output numpy (B,H,W, 1) if C != 1 and C != 3 raises an Error wrong numbers of channels.
-
-    input (H,W) torch tensor => output numpy (1, H,W,1)
-    input (H, W, C) numpy => output numpy (1,H,W,C) if C == 3 else raise Error
-
-    3d
-    input (B,C, D, H,W) torch tensor => output numpy (B, D, H,W) if C != 3
-    input (B, C,D,H,W) torch tensor => output numpy (B, D, H,W,C) if C == 3
-    input (D,H,W) torch tensor => output numpy (1, D, H,W,1)
-    input (B, D, H, W) torch tensor => output numpy (B, D, H,W,1) if W != 3 else raise Error
-    input (D, H, W, C) numpy => output numpy (1,D,H,W,C) if C == 3 else raise Error
-    input(B, D, H,W,C) numpy => output numpy (B, D, H,W,C) if C in [1,3]  else raise Error
-    """
-    if isinstance(image, torch.Tensor):
-        image = image.detach().cpu()
-
-        if image.ndim == 4:
-            # (B, C, H, W)
-            B, C, H, W = image.shape
-            if C == 3:
-                return image.permute(0, 2, 3, 1).numpy()
-            elif C == 1:
-                return image.permute(0, 2, 3, 1).numpy()
-            else:
-                raise ValueError(f"Unsupported number of channels for 2D: {C}, got image shape {image.shape}")
-
-        elif image.ndim == 2:
-            # (H, W)
-            H, W = image.shape
-            return image.unsqueeze(0).unsqueeze(-1).numpy()  # (1, H, W, 1)
-
-        elif image.ndim == 5:
-            # (B, C, D, H, W)
-            B, C, D, H, W = image.shape
-            if C == 3:
-                return image.permute(0, 2, 3, 4, 1).numpy()  # (B, D, H, W, C)
-            else:
-                return image[:, 0, ...].unsqueeze(-1).numpy()  # (B, D, H, W, 1)
-
-        elif image.ndim == 4:
-            # Ambiguous: (B, D, H, W)
-            B, D, H, W = image.shape
-            if W == 3:
-                raise ValueError("Ambiguous input shape (B, D, H, W) with W == 3 is not allowed.")
-            return image.unsqueeze(-1).numpy()  # (B, D, H, W, 1)
-
-        elif image.ndim == 3:
-            # (D, H, W)
-            D, H, W = image.shape
-            return image.unsqueeze(0).unsqueeze(-1).numpy()  # (1, D, H, W, 1)
-
-        else:
-            raise ValueError(f"Unsupported tensor shape: {image.shape}")
-
-    elif isinstance(image, np.ndarray):
-        if image.ndim == 3:
-            H, W, C = image.shape
-            if C == 3:
-                return image[np.newaxis, ...]  # (1, H, W, C)
-            else:
-                raise ValueError(f"Unsupported channel count in 2D numpy image: {C};"
-                                 f" Numpy 3d images can be passed in the form [B,D,H,W], got {image.shape}")
-
-        elif image.ndim == 4:
-            # (B, D, H, W)
-            B, D, H, W = image.shape
-            if W == 3:
-                warnings.warn(f"Ambiguous shape (B, D, H, W) with W==3 in numpy, considered image to be 3d.")
-                return image[np.newaxis, ...] # (1,D, H, W, 3)
-            return image[..., np.newaxis]  # (B, D, H, W, 1)
-
-        elif image.ndim == 5:
-            # (B, D, H, W, C)
-            B, D, H, W, C = image.shape
-            if C in [1, 3, 4]:
-                return image
-            else:
-                raise ValueError(f"Unsupported number of channels in 3D numpy image: {C}; image shape : {image.shape}")
-
-        elif image.ndim == 4:
-            # (D, H, W, C)
-            D, H, W, C = image.shape
-            if C == 3:
-                return image[np.newaxis, ...]  # (1, D, H, W, C)
-            else:
-                raise ValueError(f"Unsupported channel count in (D, H, W, C): {C}")
-
-        else:
-            raise ValueError(f"Unsupported numpy shape: {image.shape}")
-
-    else:
-        raise TypeError("Input must be a torch.Tensor or np.ndarray")
 
 
 
@@ -570,7 +451,7 @@ class Image3dAxes_slider(Base3dAxes_slider):
                  **kwargs
                  ):
          # ---------- init image shape
-        self.image = img_torch_to_plt(image)
+        self.image = tb.img_torch_to_plt(image)
 
         self.shown_image = self.image[-1]
         self.shape = self.image.shape
@@ -769,10 +650,14 @@ class Image3dAxes_slider(Base3dAxes_slider):
         """
         Replace the current image and optionally update the display colormap and intensity range.
         """
-        new_image = img_torch_to_plt(new_image)
+        print("change image new image before", new_image.shape)
+        new_image = tb.img_torch_to_plt(new_image)
+
+        print("change image new image after", new_image.shape)
+
         if new_image.shape[1:-1] != self.shape[1:-1]:
             raise ValueError(f"Shape mismatch: {new_image.shape} != {self.shape}")
-        self.image = img_torch_to_plt(new_image)
+        self.image = tb.img_torch_to_plt(new_image)
         self.shown_image = self.image[-1, ..., 0]
 
         if new_cmap is not None:
@@ -812,7 +697,7 @@ class Image3dAxes_slider(Base3dAxes_slider):
         >>># dou.clear_overlay()
         >>>plt.show()
         """
-        image = img_torch_to_plt(image)
+        image = tb.img_torch_to_plt(image)
         assert image.shape[1:-1] == self.shape[1:-1], f"Shape mismatch: {image.shape} vs {self.shape}"
 
         self.overlay_image = image
@@ -974,7 +859,10 @@ class ToggleImage3D:
         # Si au moin une image à une segmentation faire un attribut segs
         self.flag_seg = any("seg" in d for d in list_images)
         if self.flag_seg:
-            self.segs = [d["seg"] if "seg" in d else np.zeros_like(d['image'][0]) for d in list_images ]
+            self.segs = [
+                d["seg"] if "seg" in d else np.zeros_like(self._cl_(d['image'])[0])
+                for d in list_images
+            ]
 
         for s in self.segs:
             print(np.unique(s))
@@ -1005,7 +893,6 @@ class ToggleImage3D:
                 position = positions[i],
                 toggle_colors={"off": off_color, "on": on_color},
             )
-            print("btn type:", type(btn))
             self.buttons.append(btn)
 
         print(matplotlib.get_backend())
@@ -1065,7 +952,7 @@ class ToggleImage3D:
 
         cmap = None
         if not self.active:
-            img = np.zeros_like(img_torch_to_plt(self._cl_(self.images[0])))
+            img = np.zeros_like(tb.img_torch_to_plt(self._cl_(self.images[0])))
             seg = img
             # self.img_viewer.clear_overlay()
         elif len(self.active) == 1:
@@ -1077,18 +964,26 @@ class ToggleImage3D:
         else:
             imgs = [self._cl_(self.images[i]) for i in self.active]
             assert len(imgs) == 2
-            img = tb.temporal_img_cmp(imgs[0], imgs[1])
+            print("making images...")
+            img = tb.temporal_img_cmp(imgs[0], imgs[1], seg = False, method = "compose")
             if self.flag_seg:
                 segs = [self.segs[self.active[0]], self.segs[self.active[1]]]
-                # print("seg 0", segs[0].shape)
-                # print("seg 1", segs[1].shape)
-                seg, legend = tb.segCmp(segs[0][0,0], segs[1][0,0])
+                print("seg 0 unique", np.unique(segs[0]))
+                print("seg 1 unique", np.unique(segs[1]))
+                print("seg  0 shpae", segs[0].shape)
+                seg = tb.temporal_img_cmp(segs[0], segs[1], seg = True)
+        print("img shape", img.shape)
         print("seg shape", seg.shape)
+        print("seg unique", np.unique(seg))
 
         self.img_viewer.change_image(img, new_cmap=cmap, vmin=img.min(), vmax=img.max())
         if self.flag_seg:
+            try:
+                alpha = self.img_viewer.overlay_alpha
+            except AttributeError:
+                alpha = .5
             if len(self.active) > 0:
-                self.img_viewer.add_image_overlay(seg)
+                self.img_viewer.add_image_overlay(seg, alpha = alpha)
             else:
                 self.img_viewer.clear_overlay()
         self.img_viewer.update(None)
@@ -1154,7 +1049,7 @@ class Grid3dAxes_slider(Base3dAxes_slider):
         if step is None:
             step = max(1, min(D, H, W) // 15)
         self.kw_grid = dict(color=color_grid, step=step, alpha=alpha)
-        self.grid_was_init = False
+        # self.grid_was_init = False
         self.flag_grid = False
         self.lines = None
 
@@ -1206,7 +1101,7 @@ class Grid3dAxes_slider(Base3dAxes_slider):
         return lines_x + lines_y + lines_z
 
     def update(self, val):
-        if self.grid_was_init and self.flag_grid:
+        if self.flag_grid:
             for line in self.lines:
                 try:
                     line.remove()
@@ -1493,16 +1388,15 @@ def compare_images_with_landmarks(
 
     image0 = ensure_shape(image0)
     image1 = ensure_shape(image1)
-    # image0 = img_torch_to_plt(image0)
-    # image1 = img_torch_to_plt(image1)
-    ic("image_0", image0.shape)
+    # image0 = tb.img_torch_to_plt(image0)
+    # image1 = tb.img_torch_to_plt(image1)
     cmp_img = tb.temporal_img_cmp(image0, image1, method=method)  # shape (1, D, H, W, 3)
     cmp_img = np.clip(cmp_img,0,1)
     # --------- Shared contex
 
     # --------- Create image viewer
     # ias = Image3dAxes_slider(cmp_img, cmap=cmap, jupyter_sliders=jupyter_sliders)
-    ias = Image3dAxes_slider(img_torch_to_plt(image0), cmap=cmap, jupyter_sliders=jupyter_sliders)
+    ias = Image3dAxes_slider(tb.img_torch_to_plt(image0), cmap=cmap, jupyter_sliders=jupyter_sliders)
 
 
     ctx = ias.ctx
@@ -1516,8 +1410,8 @@ def compare_images_with_landmarks(
 
     # --------- Store state for image switching
     state = {
-        "image0": img_torch_to_plt(image0),
-        "image1": img_torch_to_plt(image1),
+        "image0": tb.img_torch_to_plt(image0),
+        "image1": tb.img_torch_to_plt(image1),
         "compose": cmp_img,
         "current": "image0"
     }
@@ -1570,11 +1464,23 @@ class Visualize_GeodesicOptim_plt:
         self._detect_special_cases()
         # Images to show
         self.shape = self.geodesicOptim.mp.image_stock.shape
+
+        deformation = geodesicOptim.mp.get_deformation(save=True)
+        temporal_seg = tb.imgDeform(
+            self.geodesicOptim.source_segmentation.expand(7,-1,-1,-1,-1),
+            deformation,
+            mode="nearest",
+            dx_convention=self.geodesicOptim.dx_convention
+        )
+        print("temporal seg unique : ", temporal_seg.unique())
+        self.temp_seg_toshow = temporal_seg
+
+
         image_list = [    # list of functions that returns the image to show
-            [self.temporal_image,"gray"],
+            [self.temporal_image,"gray", self.temp_seg_toshow if self.flag_segmentation else None],
             [self.residuals,"cividis"],
-            [self.target,"gray"],
-            [self.source,"gray"],
+            [self.target,"gray", self.geodesicOptim.target_segmentation],
+            [self.source,"gray", self.geodesicOptim.source_segmentation],
                       ]
         image_list = [self.image_to_dict(fun) for fun in image_list]
         # img_cmp = self.temporal_image_cmp_with_target()
@@ -1586,11 +1492,11 @@ class Visualize_GeodesicOptim_plt:
 
 
         # Deformation grid
-        deformation = geodesicOptim.mp.get_deformation(save=True)
+        print("Déformation shape = ", deformation.shape)
         grid = Grid3dAxes_slider(deformation,
                                      shared_context=self.ctx,
                                      dx_convention=self.geodesicOptim.dx_convention,
-                                     color_grid='blue',
+                                     color_grid='green',
                                     button_position = [0.8, 0.9, 0.1, 0.04]
                                      )
 
@@ -1627,6 +1533,8 @@ class Visualize_GeodesicOptim_plt:
         self.flag_simplex_visu = True if self.geodesicOptim.mp.image_stock.shape[1] > 1 else False
 
         self.flag_segmentation = self.geodesicOptim.is_DICE_cmp
+        if self.flag_segmentation:
+            self._init_segmentation_1()
 
     def _init_special_case(self):
         if self.flag_rigid:
@@ -1636,7 +1544,8 @@ class Visualize_GeodesicOptim_plt:
         if self.flag_landmark:
             self._init_landmarks()
         if self.flag_segmentation:
-            self._init_segmentation()
+            self._init_segmentation_2()
+
 
     def _init_landmarks(self):
 
@@ -1671,32 +1580,46 @@ class Visualize_GeodesicOptim_plt:
             toggle_colors={"off": self.dft_off_color, "on": self.dft_on_color}
         )
 
-    def _init_segmentation(self):
-        self.segs_state = 0
-        self.btn_seg = self.image_axes._create_button(
-            label="show segs",
-            callback=self.toggle_segs,
-            position=[0.8, 0.875, 0.1, 0.04],
-            toggle_colors={"off": self.dft_off_color, "on": self.dft_on_color}
+    def _init_segmentation_1(self):
+        self.dice, self.deformed_segmentation = self.geodesicOptim.compute_DICE(
+            self.geodesicOptim.source_segmentation,
+            self.geodesicOptim.target_segmentation
         )
-        self.seg_to_show = torch.zeros(self.shape)
+        if self.flag_rigid:
+            self.temp_seg_toshow = self.deformed_segmentation[1]
+            # self.deformed_segmentation = self.deformed_segmentation[1]
+        else:
+            self.temp_seg_toshow = self.deformed_segmentation[0]
+
+    def _init_segmentation_2(self):
+        str_text = ""
+        if self.flag_rigid:
+            str_text = "rotation | deformation\n"
+            for (k1,v1), (k2, v2) in zip(self.dice[0].items(), self.dice[1].items()):
+                str_text += f"{k1}: {v1:.2f} | {k2}: {v2:.2f}\n"
+        else:
+            str_text = "deformation\n"
+            for k,v in self.dice.items():
+                str_text += f"{k}: {v:.2f}\n"
+        self.ctx.fig.text(0.03,0.71, str_text, fontsize=14, color = self.ctx.color_txt)
 
     def toggle_rigid(self, event):
         self.flag_rigid = not self.flag_rigid
         print("flag_rigid :",self.flag_rigid)
         self.img_toggle.update()
+        self.temp_seg_toshow = self.deformed_segmentation[0 if self.flag_rigid else 1]
 
-    def toggle_segs(self, event):
-        self.segs_state = self.segs_state + 1 if self.segs_state < 2 else 0
-        print("segs_state :",self.segs_state)
-        if self.segs_state == 0:
-            self.img_slider.clear_overlay()
-        elif self.segs_state == 1:
-            self.img_slider.add_image_overlay(self.seg_to_show, alpha=.5)
-        elif self.segs_state == 2:
-            self.img_slider.add_image_overlay(self.seg_to_show,alpha = 1)
-        else:
-            raise ValueError("segs_state :",self.segs_state)
+    # def toggle_segs(self, event):
+    #     self.segs_state = self.segs_state + 1 if self.segs_state < 2 else 0
+    #     print("segs_state :",self.segs_state)
+    #     if self.segs_state == 0:
+    #         self.img_slider.clear_overlay()
+    #     elif self.segs_state == 1:
+    #         self.img_slider.add_image_overlay(self.seg_to_show, alpha=.5)
+    #     elif self.segs_state == 2:
+    #         self.img_slider.add_image_overlay(self.seg_to_show,alpha = 1)
+    #     else:
+    #         raise ValueError("segs_state :",self.segs_state)
 
     def _build_simplex_img(self):
         self.splx_target = SimplexToHSV(self.geodesicOptim.target, is_last_background=True).to_rgb()
@@ -1737,11 +1660,14 @@ class Visualize_GeodesicOptim_plt:
     #         return self.tmp_img_cmp_w_target
 
     def image_to_dict(self, fun : list):
-        return {
+        ddd =  {
             'name': fun[0].__name__,
             'image': fun[0],
-            'cmap': fun[1]
+            'cmap': fun[1],
         }
+        if len(fun) > 2:
+            return ddd | {'seg': fun[2]}
+        return ddd
 
     def temporal_image(self):
         t_img =self.geodesicOptim.mp.image_stock

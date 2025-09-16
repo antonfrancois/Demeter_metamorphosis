@@ -51,6 +51,8 @@ def lddmm(
     optimizer_method="LBFGS_torch",
     hamiltonian_integration=False,
     save_gpu_memory =False,
+    lbfgs_max_iter: int = 20,
+    lbfgs_history_size: int = 100,
 ):
     """
     Perform a Large Deformation Diffeomorphic Metric Mapping (LDDMM) transformation between a source and a target.
@@ -117,6 +119,8 @@ def lddmm(
         # optimizer_method='LBFGS_torch',
         optimizer_method=optimizer_method,
         data_term=data_term,
+        lbfgs_max_iter=lbfgs_max_iter,
+        lbfgs_history_size=lbfgs_history_size,
         hamiltonian_integration=hamiltonian_integration,
     )
 

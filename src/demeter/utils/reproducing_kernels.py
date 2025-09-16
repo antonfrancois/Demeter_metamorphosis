@@ -838,6 +838,7 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
         super(Multi_scale_GaussianRKHS, self).__init__()
         _ks = []
         self.product_sigma = 1
+        self.normalized = normalized
         for sigma in list_sigmas:
             self.product_sigma *= prod(sigma)
             big_odd = lambda val : max(6,int(val*6)) + (1 - max(6,int(val*6)) %2)
@@ -863,7 +864,7 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
 
         self.kernel = torch.cat(
             [
-                kernel_f(sigma,kernel_size=kernel_size, normalized=normalized)[None]
+                kernel_f(sigma,kernel_size=kernel_size, normalized=self.normalized)[None]
              for sigma in list_sigmas
             ]
         ).sum(dim=0)
@@ -888,14 +889,20 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
             "name": self.__class__.__name__,
             "list_sigmas": self.list_sigma,
             "border_type": self.border_type,
+            "normalized":self.normalized
         }
         return args
 
     def __repr__(self) -> str:
         # the if is there for compatibilities with older versions
+        # TODO : Remove this line:
+        if not hasattr(self, "normalized"):
+            self.normalized = False
         return self.__class__.__name__+\
                 (f'(\n\tsigma :{self.list_sigma},'
-                 f'\n\tkernel size :{tuple(self.kernel.shape)}\n)')
+                 f'\n\tkernel size :{tuple(self.kernel.shape)}'
+                 f"\n\tnormalized : {self.normalized}\n)"
+                 )
         # f'filter :{self.filter.__name__}, '+sig_str
         # ','+str(self._dim)+'D '+\
 

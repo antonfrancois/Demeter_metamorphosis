@@ -129,6 +129,8 @@ def load_optimize_geodesicShooting(file_name, path=None, verbose=True):
         new_optim.compute_landmark_dist(
             opti_dict["landmarks"][0], opti_dict["landmarks"][1]
         )
+    if "segmentations" in opti_dict.keys():
+        new_optim.compute_DICE(opti_dict["segmentations"][0], opti_dict["segmentations"][1])
 
     new_optim.loaded_from_file = file_name
     if verbose:
@@ -147,7 +149,6 @@ def _load_light_optim(opti_dict, verbose):
     )
     ic(_find_kernelOp_from_repr_(opti_dict["args"]["kernelOperator"]["name"]))
     ic(opti_dict["args"]["kernelOperator"])
-    print("kernel Op :",kernelOp)
     kernelOp = kernelOp(**opti_dict["args"]["kernelOperator"])
 
     # and inject it in the args
