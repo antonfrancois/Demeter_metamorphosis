@@ -385,7 +385,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         """
         device = _get_device_from_momenta(momenta)
         self._forward_initialize_integration(image, momenta, device, save, sharp, hamiltonian_integration, plot)
-
         for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step)):
             self._i = i
             self._forward_single_step(verbose)

@@ -582,13 +582,30 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
             integration_steps = 10,
             cost_cst=.1,
         )
-        top_params = rg.initial_exploration(mr,r_step=10, max_output = 15, verbose=True)
+        top_params = rg.initial_exploration(mr,r_step=5, max_output = 1, verbose=True)
         print(top_params)
 
         # 2.c Optimize on best finds
         best_loss, best_momentum_R, best_momentum_T, best_momentum_S, best_rot = rg.optimize_on_rigid(mr, top_params, n_iter=10,verbose=True)
 
         # 3) [Optionnal] Check rigid search
+        rot_def = mr.mp.get_rigidor()
+        rotated_source = tb.imgDeform(mr.mp.image,rot_def,dx_convention='2square')
+        img = rotated_source[0,0,..., mr.source.shape[-1]//2].detach().cpu()
+        img_target = tb.imCmp(rotated_source[..., source.shape[-1]//2].detach().cpu(), mr.target[..., source.shape[-1]//2].detach().cpu(), "compose")[0]
+        img_source = tb.imCmp(rotated_source[..., source.shape[-1]//2].detach().cpu(), mr.source[..., source.shape[-1]//2].detach().cpu(), "compose")[0]
+        fig,ax = plt.subplots(1,3)
+        ax[0].imshow(img, cmap="gray")
+        ax[0].set_title("Final image")
+        ax[1].imshow(img_target, cmap="gray")
+        ax[1].set_title("img vs target")
+        ax[2].imshow(img_source, cmap="gray")
+        ax[2].set_title("img vs source")
+        fig.suptitle(f"rigid search {paths["subject_dir"].name}, {best_loss}")
+        if location == "meso":
+            fig.savefig(os.path.join(result_folder, f'checkrigid_{paths["subject_dir"].name}.png'))
+        else:
+            plt.show()
 
         # 4) Apply LDDMM
         sigma= [3,  7]
@@ -623,7 +640,7 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
 
         dices, _ =mr.compute_DICE(seg_source_b, seg_target_b, verbose=True)
         file_save, path = mr.save(f"{paths["subject_dir"].name}_rigid_along_lddmm",
-                light_save=False,
+                light_save=True,
                 save_path = os.path.join(result_folder, "rigid_along_lddmm")
                 )
 
@@ -947,16 +964,18 @@ def execute_flirt_lddmm(pp, subjects_numbers):
 
         sigma = [(3,3,3), (7,7,7)]
         kernel_op = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
+        data_cost = mt.Mutual_Information(target)
         mr = mt.lddmm(source, target, 0, kernel_op,
                  cost_cst=.001,
                 grad_coef=1,
                  integration_steps=7,
                  n_iter= 20,
                 lbfgs_history_size=15,
+              data_term=data_cost,
         )
         dice_lddmm, _ = mr.compute_DICE(source_seg, target_seg)
-        mr.save(f"{p["subject_dir"].name}_flirt_lddmm",
-                light_save=False,
+        mr.save(f"{p["subject_dir"].name}_flirt_lddmm_dtMI",
+                light_save=True,
                 save_path = os.path.join(result_folder, "flirt_lddmm")
                 )
         dice = dice_flirt | dice_lddmm
@@ -964,11 +983,13 @@ def execute_flirt_lddmm(pp, subjects_numbers):
         now = datetime.datetime.now()
         log_metrics(
             patient_id=p["subject_dir"].name,
-            method="flirt_lddmm",
-            metrics={'flirt_lddmm ' + k: v for k,v in dice.items()},
+            method="flirt_lddmm MI",
+            metrics={'flirt_lddmm MI ' + k: v for k,v in dice.items()},
             run_id= str(now) + ' at ' + location,
             step=0,
-            meta={"gpu":torch.cuda.get_device_name()}
+            meta={"gpu":torch.cuda.get_device_name(),
+                  "data_cost": mr.data_term.__class__.__name__,
+                  "sigma":sigma}
         )
 
 #                   end flirt + lddmm
@@ -1102,19 +1123,24 @@ if __name__ == '__main__':
 
 
     subjects_numbers = [14,25,27,28,29,30,31,33,34]# Done
+    # subjects_numbers = [30,31,33,34]# Done
+
     # = [35,36,37,38,39,41,42,43] Done
     # [44,45,46,48,49,50,51,52,53,54, Done
     # 55,56,57,58,59,60,61,62, Done
     # subjects_numbers = [63,64,65,66,67,68,69]
     # subjects_numbers = None
-    # subjects_numbers = [26]#, 40, 26, 50,2, 12]
+    subjects_numbers = [28]#, 40, 26, 50,2, 12]
     RECOMPUTE = False
-    RESIZE_FACTOR = .8 if location == 'meso' else .3
+    RESIZE_FACTOR = .8 if location == 'meso' else .8
 
     # init_csv(result_folder)
 
-    # file_db = "ixi_results.db"
-    file_db = "ixi_results_meso_20250911.db"
+    if location == "meso": # don't touch this line
+        file_db = "ixi_results.db"
+    else: # here you can sandbox what you need to do.
+        # file_db = "ixi_results.db"
+        file_db = "ixi_results_meso_20250917.db"
     db_path = os.path.join(result_folder, file_db)
     # clean_method(db_path, "dummy")
 
@@ -1122,19 +1148,36 @@ if __name__ == '__main__':
     # execute_control(pp,subjects_numbers)
     # if location == 'meso':
     # #     execute_uniGradIcon(pp, subjects_numbers)
-    #     execute_flirt_lddmm(pp, subjects_numbers)
+    # execute_flirt_lddmm(pp, subjects_numbers)
     # elif location == 'local':
     execute_rigid_along_metamorphosis(pp, subjects_numbers)
 
 
     #%%
     # import pandas as pd
+    # import sqlite3, json, time, datetime, os
+    # from contextlib import contextmanager
+    #
+    # file_db = "ixi_results_meso_20250917.db"
+    # db_path = os.path.join(result_folder, file_db)
     # with sqlite3.connect(db_path) as conn:
     #     df = pd.read_sql_query("SELECT * FROM results", conn)
     #
     # print(df.keys())
     # print(df["method"].unique())
     # print(df["metric"].unique())
+    # #%%
+    # # Compare what is comparable
+    # df_mi = df[df["method"] ==  'flirt_lddmm MI']
+    # df_ssd = df[df["method"] == 'flirt_lddmm']
+    #
+    #
+    # # remove from df_ssd all patients that are not in df_mi
+    # df_ssd = df_ssd[df_ssd["patient_id"].isin(df_mi["patient_id"].unique())]
+    #
+    # print(df_ssd["metric"] ==)
+    # # print(df_mi["metric"])
+    #
     # #%%
     # one_patient_df = df[df["patient_id"] == "IXI026-Guys-0696-T1"]
     # print(one_patient_df['metric'].unique())
@@ -1146,7 +1189,6 @@ if __name__ == '__main__':
     # ]
     # for metric in list_metric:
     #     print(f"{metric} : value = {one_patient_df[one_patient_df["metric"] == metric]["value"]}")
-
     #%%
     # subdf_control = df[df["metric"] == 'before regbefore dice average']
     # subdf_unigrad = df[df["metric"] == 'unigradicon dice average']
@@ -1182,19 +1224,5 @@ if __name__ == '__main__':
     #
     # plt.show()
 
-
-
-    # # Pour meta+rigid
-    # print("Available IXI dirs for number=40:")
-    #
-    # for (source, target, source_seg, tseg) in pp(number=None, resize_factor=0.25, first_only=False):
-    #     print(src.shape, tgt.shape)
-    #
-    #
-    #
-    # # 1) Open images
-    # source, target, seg_source, seg_target = pp(number=40, resize_factor=0.3, first_only=True, name="IXI002_to_template")
-    # out =  pp(number=40, resize_factor=0.3, first_only=True, name="IXI002_to_template")
-    # print(out)
 
 
