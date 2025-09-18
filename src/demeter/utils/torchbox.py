@@ -796,62 +796,95 @@ class SegmentationComparator:
         self.labels_est = labels_est
 
         # Define colors as attributes
-        self.green =  [0, 1, 0, 1] if green is None else green     # Correct match
-        self.red =      [1, 0, 0, 1] if red is None else red       # Missed detection (FN)
-        self.yellow = [1, 1, 0, 1] if yellow is None else yellow    # False positive (FP)
-        self.blue =    [0, 0, 1, 1] if blue is None else blue      # Mislabeling
+        def to_np(array):
+            return np.array(array , dtype=np.float32)
+        self.green =  to_np([0, 1, 0, 1]) if green is None else green     # Correct match
+        self.red =      to_np([1, 0, 0, 1]) if red is None else red       # Missed detection (FN)
+        self.yellow = to_np([1, 1, 0, 1]) if yellow is None else yellow    # False positive (FP)
+        self.blue =    to_np([0, 0, 1, 1]) if blue is None else blue      # Mislabeling
 
-    def __call__(self, gt, est):
+    def _build_est_to_gt_map(self,est, labels_gt, labels_est):
         """
-        Compare two segmentation maps.
+        Build a lookup array M such that M[est_label] -> expected GT label.
+        If no mapping is provided, default to identity: M[i] = i.
+        Unmapped labels get -1 (never counted as correct).
+        """
+        est = np.asarray(est)
+        max_in_data = int(est.max()) if est.size else 0
+        if labels_est is not None and len(labels_est) > 0:
+            max_in_cfg = int(max(labels_est))
+            size = max(max_in_data, max_in_cfg) + 1
+        else:
+            size = max_in_data + 1
 
-        Parameters
-        ----------
-        gt : np.ndarray
-            Ground truth segmentation (integer-labeled image).
-        est : np.ndarray
-            Estimated segmentation (integer-labeled image).
+        M = np.full(size, -1, dtype=np.int64)
+        if labels_gt is None or labels_est is None:
+            # Identity mapping
+            if size > 0:
+                M[:] = np.arange(size, dtype=np.int64)
+        else:
+            for lg, le in zip(labels_gt, labels_est):
+                if le < size:
+                    M[le] = int(lg)
+        return M
+
+    def __call__(self, gt, est, *, verbose: bool = False):
+        """
+        Vectorized comparison of two segmentation maps.
 
         Returns
         -------
         color_img : np.ndarray
-            RGB overlay image, float32 in [0,1].
+            RGBA overlay image, float32 in [0,1], shape (*gt.shape, 4).
         """
-        gt = img_torch_to_plt(gt)[...,0]
-        est = img_torch_to_plt(est)[...,0]
-        print('gt shape :', gt.shape )
-        print("est shape :", est.shape)
-        color_img = np.zeros(gt.shape + (4,), dtype=np.float32)
-        print("color img shape", color_img.shape)
+        gt = img_torch_to_plt(gt)[..., 0]
+        est = img_torch_to_plt(est)[..., 0]
 
-        labels_gt = self.labels_gt if self.labels_gt is not None else np.unique(gt)
-        labels_est = self.labels_est if self.labels_est is not None else np.unique(est)
-        print("labels_gt:", labels_gt)
-        print("labels_est:", labels_est)
+        # Ensure integer arrays for label comparisons
+        gt = gt.astype(np.int64, copy=False)
+        est = est.astype(np.int64, copy=False)
 
-        gt_null = gt == 0
-        gt_smth = gt > 0
-        est_null = est == 0
+        if verbose:
+            print('gt shape:', gt.shape)
+            print('est shape:', est.shape)
+
+        # Build est->gt mapping (identity if no labels provided)
+        M = self._build_est_to_gt_map(est, self.labels_gt, self.labels_est)
+        mapped = M[est]  # expected GT label per voxel, from est label
+
+        gt_smth  = gt > 0
         est_smth = est > 0
 
-        for l_gt, l_est in zip(labels_gt, labels_est):
-            gt_mask = gt == l_gt
-            est_mask = est == l_est
+        # Compute disjoint status codes per voxel:
+        # 0: background (both 0)
+        # 1: correct match            (green)
+        # 2: false positive (in Est only) (yellow)
+        # 3: missed (in GT only)         (red)
+        # 4: mislabel (both >0 but mismatch) (blue)
+        code = np.zeros(gt.shape, dtype=np.uint8)
 
-            match = gt_mask & est_mask         # Correct (green)
-            wrong = est_mask & ~gt_mask & gt_smth  # Mislabeling (blue)
+        # Start with the most specific to keep disjointness clean
+        both_pos = gt_smth & est_smth
+        correct  = both_pos & (mapped == gt)
+        mislabel = both_pos & ~correct
 
-            color_img[match] += self.green
-            color_img[wrong] += self.blue
+        code[correct]  = 1
+        code[~gt_smth & est_smth] = 2   # false positive
+        code[gt_smth & ~est_smth] = 3   # missed
+        code[mislabel] = 4
 
-        false = gt_null & est_smth     # False positive (yellow)
-        color_img[false] = self.yellow
-        miss = gt_smth & est_null      # Missed detection (red)
-        color_img[miss] = self.red
-        backgrd = gt_null & est_null
-        color_img[backgrd] -= [1,1,1,0]
+        # Build color LUT (RGBA)
+        # Background: transparent black (your previous code subtracted [1,1,1,0] then clipped → 0)
+        colors_lut = np.array([
+            [0, 0, 0, 0],         # 0 background
+            self.green,           # 1 correct
+            self.yellow,          # 2 false positive
+            self.red,             # 3 missed
+            self.blue             # 4 mislabel
+        ], dtype=np.float32)
 
-        return np.clip(color_img, 0, 1)
+        color_img = colors_lut[code]
+        return color_img
 
     def get_legend_patches(self):
         """

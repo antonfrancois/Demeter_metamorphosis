@@ -480,7 +480,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         self.rot_mat = rot_mat
         self.translation = translation
 
-    def get_rigidor(self):
+    def get_rigidor(self, grid = None):
         """
         return a grid ready to apply the rotation and translation estimated
 
@@ -489,8 +489,10 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         >>>rot_def = mr.mp.get_rigidor()
         >>>rotated_source = tb.imgDeform(source,rot_def,dx_convention='2square')
         """
+        if grid is None:
+            grid = self.id_grid
         return tb.grid_from_rotation_translation_scaling(
-            self.id_grid, self.rot_mat.T, - self.translation, 1/self.scale
+            grid, self.rot_mat.T, - self.translation, 1/self.scale
         )
 
     def get_rigid(self):
@@ -698,9 +700,10 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
         print(f"Rigid dice : {rotation_dice}")
 
         deformator = self.mp.get_deformator() if forward else self.mp.get_deformation()
+        deformator = self.mp.get_rigidor(deformator)
         device = source_segmentation.device
         self.source_seg_deformed = tb.imgDeform(
-            self.source_seg_rotated, deformator.to(device),
+            self.source_segmentation, deformator.to(device),
             dx_convention=self.dx_convention,
             mode = 'nearest'
         )
@@ -709,7 +712,33 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
                                    target_segmentation,
                                    message = "(all)",
                                    verbose= verbose)
+        self.dice = (rotation_dice, reg_dice)
+        T,C,D,H,W = source_segmentation.shape
+        fig, ax = plt.subplots(2,4)
+        ax[0,0].imshow(source_segmentation[0,0, D//2], cmap=DLT_SEG_CMAP)
+        ax[0,0].set_title('Source')
+        ax[0,1].imshow(target_segmentation[0,0, D//2], cmap=DLT_SEG_CMAP)
+        ax[0,1].set_title('Target')
+        ax[1,0].imshow(self.source_seg_deformed[0,0, D//2], cmap=DLT_SEG_CMAP)
+        ax[1,0].set_title('Deformed')
+        ax[1,1].imshow(self.source_seg_rotated[0,0, D//2], cmap=DLT_SEG_CMAP)
+        ax[1,1].set_title('Rotated')
 
+        st = tb.SegmentationComparator()(source_segmentation[:,:,D//2], target_segmentation[:,:,D//2])
+        ax[0,2].imshow(st[0])
+        ax[0,2].set_title('source vs target')
+        rt = tb.SegmentationComparator()(
+            self.source_seg_rotated[:,:,D//2],
+            target_segmentation[:,:,D//2])
+        ax[1,2].imshow(rt[0])
+        ax[1,2].set_title('rot vs target')
+        dt = tb.SegmentationComparator()(
+            self.source_seg_deformed[:,:,D//2],
+            target_segmentation[:,:,D//2])
+        ax[1,3].imshow(dt[0])
+        ax[1,3].set_title('def vs target')
+
+        plt.show()
         return (rotation_dice, reg_dice), (self.source_seg_rotated, self.source_seg_deformed)
 
 

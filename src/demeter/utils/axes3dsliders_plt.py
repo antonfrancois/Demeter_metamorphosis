@@ -973,8 +973,8 @@ class ToggleImage3D:
                 print("seg  0 shpae", segs[0].shape)
                 seg = tb.temporal_img_cmp(segs[0], segs[1], seg = True)
         print("img shape", img.shape)
-        print("seg shape", seg.shape)
-        print("seg unique", np.unique(seg))
+        # print("seg shape", seg.shape)
+        # print("seg unique", np.unique(seg))
 
         self.img_viewer.change_image(img, new_cmap=cmap, vmin=img.min(), vmax=img.max())
         if self.flag_seg:
@@ -1461,26 +1461,17 @@ class Visualize_GeodesicOptim_plt:
         self.path = path_save or "examples/results/plt_mr_visualization"
         self.imcmp_method = imgcmp_method
 
+        self.deformation = geodesicOptim.mp.get_deformator(save=True)
         self._detect_special_cases()
         # Images to show
         self.shape = self.geodesicOptim.mp.image_stock.shape
-
-        deformation = geodesicOptim.mp.get_deformation(save=True)
-        temporal_seg = tb.imgDeform(
-            self.geodesicOptim.source_segmentation.expand(7,-1,-1,-1,-1),
-            deformation,
-            mode="nearest",
-            dx_convention=self.geodesicOptim.dx_convention
-        )
-        print("temporal seg unique : ", temporal_seg.unique())
-        self.temp_seg_toshow = temporal_seg
 
 
         image_list = [    # list of functions that returns the image to show
             [self.temporal_image,"gray", self.temp_seg_toshow if self.flag_segmentation else None],
             [self.residuals,"cividis"],
-            [self.target,"gray", self.geodesicOptim.target_segmentation],
-            [self.source,"gray", self.geodesicOptim.source_segmentation],
+            [self.target,"gray", self.geodesicOptim.target_segmentation if self.flag_segmentation else None],
+            [self.source,"gray", self.geodesicOptim.source_segmentation if self.flag_segmentation else None],
                       ]
         image_list = [self.image_to_dict(fun) for fun in image_list]
         # img_cmp = self.temporal_image_cmp_with_target()
@@ -1492,8 +1483,8 @@ class Visualize_GeodesicOptim_plt:
 
 
         # Deformation grid
-        print("Déformation shape = ", deformation.shape)
-        grid = Grid3dAxes_slider(deformation,
+        print("Déformation shape = ", self.deformation.shape)
+        grid = Grid3dAxes_slider(self.deformation,
                                      shared_context=self.ctx,
                                      dx_convention=self.geodesicOptim.dx_convention,
                                      color_grid='green',
@@ -1581,25 +1572,29 @@ class Visualize_GeodesicOptim_plt:
         )
 
     def _init_segmentation_1(self):
-        self.dice, self.deformed_segmentation = self.geodesicOptim.compute_DICE(
-            self.geodesicOptim.source_segmentation,
-            self.geodesicOptim.target_segmentation
+        temporal_seg = tb.imgDeform(
+            self.geodesicOptim.source_segmentation.expand(self.deformation.shape[0],-1,-1,-1,-1),
+            self.deformation,
+            mode="nearest",
+            dx_convention=self.geodesicOptim.dx_convention
         )
-        if self.flag_rigid:
-            self.temp_seg_toshow = self.deformed_segmentation[1]
-            # self.deformed_segmentation = self.deformed_segmentation[1]
-        else:
-            self.temp_seg_toshow = self.deformed_segmentation[0]
+        print("temporal seg unique : ", temporal_seg.unique())
+        self.temp_seg_toshow = temporal_seg
+        self.temp_seg_toshow = self.geodesicOptim.source_seg_deformed
+        # if self.flag_rigid:
+        #     # self.deformed_segmentation = self.deformed_segmentation[1]
+        # else:
+        #     self.temp_seg_toshow = self.deformed_segmentation[0]
 
     def _init_segmentation_2(self):
         str_text = ""
         if self.flag_rigid:
             str_text = "rotation | deformation\n"
-            for (k1,v1), (k2, v2) in zip(self.dice[0].items(), self.dice[1].items()):
+            for (k1,v1), (k2, v2) in zip(self.geodesicOptim.dice[0].items(), self.geodesicOptim.dice[1].items()):
                 str_text += f"{k1}: {v1:.2f} | {k2}: {v2:.2f}\n"
         else:
             str_text = "deformation\n"
-            for k,v in self.dice.items():
+            for k,v in self.geodesicOptim.dice.items():
                 str_text += f"{k}: {v:.2f}\n"
         self.ctx.fig.text(0.03,0.71, str_text, fontsize=14, color = self.ctx.color_txt)
 
@@ -1607,7 +1602,10 @@ class Visualize_GeodesicOptim_plt:
         self.flag_rigid = not self.flag_rigid
         print("flag_rigid :",self.flag_rigid)
         self.img_toggle.update()
-        self.temp_seg_toshow = self.deformed_segmentation[0 if self.flag_rigid else 1]
+        if self.flag_rigid:
+            self.temp_seg_toshow = self.geodesicOptim.source_seg_deformed
+        else:
+            self.temp_seg_toshow = self.geodesicOptim.source_seg_rotated
 
     # def toggle_segs(self, event):
     #     self.segs_state = self.segs_state + 1 if self.segs_state < 2 else 0
@@ -1681,7 +1679,8 @@ class Visualize_GeodesicOptim_plt:
 
     def target(self):
         # if self.segs_state > 1:
-        self.seg_to_show = self.geodesicOptim.target_segmentation
+        # if self.flag_segmentation:
+        #     self.seg_to_show = self.geodesicOptim.target_segmentation
         if self.flag_simplex_visu:
             return self.splx_target
         else:
@@ -1689,7 +1688,8 @@ class Visualize_GeodesicOptim_plt:
 
     def source(self):
         # if self.segs_state > 0:
-        self.seg_to_show = self.geodesicOptim.target_segmentation
+        # if self.flag_segmentation
+        #     self.seg_to_show = self.geodesicOptim.target_segmentation
 
         if self.flag_simplex_visu:
             return self.splx_source

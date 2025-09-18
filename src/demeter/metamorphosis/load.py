@@ -138,7 +138,7 @@ def load_optimize_geodesicShooting(file_name, path=None, verbose=True):
     return new_optim
 
 
-def _load_light_optim(opti_dict, verbose):
+def  _load_light_optim(opti_dict, verbose):
 
     ## Find with which class we are dealing with
     integrator, optimizer = _find_meta_optimiser_from_repr_(opti_dict["__repr__"])
@@ -155,7 +155,7 @@ def _load_light_optim(opti_dict, verbose):
     opti_dict["args"]["kernelOperator"] = kernelOp
     ## Re-shoot the integration
     mp = integrator(**opti_dict["args"])
-
+    print("Light save loaded : Reshooting integrator ...")
     mp.forward(
         opti_dict["source"],
         opti_dict["parameter"],
@@ -163,7 +163,7 @@ def _load_light_optim(opti_dict, verbose):
         plot=0,
         hamiltonian_integration = opti_dict["args"]["hamiltonian_integration"]
     )
-    print(mp)
+    # print(mp)
 
     # inject the shooting in the optimizer
     opti_dict["geodesic"] = mp

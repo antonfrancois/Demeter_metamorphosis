@@ -895,9 +895,10 @@ class Multi_scale_GaussianRKHS(torch.nn.Module):
 
     def __repr__(self) -> str:
         # the if is there for compatibilities with older versions
-        # TODO : Remove this line:
+        # TODO : Remove this line, it is dangerous:
         if not hasattr(self, "normalized"):
             self.normalized = False
+        # END TODO:
         return self.__class__.__name__+\
                 (f'(\n\tsigma :{self.list_sigma},'
                  f'\n\tkernel size :{tuple(self.kernel.shape)}'
