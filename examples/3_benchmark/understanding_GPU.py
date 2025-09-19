@@ -2,7 +2,7 @@
 In this file we perform a benchmark tracking execution time and memory usage with
 or without the option for saving gpu memory.
 
-This file execute the program `examples/3_utils/execute_meta.py`
+This file execute the program `examples/3_benchmark/execute_meta.py`
 
 By defauft I provide the results for my laptop. You can change the path of
 `csv_file` to try on your computer.
@@ -113,9 +113,9 @@ for c, p in enumerate(params):
     ).any()
 
     if SIMPLEX:
-        exec_file = "examples/3_utils/execute_simplex_pixyl.py"
+        exec_file = "examples/3_benchmark/execute_simplex_pixyl.py"
     else:
-        exec_file = "examples/3_utils/execute_meta.py"
+        exec_file = "examples/3_benchmark/execute_meta.py"
 
     print(f"\nLancement {c+1}/{len(params)}: size=({(size, size, 1)}), save_gpu={save_gpu}")
     print("python3 ",

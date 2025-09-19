@@ -1,4 +1,4 @@
-from .abstract import Geodesic_integrator,Optimize_geodesicShooting
+from .abstract import Geodesic_integrator,Optimize_geodesicShooting, free_GPU_memory
 from .classic import Metamorphosis_integrator, Metamorphosis_Shooting
 from .constrained import *
 from .wraps import *

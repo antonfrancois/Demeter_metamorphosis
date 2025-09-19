@@ -2,7 +2,7 @@
 In this file we perform a benchmark tracking execution time and memory usage with
 or without the option for saving gpu memory.
 
-This file execute the program `examples/3_utils/execute_meta.py`
+This file execute the program `examples/3_benchmark/execute_meta.py`
 
 By defauft I provide the results for my laptop. You can change the path of
 `csv_file` to try on your computer.
@@ -88,7 +88,7 @@ for save_gpu in [False, True]:
         # Sinon, on lance le benchmark
         print(f"\nLancement: size=({(size, size, 1)}), save_gpu={save_gpu}")
         print("python3",
-             "examples/3_utils/execute_simplex_pixyl.py",
+             "examples/3_benchmark/execute_simplex_pixyl.py",
             "--width", str(size),
             "--height", str(size),
             "--save_gpu", str(save_gpu).lower(),
@@ -96,7 +96,7 @@ for save_gpu in [False, True]:
         )
         subprocess.run([
             "python3",
-             "examples/3_utils/execute_simplex_pixyl.py",
+             "examples/3_benchmark/execute_simplex_pixyl.py",
             "--width", str(size),
             "--height", str(size),
             "--save_gpu", str(save_gpu).lower(),
