@@ -408,7 +408,7 @@ class IXIToTemplatePreprocessor:
         Align subjects to template.
 
         If first_only=True:
-            returns (source, target, seg_source, seg_target)
+            returns (subject_dir name, source, target, seg_source, seg_target)
         Else:
             yields (paths_dict, source, target, seg_source, seg_target) for each subject.
 
@@ -420,7 +420,7 @@ class IXIToTemplatePreprocessor:
             raise FileNotFoundError(f"No matching subjects under {self.ixi_root} for numbers={numbers}")
 
         if first_only:
-            return self._process_one(paths_list[0], resize_factor=resize_factor)
+            return (paths_list[0]["subject_dir"].name,) + self._process_one(paths_list[0], resize_factor=resize_factor)
 
         # multi-subject: yield with optional tqdm progress
         iterator = paths_list
@@ -614,49 +614,54 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
 
         # D(I,T) =  alpha *| S \cdot A.T  - T |^2 + (1 - alpha) * | I_1 \cdot A.T - T|^2
         # datacost = mt.Rotation_MutualInformation_Cost(target_b, alpha=.5)
-        # for a in [0,.1,.2,.5]:
-        alpha = .3
-        datacost = mt.Rotation_Ssd_Cost(target_b.to("cuda:0"), alpha=alpha)
-        momenta = mt.prepare_momenta(
-            source_b.shape,
-            rot_prior=best_momentum_R.detach().clone(),trans_prior=best_momentum_T.detach().clone(),
-            scale_prior=best_momentum_S.detach().clone(),
-        )
+        for a in [0,.1,.2,.5]:
+            alpha = a
+            datacost = mt.Rotation_Ssd_Cost(target_b.to("cuda:0"), alpha=alpha)
+            momenta = mt.prepare_momenta(
+                source_b.shape,
+                rot_prior=best_momentum_R.detach().clone(),trans_prior=best_momentum_T.detach().clone(),
+                scale_prior=best_momentum_S.detach().clone(),
+            )
 
-        rho = 1
-        cost_cst = .1
-        mr = mt.rigid_along_metamorphosis(
-          source_b, target_b, momenta_ini=momenta,
-          kernelOperator= kernelOperator,
-          rho = rho,
-          data_term=datacost ,
-          integration_steps = 10,
-          cost_cst=cost_cst,
-          n_iter=15,
-          save_gpu_memory=False,
-          lbfgs_max_iter = 20,
-          lbfgs_history_size = 20,
-        )
+            rho = 1
+            cost_cst = .1
+            integration_steps = 10
+            mr = mt.rigid_along_metamorphosis(
+              source_b, target_b, momenta_ini=momenta,
+              kernelOperator= kernelOperator,
+              rho = rho,
+              data_term=datacost ,
+              integration_steps = integration_steps,
+              cost_cst=cost_cst,
+              n_iter=15,
+              save_gpu_memory=False,
+              lbfgs_max_iter = 20,
+              lbfgs_history_size = 20,
+            )
 
-        dices, _ =mr.compute_DICE(seg_source_b, seg_target_b, verbose=True)
-        file_save, path = mr.save(f"{paths["subject_dir"].name}_rigid_along_lddmm",
-                light_save=True,
-                save_path = os.path.join(result_folder, "rigid_along_lddmm")
+            dices, _ =mr.compute_DICE(seg_source_b, seg_target_b, verbose=True)
+            file_save, path = mr.save(f"{paths["subject_dir"].name}_rigid_along_lddmm",
+                    light_save=True,
+                    save_path = os.path.join(result_folder, "rigid_along_lddmm")
+                    )
+            mt.free_GPU_memory(mr)
+            dice = dices[0] | dices[1]
+            now = datetime.datetime.now()
+            log_metrics(
+                patient_id=paths["subject_dir"].name,
+                method="rigid_along_lddmm",
+                metrics={'rigid_along_lddmm ' + k: v for k,v in dice.items()},
+                run_id= str(now) + ' at ' + location,
+                step=0,
+                meta={"gpu":torch.cuda.get_device_name(),
+                      "alpha" : alpha,
+                      "rho" : rho,
+                      "cost_cst" : cost_cst,
+                      "sigma" : sigma,
+                      "integration_steps" : integration_steps,
+                      "file": os.path.join(path, file_save)
+                      }
                 )
-
-        dice = dices[0] | dices[1]
-        now = datetime.datetime.now()
-        log_metrics(
-            patient_id=paths["subject_dir"].name,
-            method="rigid_along_lddmm",
-            metrics={'rigid_along_lddmm ' + k: v for k,v in dice.items()},
-            run_id= str(now) + ' at ' + location,
-            step=0,
-            meta={"gpu":torch.cuda.get_device_name(),
-                  "parameters": f"alpha : {alpha}, rho : {rho}, cost_cst : {cost_cst}",
-                  "file": os.path.join(path, file_save)
-                  }
-        )
 
 
 def execute_subcmd(cmd):
@@ -979,6 +984,7 @@ def execute_flirt_lddmm(pp, subjects_numbers):
                 save_path = os.path.join(result_folder, "flirt_lddmm")
                 )
         dice = dice_flirt | dice_lddmm
+        mt.free_GPU_memory(mr)
 
         now = datetime.datetime.now()
         log_metrics(
@@ -1091,6 +1097,7 @@ def log_metrics(patient_id, method, metrics: dict, run_id, step=0, meta: dict=No
         ])
 
 if __name__ == '__main__':
+    #%%
     import subprocess
     cwd = subprocess.check_output("pwd", text=True).strip()
     if "content" in cwd:
@@ -1112,7 +1119,7 @@ if __name__ == '__main__':
         result_folder = "/home/turtlefox/Documents/11_metamorphoses/data/IXI_results/"
         location = 'local'
     device = "cuda:0"
-
+    #%%
     pp = IXIToTemplatePreprocessor(
         ixi_root=ixi_folder,
         template_root=template_folder,
@@ -1128,16 +1135,16 @@ if __name__ == '__main__':
     # = [35,36,37,38,39,41,42,43] Done
     # [44,45,46,48,49,50,51,52,53,54, Done
     # 55,56,57,58,59,60,61,62, Done
-    # subjects_numbers = [63,64,65,66,67,68,69]
+#     # subjects_numbers = [63,64,65,66,67,68,69]
     # subjects_numbers = None
-    subjects_numbers = [28]#, 40, 26, 50,2, 12]
+    # subjects_numbers = [28]#, 40, 26, 50,2, 12]
     RECOMPUTE = False
     RESIZE_FACTOR = .8 if location == 'meso' else .8
 
     # init_csv(result_folder)
 
     if location == "meso": # don't touch this line
-        file_db = "ixi_results.db"
+        file_db = "ixi_results_tests.db"
     else: # here you can sandbox what you need to do.
         # file_db = "ixi_results.db"
         file_db = "ixi_results_meso_20250917.db"
@@ -1151,78 +1158,5 @@ if __name__ == '__main__':
     # execute_flirt_lddmm(pp, subjects_numbers)
     # elif location == 'local':
     execute_rigid_along_metamorphosis(pp, subjects_numbers)
-
-
-    #%%
-    # import pandas as pd
-    # import sqlite3, json, time, datetime, os
-    # from contextlib import contextmanager
-    #
-    # file_db = "ixi_results_meso_20250917.db"
-    # db_path = os.path.join(result_folder, file_db)
-    # with sqlite3.connect(db_path) as conn:
-    #     df = pd.read_sql_query("SELECT * FROM results", conn)
-    #
-    # print(df.keys())
-    # print(df["method"].unique())
-    # print(df["metric"].unique())
-    # #%%
-    # # Compare what is comparable
-    # df_mi = df[df["method"] ==  'flirt_lddmm MI']
-    # df_ssd = df[df["method"] == 'flirt_lddmm']
-    #
-    #
-    # # remove from df_ssd all patients that are not in df_mi
-    # df_ssd = df_ssd[df_ssd["patient_id"].isin(df_mi["patient_id"].unique())]
-    #
-    # print(df_ssd["metric"] ==)
-    # # print(df_mi["metric"])
-    #
-    # #%%
-    # one_patient_df = df[df["patient_id"] == "IXI026-Guys-0696-T1"]
-    # print(one_patient_df['metric'].unique())
-    # list_metric = [
-    #     'unigradicon dice average',
-    #         'flirt_lddmm flirt dice average',
-    #         'flirt_lddmm  dice average',
-    #         'flirt_lddmm (rigid only) dice average'
-    # ]
-    # for metric in list_metric:
-    #     print(f"{metric} : value = {one_patient_df[one_patient_df["metric"] == metric]["value"]}")
-    #%%
-    # subdf_control = df[df["metric"] == 'before regbefore dice average']
-    # subdf_unigrad = df[df["metric"] == 'unigradicon dice average']
-    # subdf_flirt_lddmm_rigid = df[df["metric"] == 'flirt_lddmm flirt dice average']
-    # subdf_flirt_lddmm = df[df["metric"] == 'flirt_lddmm  dice average']
-    #
-    # groups = [
-    #     ("before reg",                 subdf_control["value"]),
-    #     ("unigradicon",                subdf_unigrad["value"]),
-    #     ("flirt+lddmm (rigid only)",        subdf_flirt_lddmm_rigid["value"]),
-    #     ("flirt+lddmm",                subdf_flirt_lddmm["value"]),
-    # ]
-    #
-    # for n, g in groups:
-    #     print(f"{n} dice:\t {g.mean():.2f}+-{g.std():.2f}")
-    # #%%
-    # # Clean and extract as numpy arrays (handles unequal lengths fine)
-    # data   = [s.dropna().to_numpy() for _, s in groups]
-    # labels = [name for name, _ in groups]
-    #
-    # plt.figure(figsize=(8, 6))
-    # plt.boxplot(data, labels=labels, showmeans=True)
-    # plt.ylabel("Dice score")
-    # plt.title("Dice score by method")
-    # plt.grid(axis="y", linestyle="--", alpha=0.7)
-    #
-    # # (Optional) overlay jittered points to see per-case values
-    # for i, y in enumerate(data, start=1):
-    #     if len(y) == 0:
-    #         continue
-    #     x = np.random.normal(loc=i, scale=0.04, size=len(y))
-    #     plt.plot(x, y, 'o', alpha=0.45, markersize=4)
-    #
-    # plt.show()
-
 
 
