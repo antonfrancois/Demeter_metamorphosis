@@ -860,7 +860,7 @@ class ToggleImage3D:
         self.flag_seg = any("seg" in d for d in list_images)
         if self.flag_seg:
             self.segs = [
-                d["seg"] if "seg" in d else np.zeros_like(self._cl_(d['image'])[0])
+                d["seg"].detach() if "seg" in d else np.zeros_like(self._cl_(d['image'])[0].detach())
                 for d in list_images
             ]
 

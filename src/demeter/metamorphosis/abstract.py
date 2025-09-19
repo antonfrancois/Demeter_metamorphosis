@@ -35,6 +35,7 @@ import matplotlib.pyplot as plt
 import warnings
 from math import prod, sqrt
 import pickle
+import gc
 import os, sys, csv  # , time
 from icecream import ic
 
@@ -76,6 +77,12 @@ def _get_device_from_momenta( momenta_ini):
     else:
         raise ValueError("momenta_ini must be a tensor or a dict ")
 
+def free_GPU_memory(mr):
+    mr.to_device('cpu')
+    del mr
+    gc.collect()
+    torch.cuda.synchronize()
+    torch.cuda.empty_cache()
 
 class Geodesic_integrator(torch.nn.Module, ABC):
     """The Geodesic_integrator class is an abstract class that inherits from
@@ -749,6 +756,12 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         try:
             self.image = self.image.to(device)
             self.id_grid = self.id_grid.to(device)
+            self.field = self.field.to(device)
+            self.residuals = self.residuals.to(device)
+            self.momenta = self.momenta.to(device)
+
+            # self.
+
         except AttributeError:
             pass
 
@@ -1199,7 +1212,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             # if(self._it_count >1 and L < self._loss_stock[:self._it_count].min()):
             #     cms_tosave.data = self.cms_ini.detach().data
             # L.backward()
-            L.backward(retain_graph=True)
+            L.backward(retain_graph=False)
             return L
 
         self.closure = closure

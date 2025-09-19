@@ -715,16 +715,16 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
         self.dice = (rotation_dice, reg_dice)
         T,C,D,H,W = source_segmentation.shape
         fig, ax = plt.subplots(2,4)
-        ax[0,0].imshow(source_segmentation[0,0, D//2], cmap=DLT_SEG_CMAP)
+        ax[0,0].imshow(source_segmentation[0,0, D//2].detach().cpu(), cmap=DLT_SEG_CMAP)
         ax[0,0].set_title('Source')
-        ax[0,1].imshow(target_segmentation[0,0, D//2], cmap=DLT_SEG_CMAP)
+        ax[0,1].imshow(target_segmentation[0,0, D//2].detach().cpu(), cmap=DLT_SEG_CMAP)
         ax[0,1].set_title('Target')
-        ax[1,0].imshow(self.source_seg_deformed[0,0, D//2], cmap=DLT_SEG_CMAP)
+        ax[1,0].imshow(self.source_seg_deformed[0,0, D//2].detach().cpu(), cmap=DLT_SEG_CMAP)
         ax[1,0].set_title('Deformed')
-        ax[1,1].imshow(self.source_seg_rotated[0,0, D//2], cmap=DLT_SEG_CMAP)
+        ax[1,1].imshow(self.source_seg_rotated[0,0, D//2].detach().cpu(), cmap=DLT_SEG_CMAP)
         ax[1,1].set_title('Rotated')
 
-        st = tb.SegmentationComparator()(source_segmentation[:,:,D//2], target_segmentation[:,:,D//2])
+        st = tb.SegmentationComparator()(source_segmentation[:,:,D//2].detach().cpu(), target_segmentation[:,:,D//2])
         ax[0,2].imshow(st[0])
         ax[0,2].set_title('source vs target')
         rt = tb.SegmentationComparator()(
