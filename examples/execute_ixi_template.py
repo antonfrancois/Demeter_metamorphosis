@@ -430,7 +430,7 @@ class IXIToTemplatePreprocessor:
                 iterator = tqdm(
                     paths_list,
                     total=len(paths_list),
-                    desc="Processing subjects",
+                    desc=f"Processing subjects :",
                     **(tqdm_kwargs or {})
                 )
             except Exception:
@@ -439,6 +439,7 @@ class IXIToTemplatePreprocessor:
 
         def _gen():
             for paths in iterator:
+                iterator.set_description(f"Processing subjects : {paths["subject_dir"].name}")
                 yield (paths, *self._process_one(paths, resize_factor=resize_factor))
 
         return _gen()
@@ -561,6 +562,13 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
     for paths, source, target, seg_source, seg_target in pp.get_subjects_aligned(
         numbers=subjects_numbers, resize_factor=RESIZE_FACTOR, first_only=False, progress=True, tqdm_kwargs={"leave": True}
     ):
+        sigma= [1, 3,  7]
+        sigma = [(s,)*3 for s in sigma]
+        # alpha = .2
+        rho = 1
+        cost_cst = .1
+        integration_steps = 10
+        print(f"\nPatient : {paths["subject_dir"].name}")
         # 2) Rigid search
         # 2.a  Align barycenters
         source_b, target_b, trans_s, trans_t = rg.align_barycentres(source, target, verbose=True)
@@ -569,63 +577,63 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
         seg_source_b = tb.imgDeform(seg_source, (id_grid + trans_s), mode="nearest")
 
         # 2.b Intial exploration:
-        kernelOperator = rk.GaussianRKHS(sigma=(15,15,15),normalized=False)
-        datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'), alpha=1)
-        # datacost = mt.Rotation_MutualInformation_Cost(target_b.to('cuda:0'), alpha=1)
-
-
-        mr = mt.rigid_along_metamorphosis(
-            source_b, target_b, momenta_ini=0,
-            kernelOperator= kernelOperator,
-            rho = 1,
-            data_term=datacost ,
-            integration_steps = 10,
-            cost_cst=.1,
-        )
-        top_params = rg.initial_exploration(mr,r_step=5, max_output = 1, verbose=True)
-        print(top_params)
-
-        # 2.c Optimize on best finds
-        best_loss, best_momentum_R, best_momentum_T, best_momentum_S, best_rot = rg.optimize_on_rigid(mr, top_params, n_iter=10,verbose=True)
-
-        # 3) [Optionnal] Check rigid search
-        rot_def = mr.mp.get_rigidor()
-        rotated_source = tb.imgDeform(mr.mp.image,rot_def,dx_convention='2square')
-        img = rotated_source[0,0,..., mr.source.shape[-1]//2].detach().cpu()
-        img_target = tb.imCmp(rotated_source[..., source.shape[-1]//2].detach().cpu(), mr.target[..., source.shape[-1]//2].detach().cpu(), "compose")[0]
-        img_source = tb.imCmp(rotated_source[..., source.shape[-1]//2].detach().cpu(), mr.source[..., source.shape[-1]//2].detach().cpu(), "compose")[0]
-        fig,ax = plt.subplots(1,3)
-        ax[0].imshow(img, cmap="gray")
-        ax[0].set_title("Final image")
-        ax[1].imshow(img_target, cmap="gray")
-        ax[1].set_title("img vs target")
-        ax[2].imshow(img_source, cmap="gray")
-        ax[2].set_title("img vs source")
-        fig.suptitle(f"rigid search {paths["subject_dir"].name}, {best_loss}")
-        if location == "meso":
-            fig.savefig(os.path.join(result_folder, f'checkrigid_{paths["subject_dir"].name}.png'))
-        else:
-            plt.show()
+        # kernelOperator = rk.GaussianRKHS(sigma=(15,15,15),normalized=False)
+        # datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'), alpha=1)
+        # # datacost = mt.Rotation_MutualInformation_Cost(target_b.to('cuda:0'), alpha=1)
+        #
+        #
+        # mr = mt.rigid_along_metamorphosis(
+        #     source_b, target_b, momenta_ini=0,
+        #     kernelOperator= kernelOperator,
+        #     rho = 1,
+        #     data_term=datacost ,
+        #     integration_steps = integration_steps,
+        #     cost_cst=.1,
+        # )
+        # top_params = rg.initial_exploration(mr,r_step=10, max_output = 15, verbose=False)
+        # print(top_params)
+        #
+        # # 2.c Optimize on best finds
+        # best_loss, best_momentum_R, best_momentum_T, best_momentum_S, best_rot = rg.optimize_on_rigid(mr, top_params, n_iter=10,verbose=False)
+        # print("best_momentum_R = torch.",best_momentum_R)
+        # print("best_momentum_T = torch.",best_momentum_T)
+        # print("best_momentum_S = torch.",best_momentum_S)
+        #
+        # # 3) [Optionnal] Check rigid search
+        # rot_def = mr.mp.get_rigidor()
+        # rotated_source = tb.imgDeform(mr.mp.image,rot_def,dx_convention='2square')
+        # img = rotated_source[0,0,..., mr.source.shape[-1]//2].detach().cpu()
+        # img_target = tb.imCmp(rotated_source[..., source.shape[-1]//2].detach().cpu(), mr.target[..., source.shape[-1]//2].detach().cpu(), "compose")[0]
+        # img_source = tb.imCmp(rotated_source[..., source.shape[-1]//2].detach().cpu(), mr.source[..., source.shape[-1]//2].detach().cpu(), "compose")[0]
+        # fig,ax = plt.subplots(1,3)
+        # ax[0].imshow(img, cmap="gray")
+        # ax[0].set_title("Final image")
+        # ax[1].imshow(img_target, cmap="gray")
+        # ax[1].set_title("img vs target")
+        # ax[2].imshow(img_source, cmap="gray")
+        # ax[2].set_title("img vs source")
+        # fig.suptitle(f"rigid search {paths["subject_dir"].name}, {best_loss}")
+        # if location == "meso":
+        #     fig.savefig(os.path.join(result_folder, f'checkrigid_{paths["subject_dir"].name}.png'))
+        # else:
+        #     plt.show()
 
         # 4) Apply LDDMM
-        sigma= [3,  7]
-        sigma = [(s,)*3 for s in sigma]
-        kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
+        for alpha in [.5, .6, .7, .8, .9, 1]:
+            kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
 
-        # D(I,T) =  alpha *| S \cdot A.T  - T |^2 + (1 - alpha) * | I_1 \cdot A.T - T|^2
-        # datacost = mt.Rotation_MutualInformation_Cost(target_b, alpha=.5)
-        for a in [0,.1,.2,.5]:
-            alpha = a
+            # D(I,T) =  alpha *| S \cdot A.T  - T |^2 + (1 - alpha) * | I_1 \cdot A.T - T|^2
+            # datacost = mt.Rotation_MutualInformation_Cost(target_b, alpha=.5)
+
             datacost = mt.Rotation_Ssd_Cost(target_b.to("cuda:0"), alpha=alpha)
             momenta = mt.prepare_momenta(
                 source_b.shape,
-                rot_prior=best_momentum_R.detach().clone(),trans_prior=best_momentum_T.detach().clone(),
-                scale_prior=best_momentum_S.detach().clone(),
+                # rot_prior=best_momentum_R.detach().clone(),trans_prior=best_momentum_T.detach().clone(),
+                # scale_prior=best_momentum_S.detach().clone(),
             )
 
-            rho = 1
-            cost_cst = .1
-            integration_steps = 10
+
+
             mr = mt.rigid_along_metamorphosis(
               source_b, target_b, momenta_ini=momenta,
               kernelOperator= kernelOperator,
@@ -633,7 +641,7 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
               data_term=datacost ,
               integration_steps = integration_steps,
               cost_cst=cost_cst,
-              n_iter=15,
+              n_iter=20,
               save_gpu_memory=False,
               lbfgs_max_iter = 20,
               lbfgs_history_size = 20,
@@ -648,9 +656,10 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
             dice = dices[0] | dices[1]
             now = datetime.datetime.now()
             log_metrics(
+                db_path,
                 patient_id=paths["subject_dir"].name,
-                method="rigid_along_lddmm",
-                metrics={'rigid_along_lddmm ' + k: v for k,v in dice.items()},
+                method="rigid_along_lddmm (no search)",
+                metrics={'rigid_along_lddmm (no search) ' + k: v for k,v in dice.items()},
                 run_id= str(now) + ' at ' + location,
                 step=0,
                 meta={"gpu":torch.cuda.get_device_name(),
@@ -834,6 +843,7 @@ def execute_uniGradIcon(pp, subjects_numbers):
         now = datetime.datetime.now()
         # Example per patient/method
         log_metrics(
+            db_path,
             patient_id=p["subject_dir"].name,
             method="unigradicon",
             metrics={'unigradicon ' + k: v for k,v in dice.items()},
@@ -969,7 +979,8 @@ def execute_flirt_lddmm(pp, subjects_numbers):
 
         sigma = [(3,3,3), (7,7,7)]
         kernel_op = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
-        data_cost = mt.Mutual_Information(target)
+        # data_cost = mt.Mutual_Information(target)
+        data_cost = mt.Ssd(target)
         mr = mt.lddmm(source, target, 0, kernel_op,
                  cost_cst=.001,
                 grad_coef=1,
@@ -979,7 +990,7 @@ def execute_flirt_lddmm(pp, subjects_numbers):
               data_term=data_cost,
         )
         dice_lddmm, _ = mr.compute_DICE(source_seg, target_seg)
-        mr.save(f"{p["subject_dir"].name}_flirt_lddmm_dtMI",
+        mr.save(f"{p["subject_dir"].name}_flirt_lddmm",
                 light_save=True,
                 save_path = os.path.join(result_folder, "flirt_lddmm")
                 )
@@ -988,9 +999,10 @@ def execute_flirt_lddmm(pp, subjects_numbers):
 
         now = datetime.datetime.now()
         log_metrics(
+            db_path,
             patient_id=p["subject_dir"].name,
-            method="flirt_lddmm MI",
-            metrics={'flirt_lddmm MI ' + k: v for k,v in dice.items()},
+            method="flirt_lddmm",
+            metrics={'flirt_lddmm ' + k: v for k,v in dice.items()},
             run_id= str(now) + ' at ' + location,
             step=0,
             meta={"gpu":torch.cuda.get_device_name(),
@@ -1011,6 +1023,7 @@ def execute_control(pp, subjects_numbers):
 
         now = datetime.datetime.now()
         log_metrics(
+            db_path,
             patient_id=paths["subject_dir"].name,
             method="before reg",
             metrics=dice,
@@ -1037,6 +1050,7 @@ def execute_dummy(pp, subjects_numbers):
         metric = {'dummy ' + k: v for k,v in dice.items()}
         print("\tmetrics :", metric)
         log_metrics(
+            db_path,
             patient_id=p["subject_dir"].name,
             method="dummy",
             metrics=metric,
@@ -1046,7 +1060,7 @@ def execute_dummy(pp, subjects_numbers):
         )
 
 @contextmanager
-def get_conn():
+def get_conn(db_path):
     conn = sqlite3.connect(db_path, timeout=30, isolation_level=None)  # autocommit
     conn.execute("PRAGMA journal_mode=WAL;")       # better concurrency & durability
     conn.execute("PRAGMA synchronous=NORMAL;")     # good balance safety/speed
@@ -1075,14 +1089,16 @@ def clean_method(db_name, method_name):
         conn.execute("DELETE FROM results WHERE method = ?", (method_name,))
         conn.commit()
 
-def log_metrics(patient_id, method, metrics: dict, run_id, step=0, meta: dict=None):
+
+
+def log_metrics(db_path, patient_id, method, metrics: dict, run_id, step=0, meta: dict=None):
     """
     metrics: {"dice": 0.91, "hausdorff95": 3.2, ...}
     meta:    {"gpu_mem": 3.1, "seed": 42, "shape": [160,192,160]}  (optional)
     """
     ts = time.time()
     meta_json = json.dumps(meta) if meta else None
-    with get_conn() as conn:
+    with get_conn(db_path) as conn:
         # UPSERT (idempotent if you re-run)
         conn.executemany("""
         INSERT INTO results(patient_id, method, metric, value, run_id, step, meta_json, ts)
@@ -1135,21 +1151,21 @@ if __name__ == '__main__':
     # = [35,36,37,38,39,41,42,43] Done
     # [44,45,46,48,49,50,51,52,53,54, Done
     # 55,56,57,58,59,60,61,62, Done
-#     # subjects_numbers = [63,64,65,66,67,68,69]
+    #     # subjects_numbers = [63,64,65,66,67,68,69]
     # subjects_numbers = None
-    # subjects_numbers = [28]#, 40, 26, 50,2, 12]
+    # subjects_numbers = [2]#, 40, 26, 50,2, 12]
     RECOMPUTE = False
-    RESIZE_FACTOR = .8 if location == 'meso' else .8
+    RESIZE_FACTOR = 1 if location == 'meso' else .8
 
     # init_csv(result_folder)
 
     if location == "meso": # don't touch this line
-        file_db = "ixi_results_tests.db"
+        file_db = "ixi_results.db"
     else: # here you can sandbox what you need to do.
         # file_db = "ixi_results.db"
         file_db = "ixi_results_meso_20250917.db"
     db_path = os.path.join(result_folder, file_db)
-    # clean_method(db_path, "dummy")
+    # clean_method(db_path, "rigid_along_lddmm")
 
     # execute_dummy(pp, subjects_numbers)
     # execute_control(pp,subjects_numbers)
