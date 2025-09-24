@@ -24,9 +24,11 @@ def align_barycentres(img_1, img_2, verbose = False):
         print("S compute barycentre :",b_1)
         print("T compute barycentre :",b_2)
         print("diff : ", b_2 - b_1)
-
-    img_1_b = tb.imgDeform(img_1, (id_grid + b_1))
-    img_2_b = tb.imgDeform(img_2, (id_grid + b_2))
+    kw_gridsample = dict(padding_mode="zeros",
+                         align_corners=True
+                         )
+    img_1_b = tb.imgDeform(img_1, (id_grid + b_1), kw_gridsample)
+    img_2_b = tb.imgDeform(img_2, (id_grid + b_2), kw_gridsample)
     return img_1_b, img_2_b, b_1, b_2
 
 def _insert_(entry, top_losses, top_k = 10):

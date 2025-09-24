@@ -1431,7 +1431,7 @@ def field2diffeo(in_vectField, N=None, save=False, forward=True):
     return vff.FieldIntegrator(method='fast_exp')(in_vectField.clone(), forward=forward)
 
 
-def imgDeform(img, deform_grid, dx_convention='2square', clamp=False, mode = 'bilinear'):
+def imgDeform(img, deform_grid, dx_convention='2square', clamp=False, mode = 'bilinear', gridsample_kwargs= None):
     """
     Apply a deformation grid to an image
 
@@ -1460,10 +1460,14 @@ def imgDeform(img, deform_grid, dx_convention='2square', clamp=False, mode = 'bi
         deform_grid = pixel_to_2square_convention(deform_grid)
     elif dx_convention == 'square':
         deform_grid = square_to_2square_convention(deform_grid)
+    if gridsample_kwargs is None:
+        gridsample_kwargs = DLT_KW_GRIDSAMPLE
     deformed = F.grid_sample(img.to(deform_grid.dtype),
                              deform_grid,
                              mode = mode,
-                             **DLT_KW_GRIDSAMPLE
+                             # **gridsample_kwargs
+                             padding_mode="zeros",
+                         align_corners=True
                              )
     # if len(I.shape) == 5:
     #     deformed = deformed.permute(0,1,4,3,2)
