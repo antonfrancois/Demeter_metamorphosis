@@ -701,21 +701,27 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
         device = source_segmentation.device
         # Option 1:
-        # deformator = self.mp.get_deformator() if forward else self.mp.get_deformation()
-        # deformator = self.mp.get_rigidor(deformator)
-        # self.source_seg_deformed = tb.imgDeform(
-        #     self.source_segmentation, deformator.to(device),
-        #     dx_convention=self.dx_convention,
-        #     mode = 'nearest'
-        # )
-
-        # Option 2:
-        deformator = self.mp.get_deformator()
-        self.source_seg_deformed = tb.imgDeform(
-            self.source_seg_rotated, deformator.to(device),
+        deformator = self.mp.get_deformator() if forward else self.mp.get_deformation()
+        source_seg_deformed = tb.imgDeform(
+            self.source_segmentation, deformator.to(device),
             dx_convention=self.dx_convention,
             mode = 'nearest'
         )
+
+        rigidor = self.mp.get_rigidor()
+        self.source_seg_deformed = tb.imgDeform(
+            source_seg_deformed, rigidor.to(device),
+            dx_convention=self.dx_convention,
+            mode = 'nearest'
+        )
+
+        # Option 2:
+        # deformator = self.mp.get_deformator()
+        # self.source_seg_deformed = tb.imgDeform(
+        #     self.source_seg_rotated, deformator.to(device),
+        #     dx_convention=self.dx_convention,
+        #     mode = 'nearest'
+        # )
 
 
 
