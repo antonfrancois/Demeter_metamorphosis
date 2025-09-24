@@ -304,7 +304,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         d_rot = (pre_rot_inf - pre_rot_inf.T) / 2
         # print('d_rot',self.d_rot)
 
-        scale_inf = momentum_S * scale + momentum_T * translation
+        scale_inf = momentum_S * scale #+ momentum_T * translation
         scale = scale * (1 +  scale_inf / self.n_step)
 
         if self._i == 0:
@@ -699,14 +699,26 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
                                         verbose= verbose)
         print(f"Rigid dice : {rotation_dice}")
 
-        deformator = self.mp.get_deformator() if forward else self.mp.get_deformation()
-        deformator = self.mp.get_rigidor(deformator)
         device = source_segmentation.device
+        # Option 1:
+        # deformator = self.mp.get_deformator() if forward else self.mp.get_deformation()
+        # deformator = self.mp.get_rigidor(deformator)
+        # self.source_seg_deformed = tb.imgDeform(
+        #     self.source_segmentation, deformator.to(device),
+        #     dx_convention=self.dx_convention,
+        #     mode = 'nearest'
+        # )
+
+        # Option 2:
+        deformator = self.mp.get_deformator()
         self.source_seg_deformed = tb.imgDeform(
-            self.source_segmentation, deformator.to(device),
+            self.source_seg_rotated, deformator.to(device),
             dx_convention=self.dx_convention,
             mode = 'nearest'
         )
+
+
+
 
         reg_dice = tb.average_dice(self.source_seg_deformed,
                                    target_segmentation,
