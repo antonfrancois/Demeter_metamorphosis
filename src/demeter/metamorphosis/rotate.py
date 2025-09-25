@@ -651,7 +651,7 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
         self.total_cost = self.data_loss + \
                           self.cost_cst * (
                                   self.cst_field * (self.norm_v_2 +  self.norm_l2_on_z) +
-                                (1 - self.cst_field) * (self.norm_l2_on_R + self.norm_S_2)
+                                 (self.norm_l2_on_R + self.norm_S_2)
                           )
 
         return self.total_cost
