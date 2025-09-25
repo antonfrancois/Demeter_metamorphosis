@@ -597,9 +597,10 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
 
 class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
-    def __init__(self,**kwargs):
+    def __init__(self, cst_field = .5, **kwargs):
         super().__init__(**kwargs)
         self._cost_saving_ = self._rotating_cost_saving_
+        self.cst_field = cst_field
 
     def _get_rho_(self):
         return float(self.mp.rho)
@@ -608,6 +609,7 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
         params_all  = super().get_all_arguments()
         params_spe = {
             'rho':self._get_rho_(),
+            'cst_field':self.cst_field,
         }
         return {**params_all,**params_spe}
 
@@ -647,7 +649,10 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
             self.norm_S_2 = .5 *  ((self.mp.scale_inf_ini)**2).sum()
 
         self.total_cost = self.data_loss + \
-                          self.cost_cst * (self.norm_v_2 + self.norm_l2_on_z + self.norm_l2_on_R + self.norm_S_2)
+                          self.cost_cst * (
+                                  self.cst_field * (self.norm_v_2 +  self.norm_l2_on_z) +
+                                (1 - self.cst_field) * (self.norm_l2_on_R + self.norm_S_2)
+                          )
 
         return self.total_cost
 
