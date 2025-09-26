@@ -658,15 +658,68 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
     def _rotating_cost_saving_(self,i, loss_stock):
         if loss_stock is None:
-            d = 4
+            d = 5
             return torch.zeros((i+1, d))
 
         loss_stock[i, 0] = self.data_loss.detach()
         loss_stock[i, 1] = self.norm_v_2.detach()
         loss_stock[i, 2] = self.norm_l2_on_z.detach()
         loss_stock[i, 3] = self.norm_l2_on_R.detach()
+        loss_stock[i,4] = self.norm_S_2.detach()
+
+        print("\t\tdata_loss :", self.data_loss.detach())
+        print("\t\tnorm_v_2 :", self.norm_v_2.detach())
+        print("\t\tnorm_l2_on_z :", self.norm_l2_on_z.detach())
+        print("\t\tnorm_l2_on_R :", self.norm_l2_on_R.detach())
+        print("\t\tnorm_S_2 :", self.norm_S_2.detach())
 
         return loss_stock
+
+
+    # def compute_landmark_dist(
+    #     self,
+    #         source_landmark,
+    #         target_landmark=None,
+    #         forward=True,
+    #         verbose=True,
+    #         round = False
+    # ):
+
+    def plot_cost(self,y_log=False):
+        fig1, ax1 = plt.subplots(1, 2,figsize=(10,10))
+        if y_log:
+            ax1[0].set_yscale('log')
+            ax1[1].set_yscale('log')
+        cost_stock = self.to_analyse[1].detach().numpy()
+
+        ssd_plot = cost_stock[:, 0]
+        ax1[0].plot(ssd_plot, "--", color='blue', label='ssd')
+        ax1[1].plot(ssd_plot, "--", color='blue', label='ssd')
+
+        normv_plot = self.cost_cst * cost_stock[:, 1]
+        ax1[0].plot(normv_plot, "--", color='green', label='normv')
+        ax1[1].plot(cost_stock[:, 1], "--", color='green', label='normv')
+        total_cost = ssd_plot + normv_plot
+
+        norm_l2_on_z = self.cost_cst * cost_stock[:, 2]
+        total_cost += norm_l2_on_z
+        ax1[0].plot(norm_l2_on_z, "--", color='orange', label='norm_l2_on_z')
+        ax1[1].plot(cost_stock[:, 2], "--", color='orange', label='norm_l2_on_z')
+
+        fields_diff_norm_v = self.cost_cst *  cost_stock[:, 3]
+        total_cost += fields_diff_norm_v
+        ax1[0].plot(fields_diff_norm_v, "--", color="purple", label='normL2_on_R')
+        ax1[1].plot(cost_stock[:, 3], "--", color='purple', label='normL2_on_R')
+
+
+
+        ax1[0].plot(total_cost, color='black', label=r'\Sigma')
+        ax1[0].legend()
+        ax1[1].legend()
+        ax1[0].set_title("Lambda = " + str(self.cost_cst))
+
+        return fig1,ax1
+
 
     def compute_DICE(
         self, source_segmentation, target_segmentation, plot=False, forward=True, verbose=True
@@ -763,47 +816,3 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
         plt.show()
         return (rotation_dice, reg_dice), (self.source_seg_rotated, self.source_seg_deformed)
-
-
-    # def compute_landmark_dist(
-    #     self,
-    #         source_landmark,
-    #         target_landmark=None,
-    #         forward=True,
-    #         verbose=True,
-    #         round = False
-    # ):
-
-    def plot_cost(self,y_log=False):
-        fig1, ax1 = plt.subplots(1, 2,figsize=(10,10))
-        if y_log:
-            ax1[0].set_yscale('log')
-            ax1[1].set_yscale('log')
-        cost_stock = self.to_analyse[1].detach().numpy()
-
-        ssd_plot = cost_stock[:, 0]
-        ax1[0].plot(ssd_plot, "--", color='blue', label='ssd')
-        ax1[1].plot(ssd_plot, "--", color='blue', label='ssd')
-
-        normv_plot = self.cost_cst * cost_stock[:, 1]
-        ax1[0].plot(normv_plot, "--", color='green', label='normv')
-        ax1[1].plot(cost_stock[:, 1], "--", color='green', label='normv')
-        total_cost = ssd_plot + normv_plot
-
-        norm_l2_on_z = self.cost_cst * cost_stock[:, 2]
-        total_cost += norm_l2_on_z
-        ax1[0].plot(norm_l2_on_z, "--", color='orange', label='norm_l2_on_z')
-        ax1[1].plot(cost_stock[:, 2], "--", color='orange', label='norm_l2_on_z')
-
-        fields_diff_norm_v = self.cost_cst *  cost_stock[:, 3]
-        total_cost += fields_diff_norm_v
-        ax1[0].plot(fields_diff_norm_v, "--", color="purple", label='normL2_on_R')
-        ax1[1].plot(cost_stock[:, 3], "--", color='purple', label='normL2_on_R')
-
-        ax1[0].plot(total_cost, color='black', label=r'\Sigma')
-        ax1[0].legend()
-        ax1[1].legend()
-        ax1[0].set_title("Lambda = " + str(self.cost_cst))
-
-        return fig1,ax1
-
