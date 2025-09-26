@@ -15,6 +15,7 @@ from demeter.metamorphosis import Geodesic_integrator,Optimize_geodesicShooting
 
 from demeter.constants import *
 import demeter.utils.torchbox as tb
+from demeter.utils.toolbox import plot_loss_with_multiple_y_axes
 
 
 def prepare_momenta(image_shape,
@@ -629,7 +630,7 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
         self.data_loss = self.data_term()
 
         if self.flag_hamiltonian_integration:
-            self.total_cost = self.data_loss + (self.cost_cst) * self.mp.ham_integration
+            self.total_cost = self.data_loss + self.cost_cst * self.mp.ham_integration
         else:
             if self.mp.flag_field:
                 # Norm V
@@ -657,15 +658,26 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
         return self.total_cost
 
     def _rotating_cost_saving_(self,i, loss_stock):
+
+
         if loss_stock is None:
             d = 5
-            return torch.zeros((i+1, d))
+            loss_stock = {
+            "data_loss":torch.zeros((i,)),
+            "norm_v_2":torch.zeros((i,)),
+            "norm_l2_on_z":torch.zeros((i,)),
+            "norm_l2_on_R":torch.zeros((i,)),
+            "norm_S_2":torch.zeros((i,)),
+            }
+            return loss_stock
 
-        loss_stock[i, 0] = self.data_loss.detach()
-        loss_stock[i, 1] = self.norm_v_2.detach()
-        loss_stock[i, 2] = self.norm_l2_on_z.detach()
-        loss_stock[i, 3] = self.norm_l2_on_R.detach()
-        loss_stock[i,4] = self.norm_S_2.detach()
+
+        loss_stock["data_loss"][i] = self.data_loss.detach().cpu()
+        loss_stock["norm_v_2"][i] = self.norm_v_2.detach().cpu()
+        loss_stock["norm_l2_on_z"][i] = self.norm_l2_on_z.detach().cpu()
+        loss_stock["norm_l2_on_R"][i] = self.norm_l2_on_R.detach().cpu()
+        loss_stock["norm_S_2"][i] = self.norm_S_2.detach().cpu()
+
 
         print("\t\tdata_loss :", self.data_loss.detach())
         print("\t\tnorm_v_2 :", self.norm_v_2.detach())
@@ -676,47 +688,49 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
         return loss_stock
 
 
-    # def compute_landmark_dist(
-    #     self,
-    #         source_landmark,
-    #         target_landmark=None,
-    #         forward=True,
-    #         verbose=True,
-    #         round = False
-    # ):
 
     def plot_cost(self,y_log=False):
-        fig1, ax1 = plt.subplots(1, 2,figsize=(10,10))
+        def _handle_old_lossstock_(cost_stock):
+            print(cost_stock)
+            if cost_stock is dict:
+                return cost_stock
+            cost_stock = self.to_analyse[1].detach().numpy()
+            loss_stock = {
+                "data_loss":cost_stock[:,0],
+                "norm_v_2":cost_stock[:,1],
+                "norm_l2_on_z":cost_stock[:,2],
+                "norm_l2_on_R":cost_stock[:,3],
+                # "norm_S_2":cost_stock[:,4],
+            }
+            return loss_stock
+
+        fig1, ax1 = plt.subplots(1, 2,figsize=(10,5))
         if y_log:
             ax1[0].set_yscale('log')
             ax1[1].set_yscale('log')
-        cost_stock = self.to_analyse[1].detach().numpy()
+        cost_stock = _handle_old_lossstock_(self.to_analyse[1])
+        # names= ["data_loss",  "norm_v_2",  "norm_l2_on_z",  "norm_l2_on_R",  "norm_S_2"]
+        colors = plt.cm.tab10.colors
 
-        ssd_plot = cost_stock[:, 0]
-        ax1[0].plot(ssd_plot, "--", color='blue', label='ssd')
-        ax1[1].plot(ssd_plot, "--", color='blue', label='ssd')
+        dt = cost_stock["data_loss"]
+        nv = cost_stock["norm_v_2"] * self.cost_cst * self.cst_field
+        nz = cost_stock["norm_l2_on_z"] * self.cost_cst * self.cst_field
+        nr = cost_stock["norm_l2_on_R"] * self.cost_cst
 
-        normv_plot = self.cost_cst * cost_stock[:, 1]
-        ax1[0].plot(normv_plot, "--", color='green', label='normv')
-        ax1[1].plot(cost_stock[:, 1], "--", color='green', label='normv')
-        total_cost = ssd_plot + normv_plot
-
-        norm_l2_on_z = self.cost_cst * cost_stock[:, 2]
-        total_cost += norm_l2_on_z
-        ax1[0].plot(norm_l2_on_z, "--", color='orange', label='norm_l2_on_z')
-        ax1[1].plot(cost_stock[:, 2], "--", color='orange', label='norm_l2_on_z')
-
-        fields_diff_norm_v = self.cost_cst *  cost_stock[:, 3]
-        total_cost += fields_diff_norm_v
-        ax1[0].plot(fields_diff_norm_v, "--", color="purple", label='normL2_on_R')
-        ax1[1].plot(cost_stock[:, 3], "--", color='purple', label='normL2_on_R')
-
-
-
-        ax1[0].plot(total_cost, color='black', label=r'\Sigma')
+        ax1[0].plot(dt, '--', label="data_loss" ,color=colors[0])
+        ax1[0].plot(nv,'--', label="norm_v_2" ,color=colors[1])
+        ax1[0].plot(nz,'--', label="norm_l2_on_z" ,color=colors[2])
+        ax1[0].plot(nr,'--', label="norm_l2_on_R" ,color=colors[3])
+        try:
+            ns = cost_stock["norm_S_2"] * self.cost_cst
+            ax1[0].plot(ns,'--', label="norm_S_2" ,color=colors[4])
+            total = dt + nv + nz + nr + ns
+        except KeyError:
+            total = dt + nv + nz + nr
+        ax1[0].plot(total, label="sum" ,color="black")
         ax1[0].legend()
-        ax1[1].legend()
-        ax1[0].set_title("Lambda = " + str(self.cost_cst))
+
+        plot_loss_with_multiple_y_axes(cost_stock, "Losses", ax = ax1[1])
 
         return fig1,ax1
 

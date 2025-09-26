@@ -316,3 +316,84 @@ def fig_to_image(fig,ax):
     image_from_plot = image_from_plot.reshape(fig.canvas.get_width_height()[::-1] + (4,))
     image_from_plot = image_from_plot[:, :, [1, 2, 3]]  # Convertir ARGB en RGB
     return image_from_plot
+
+
+def plot_loss_with_multiple_y_axes(loss_stock, title="Loss Evolution", ax=None, colors = plt.cm.tab10.colors):
+    """
+    Plots multiple loss values with multiple left y-axes, spaced to avoid overlap.
+
+    Args:
+        loss_stock (dict): Dictionary of {label: torch.Tensor or np.ndarray}.
+        title (str): Plot title.
+        ax (matplotlib.axes.Axes, optional): Existing axis to use.
+
+    Returns:
+        (fig, axes): The figure and list of per-series y-axes (left).
+    """
+    import numpy as np
+
+    # Convert to numpy if torch
+    series = {
+        k: (v.detach().cpu().numpy() if hasattr(v, "detach") else np.asarray(v))
+        for k, v in loss_stock.items()
+    }
+    labels = list(series.keys())
+    n = len(labels)
+
+    # Create base axes
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(8, 5))
+    else:
+        fig = ax.figure
+
+    # Make space on the left for multiple spines (60px each is typical)
+    # Increase left margin proportionally to number of axes
+    left_margin = 0.12 + 0.06 * (n - 1)
+    left_margin = min(left_margin, 0.5)  # avoid extreme margins
+    fig.subplots_adjust(left=left_margin)
+
+    # colors = colors
+    axes = []
+
+    # Create one y-axis per series, all on the left, each offset outward
+    for i, name in enumerate(labels):
+        y = series[name]
+        color = colors[i % len(colors)]
+
+        if i == 0:
+            a = ax
+        else:
+            a = ax.twinx()
+
+        # Ensure left-side ticks/label for all axes
+        a.yaxis.set_label_position("left")
+        a.yaxis.set_ticks_position("left")
+
+        # Offset each left spine outward; start at 0, then 60, 120, ...
+        a.spines["left"].set_position(("outward", 60 * i))
+
+        # Hide right spine to avoid clutter
+        # if "right" in a.spines:
+        #     a.spines["right"].set_visible(False)
+
+        # Match axis aesthetics to the line color
+        line, = a.plot(y, color=color, label=name, linewidth=1.5)
+        a.set_ylabel(name, color=color)
+        a.tick_params(axis="y", colors=color)
+        a.spines["left"].set_color(color)
+
+        # Keep grid/ticks only on the base axis (optional aesthetic)
+        if i > 0:
+            a.grid(False)
+
+        axes.append(a)
+
+    # X-axis, title, and finishing touches
+    ax.set_xlabel("Iteration")
+    ax.set_title(title)
+    # Put the x-ticks on the base axis only
+    for a in axes[1:]:
+        a.set_xticks([])
+
+    fig.tight_layout()
+    return fig, axes
