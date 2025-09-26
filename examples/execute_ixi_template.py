@@ -1001,13 +1001,15 @@ def execute_flirt_lddmm(pp, subjects_numbers):
         log_metrics(
             db_path,
             patient_id=p["subject_dir"].name,
-            method="flirt_lddmm",
-            metrics={'flirt_lddmm ' + k: v for k,v in dice.items()},
+            method=f"flirt_lddmm R{RESIZE_FACTOR}",
+            metrics={f'flirt_lddmm ' + k: v for k,v in dice.items()},
             run_id= str(now) + ' at ' + location,
             step=0,
             meta={"gpu":torch.cuda.get_device_name(),
                   "data_cost": mr.data_term.__class__.__name__,
-                  "sigma":sigma}
+                  "sigma":sigma,
+                  "RESIZE FACTOR": RESIZE_FACTOR,
+                  }
         )
 
 #                   end flirt + lddmm
@@ -1145,14 +1147,14 @@ if __name__ == '__main__':
 
 
 
-    subjects_numbers = [14,25,27,28,29,30,31,33,34]# Done
+    # subjects_numbers = [14,25,27,28,29,30,31,33,34]# Done
     # subjects_numbers = [30,31,33,34]# Done
 
     # = [35,36,37,38,39,41,42,43] Done
     # [44,45,46,48,49,50,51,52,53,54, Done
     # 55,56,57,58,59,60,61,62, Done
     #     # subjects_numbers = [63,64,65,66,67,68,69]
-    # subjects_numbers = None
+    subjects_numbers = None
     # subjects_numbers = [2]#, 40, 26, 50,2, 12]
     RECOMPUTE = False
     RESIZE_FACTOR = 1 if location == 'meso' else .8
@@ -1165,14 +1167,14 @@ if __name__ == '__main__':
         # file_db = "ixi_results.db"
         file_db = "ixi_results_meso_20250917.db"
     db_path = os.path.join(result_folder, file_db)
-    # clean_method(db_path, "rigid_along_lddmm")
+    clean_method(db_path, "flirt_lddmm R1")
 
     # execute_dummy(pp, subjects_numbers)
     # execute_control(pp,subjects_numbers)
     # if location == 'meso':
     # #     execute_uniGradIcon(pp, subjects_numbers)
-    # execute_flirt_lddmm(pp, subjects_numbers)
+    execute_flirt_lddmm(pp, subjects_numbers)
     # elif location == 'local':
-    execute_rigid_along_metamorphosis(pp, subjects_numbers)
+    # execute_rigid_along_metamorphosis(pp, subjects_numbers)
 
 
