@@ -1346,11 +1346,12 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             loss_stock = self._cost_saving_(i, loss_stock)
 
             if verbose:
+                loss_val = loss_stock["data_loss"][i] if isinstance(loss_stock, dict) else loss_stock[i, 0]
                 update_progress(
                     (i + 1) / n_iter,
                     message=(
                         f"{self.data_term.__class__.__name__} :",
-                        loss_stock[i, 0],
+                        loss_val,
                     ),
                 )
             if plot and i in [n_iter // 4, n_iter // 2, 3 * n_iter // 4]:
