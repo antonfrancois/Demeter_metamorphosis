@@ -451,7 +451,7 @@ class Rotation_Ssd_Cost(DataCost):
         ssd = self.ssd(rotated_image)
         ssd_rot = self.ssd(rotated_source)
 
-        print(f"\t[{self.__repr__()}] :\n\tssd = {ssd}, ssd_rot = {ssd_rot}")
+        # print(f"\t[{self.__repr__()}] :\n\tssd = {ssd}, ssd_rot = {ssd_rot}")
 
         return self.alpha * ssd_rot + (1-self.alpha) * ssd
 

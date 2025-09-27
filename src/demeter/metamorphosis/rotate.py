@@ -691,8 +691,8 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
     def plot_cost(self,y_log=False):
         def _handle_old_lossstock_(cost_stock):
-            print(cost_stock)
-            if cost_stock is dict:
+            # print(cost_stock)
+            if isinstance(cost_stock ,dict):
                 return cost_stock
             cost_stock = self.to_analyse[1].detach().numpy()
             loss_stock = {
