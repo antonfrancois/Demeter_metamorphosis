@@ -679,11 +679,11 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
         loss_stock["norm_S_2"][i] = self.norm_S_2.detach().cpu()
 
 
-        print("\t\tdata_loss :", self.data_loss.detach())
-        print("\t\tnorm_v_2 :", self.norm_v_2.detach())
-        print("\t\tnorm_l2_on_z :", self.norm_l2_on_z.detach())
-        print("\t\tnorm_l2_on_R :", self.norm_l2_on_R.detach())
-        print("\t\tnorm_S_2 :", self.norm_S_2.detach())
+        # print("\t\tdata_loss :", self.data_loss.detach())
+        # print("\t\tnorm_v_2 :", self.norm_v_2.detach())
+        # print("\t\tnorm_l2_on_z :", self.norm_l2_on_z.detach())
+        # print("\t\tnorm_l2_on_R :", self.norm_l2_on_R.detach())
+        # print("\t\tnorm_S_2 :", self.norm_S_2.detach())
 
         return loss_stock
 

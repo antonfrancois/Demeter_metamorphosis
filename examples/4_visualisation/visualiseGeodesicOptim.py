@@ -41,14 +41,16 @@ file = "3D_20250910_IXI026-Guys-0696-T1_flirt_lddmm_francoisa_000.pk1"
 file ="3D_20250911_IXI026-Guys-0696-T1_flirt_lddmm_francoisa_000.pk1"
 
 # file = "3D_20250911_IXI026-Guys-0696-T1_rigid_along_lddmm_alpha0.1_francoisa_000.pk1"
-# file = "3D_20250911_IXI026-Guys-0696-T1_rigid_along_lddmm_costcst0.1_francoisa_000.pk1"
+file = "3D_20250911_IXI026-Guys-0696-T1_rigid_along_lddmm_costcst0.1_francoisa_000.pk1"
 # file = "3D_20250911_IXI026-Guys-0696-T1_flirt_lddmm_francoisa_000.pk1"
+
+file = "3D_20250926_IXI026-Guys-0696-T1_rigid_along_lddmm_root_001.pk1"
 mr = mt.load_optimize_geodesicShooting(
     file,
     # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/saved_optim/'),
     # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/'),
     # path="/home/turtlefox/.local/share/Demeter_metamorphosis/saved_optim"
-    # path = "/home/turtlefox/Documents/11_metamorphoses/data/IXI_results/rigid_along_lddmm/"
+    path = "/home/turtlefox/Documents/11_metamorphoses/data/IXI_results/rigid_along_lddmm/"
 )
 
 
@@ -57,7 +59,8 @@ name = file.split('.')[0]
 print("IMG stock :",mr.mp.image_stock.shape)
 T, _,D,H,W = mr.mp.image_stock.shape
 
-# mr.plot_cost()
+mr.plot_cost()
+# plt.show()
 a3s.Visualize_GeodesicOptim_plt(mr, name)
 # import demeter.utils.torchbox as tb
 #

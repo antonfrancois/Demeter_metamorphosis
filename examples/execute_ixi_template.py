@@ -1127,6 +1127,7 @@ if __name__ == '__main__':
         ixi_folder = "/content/drive/MyDrive/demeter_data/ixi-T1/"
         template_seg_path = ""
         location = "colab"
+        result_folder = "/content/drive/MyDrive/demeter_data/ixi_results/"
     elif "gpfs" in cwd:
         template_folder = "/gpfs/workdir/francoisa/data/templates/mni_icbm152_nlin_asym_09c_nifti/mni_icbm152_nlin_asym_09c"
         ixi_folder = "/gpfs/workdir/francoisa/data/IXI-T1_fastsurfer/"
@@ -1151,7 +1152,8 @@ if __name__ == '__main__':
 
 
     subjects_numbers = [26, 29, 2, 15, 40, 28, 17, 59, 39, 44]
-    subjects_numbers = [14,25,27,28,29,30,31,33,34]# Done
+    # subjects_numbers = [14,25,27,[28,29,30]
+    subjects_numbers = [31,33,34]# Done
     # subjects_numbers = [30,31,33,34]# Done
 
     # = [35,36,37,38,39,41,42,43] Done
@@ -1161,7 +1163,7 @@ if __name__ == '__main__':
     # subjects_numbers = None
     # subjects_numbers = [2]#, 40, 26, 50,2, 12]
     # RECOMPUTE = False
-    RESIZE_FACTOR = 1 if location == 'meso' else .8
+    RESIZE_FACTOR = .5 if location == 'local' else 1
 
     # init_csv(result_folder)
 
