@@ -566,8 +566,8 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
         sigma = [(s,)*3 for s in sigma]
         alpha = .3
         rho = 1
-        cost_cst = 5e5
-        cst_field = .05
+        cost_cst = 1e6
+        cst_field = .01
         integration_steps = 10
         print(f"\nPatient : {paths["subject_dir"].name}")
         # 2) Rigid search
@@ -620,61 +620,61 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
         #     plt.show()
 
         # 4) Apply LDDMM
-        for cost_cst in [1e5, 5e5, 1e6]:
-            for cst_field in [1e-2, 5e-2, 1e-1 ]:
-                kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
+        # for cost_cst in [1e5, 5e5, 1e6]:
+        #     for cst_field in [1e-2, 5e-2, 1e-1 ]:
+        kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
 
-                # D(I,T) =  alpha *| S \cdot A.T  - T |^2 + (1 - alpha) * | I_1 \cdot A.T - T|^2
-                # datacost = mt.Rotation_MutualInformation_Cost(target_b, alpha=.5)
+        # D(I,T) =  alpha *| S \cdot A.T  - T |^2 + (1 - alpha) * | I_1 \cdot A.T - T|^2
+        # datacost = mt.Rotation_MutualInformation_Cost(target_b, alpha=.5)
 
-                datacost = mt.Rotation_Ssd_Cost(target_b.to("cuda:0"), alpha=alpha)
-                momenta = mt.prepare_momenta(
-                    source_b.shape,
-                    # rot_prior=best_momentum_R.detach().clone(),trans_prior=best_momentum_T.detach().clone(),
-                    # scale_prior=best_momentum_S.detach().clone(),
+        datacost = mt.Rotation_Ssd_Cost(target_b.to("cuda:0"), alpha=alpha)
+        momenta = mt.prepare_momenta(
+            source_b.shape,
+            # rot_prior=best_momentum_R.detach().clone(),trans_prior=best_momentum_T.detach().clone(),
+            # scale_prior=best_momentum_S.detach().clone(),
+        )
+
+
+
+        mr = mt.rigid_along_metamorphosis(
+          source_b, target_b, momenta_ini=momenta,
+          kernelOperator= kernelOperator,
+          rho = rho,
+          data_term=datacost ,
+          integration_steps = integration_steps,
+          cost_cst=cost_cst,
+          cst_field=cst_field,
+          n_iter=50,
+          save_gpu_memory=False,
+          lbfgs_max_iter = 40,
+          lbfgs_history_size = 20,
+        )
+
+        dices, _ =mr.compute_DICE(seg_source_b, seg_target_b, verbose=True)
+        file_save, path = mr.save(f"{paths["subject_dir"].name}_rigid_along_lddmm",
+                light_save=True,
+                save_path = os.path.join(result_folder, "rigid_along_lddmm")
                 )
-
-
-
-                mr = mt.rigid_along_metamorphosis(
-                  source_b, target_b, momenta_ini=momenta,
-                  kernelOperator= kernelOperator,
-                  rho = rho,
-                  data_term=datacost ,
-                  integration_steps = integration_steps,
-                  cost_cst=cost_cst,
-                  cst_field=cst_field,
-                  n_iter=50,
-                  save_gpu_memory=False,
-                  lbfgs_max_iter = 40,
-                  lbfgs_history_size = 20,
-                )
-
-                dices, _ =mr.compute_DICE(seg_source_b, seg_target_b, verbose=True)
-                file_save, path = mr.save(f"{paths["subject_dir"].name}_rigid_along_lddmm",
-                        light_save=True,
-                        save_path = os.path.join(result_folder, "rigid_along_lddmm")
-                        )
-                mt.free_GPU_memory(mr)
-                dice = dices[0] | dices[1]
-                now = datetime.datetime.now()
-                log_metrics(
-                    db_path,
-                    patient_id=paths["subject_dir"].name,
-                    method="rigid_along_lddmm",
-                    metrics={'rigid_along_lddmm ' + k: v for k,v in dice.items()},
-                    run_id= str(now) + ' at ' + location,
-                    step=0,
-                    meta={"gpu":torch.cuda.get_device_name(),
-                          "alpha" : alpha,
-                          "rho" : rho,
-                          "cost_cst" : cost_cst,
-                          "cst_field" : cst_field,
-                          "sigma" : sigma,
-                          "integration_steps" : integration_steps,
-                          "file": os.path.join(path, file_save)
-                          }
-                    )
+        mt.free_GPU_memory(mr)
+        dice = dices[0] | dices[1]
+        now = datetime.datetime.now()
+        log_metrics(
+            db_path,
+            patient_id=paths["subject_dir"].name,
+            method="rigid_along_lddmm w",
+            metrics={'rigid_along_lddmm ' + k: v for k,v in dice.items()},
+            run_id= str(now) + ' at ' + location,
+            step=0,
+            meta={"gpu":torch.cuda.get_device_name(),
+                  "alpha" : alpha,
+                  "rho" : rho,
+                  "cost_cst" : cost_cst,
+                  "cst_field" : cst_field,
+                  "sigma" : sigma,
+                  "integration_steps" : integration_steps,
+                  "file": os.path.join(path, file_save)
+                  }
+            )
 
 
 def execute_subcmd(cmd):
@@ -1151,10 +1151,12 @@ if __name__ == '__main__':
     )
 
 
-    subjects_numbers = [26, 29, 2, 15, 40, 28, 17, 59, 39, 44]
-    # subjects_numbers = [14,25,27,[28,29,30]
-    subjects_numbers = [31,33,34]# Done
-    # subjects_numbers = [30,31,33,34]# Done
+    subjects_numbers = [2,12,13,14,15,16,17,19]
+    subjects_numbers = [20,21,22,23,24,25,26,27,28,29]
+    subjects_numbers = [30,31,33,34,35,36,37,38,39]
+    subjects_numbers = [40,41,42,43,44,45,46,48,49]
+    subjects_numbers = [50,51,52,53,54,55,56,57,58,59]
+    subjects_numbers = [60,61,62,63,64,65,66,67,68,69]
 
     # = [35,36,37,38,39,41,42,43] Done
     # [44,45,46,48,49,50,51,52,53,54, Done
