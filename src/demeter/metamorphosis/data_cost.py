@@ -444,12 +444,12 @@ class Rotation_Ssd_Cost(DataCost):
         #     self.optimizer.mp.rot_mat.T,
         #     self.optimizer.mp.translation
         # )
-
+        N = prod(self.target.shape[2:])
         rotated_image =  tb.imgDeform(self.optimizer.mp.image,grid_rt,dx_convention='2square')
         rotated_source = tb.imgDeform(self.optimizer.source,grid_rt,dx_convention='2square')
 
-        ssd = self.ssd(rotated_image)
-        ssd_rot = self.ssd(rotated_source)
+        ssd = self.ssd(rotated_image) /N
+        ssd_rot = self.ssd(rotated_source)/N
 
         # print(f"\t[{self.__repr__()}] :\n\tssd = {ssd}, ssd_rot = {ssd_rot}")
 
