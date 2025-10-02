@@ -8,7 +8,7 @@ import demeter.metamorphosis.rotate as mtrt
 import demeter.utils.reproducing_kernels as rk
 import demeter.metamorphosis as mt
 import demeter.utils.cost_functions as cf
-from draft.meta_rotate import img_rot
+#
 
 
 # # %%

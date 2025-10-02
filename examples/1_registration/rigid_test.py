@@ -16,7 +16,7 @@ datacost = mt.Rotation_Ssd_Cost(target.to("cuda:0"), alpha=.5)
 momenta = mtrt.prepare_momenta(
     # mr.source.shape,
     source.shape,
-    image=False,
+    diffeo=False,
     rotation=True,
     translation=True,
     scaling=True,

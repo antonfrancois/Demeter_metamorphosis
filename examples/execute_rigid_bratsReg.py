@@ -345,7 +345,7 @@ best_translation = torch.tensor([ 0.0488, -0.1214, -0.0680])
 
 momenta = mtrt.prepare_momenta(
     mr.source.shape,
-    image=True,
+    diffeo=True,
     rotation=True,
     translation=True,
     rot_prior=best_momentum.detach().clone(),trans_prior=best_translation.detach().clone(),

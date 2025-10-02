@@ -19,7 +19,7 @@ from demeter.utils.toolbox import plot_loss_with_multiple_y_axes
 
 
 def prepare_momenta(image_shape,
-                    image : bool = True,
+                    diffeo : bool = True,
                     rotation : bool = True,
                     translation : bool = True,
                     scaling : bool = True,
@@ -42,17 +42,18 @@ def prepare_momenta(image_shape,
     if not torch.is_tensor(scale_prior):
         scale_prior = torch.tensor(scale_prior)
 
+    print("rot prior :", rot_prior,len(rot_prior.shape) )
     momenta = {}
     kwargs = {
         "dtype":torch.float32,
         "device":device
     }
-    if image:
+    if diffeo:
         momenta["momentum_I"]= torch.zeros(image_shape,**kwargs)
     if rotation:
         if len(rot_prior.shape)==2:
             momenta["momentum_R"] = rot_prior.to(kwargs["dtype"]).to(kwargs["device"])
-        elif len(rot_prior.shape)==1:
+        elif len(rot_prior.shape)<=1:
             if dim == 2:
                 momenta["momentum_R"] = torch.tensor(
                 [ [0, rot_prior],
@@ -496,9 +497,11 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
             grid, self.rot_mat.T, - self.translation, 1/self.scale
         )
 
-    def get_rigid(self):
-        return tb.grid_from_rotation_translation(
-            self.id_grid, self.rot_mat, self.translation, self.scale)
+    def get_rigid(self, grid = None):
+        if grid is None:
+            grid = self.id_grid
+        return tb.grid_from_rotation_translation_scaling(
+            grid, self.rot_mat, self.translation, self.scale)
 
     def _save_step(self):
         if self.flag_field:
@@ -679,11 +682,11 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
         loss_stock["norm_S_2"][i] = self.norm_S_2.detach().cpu()
 
 
-        # print("\t\tdata_loss :", self.data_loss.detach())
-        # print("\t\tnorm_v_2 :", self.norm_v_2.detach())
-        # print("\t\tnorm_l2_on_z :", self.norm_l2_on_z.detach())
-        # print("\t\tnorm_l2_on_R :", self.norm_l2_on_R.detach())
-        # print("\t\tnorm_S_2 :", self.norm_S_2.detach())
+        print("\t\tdata_loss :", self.data_loss.detach())
+        print("\t\tnorm_v_2 :", self.norm_v_2.detach())
+        print("\t\tnorm_l2_on_z :", self.norm_l2_on_z.detach())
+        print("\t\tnorm_l2_on_R :", self.norm_l2_on_R.detach())
+        print("\t\tnorm_S_2 :", self.norm_S_2.detach())
 
         return loss_stock
 
@@ -773,20 +776,28 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
         device = source_segmentation.device
         # Option 1:
-        deformator = self.mp.get_deformator() if forward else self.mp.get_deformation()
-        source_seg_deformed = tb.imgDeform(
+        # deformator = self.mp.get_deformator() if forward else self.mp.get_deformation()
+        # source_seg_deformed = tb.imgDeform(
+        #     self.source_segmentation, deformator.to(device),
+        #     dx_convention=self.dx_convention,
+        #     mode = 'nearest'
+        # )
+        #
+        # rigidor = self.mp.get_rigidor()
+        # self.source_seg_deformed = tb.imgDeform(
+        #     source_seg_deformed, rigidor.to(device),
+        #     dx_convention=self.dx_convention,
+        #     mode = 'nearest'
+        # )
+
+        # Option 1 bis:
+        deformator = self.mp.get_deformator()
+        deformator = self.mp.get_rigidor(deformator)
+        self.source_seg_deformed = tb.imgDeform(
             self.source_segmentation, deformator.to(device),
             dx_convention=self.dx_convention,
             mode = 'nearest'
         )
-
-        rigidor = self.mp.get_rigidor()
-        self.source_seg_deformed = tb.imgDeform(
-            source_seg_deformed, rigidor.to(device),
-            dx_convention=self.dx_convention,
-            mode = 'nearest'
-        )
-
         # Option 2:
         # deformator = self.mp.get_deformator()
         # self.source_seg_deformed = tb.imgDeform(

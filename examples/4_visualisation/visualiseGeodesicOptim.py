@@ -45,6 +45,13 @@ file = "3D_20250911_IXI026-Guys-0696-T1_rigid_along_lddmm_costcst0.1_francoisa_0
 # file = "3D_20250911_IXI026-Guys-0696-T1_flirt_lddmm_francoisa_000.pk1"
 
 file = "3D_20250926_IXI026-Guys-0696-T1_rigid_along_lddmm_root_001.pk1"
+
+file = "3D_20250930_IXI026-Guys-0696-T1_rigid_along_lddmm_root_000.pk1"
+
+file = "3D_20250929_IXI040-Guys-0724-T1_rigid_along_lddmm_francoisa_000.pk1" #{"gpu": "Tesla V100S-PCIE-32GB", "alpha": 0.3, "rho": 1, "cost_cst": 1000000.0, "cst_field": 0.005, "sigma": [[1, 1, 1], [3, 3, 3], [7, 7, 7]], "integration_steps": 10, "file": "/gpfs/workdir/francoisa/data/IXI_results/rigid_along_lddmm/
+# file =  "3D_20250930_IXI035-IOP-0873-T1_rigid_along_lddmm_francoisa_001.pk1" # {"gpu": "Tesla V100-PCIE-32GB", "alpha": 0.3, "rho": 1, "cost_cst": 1000000.0, "cst_field": 0.005, "sigma": [[1, 1, 1], [3, 3, 3], [7, 7, 7]], "integration_steps": 10, "file": "/gpfs/workdir/francoisa/data/IXI_results/rigid_along_lddmm/"}
+
+import demeter.utils.torchbox as tb
 mr = mt.load_optimize_geodesicShooting(
     file,
     # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/saved_optim/'),
@@ -60,14 +67,57 @@ print("IMG stock :",mr.mp.image_stock.shape)
 T, _,D,H,W = mr.mp.image_stock.shape
 
 mr.plot_cost()
+
+
+src_rot = tb.imgDeform(mr.source, mr.mp.get_rigidor())
+img_rot = tb.imgDeform(mr.mp.image, mr.mp.get_rigidor())
+
+cmp_img = tb.imCmp(img_rot, mr.target, "compose")[0]
+
+cs = tb.SegmentationComparator()
+cmp_seg = cs(mr.source_seg_deformed, mr.target_segmentation)[0]
+
+T, _, D, H, W = mr.source.shape
+print(f"residual min {mr.mp.residuals.min()} max {mr.mp.residuals.max()}")
+# Choose a central slice for plotting
+slice_index = W // 2 +3
+fig, ax = plt.subplots(2,4,figsize = (10,5), constrained_layout=True)
+ax[0,0].imshow(mr.source_seg_deformed[0,0,..., slice_index].detach().cpu(), cmap =tb.DLT_SEG_CMAP, vmin=0, vmax = 5)
+ax[0,0].set_title(f'deformed_source_seg')
+ax[0,1].imshow(mr.mp.image[0,0,..., slice_index].cpu().detach(), cmap='gray')
+ax[0,1].set_title(f'image sans rot')
+ax[0,2].imshow(src_rot[0,0,..., slice_index].detach().cpu(), cmap='gray')
+ax[0,2].set_title(f'source rot')
+ax[0,3].imshow(mr.target[0,0,..., slice_index].detach().cpu(), cmap='gray')
+ax[0,3].set_title(f'target')
+
+ax[1,0].imshow(mr.target_segmentation[0,0,..., slice_index], cmap =tb.DLT_SEG_CMAP, vmin=0, vmax = 5)
+ax[1,0].set_title('target')
+
+ax[1,1].imshow(cmp_seg[..., slice_index, :])
+ax[1,1].set_title(f'deformed_source_seg vs target')
+
+
+
+ax[1,2].imshow(img_rot[0,0,..., slice_index].detach().cpu(), cmap='gray')
+ax[1,2].set_title('image def+rotated')
+
+ax[1,3].imshow(cmp_img[..., slice_index,:], cmap='gray')
+ax[1,3].set_title('image def+rotated vs target')
+
+
+
+# fig.suptitle(subject_name)
+plt.show()
+
 # plt.show()
-a3s.Visualize_GeodesicOptim_plt(mr, name)
+# a3s.Visualize_GeodesicOptim_plt(mr, name)
 # import demeter.utils.torchbox as tb
-#
+# #
 # deformation = mr.mp.get_deformation(save=True)
-# temporal_seg = tb.imgDeform(mr.source_segmentation.expand(7,-1,-1,-1,-1),
+# temporal_seg = tb.imgDeform(mr.source_segmentation.expand(10,-1,-1,-1,-1),
 #                             deformation, mode="nearest", dx_convention=mr.dx_convention)
-#
+# #
 # seg_cmpd = tb.temporal_img_cmp(
 #     mr.source_segmentation,
 #     mr.target_segmentation,
@@ -89,15 +139,20 @@ a3s.Visualize_GeodesicOptim_plt(mr, name)
 #
 # ias = a3s.Image3dAxes_slider(mr.mp.image_stock)
 # ias.add_image_overlay(temporal_seg, alpha = .5)
-plt.show()
+# plt.show()
 
 
 # image_dict = [
 #     {"name" : "img stock","image": mr.mp.image_stock,"cmap":"gray",
-#      "seg": temporal_seg},
+#      # "seg": temporal_seg
+#      },
 #     {"name" : "residual","image": mr.mp.residuals, "cmap":"cividis"},
-#     {"name":  "target","image":mr.target,"cmap": "gray","seg": mr.target_segmentation},
-#     {"name" : "source","image": mr.source,"cmap":"gray", "seg":mr.source_segmentation},
+#     {"name":  "target","image":mr.target,"cmap": "gray",
+#      # "seg": mr.target_segmentation
+#      },
+#     {"name" : "source","image": mr.source,"cmap":"gray",
+#      # "seg":mr.source_segmentation
+#     },
 # ]
 #
 # img_toggle = a3s.ToggleImage3D(image_dict,)

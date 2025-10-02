@@ -1088,6 +1088,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         elif optimizer_method == "adadelta":
             self._initialize_optimizer_ = self._initialize_adadelta_
             self._step_optimizer_ = self._step_adadelta_
+        elif optimizer_method == "Adam":
+            self._initialize_optimizer_ = self._initialize_Adam_
+            self._step_optimizer_ = self._step_Adam_
         else:
             raise ValueError(
                 "\noptimizer_method is "
@@ -1219,6 +1222,31 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
     def _step_LBFGS_(self):
         self.optimizer.step(self.closure)
+
+    # Adam
+    def _initialize_Adam_(self, dt_step):
+        """
+        Initialize Adam optimizer for this model.
+        dt_step : float
+            Learning rate for Adam.
+        """
+        self.optimizer = torch.optim.Adam(
+            self._dict_or_torch_parameter_(),
+            lr=dt_step,
+            betas=(0.9, 0.999),   # default
+            eps=1e-8,             # default
+            weight_decay=0        # default
+        )
+
+    def _step_Adam_(self):
+        """
+        Perform one optimization step with Adam.
+        """
+        self.optimizer.zero_grad()
+        L = self.cost(self.parameter)
+        L.backward(retain_graph=False)
+        self.optimizer.step()
+        return L
 
     def _initialize_adadelta_(self, dt_step, max_iter=None):
         self.optimizer = torch.optim.Adadelta(self._dict_or_torch_parameter_(),
@@ -1357,15 +1385,15 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             if plot and i in [n_iter // 4, n_iter // 2, 3 * n_iter // 4]:
                 self._plot_forward_()
 
-        detached_param = _detach(self.parameter)
+        # detached_param = _detach(self.parameter)
         # for future plots compute shooting with save = True
         self.mp.forward(self.source.clone(),
-                        detached_param,
+                        _detach(self.parameter),
                         save=True,
                         plot=0,
                         )
 
-        self.to_analyse = (detached_param, loss_stock)
+        self.to_analyse = (_detach(self.parameter), loss_stock)
         self.to_device('cpu')
 
     def to_device(self, device):
@@ -1901,7 +1929,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         ax[0, 1].set_title("target", fontsize=25)
 
         ax[1, 1].imshow(
-            tb.imCmp(self.target, self.mp.image.detach().cpu(), method="compose"),
+            tb.imCmp(self.target, self.mp.image.detach().cpu(), method="compose")[0],
             **image_kw,
         )
         ax[1, 1].set_title("comparaison deformed image with target", fontsize=25)

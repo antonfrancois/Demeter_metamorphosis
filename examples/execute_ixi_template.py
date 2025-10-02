@@ -567,7 +567,7 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
         alpha = .3
         rho = 1
         cost_cst = 1e6
-        cst_field = .01
+        cst_field = .005
         integration_steps = 10
         print(f"\nPatient : {paths["subject_dir"].name}")
         # 2) Rigid search
@@ -595,7 +595,8 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
         print(top_params)
 
         # 2.c Optimize on best finds
-        best_loss, best_momentum_R, best_momentum_T, best_momentum_S, best_rot = rg.optimize_on_rigid(mr, top_params, n_iter=10,verbose=False)
+        best_loss, best_momentum_R, best_momentum_T, best_momentum_S, best_rot = rg.optimize_on_rigid(mr, top_params, n_iter=5,verbose=False)
+        print(f"\nPatient : {paths["subject_dir"].name}")
         print("best_momentum_R = torch.",best_momentum_R)
         print("best_momentum_T = torch.",best_momentum_T)
         print("best_momentum_S = torch.",best_momentum_S)
@@ -625,13 +626,11 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
         kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
 
         # D(I,T) =  alpha *| S \cdot A.T  - T |^2 + (1 - alpha) * | I_1 \cdot A.T - T|^2
-        # datacost = mt.Rotation_MutualInformation_Cost(target_b, alpha=.5)
-
         datacost = mt.Rotation_Ssd_Cost(target_b.to("cuda:0"), alpha=alpha)
         momenta = mt.prepare_momenta(
             source_b.shape,
-            # rot_prior=best_momentum_R.detach().clone(),trans_prior=best_momentum_T.detach().clone(),
-            # scale_prior=best_momentum_S.detach().clone(),
+            rot_prior=best_momentum_R.detach().clone(),trans_prior=best_momentum_T.detach().clone(),
+            scale_prior=best_momentum_S.detach().clone(),
         )
 
 
@@ -661,7 +660,7 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
         log_metrics(
             db_path,
             patient_id=paths["subject_dir"].name,
-            method="rigid_along_lddmm w",
+            method="rigid_along_lddmm a",
             metrics={'rigid_along_lddmm ' + k: v for k,v in dice.items()},
             run_id= str(now) + ' at ' + location,
             step=0,
@@ -1151,12 +1150,14 @@ if __name__ == '__main__':
     )
 
 
-    subjects_numbers = [2,12,13,14,15,16,17,19]
-    subjects_numbers = [20,21,22,23,24,25,26,27,28,29]
-    subjects_numbers = [30,31,33,34,35,36,37,38,39]
-    subjects_numbers = [40,41,42,43,44,45,46,48,49]
-    subjects_numbers = [50,51,52,53,54,55,56,57,58,59]
-    subjects_numbers = [60,61,62,63,64,65,66,67,68,69]
+    # subjects_numbers = [2,12,13,14,15,16,17,19] # 1
+    subjects_numbers = [20,21,22,23,24,25,26,27,28,29] # 2
+    # subjects_numbers = [30,31,33,34,35,36,37,38,39] # 3
+    # subjects_numbers = [40,41,42,43,44,45,46,48,49] # 4
+    # subjects_numbers = [50,51,52,53,54,55,56,57,58,59] # 5
+    # subjects_numbers = [60,61,62,63,64,65,66,67,68,69] # 6
+
+    # subjects_numbers = [35, 37, 61, 66, 34, 49]
 
     # = [35,36,37,38,39,41,42,43] Done
     # [44,45,46,48,49,50,51,52,53,54, Done

@@ -433,6 +433,7 @@ def rigid_along_metamorphosis(
         cost_cst=0.001,
         plot=False,
         safe_mode=False,
+        optimizer_method="LBFGS_torch",
         hamiltonian_integration=False,
        save_gpu_memory = False,
         lbfgs_max_iter = 20,
@@ -468,14 +469,14 @@ def rigid_along_metamorphosis(
     )
 
     mr = rd.RigidMetamorphosis_Optimizer(
-        source= source,
-        target= target,
+        source= source.clone(),
+        target= target.clone(),
         geodesic = mp,
         cost_cst=cost_cst,
         cst_field=cst_field,
         data_term=data_term,
         hamiltonian_integration=hamiltonian_integration,
-        # optimizer_method="adadelta",
+        optimizer_method=optimizer_method,
         debug = debug,
         lbfgs_max_iter = lbfgs_max_iter,
         lbfgs_history_size = lbfgs_history_size,

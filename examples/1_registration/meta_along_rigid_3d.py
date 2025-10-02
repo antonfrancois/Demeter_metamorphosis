@@ -181,7 +181,7 @@ rho = 0.5
 cost_cst= 1e-5
 momenta = mtrt.prepare_momenta(
     S.shape,
-    image=False,rotation=True,translation=True,
+    diffeo=False,rotation=True,translation=True,
     # trans_prior=(0,0,0)
 )
 mr = rigid_along_metamorphosis(
@@ -211,7 +211,7 @@ print("\nBegin Metamorphosis >>>")
 
 momenta = mtrt.prepare_momenta(
     S.shape,
-    image=True,rotation=True,translation=True,
+    diffeo=True,rotation=True,translation=True,
     rot_prior=best_momentum_R,
     trans_prior=best_momentum_T,
     # trans_prior=(0,0,0)

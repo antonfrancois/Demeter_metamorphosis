@@ -1,4 +1,6 @@
 import torch
+
+from demeter.metamorphosis import prepare_momenta
 from demeter.utils.decorators import time_it
 import demeter.utils.torchbox as tb
 import demeter.utils.cost_functions as cf
@@ -51,7 +53,10 @@ def _insert_(entry, top_losses, top_k = 10):
     return top_losses
 
 @time_it
-def initial_exploration(rigid_meta_optim, r_step = 4, max_output = 10, verbose:bool = True):
+def initial_exploration(rigid_meta_optim,
+                        r_step = 4,
+                        max_output = 10,
+                        verbose:bool = True):
     """
     Shoot in given directions, gives you the best outputs
 
@@ -67,19 +72,26 @@ def initial_exploration(rigid_meta_optim, r_step = 4, max_output = 10, verbose:b
     """
     r_list = torch.linspace(-torch.pi, torch.pi  , r_step)
     # r_combi = torch.cartesian_prod(r_list,r_list,r_list)
-    r_combi = torch.cartesian_prod(
-        torch.linspace(-torch.pi, torch.pi  , r_step),
-        torch.linspace(0, torch.pi  , r_step//2),
-        torch.tensor([0.])
-    )
+    if len(rigid_meta_optim.source.shape) == 4:
+        r_combi = r_list
+    elif len(rigid_meta_optim.source.shape) == 5:
+        r_combi = torch.cartesian_prod(
+            torch.linspace(-torch.pi, torch.pi  , r_step),
+            torch.linspace(0, torch.pi  , r_step//2),
+            torch.tensor([0.])
+        )
+    else:
+        raise ValueError("bad source shape")
+
+
     top_losses = []
     for i,params_r in  enumerate(r_combi):
         if verbose:
             print(f"Init search : {i+1} / {len(r_combi)}")
         momenta =mtrt.prepare_momenta(
             rigid_meta_optim.source.shape,
-            image=False,rotation=True,translation=False,
-            rot_prior=params_r,trans_prior=(0,0,0),
+            diffeo=False,rotation=True,translation=False,
+            rot_prior=params_r,
             requires_grad=False
         )
         print(momenta.keys())
@@ -91,7 +103,12 @@ def initial_exploration(rigid_meta_optim, r_step = 4, max_output = 10, verbose:b
         loss_val = cf.SumSquaredDifference(rigid_meta_optim.target)(img_rot)
 
         # keep a list of the N best loss_val related with the corresponding param_r
-        entry = (loss_val.detach(), params_r.detach())
+        entry = (loss_val.detach(),
+                 dict(
+                     rot_prior=params_r.detach(),
+                trans_prior=None,
+                scale_prior=None,)
+            )
         if verbose:
             print(f"\t {entry}")
         top_losses = _insert_(entry, top_losses, max_output)
@@ -99,7 +116,7 @@ def initial_exploration(rigid_meta_optim, r_step = 4, max_output = 10, verbose:b
     if verbose:
         print('Best params found')
         for loss, params in top_losses:
-            print(f"Loss: {loss.item():.4f} | Params: {params.tolist()}")
+            print(f"Loss: {loss.item():.4f} | Params: {params}")
 
     return top_losses
 
@@ -108,17 +125,18 @@ def initial_exploration(rigid_meta_optim, r_step = 4, max_output = 10, verbose:b
 
 import matplotlib.pyplot as plt
 #%% rigid optimisation
-def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False):
-    best_loss = top_params[0][0]
+def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False, plot = False):
+    # best_loss = top_params[0][0]
+    best_loss = torch.inf
     for i,(val,params_r) in  enumerate(top_params):
         if verbose:
             print(">"*10)
-            print(f"{i}/{len(top_params)} Optimize wit params {params_r.tolist()}")
+            print(f"{i}/{len(top_params)} Optimize wit params {params_r}")
 
         momenta = mtrt.prepare_momenta(
             mr.source.shape,
-            image=False,rotation=True,translation=True,scaling= True,
-            rot_prior=params_r,trans_prior=(0,0,0),
+            diffeo=False,rotation=True,translation=True,scaling= True,
+            **params_r
         )
         try:
             mr.forward(momenta, n_iter = n_iter, grad_coef= grad_coef)
@@ -138,30 +156,44 @@ def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False)
         best = False
         if mr.data_loss < best_loss or mr.data_loss == 0:
             best_loss = mr.data_loss
-            best_momentum_R = mr.to_analyse[0]["momentum_R"]
-            best_momentum_T = mr.to_analyse[0]["momentum_T"]
-            best_momentum_S = mr.to_analyse[0]["momentum_S"]
+            best_momenta = dict(
+                 rot_prior=mr.to_analyse[0]["momentum_R"].detach().cpu(),
+                trans_prior=mr.to_analyse[0]["momentum_T"].detach().cpu(),
+                scale_prior=mr.to_analyse[0]["momentum_S"].detach().cpu()
+            )
             best = True
             best_rot = mr.mp.rot_mat
 
         # mr.plot_cost(
         # )
         # plt.show()
-        # rot_def =   tb.apply_rot_mat(mr.mp.id_grid,  mr.mp.rot_mat.T)
-        # rot_def += mr.mp.translation
-        # rotated_source = tb.imgDeform(mr.source,rot_def,dx_convention='2square')
-        # img = rotated_source[0,0,..., mr.source.shape[-1]//2].detach().cpu()
-        # img_target = tb.imCmp(rotated_source[..., mr.source.shape[-1]//2].detach().cpu(), mr.target[..., mr.source.shape[-1]//2].detach().cpu(), "compose")[0]
-        # img_source = tb.imCmp(rotated_source[..., mr.source.shape[-1]//2].detach().cpu(), mr.source[..., mr.source.shape[-1]//2].detach().cpu(), "compose")[0]
-        # fig,ax = plt.subplots(1,3)
-        # fig.suptitle(f"best = {best}, loss = {mr.data_loss:.4f}")
-        # ax[0].imshow(img, cmap="gray")
-        # ax[0].set_title("Final image")
-        # ax[1].imshow(img_target, cmap="gray")
-        # ax[1].set_title("img vs target")
-        # ax[2].imshow(img_source, cmap="gray")
-        # ax[2].set_title("img vs source")
-        # plt.show()
+        if plot:
+            rot_def = mr.mp.get_rigidor()
+            rotated_source = tb.imgDeform(mr.source,rot_def,dx_convention='2square')
+            if len(mr.source.shape) == 5:
+                img = rotated_source[0,0,..., mr.source.shape[-1]//2].detach().cpu()
+                img_target = tb.imCmp(rotated_source[..., mr.source.shape[-1]//2].detach().cpu(), mr.target[..., mr.source.shape[-1]//2].detach().cpu(), "compose")[0]
+                img_source = tb.imCmp(rotated_source[..., mr.source.shape[-1]//2].detach().cpu(), mr.source[..., mr.source.shape[-1]//2].detach().cpu(), "compose")[0]
+            else:
+                img = rotated_source[0,0].detach().cpu()
+                img_target = tb.imCmp(rotated_source.detach().cpu(), mr.target.detach().cpu(), "compose")[0]
+                img_source = tb.imCmp(rotated_source.detach().cpu(), mr.source.detach().cpu(), "compose")[0]
+
+            fig,ax = plt.subplots(1,3)
+            fig.suptitle(f"best = {best}, loss = {mr.data_loss:.4f}"
+                         f"\n {params_r}"
+                         f"\n {dict(
+                 rot_prior=mr.to_analyse[0]["momentum_R"].detach().cpu(),
+                trans_prior=mr.to_analyse[0]["momentum_T"].detach().cpu(),
+                scale_prior=mr.to_analyse[0]["momentum_S"].detach().cpu()
+            )}")
+            ax[0].imshow(img, cmap="gray")
+            ax[0].set_title("Final image")
+            ax[1].imshow(img_target, cmap="gray")
+            ax[1].set_title("img vs target")
+            ax[2].imshow(img_source, cmap="gray")
+            ax[2].set_title("img vs source")
+            plt.show()
         if verbose:
             print(f"best = {best}")
             print("translation = ",mr.mp.translation)
@@ -177,8 +209,7 @@ def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False)
     if verbose:
         print("Best find : ")
         print("loss :",best_loss)
-        print("best_momentum_R = torch.",best_momentum_R)
-        print("best_momentum_T = torch.",best_momentum_T)
-        print("best_momentum_S = torch.",best_momentum_S)
+        print(f"best_momenta : {best_momenta}")
+
         print("best_rotation =", mr.mp.rot_mat)
-    return best_loss, best_momentum_R, best_momentum_T, best_momentum_S, best_rot
+    return best_loss, best_momenta, best_rot
