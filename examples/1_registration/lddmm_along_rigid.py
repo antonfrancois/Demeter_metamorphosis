@@ -2,6 +2,8 @@ import __init__
 import torch
 from math import cos,sin
 import matplotlib.pyplot as plt
+from IPython.core.pylabtools import figsize
+from itk.support.extras import origin
 
 import demeter.utils.torchbox as tb
 import demeter.metamorphosis.rotate as mtrt
@@ -9,6 +11,7 @@ import demeter.utils.reproducing_kernels as rk
 import demeter.metamorphosis as mt
 import demeter.utils.cost_functions as cf
 import demeter.utils.rigid_exploration as rg
+from demeter.constants import set_ticks_off, GRIDDEF_YELLOW
 
 
 #
@@ -54,6 +57,7 @@ def plot(self):
     ax[2,2].imshow(srt[0], **kwargs)
     ax[2,2].set_title("source affine vs Target")
 
+path = "examples/results/rigid_meta/"
 ###########################################################
 # open images
 size = (300, 300)
@@ -74,15 +78,18 @@ plt.show()
 #%% Align barycenters
 
 source_b, target_b, trans_s, trans_t = rg.align_barycentres(source, target, verbose=True)
-fig, ax = plt.subplots(1,3)
+fig, ax = plt.subplots(1,3, constrained_layout=True, figsize=(5.5,2))
 ax[0].imshow(source_b[0,0],cmap='gray')
-ax[0].set_title("source barycentred")
+ax[0].set_title("Source")
 ax[1].imshow(target_b[0,0],cmap='gray')
-ax[1].set_title("target barycentred")
-ax[2].imshow(tb.imCmp(source_b,target_b, 'compose')[0])
+ax[1].set_title("Target")
+ax[2].imshow(tb.imCmp(source_b,target_b, 'seg')[0])
+ax[2].set_title("Source vs Target")
+set_ticks_off(ax)
 plt.show()
+fig.savefig(path + "toyexample_sourcetarget.pdf")
 
-# # %%
+# %%
 integration_steps = 10
 
 class DummyKernel:
@@ -110,14 +117,17 @@ mr_rigid = mt.rigid_along_metamorphosis(
 
 top_params = rg.initial_exploration(mr_rigid,r_step=10, max_output = 10, verbose=True)
 print(top_params)
-#%%
+
 best_loss, best_momenta, best_rot = rg.optimize_on_rigid(
     mr_rigid, top_params, n_iter=10,verbose=True, plot = True,
 )
 print(f"best_loss : {best_loss}")
 print(f"best_rot : {best_rot}")
 print(f"best_momenta : {best_momenta}")
+id = 1
 #%%
+#####################################################
+# Choose a specific rigid optimisation changes the optimisation
 
 best_loss, best_momenta, best_rot = rg.optimize_on_rigid(
     mr_rigid, [top_params[-1]], n_iter=2,verbose=True, plot = True,
@@ -126,44 +136,12 @@ print(f"best_loss : {best_loss}")
 print(f"best_rot : {best_rot}")
 print(f"best_momenta : {best_momenta}")
 # {'rot_prior': torch.tensor(-1.0472), 'trans_prior': None, 'scale_prior': None}
+id = 2
 #%%
-mr_rigid = mt.rigid_along_metamorphosis(
-    source_b, target_b, momenta_ini=0,
-    kernelOperator= kernelOperator,
-    rho = 1,
-    data_term=datacost ,
-    integration_steps = integration_steps,
-    optimizer_method='Adam',
-    cost_cst=.1,
-    n_iter=0
-)
+#####################################################
+# Check the rigid optimisation
 
-param = [(best_loss, best_momenta)]
-best_loss, best_momenta, best_rot = rg.optimize_on_rigid(
-    mr_rigid, param, n_iter=10,verbose=True, plot = True,
-)
-print(f"best_loss : {best_loss}")
-print(f"best_rot : {best_rot}")
-print(f"best_momenta : {best_momenta}")
 
-#%%
-# r_step = 10
-# top_param_rot = [( best_loss, dict(
-#                      rot_prior=r.detach(),
-#                 trans_prior=None,
-#                 scale_prior=None,)) for r in torch.linspace(-torch.pi, torch.pi  , r_step)]
-#
-# best_loss, best_momenta, best_rot = rg.optimize_on_rigid(
-#     mr_rigid, top_param_rot, n_iter=5,verbose=False, plot=True
-# )
-# print(f"best_loss : {best_loss}")
-# print(f"best_momenta : {best_momenta}")
-
-#%%
-
-#%% Check rigid search
-mr_rigid.plot()
-#%%
 print(f"best_momenta : {best_momenta}")
 param = best_momenta.copy()
 momenta = mt.prepare_momenta(
@@ -182,9 +160,11 @@ mr_rigid.mp.forward(source_b, momenta.copy(), save =  True)
 plot(mr_rigid)
 plt.show()
 
+#%%
 
-#%% lddmm
-
+#%% lddmm along rigid
+#########################################################
+# perfom lddmm along rigid
 sigma= [  7, 15]
 sigma = [(s,)*2 for s in sigma]
 alpha = .5
@@ -226,6 +206,8 @@ mr = mt.rigid_along_metamorphosis(
     safe_mode=True
 )
 best = False
+mr.plot_cost()
+plt.show()
 plot(mr)
 plt.show()
 # if mr.data_loss < best_loss or mr.data_loss == 0:
@@ -242,14 +224,190 @@ mt.free_GPU_memory(mr)
 
 # best_mr.plot_cost()
 # plt.show()
-#%%
-best_momentum_I = mr.to_analyse[0]["momentum_I"]
-best_momentum_R = mr.to_analyse[0]["momentum_R"]
-best_momentum_T = mr.to_analyse[0]["momentum_T"]
-best_momentum_S = mr.to_analyse[0]["momentum_S"]
+
 #%%
 plot(best_mr)
 plt.show()
 #%%
-mr.mp.plot()
+
+n_figs = 5
+plot_id = (
+    torch.quantile(
+        torch.arange(mr.mp.image_stock.shape[0], dtype=torch.float),
+        torch.linspace(0, 1, n_figs),
+    )
+    .round()
+    .int()
+)
+
+kw_image_args = dict(
+    cmap="gray", extent=[-1, 1, -1, 1], vmin=0, vmax=1
+)
+# v_abs_max = (mr.mp.residuals_stock.abs().max()).max()
+# v_abs_max = torch.quantile(mr.mp.momenta.abs(), 0.99)
+momentum =  mr.mp.momenta['momentum_I']
+v_abs_max = torch.quantile(momentum.abs(), 0.99)
+kw_residuals_args = dict(
+    cmap="RdYlBu_r",
+    extent=[-1, 1, -1, 1],
+    origin="lower",
+    vmin=-v_abs_max,
+    vmax=v_abs_max,
+)
+color = "green"
+size_fig = 2
+# C = self.momentum_stock.shape[1]
+fig, ax = plt.subplots(
+    n_figs,
+    4,
+    constrained_layout=True,
+    figsize=(size_fig * 4, n_figs * size_fig),
+)
+for i, t in enumerate(plot_id):
+    deform = mr.mp.get_deformation(to_t = t + 1)
+
+    i_s = ax[i, 0].imshow(
+        mr.mp.image_stock[t, 0, :, :].detach().numpy(),
+        **kw_image_args,
+    )
+    ax[i, 0].set_ylabel("t = " + str((t / (mr.mp.n_step - 1)).item())[:3])
+    # fig.colorbar(i_s, ax=ax[i, 0], fraction=0.046, pad=0.04)
+
+    tb.gridDef_plot_2d(
+        deform,
+        add_grid=False,
+        ax=ax[i, 1],
+        step=int(min(mr.mp.field_stock.shape[2:-1]) / 25),
+        check_diffeo=False,
+        dx_convention=mr.mp.dx_convention,
+        # color = color
+    )
+
+    deform = mr.mp.get_rigid(deform)
+    img = tb.imgDeform(
+        mr.mp.image_stock[t, :, :, :][None],
+        mr.mp.get_rigidor()
+    ).detach().numpy()[0,0]
+
+    ax[i, 2].imshow(img, **kw_image_args,)
+    # ax[i, 2].set_title("t = " + str((t / (mr.mp.n_step - 1)).item())[:3])
+    ax[i, 2].axis("off")
+
+    # ax[i, 3].imshow(torch.rand((10,10)), **kw_image_args,)
+    # ax[i, 3].set_title("t = " + str((t / (mr.mp.n_step - 1)).item())[:3])
+    # ax[i, 3].axis("off")
+    # # fig.colorbar(i_s, ax=ax[i, 0], fraction=0.046, pad=0.04)
+
+    #
+    tb.gridDef_plot_2d(
+        deform,
+        add_grid=False,
+        add_markers=True,
+        ax=ax[i, 3],
+        step=int(min(mr.mp.field_stock.shape[2:-1]) / 25),
+        check_diffeo=False,
+        dx_convention=mr.mp.dx_convention,
+    )
+
+
+set_ticks_off(ax)
+plt.show()
+fig.savefig(path + f"toyexample_star_{id}_integration.pdf")
+
+#%%
+def small_plot(self):
+    affine = self.mp.get_rigidor()
+    deform = self.mp.get_deformation()
+    deform = self.mp.get_rigid(deform)
+
+    img_rot = tb.imgDeform(self.mp.image.to('cpu'),affine,dx_convention='2square')
+    source_rt = tb.imgDeform(self.source.to('cpu'),affine,dx_convention='2square')
+    srt = tb.imCmp(source_rt,target_b,method = 'seg')
+    irt = tb.imCmp(img_rot,target_b,method = 'seg')
+    kwargs = {'cmap': "gray"}
+
+    fig,ax = plt.subplots(2,2, constrained_layout=True, figsize = (5,5))
+
+    ax[0,0].imshow(img_rot[0,0], **kwargs)
+    ax[0,0].set_title("(a) Registered image")
+    ax[0,1].imshow(source_rt[0,0], **kwargs)
+    ax[0,1].set_title("(b) affine on source")
+
+    ax[1,0].imshow(irt[0], **kwargs)
+    ax[1,0].set_title("(c) registered vs Target")
+    ax[1,1].imshow(srt[0], **kwargs)
+    ax[1,1].set_title("(d) source affine vs Target")
+    set_ticks_off(ax)
+    return fig
+fig  = small_plot(mr)
+fig.savefig(path + f"toyexample_star_{id}_summary.pdf")
+
+plt.show()
+#%%
+###########################################################
+# Compare with pure LDDMM on a rigid output
+rigid_source = tb.imgDeform(source_b, mr_rigid.mp.get_rigidor())
+fig, ax = plt.subplots(1,2, constrained_layout=True)
+ax[0].imshow(rigid_source[0,0],cmap='gray')
+ax[0].set_title("source")
+ax[1].imshow(tb.imCmp(rigid_source,target_b,'compose')[0])
+plt.show()
+sigma= [  7, 15]
+sigma = [(s,)*2 for s in sigma]
+kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False, kernel_reach =6)
+
+mr_l = mt.lddmm(
+    rigid_source.to("cuda:0"), target_b.to("cuda:0"), 0, kernelOperator,
+    cost_cst=1,
+    grad_coef=.1,
+    integration_steps=10,
+    n_iter  = 75,
+)
+#%%
+mr_l.plot_cost()
+plt.show()
+#%%
+fig, ax = plt.subplots(2, 2, figsize=(12, 12), constrained_layout=True)
+image_kw = dict(cmap="gray", origin="lower", vmin=0, vmax=1)
+set_ticks_off(ax)
+ax[0, 0].imshow(mr_l.source[0, 0, :, :].detach().cpu().numpy(), **image_kw)
+ax[0, 0].set_title("source", fontsize=25)
+ax[0, 1].imshow(mr_l.target[0, 0, :, :].detach().cpu().numpy(), **image_kw)
+ax[0, 1].set_title("target", fontsize=25)
+
+ax[1, 1].imshow(
+    tb.imCmp(mr_l.target, mr_l.mp.image.detach().cpu(), method="seg")[0],
+    **image_kw,
+)
+ax[1, 1].set_title("comparaison registred with target", fontsize=25)
+ax[1, 0].imshow(mr_l.mp.image[0, 0].detach().cpu().numpy(), **image_kw)
+ax[1, 0].set_title("Integrated source image", fontsize=25)
+# tb.quiver_plot(
+#     mr_l.mp.get_deformation().detach().cpu() - mr_l.mp.id_grid,
+#     ax=ax[1, 1],
+#     step=15,
+#     color=GRIDDEF_YELLOW,
+#     dx_convention=mr_l.dx_convention,
+# )
+tb.gridDef_plot_2d(
+        mr_l.mp.get_deformation().detach().cpu(),
+        add_grid=False,
+        ax=ax[1,1],
+        step=int(min(mr.mp.field_stock.shape[2:-1]) / 20),
+        check_diffeo=False,
+        origin=image_kw["origin"],
+        dx_convention=mr_l.mp.dx_convention,
+        color = GRIDDEF_YELLOW,
+    alpha = .5
+    )
+plt.show()
+fig.savefig(path+"classic_lddmm.pdf")
+#%%
+mr_l.mp.plot()
+plt.show()
+#%%
+tb.gridDef_plot_2d(
+    mr_l.mp.get_deformation(),
+    step = 10
+)
 plt.show()

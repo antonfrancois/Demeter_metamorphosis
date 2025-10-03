@@ -1094,6 +1094,7 @@ def gridDef_plot_2d(deformation: torch.Tensor,
                     add_grid: bool = False,
                     check_diffeo: bool = False,
                     dx_convention: str = 'pixel',
+                    add_markers: bool = False,
                     title: str = "",
                     #  color : str | None = None,
                     # linewidth : int | float = None,
@@ -1158,6 +1159,17 @@ def gridDef_plot_2d(deformation: torch.Tensor,
     else:
         step_x, step_y = step
 
+    if add_markers:
+        c_b = "green"
+        c_g = "purple"
+        c_h = "red"
+        c_d =  "yellow"
+        H,W = deformation.shape[1:-1]
+        ax.vlines(0, 0, H, color=c_g)
+        ax.vlines(W, 0, H, color=c_d)
+        ax.hlines(0, 0, W, color=c_b)
+        ax.hlines(H, 0, W, color=c_h)
+
     start = 0 if origin == 'lower' else deform.size(2)
     sign = 1 if origin == 'lower' else -1
     # kw = dict(color=color,linewidth=linewidth)
@@ -1167,12 +1179,23 @@ def gridDef_plot_2d(deformation: torch.Tensor,
                   start +sign * deform[0, ::step_x, :, 1].numpy().T, **kwargs)
 
     # add the last lines on the right and bottom edges
+    if add_markers:   kwargs["color"] = c_d
     l_c = ax.plot(deform[0, :, -1, 0].numpy(),
                   start +sign * deform[0, :, -1, 1].numpy(), **kwargs)
+    if add_markers:   kwargs["color"] = c_h
     l_d = ax.plot(deform[0, -1, :, 0].numpy().T,
                   start +sign * deform[0, -1, :, 1].numpy().T, **kwargs)
 
+    if add_markers:
+        kwargs["color"] = c_b
+        l_e = ax.plot(deform[0, 0, :, 0].numpy().T,
+                      start +sign * deform[0, 0, :, 1].numpy().T, **kwargs)
+        kwargs["color"] = c_g
+        l_f = ax.plot(deform[0, :, 0, 0].numpy().T,
+                      start +sign * deform[0, :, 0, 1].numpy().T, **kwargs)
+
     lines = l_a + l_b + l_c + l_d
+    if add_markers: lines += l_e + l_f
 
     ax.set_aspect('equal')
     ax.set_title(title)

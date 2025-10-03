@@ -981,7 +981,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             S_deformed[0, 0, :, :], cmap="gray", origin="lower", vmin=0, vmax=1
         )
         axes[2, 1].imshow(
-            tb.imCmp(target[:, 0][None], S_deformed[:, 0][None], method="compose"),
+            tb.imCmp(target[:, 0][None], S_deformed[:, 0][None], method="compose")[0],
             origin="lower",
             vmin=0,
             vmax=1,
@@ -1917,11 +1917,11 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         )
         return fig1, ax1
 
-    def plot_imgCmp(self):
+    def plot_imgCmp(self, origin= "lower", cmp_method = 'compose'):
         r"""Display and compare the deformed image $I_1$ with the target$"""
 
-        fig, ax = plt.subplots(2, 2, figsize=(20, 20), constrained_layout=True)
-        image_kw = dict(cmap="gray", origin="lower", vmin=0, vmax=1)
+        fig, ax = plt.subplots(2, 2, figsize=(7, 7), constrained_layout=True)
+        image_kw = dict(cmap="gray", origin=origin, vmin=0, vmax=1)
         set_ticks_off(ax)
         ax[0, 0].imshow(self.source[0, 0, :, :].detach().cpu().numpy(), **image_kw)
         ax[0, 0].set_title("source", fontsize=25)
@@ -1929,7 +1929,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         ax[0, 1].set_title("target", fontsize=25)
 
         ax[1, 1].imshow(
-            tb.imCmp(self.target, self.mp.image.detach().cpu(), method="compose")[0],
+            tb.imCmp(self.target, self.mp.image.detach().cpu(), method=cmp_method)[0],
             **image_kw,
         )
         ax[1, 1].set_title("comparaison deformed image with target", fontsize=25)
