@@ -92,14 +92,9 @@ fig.savefig(path + "toyexample_sourcetarget.pdf")
 # %%
 integration_steps = 10
 
-class DummyKernel:
-    def __call__(self, x):
-        return x  # Identité pour test simple
 
-    def init_kernel(self, image):
-        pass
 
-kernelOperator = DummyKernel()
+kernelOperator = rk.DummyKernel()
 
 datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'), alpha=1)
 # datacost = mt.Rotation_MutualInformation_Cost(target_b.to('cuda:0'), alpha=1)
