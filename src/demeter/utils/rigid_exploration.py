@@ -180,7 +180,7 @@ def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False,
                 img_source = tb.imCmp(rotated_source.detach().cpu(), mr.source.detach().cpu(), "compose")[0]
 
             fig,ax = plt.subplots(1,3)
-            fig.suptitle(f"best = {best}, loss = {mr.data_loss:.4f}"
+            fig.suptitle(f"i = {i}, best = {best}, loss = {mr.data_loss:.4f}"
                          f"\n {params_r}"
                          f"\n {dict(
                  rot_prior=mr.to_analyse[0]["momentum_R"].detach().cpu(),

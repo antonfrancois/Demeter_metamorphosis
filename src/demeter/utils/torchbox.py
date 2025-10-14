@@ -177,6 +177,11 @@ def multiply_grid_vectors(grid_1, grid_2):
     else:
         raise ValueError(f'something went wrong, grid_1 shape is {grid_1.shape}, grid_2 shape is {grid_2.shape}')
 #%%
+def create_rot_mat_2d(theta):
+    return torch.tensor([[torch.cos(theta), -torch.sin(theta)],
+                         [torch.sin(theta), torch.cos(theta)]],
+                        dtype=torch.float)
+
 def create_rot_mat_3d(params):
     gamma,beta,alpha = params
     A = torch.stack(
@@ -203,6 +208,24 @@ def create_rot_mat_3d(params):
     )
     return A
 
+
+def create_affine_mat_2d(params):
+    r"""
+    build a 2D affine matrix for 2D affine transformation such as
+
+    params : tensor of len 5 containing: theta, a,b,s1,s2
+    """
+    theta, a,b,s1,s2 = params
+
+    R = create_rot_mat_2d(theta)
+    for i,s in enumerate([s1, s2]):
+        R[i,i] = R[i,i] / s
+    T = torch.tensor([a, b])[:, None]
+    RT = torch.cat([R,T], dim=-1)
+    F = torch.tensor([0, 0, 1], dtype=R.dtype, device=R.device)[None]
+    A = torch.cat([RT, F], dim=0)
+
+    return A
 
 def create_affine_mat_3d(params):
     r"""
@@ -272,7 +295,12 @@ def affine_to_grid_3d(affine_mat,img_shape):
         [id_grid,torch.ones_like(id_grid[...,0])[...,None]],
         dim = -1
     )
-    aff_grid = torch.einsum('ij,hklmj->hklmi', affine_mat, id_grid_aug)
+    if len(img_shape) == 3:
+        aff_grid = torch.einsum('ij,hklmj->hklmi', affine_mat, id_grid_aug)
+    elif len(img_shape) == 2:
+        aff_grid = torch.einsum('ij,klmj->klmi', affine_mat, id_grid_aug)
+    else:
+        raise ValueError("wrong image shape")
     return aff_grid[...,:-1]
 
 def landmark_distance(land_1, land_2, round:bool=False):
