@@ -318,9 +318,10 @@ def fig_to_image(fig,ax):
     return image_from_plot
 
 
-def plot_loss_with_multiple_y_axes(loss_stock, title="Loss Evolution", ax=None, colors = plt.cm.tab10.colors):
+def plot_loss_with_multiple_y_axes(loss_stock, title="Loss Evolution", ax=None):
     """
-    Plots multiple loss values with multiple left y-axes, spaced to avoid overlap.
+    Plots multiple loss values with multiple left y-axes, spaced to avoid overlap,
+    each with its own correctly positioned scientific offset text.
 
     Args:
         loss_stock (dict): Dictionary of {label: torch.Tensor or np.ndarray}.
@@ -328,7 +329,7 @@ def plot_loss_with_multiple_y_axes(loss_stock, title="Loss Evolution", ax=None, 
         ax (matplotlib.axes.Axes, optional): Existing axis to use.
 
     Returns:
-        (fig, axes): The figure and list of per-series y-axes (left).
+        (fig, axes): Figure and list of created axes.
     """
     import numpy as np
 
@@ -340,60 +341,53 @@ def plot_loss_with_multiple_y_axes(loss_stock, title="Loss Evolution", ax=None, 
     labels = list(series.keys())
     n = len(labels)
 
-    # Create base axes
+    # Create base axis
     if ax is None:
-        fig, ax = plt.subplots(figsize=(8, 5))
+        fig, ax = plt.subplots(figsize=(9, 5))
     else:
         fig = ax.figure
 
-    # Make space on the left for multiple spines (60px each is typical)
-    # Increase left margin proportionally to number of axes
+    # Add space for multiple left spines
     left_margin = 0.12 + 0.06 * (n - 1)
-    left_margin = min(left_margin, 0.5)  # avoid extreme margins
+    left_margin = min(left_margin, 0.55)
     fig.subplots_adjust(left=left_margin)
 
-    # colors = colors
+    colors = plt.cm.tab10.colors
     axes = []
 
-    # Create one y-axis per series, all on the left, each offset outward
-    for i, name in enumerate(labels):
-        y = series[name]
+    for i, (name, y) in enumerate(series.items()):
         color = colors[i % len(colors)]
+        a = ax if i == 0 else ax.twinx()
 
-        if i == 0:
-            a = ax
-        else:
-            a = ax.twinx()
-
-        # Ensure left-side ticks/label for all axes
+        # Offset spines to the left
         a.yaxis.set_label_position("left")
         a.yaxis.set_ticks_position("left")
-
-        # Offset each left spine outward; start at 0, then 60, 120, ...
         a.spines["left"].set_position(("outward", 60 * i))
+        if "right" in a.spines:
+            a.spines["right"].set_visible(False)
 
-        # Hide right spine to avoid clutter
-        # if "right" in a.spines:
-        #     a.spines["right"].set_visible(False)
-
-        # Match axis aesthetics to the line color
-        line, = a.plot(y, color=color, label=name, linewidth=1.5)
+        # Plot data
+        a.plot(y, color=color, linewidth=1.5, label=name)
         a.set_ylabel(name, color=color)
         a.tick_params(axis="y", colors=color)
         a.spines["left"].set_color(color)
 
-        # Keep grid/ticks only on the base axis (optional aesthetic)
-        if i > 0:
-            a.grid(False)
+        # Let matplotlib decide scientific formatting
+        a.ticklabel_format(style="sci", axis="y", scilimits=(-3, 3))
+        a.yaxis.offsetText.set_color(color)
 
         axes.append(a)
 
-    # X-axis, title, and finishing touches
+    # Adjust offset text positions (so they align with each spine)
+    fig.canvas.draw()  # force creation of offset text
+    for i, a in enumerate(axes):
+        offset_text = a.yaxis.get_offset_text()
+        offset_text.set_x( - 0.165*i)  # move horizontally to follow each spine
+
+        # offset_text.set_y(1.02)              # position slightly above top of axis
+        offset_text.set_ha("right")
+
     ax.set_xlabel("Iteration")
     ax.set_title(title)
-    # Put the x-ticks on the base axis only
-    for a in axes[1:]:
-        a.set_xticks([])
-
     fig.tight_layout()
     return fig, axes
