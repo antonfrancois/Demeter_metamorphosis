@@ -418,32 +418,36 @@ class Rotation_Ssd_Cost(DataCost):
     r"""
     Mixture of data costs
 
-    D(I,T) =  alpha *| S \cdot A.T  - T |^2 + (1 - alpha) * | I_1 \cdot A.T - T|^2
+    D(I,T) =  gamma *| S \cdot A.T  - T |^2 + (1 - gamma) * | I_1 \cdot A.T - T|^2
     """
-    def __init__(self, target, alpha, **kwargs):
+    def __init__(self, target, gamma, start_gamma = None, n_at_gamma_reach = None,  **kwargs):
 
         super(Rotation_Ssd_Cost, self).__init__(target)
         self.ssd = cf.SumSquaredDifference(target)
-        self.alpha = alpha
+        self.gamma = gamma
+        self.start_gamma = start_gamma
+        self.n_at_gamma_reach = n_at_gamma_reach
 
     def __repr__(self):
-        return super().__repr__() + f" alpha = {self.alpha}"
+        return super().__repr__() + f" gamma = {self.gamma}"
 
     def __call__(self,at_step=None):
         super().__call__()
-        # if at_step == -1:
-        # old
-        # grid_rt =   tb.grid_from_rotation(self.optimizer.mp.id_grid,  self.optimizer.mp.rot_mat.T)
-        # grid_rt += self.optimizer.mp.translation
+
+        if self.start_gamma is None:
+            gamma = self.gamma
+        else:
+            cst = (self.gamma - self.start_gamma) / self.n_at_gamma_reach
+            if self.optimizer._iter_ > self.n_at_gamma_reach :
+                gamma = self.gamma
+            else:
+                gamma = cst * self.optimizer._iter_ + self.start_gamma
+
+        print(f"Rotation_Ssd_Cost, iter : {self.optimizer._iter_}: gamma = {gamma}")
+
         grid_rt = self.optimizer.mp.get_rigidor()
-        # new ?
-        # trans_grid  = self.optimizer.mp.id_grid - self.optimizer.mp.translation
-        # rot_def =   tb.apply_rot_mat(trans_grid,  self.optimizer.mp.rot_mat.T)
-        # grid_rt = tb.grid_from_rotation_translation(
-        #     self.optimizer.mp.id_grid,
-        #     self.optimizer.mp.rot_mat.T,
-        #     self.optimizer.mp.translation
-        # )
+
+
         rotated_image =  tb.imgDeform(self.optimizer.mp.image,grid_rt,dx_convention='2square')
         rotated_source = tb.imgDeform(self.optimizer.source,grid_rt,dx_convention='2square')
 
@@ -452,7 +456,7 @@ class Rotation_Ssd_Cost(DataCost):
 
         # print(f"\t[{self.__repr__()}] :\n\tssd = {ssd}, ssd_rot = {ssd_rot}")
 
-        return self.alpha * ssd_rot + (1-self.alpha) * ssd
+        return gamma * ssd_rot + (1-gamma) * ssd
 
 #
 class Rotation_MutualInformation_Cost(DataCost):
