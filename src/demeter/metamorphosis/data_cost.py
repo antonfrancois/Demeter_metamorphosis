@@ -420,13 +420,18 @@ class Rotation_Ssd_Cost(DataCost):
 
     D(I,T) =  gamma *| S \cdot A.T  - T |^2 + (1 - gamma) * | I_1 \cdot A.T - T|^2
     """
-    def __init__(self, target, gamma, start_gamma = None, n_at_gamma_reach = None,  **kwargs):
+    def __init__(self, target, gamma,
+                 start_gamma = None,
+                 n_at_gamma_reach = None,
+                 verbose = False,
+                 **kwargs):
 
         super(Rotation_Ssd_Cost, self).__init__(target)
         self.ssd = cf.SumSquaredDifference(target)
         self.gamma = gamma
         self.start_gamma = start_gamma
         self.n_at_gamma_reach = n_at_gamma_reach
+        self.verbose = verbose
 
     def __repr__(self):
         return super().__repr__() + f" gamma = {self.gamma}"
@@ -441,9 +446,8 @@ class Rotation_Ssd_Cost(DataCost):
             if self.optimizer._iter_ > self.n_at_gamma_reach :
                 gamma = self.gamma
             else:
-                gamma = cst * self.optimizer._iter_ + self.start_gamma
+                gamma = cst * (self.optimizer._iter_ - 1) + self.start_gamma
 
-        print(f"Rotation_Ssd_Cost, iter : {self.optimizer._iter_}: gamma = {gamma}")
 
         grid_rt = self.optimizer.mp.get_rigidor()
 
@@ -453,8 +457,9 @@ class Rotation_Ssd_Cost(DataCost):
 
         ssd = self.ssd(rotated_image)
         ssd_rot = self.ssd(rotated_source)
-
-        # print(f"\t[{self.__repr__()}] :\n\tssd = {ssd}, ssd_rot = {ssd_rot}")
+        if self.verbose:
+            print(f"Rotation_Ssd_Cost, iter : {self.optimizer._iter_}: gamma = {gamma}")
+            print(f"\t[{self.__repr__()}] :\n\tssd = {ssd}, ssd_rot = {ssd_rot}")
 
         return gamma * ssd_rot + (1-gamma) * ssd
 
