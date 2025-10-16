@@ -50,7 +50,7 @@ file = "3D_20250930_IXI026-Guys-0696-T1_rigid_along_lddmm_root_000.pk1"
 
 file = "3D_20250929_IXI040-Guys-0724-T1_rigid_along_lddmm_francoisa_000.pk1" #{"gpu": "Tesla V100S-PCIE-32GB", "alpha": 0.3, "rho": 1, "cost_cst": 1000000.0, "cst_field": 0.005, "sigma": [[1, 1, 1], [3, 3, 3], [7, 7, 7]], "integration_steps": 10, "file": "/gpfs/workdir/francoisa/data/IXI_results/rigid_along_lddmm/
 # file =  "3D_20250930_IXI035-IOP-0873-T1_rigid_along_lddmm_francoisa_001.pk1" # {"gpu": "Tesla V100-PCIE-32GB", "alpha": 0.3, "rho": 1, "cost_cst": 1000000.0, "cst_field": 0.005, "sigma": [[1, 1, 1], [3, 3, 3], [7, 7, 7]], "integration_steps": 10, "file": "/gpfs/workdir/francoisa/data/IXI_results/rigid_along_lddmm/"}
-
+file = "3D_20250930_IXI049-HH-1358-T1_rigid_along_lddmm_francoisa_000.pk1"
 import demeter.utils.torchbox as tb
 mr = mt.load_optimize_geodesicShooting(
     file,

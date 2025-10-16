@@ -12,10 +12,7 @@ import demeter.utils.cost_functions as cf
 
 
 # # %%
-def create_rot_mat(theta):
-    return torch.tensor([[cos(theta), -sin(theta)],
-                         [sin(theta), cos(theta)]],
-                        dtype=torch.float)
+
 
 # def apply_rot_mat(grid,rot_mat):
 #     rotated_grid = torch.einsum('ij,bhwj->bhwi',rot_mat, grid)
@@ -50,7 +47,7 @@ new_img = tb.imgDeform(img,deform,dx_convention='2square')
 theta = -torch.pi/3
 tau = torch.tensor([.1,-.25])
 
-rot = create_rot_mat(theta)
+rot = tb.create_rot_mat_2d(theta)
 rot_grid = tb.grid_from_rotation(id_grid, rot) + tau
 newimg_r = tb.imgDeform(new_img,rot_grid,dx_convention='2square')
 

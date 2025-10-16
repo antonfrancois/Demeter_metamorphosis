@@ -29,8 +29,8 @@ def plot(self):
 
     img_rot = tb.imgDeform(self.mp.image.to('cpu'),affine,dx_convention='2square')
     source_rt = tb.imgDeform(self.source.to('cpu'),affine,dx_convention='2square')
-    srt = tb.imCmp(source_rt,target_b,method = 'compose')
-    irt = tb.imCmp(img_rot,target_b,method = 'compose')
+    srt = tb.imCmp(source_rt,mr.target,method = 'compose')
+    irt = tb.imCmp(img_rot,mr.target,method = 'compose')
     kwargs = {"origin": "lower", 'cmap': "gray"}
 
     fig,ax = plt.subplots(3,3, constrained_layout=True)
@@ -96,7 +96,7 @@ integration_steps = 10
 
 kernelOperator = rk.DummyKernel()
 
-datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'), alpha=1)
+datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'), gamma=1)
 # datacost = mt.Rotation_MutualInformation_Cost(target_b.to('cuda:0'), alpha=1)
 
 mr_rigid = mt.rigid_along_metamorphosis(
@@ -110,7 +110,8 @@ mr_rigid = mt.rigid_along_metamorphosis(
     n_iter=0
 )
 
-top_params = rg.initial_exploration(mr_rigid,r_step=10, max_output = 10, verbose=True)
+top_params = rg.initial_exploration(mr_rigid,r_step=3,#10,
+                                    max_output = 10, verbose=True)
 print(top_params)
 
 best_loss, best_momenta, best_rot = rg.optimize_on_rigid(
@@ -165,10 +166,10 @@ sigma = [(s,)*2 for s in sigma]
 alpha = .5
 rho = 1
 cost_cst = 10
-cst_field = 1
+cst_field = 1000
 
 kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False, kernel_reach =6)
-datacost = mt.Rotation_Ssd_Cost(target_b.to("cuda:0"), alpha=alpha)
+datacost = mt.Rotation_Ssd_Cost(target_b.to("cuda:0"), gamma=alpha)
 
 
 # best_loss = torch.inf
@@ -221,7 +222,7 @@ mt.free_GPU_memory(mr)
 # plt.show()
 
 #%%
-plot(best_mr)
+plot(mr)
 plt.show()
 #%%
 
@@ -341,18 +342,72 @@ plt.show()
 #%%
 ###########################################################
 # Compare with pure LDDMM on a rigid output
-rigid_source = tb.imgDeform(source_b, mr_rigid.mp.get_rigidor())
-fig, ax = plt.subplots(1,2, constrained_layout=True)
-ax[0].imshow(rigid_source[0,0],cmap='gray')
-ax[0].set_title("source")
-ax[1].imshow(tb.imCmp(rigid_source,target_b,'compose')[0])
+
+# put the target on source
+integration_steps = 10
+
+kernelOperator = rk.DummyKernel()
+
+datacost = mt.Rotation_Ssd_Cost(source_b.to('cuda:0'), gamma=1)
+# datacost = mt.Rotation_MutualInformation_Cost(target_b.to('cuda:0'), alpha=1)
+
+mr_rigid_first = mt.rigid_along_metamorphosis(
+    target_b,source_b, momenta_ini=0,
+    kernelOperator= kernelOperator,
+    rho = 1,
+    data_term=datacost ,
+    integration_steps = integration_steps,
+    optimizer_method='LBFGS_torch',
+    cost_cst=.1,
+    n_iter=0
+)
+
+top_params = rg.initial_exploration(mr_rigid_first,r_step=10, max_output = 10, verbose=True)
+best_loss, best_momenta, best_rot = rg.optimize_on_rigid(
+    mr_rigid_first, top_params, n_iter=10,verbose=True, plot = True,
+)
+id = 1
+momenta = mt.prepare_momenta(
+    source_b.shape,
+    diffeo = False,device = "cpu",requires_grad = False,
+    **best_momenta
+)
+
+print(f"best_momenta : {best_momenta}")
+mr_rigid_first.mp.forward(target_b, momenta.copy(), save =  True)
+plot(mr_rigid_first)
 plt.show()
+#%%
+source_lddmm = source_b.clone()
+target_lddmm = tb.imgDeform(target_b, mr_rigid_first.mp.get_rigidor())
+ref = "source"
+fig, ax = plt.subplots(1,3, constrained_layout=True)
+ax[0].imshow(source_lddmm[0,0],cmap='gray')
+ax[0].set_title("source")
+ax[1].imshow(tb.imCmp(source_lddmm,target_lddmm,'compose')[0])
+ax[2].imshow(target_lddmm[0,0],cmap='gray')
+ax[2].set_title("target")
+plt.show()
+#%%%
+source_lddmm = tb.imgDeform(source_b, mr_rigid.mp.get_rigidor())
+target_lddmm = target_b.clone()
+ref = 'target'
+fig, ax = plt.subplots(1,3, constrained_layout=True)
+ax[0].imshow(source_lddmm[0,0],cmap='gray')
+ax[0].set_title("source")
+ax[1].imshow(tb.imCmp(source_lddmm,target_lddmm,'compose')[0])
+ax[1].set_title("target")
+ax[2].imshow(target_b[0,0],cmap='gray')
+plt.show()
+
+#%%
 sigma= [  7, 15]
+# sigma = [15, 20]
 sigma = [(s,)*2 for s in sigma]
 kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False, kernel_reach =6)
 
 mr_l = mt.lddmm(
-    rigid_source.to("cuda:0"), target_b.to("cuda:0"), 0, kernelOperator,
+    source_lddmm.to("cuda:0"), target_lddmm.to("cuda:0"), 0, kernelOperator,
     cost_cst=1,
     grad_coef=.1,
     integration_steps=10,
@@ -362,13 +417,18 @@ mr_l = mt.lddmm(
 mr_l.plot_cost()
 plt.show()
 #%%
-fig, ax = plt.subplots(2, 2, figsize=(12, 12), constrained_layout=True)
+fig, ax = plt.subplots(2, 3, figsize=(18, 12), constrained_layout=True)
 image_kw = dict(cmap="gray", origin="lower", vmin=0, vmax=1)
 set_ticks_off(ax)
 ax[0, 0].imshow(mr_l.source[0, 0, :, :].detach().cpu().numpy(), **image_kw)
 ax[0, 0].set_title("source", fontsize=25)
 ax[0, 1].imshow(mr_l.target[0, 0, :, :].detach().cpu().numpy(), **image_kw)
 ax[0, 1].set_title("target", fontsize=25)
+ax[0,2].imshow(
+        tb.imCmp(mr_l.target, mr_l.source, method="seg")[0],
+    **image_kw,
+)
+ax[0,2].set_title("source vs target", fontsize=25)
 
 ax[1, 1].imshow(
     tb.imCmp(mr_l.target, mr_l.mp.image.detach().cpu(), method="seg")[0],
@@ -388,15 +448,26 @@ tb.gridDef_plot_2d(
         mr_l.mp.get_deformation().detach().cpu(),
         add_grid=False,
         ax=ax[1,1],
-        step=int(min(mr.mp.field_stock.shape[2:-1]) / 20),
+        step=int(min(mr_l.mp.field_stock.shape[2:-1]) / 20),
         check_diffeo=False,
         origin=image_kw["origin"],
         dx_convention=mr_l.mp.dx_convention,
         color = GRIDDEF_YELLOW,
     alpha = .5
     )
+tb.gridDef_plot_2d(
+        mr_l.mp.get_deformation().detach().cpu(),
+        add_grid=False,
+        ax=ax[1,2],
+        step=int(min(mr_l.mp.field_stock.shape[2:-1]) / 20),
+        check_diffeo=False,
+        origin=image_kw["origin"],
+        dx_convention=mr_l.mp.dx_convention,
+        color = 'black',
+    alpha = .5
+    )
 plt.show()
-fig.savefig(path+"classic_lddmm.pdf")
+fig.savefig(path+f"classic_lddmm_ref{ref}.pdf")
 #%%
 mr_l.mp.plot()
 plt.show()
@@ -406,3 +477,55 @@ tb.gridDef_plot_2d(
     step = 10
 )
 plt.show()
+
+#%%
+sigma= [  7, 15]
+sigma = [(s,)*2 for s in sigma]
+alpha = .5
+rho = 1
+cost_cst = 10
+cst_field = 100000
+
+kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False, kernel_reach =6)
+datacost = mt.Rotation_Ssd_Cost(target_lddmm.to("cuda:0"), gamma=alpha)
+
+
+# best_loss = torch.inf
+# for i,param in enumerate(top_param_rot):
+#     print(f"\n\noptimistion {i} on  {len(top_param_rot)}")
+momenta = mt.prepare_momenta(
+    source_b.shape,
+    rotation=True,scaling=True,translation=True,
+    # **best_momenta
+)
+# momenta["momentum_R"].requires_grad = False
+# momenta["momentum_S"].requires_grad = False
+# momenta["momentum_T"].requires_grad = False
+
+
+mr = mt.rigid_along_metamorphosis(
+  source_lddmm, target_lddmm, momenta_ini=momenta,
+  kernelOperator= kernelOperator,
+  rho = rho,
+  data_term=datacost ,
+  integration_steps = integration_steps,
+  cost_cst=cost_cst,
+  cst_field=cst_field,
+  n_iter=10,
+    grad_coef=.1,
+    # optimizer_method='Adam',
+  save_gpu_memory=False,
+  lbfgs_max_iter = 40,
+  lbfgs_history_size = 20,
+    safe_mode=True
+)
+best = False
+mr.plot_cost()
+plt.show()
+plot(mr)
+plt.show()
+# if mr.data_loss < best_loss or mr.data_loss == 0:
+#     print(param)
+#     best_mr = mr
+
+mt.free_GPU_memory(mr)
