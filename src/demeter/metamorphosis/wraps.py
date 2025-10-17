@@ -425,14 +425,16 @@ def rigid_along_metamorphosis(
         kernelOperator,
         rho,
         data_term,
-        cst_field = .5,
         # dx_convention="2square",
         integration_steps=10,
         n_iter=0,
         grad_coef=2,
         cost_cst=0.001,
+        cost_field_cst = .5,
+        cost_affine_cst = 1,
         plot=False,
         safe_mode=False,
+        constraints = True,
         optimizer_method="LBFGS_torch",
         hamiltonian_integration=False,
        save_gpu_memory = False,
@@ -465,7 +467,8 @@ def rigid_along_metamorphosis(
         kernelOperator=kernelOperator,
         dx_convention="2square",
         debug=debug,
-        save_gpu_memory = save_gpu_memory
+        save_gpu_memory = save_gpu_memory,
+        constraints = constraints,
     )
 
     mr = rd.RigidMetamorphosis_Optimizer(
@@ -473,7 +476,8 @@ def rigid_along_metamorphosis(
         target= target.clone(),
         geodesic = mp,
         cost_cst=cost_cst,
-        cst_field=cst_field,
+        cost_field_cst=cost_field_cst,
+        cost_affine_cst=cost_affine_cst,
         data_term=data_term,
         hamiltonian_integration=hamiltonian_integration,
         optimizer_method=optimizer_method,

@@ -2,8 +2,6 @@ import __init__
 import torch
 from math import cos,sin
 import matplotlib.pyplot as plt
-from IPython.core.pylabtools import figsize
-from itk.support.extras import origin
 
 import demeter.utils.torchbox as tb
 import demeter.metamorphosis.rotate as mtrt

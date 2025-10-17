@@ -382,7 +382,8 @@ def plot_loss_with_multiple_y_axes(loss_stock, title="Loss Evolution", ax=None):
     fig.canvas.draw()  # force creation of offset text
     for i, a in enumerate(axes):
         offset_text = a.yaxis.get_offset_text()
-        offset_text.set_x( - 0.165*i)  # move horizontally to follow each spine
+        # offset_text.set_x( - 0.165*i)  # move horizontally to follow each spine
+        offset_text.set_x( - 0.24*i)  # move horizontally to follow each spine
 
         # offset_text.set_y(1.02)              # position slightly above top of axis
         offset_text.set_ha("right")

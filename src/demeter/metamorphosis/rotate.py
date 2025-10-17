@@ -85,10 +85,11 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
 
 
     """
-    def __init__(self,rho,**kwargs):
+    def __init__(self,rho, constraints = True,**kwargs):
         super().__init__(**kwargs)
         self.rho = rho
         # self.n_step = n_step
+        self.constraints = constraints
 
     def _get_rho_(self):
         return float(self.rho)
@@ -335,7 +336,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
             print('step', self._i)
 
         # --- Apply constraints ---
-        if self._i == 0:
+        if self._i == 0 and self.constraints:
             momentum_I = self._contrainte_(momentum_I, self.source)
 
         # --- Rotation / Translation update ---
@@ -601,10 +602,11 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
 
 class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
-    def __init__(self, cst_field = .5, **kwargs):
+    def __init__(self, cost_field_cst = .5, cost_affine_cst = 1, **kwargs):
         super().__init__(**kwargs)
         self._cost_saving_ = self._rotating_cost_saving_
-        self.cst_field = cst_field
+        self.cst_field = cost_field_cst
+        self.cost_affine_cst = cost_affine_cst
 
     def _get_rho_(self):
         return float(self.mp.rho)
@@ -654,8 +656,8 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
         self.total_cost = self.data_loss + \
                           self.cost_cst * (
-                                   (self.norm_v_2 +  self.norm_l2_on_z) +
-                                 self.cst_field * (self.norm_l2_on_R + self.norm_S_2)
+                                 self.cst_field *  (self.norm_v_2 +  self.norm_l2_on_z) +
+                                 self.cost_affine_cst * (self.norm_l2_on_R + self.norm_S_2)
                           )
 
         return self.total_cost
@@ -718,14 +720,14 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
         dt = cost_stock["data_loss"]
         nv = cost_stock["norm_v_2"] * self.cost_cst * self.cst_field
         nz = cost_stock["norm_l2_on_z"] * self.cost_cst * self.cst_field
-        nr = cost_stock["norm_l2_on_R"] * self.cost_cst
+        nr = cost_stock["norm_l2_on_R"] * self.cost_cst * self.cost_affine_cst
 
         ax1[0].plot(dt, '--', label="data_loss" ,color=colors[0])
         ax1[0].plot(nv,'--', label="norm_v_2" ,color=colors[1])
         ax1[0].plot(nz,'--', label="norm_l2_on_z" ,color=colors[2])
         ax1[0].plot(nr,'--', label="norm_l2_on_R" ,color=colors[3])
         try:
-            ns = cost_stock["norm_S_2"] * self.cost_cst
+            ns = cost_stock["norm_S_2"] * self.cost_cst * self.cost_affine_cst
             ax1[0].plot(ns,'--', label="norm_S_2" ,color=colors[4])
             total = dt + nv + nz + nr + ns
         except KeyError:
