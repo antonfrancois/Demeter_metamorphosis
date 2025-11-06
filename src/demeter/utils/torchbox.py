@@ -1,3 +1,12 @@
+"""Utility helpers for manipulating tensors, grids,
+  and visualizations in Demeter.
+
+This module groups image manipulation, affine grid
+  construction, and plotting
+helpers built on top of torch and Kornia.
+"""
+
+
 from collections.abc import Iterable
 
 import torch
@@ -22,6 +31,33 @@ import matplotlib.patches as mpatches
 # ================================================
 
 def reg_open(number, size=None, requires_grad=False, device='cpu'):
+    """Load a registration example image as a
+  grayscale tensor.
+
+      Parameters
+      ----------
+      number : str
+          Identifier appended to the canonical file
+  name inside
+          `examples/im2Dbank`.
+      size : tuple[int, ...] | None
+          Spatial size passed to
+  `kornia.geometry.transform.resize`. When
+          omitted, the original image resolution is
+  preserved.
+      requires_grad : bool
+          If ``True`` the tensor is created with
+  gradient tracking enabled.
+      device : str | torch.device
+          Target device for the resulting tensor.
+
+      Returns
+      -------
+      torch.Tensor
+          Tensor of shape `[1, 1, *size]` normalised
+  to the range `[0, 1]`.
+      """
+
     path = ROOT_DIRECTORY
     path += '/examples/im2Dbank/reg_test_' + number + '.png'
 
@@ -41,21 +77,39 @@ def resize_image(image: torch.Tensor | list[torch.Tensor],
                  to_shape = None,
                  mode = 'bilinear'
                  ):
+    """Resize batched images by scale factor or
+    explicit spatial shape.
+
+      Parameters
+      ----------
+      image : torch.Tensor | list[torch.Tensor]
+          Single tensor shaped `[B, C, ...]` or list
+    of tensors to resize with
+          identical spatial shape.
+      scale_factor : float | int | Iterable | None
+          Uniform or per-dimension scaling factor.
+    Ignored when `to_shape` is
+          provided.
+      to_shape : tuple[int, ...] | None
+          Target spatial size. When specified,
+    `scale_factor` must be ``None``.
+      mode : str
+          Interpolation mode forwarded to
+    `torch.nn.functional.grid_sample`.
+
+      Returns
+      -------
+      torch.Tensor | list[torch.Tensor]
+          Resized tensor, or list of tensors if a list
+    was provided.
+
+      Raises
+      ------
+      ValueError
+          If neither `scale_factor` nor `to_shape`
+    is supplied.
     """
-    Resize an image by a scale factor $s = (s1,s2,s3)$ or set it to
-    shape given by `to_shape`.
 
-
-    :param image: list of tensors [B,C,H,W] or [B,C,D,H,W] torch tensor
-    :param scale_factor: float or list or tuple of image dimension size
-    :param to_shape: Resize the image to the given shape. Tuple of image dimension size (nD,nH,nW)
-
-    .. note::
-        Please provide only scale_factor OR to_shape. If to_shape is not None, scale_factor will be ignored.
-
-    : return: tensor of size [B,C,s1*H,s2*W] or [B,C,s1*D, s2*H, s3*W] or list
-    containing tensors.
-    """
     if isinstance(image, torch.Tensor):
         image = [image]
     device = image[0].device
