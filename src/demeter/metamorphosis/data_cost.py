@@ -10,7 +10,7 @@ import torch
 from abc import ABC, abstractmethod
 from ..utils import torchbox as tb
 from ..utils import cost_functions as cf
-from math import prod
+from math import prod, exp
 
 
 class DataCost(ABC, torch.nn.Module):
@@ -413,42 +413,52 @@ class Longitudinal_DataCost(DataCost):
                 td[key] = td[key].to(device)
 
 
-
+import matplotlib.pyplot as plt
 class Rotation_Ssd_Cost(DataCost):
     r"""
     Mixture of data costs
 
     D(I,T) =  gamma *| S \cdot A.T  - T |^2 + (1 - gamma) * | I_1 \cdot A.T - T|^2
     """
-    def __init__(self, target, gamma,
-                 start_gamma = None,
-                 n_at_gamma_reach = None,
+    def __init__(self, target,
+                 gamma = None,
+                sigmoid_a = None,
+                 sigmoid_b = None,
+                 sigmoid_c = 4,
                  verbose = False,
                  **kwargs):
 
         super(Rotation_Ssd_Cost, self).__init__(target)
         self.ssd = cf.SumSquaredDifference(target)
+        if gamma is None and (sigmoid_a is None or sigmoid_b is None):
+            raise ValueError("Either gamma or parameters for the sigmoid must be provided.")
+        elif isinstance(gamma, (float, int)):
+            self.status = f"gamma = {gamma}"
+        else:
+            self.status = f"gamma sigmoid var"
         self.gamma = gamma
-        self.start_gamma = start_gamma
-        self.n_at_gamma_reach = n_at_gamma_reach
+        self.sigmoid_a = sigmoid_a
+        self.sigmoid_b = sigmoid_b
+        self.sigmoid_c = sigmoid_c
         self.verbose = verbose
 
     def __repr__(self):
-        return super().__repr__() + f" gamma = {self.gamma}"
+        return super().__repr__() + self.status
+
+    def _compute_gamma_(self, iter):
+        if "sigmoid" in self.status:
+            alpha = 2 * self.sigmoid_c /( self.sigmoid_b - self.sigmoid_a)
+            beta = - (self.sigmoid_a + self.sigmoid_b) / 2
+            g = alpha *( iter + beta)
+            gamma = 1/(1 + exp(-g))
+            return gamma
+        else:
+            return self.gamma
 
     def __call__(self,at_step=None):
         super().__call__()
 
-        if self.start_gamma is None:
-            gamma = self.gamma
-        else:
-            cst = (self.gamma - self.start_gamma) / self.n_at_gamma_reach
-            if self.optimizer._iter_ > self.n_at_gamma_reach :
-                gamma = self.gamma
-            else:
-                gamma = cst * (self.optimizer._iter_ - 1) + self.start_gamma
-
-
+        gamma = self._compute_gamma_(self.optimizer._iter_)
         grid_rt = self.optimizer.mp.get_rigidor()
 
 
@@ -458,8 +468,20 @@ class Rotation_Ssd_Cost(DataCost):
         ssd = self.ssd(rotated_image)
         ssd_rot = self.ssd(rotated_source)
         if self.verbose:
-            print(f"Rotation_Ssd_Cost, iter : {self.optimizer._iter_}: gamma = {gamma}")
-            print(f"\t[{self.__repr__()}] :\n\tssd = {ssd}, ssd_rot = {ssd_rot}")
+            print(f"[{self.__repr__()}]")
+            print(f"\t gamma = {gamma:.3f} : ssd = {ssd:.3f}, ssd_rot = {ssd_rot:.3f} => Loss = {gamma * ssd_rot + (1-gamma) * ssd:.3f} ")
+        if self.optimizer._iter_  % 5 == 0:
+            fig, ax = plt.subplots(2,2)
+            fig.suptitle(f" iter : {self.optimizer._iter_}: gamma = {gamma}; ssd = {ssd}, ssd_rot = {ssd_rot}")
+            ax[0,0].imshow(rotated_image[0,0].detach().cpu().numpy())
+            ax[0,0].set_title('rotated Image')
+            ax[0,1].imshow(rotated_source[0,0].detach().cpu().numpy())
+            ax[0,1].set_title('rotated Source')
+            ax[1,0].imshow(torch.abs(rotated_image - self.target)[0,0].detach().cpu().numpy())
+            ax[1,0].set_title('rot img vs target')
+            ax[1,1].imshow(torch.abs(rotated_source - self.target)[0,0].detach().cpu().numpy())
+            ax[1,1].set_title('rot source vs target')
+            plt.show()
 
         return gamma * ssd_rot + (1-gamma) * ssd
 
