@@ -1,8 +1,16 @@
+"""Utility helpers for manipulating tensors, grids,
+  and visualizations in Demeter.
+
+This module groups image manipulation, affine grid
+  construction, and plotting
+helpers built on top of torch and Kornia.
+"""
+
+
 from collections.abc import Iterable
 
 import torch
 import torch.nn.functional as F
-from dask.array import select
 from kornia.filters import SpatialGradient, SpatialGradient3d, filter2d, filter3d
 from kornia.geometry.transform import resize
 from numpy import newaxis
@@ -14,9 +22,8 @@ from . import bspline as mbs
 from . import vector_field_to_flow as vff
 from . import decorators as deco
 from demeter.constants import *
+import matplotlib.patches as mpatches
 
-
-# from .utils.image_3d_visualisation import image_slice
 
 
 # ================================================
@@ -24,6 +31,33 @@ from demeter.constants import *
 # ================================================
 
 def reg_open(number, size=None, requires_grad=False, device='cpu'):
+    """Load a registration example image as a
+  grayscale tensor.
+
+      Parameters
+      ----------
+      number : str
+          Identifier appended to the canonical file
+  name inside
+          `examples/im2Dbank`.
+      size : tuple[int, ...] | None
+          Spatial size passed to
+  `kornia.geometry.transform.resize`. When
+          omitted, the original image resolution is
+  preserved.
+      requires_grad : bool
+          If ``True`` the tensor is created with
+  gradient tracking enabled.
+      device : str | torch.device
+          Target device for the resulting tensor.
+
+      Returns
+      -------
+      torch.Tensor
+          Tensor of shape `[1, 1, *size]` normalised
+  to the range `[0, 1]`.
+      """
+
     path = ROOT_DIRECTORY
     path += '/examples/im2Dbank/reg_test_' + number + '.png'
 
@@ -40,23 +74,45 @@ def reg_open(number, size=None, requires_grad=False, device='cpu'):
 
 def resize_image(image: torch.Tensor | list[torch.Tensor],
                  scale_factor: float | int | Iterable = None,
-                 to_shape = None
+                 to_shape = None,
+                 mode = 'bilinear'
                  ):
-    """
-    Resize an image by a scale factor $s = (s1,s2,s3)$ or set it to
-    shape given by `to_shape`.
+    """Resize batched images by scale factor or
+    explicit spatial shape.
 
-
-    :param image: list of tensors [B,C,H,W] or [B,C,D,H,W] torch tensor
-    :param scale_factor: float or list or tuple of image dimension size
-    :param to_shape: Resize the image to the given shape. Tuple of image dimension size (nD,nH,nW)
+      Parameters
+      ----------
+      image : torch.Tensor | list[torch.Tensor]
+          Single tensor shaped `[B, C, ...]` or list
+    of tensors to resize with
+          identical spatial shape.
+      scale_factor : float | int | Iterable | None
+          Uniform or per-dimension scaling factor.
+    Ignored when `to_shape` is
+          provided.
+      to_shape : tuple[int, ...] | None
+          Target spatial size. When specified,
+    `scale_factor` must be ``None``.
+      mode : str
+          Interpolation mode forwarded to
+    `torch.nn.functional.grid_sample`.
 
     .. note::
         Please provide only scale_factor OR to_shape. If to_shape is not None, scale_factor will be ignored.
 
-    : return: tensor of size [B,C,s1*H,s2*W] or [B,C,s1*D, s2*H, s3*W] or list
-    containing tensors.
+     Returns
+      -------
+      torch.Tensor | list[torch.Tensor]
+          Resized tensor, or list of tensors if a list
+    was provided.
+
+      Raises
+      ------
+      ValueError
+          If neither `scale_factor` nor `to_shape`
+    is supplied.
     """
+
     if isinstance(image, torch.Tensor):
         image = [image]
     device = image[0].device
@@ -75,7 +131,7 @@ def resize_image(image: torch.Tensor | list[torch.Tensor],
     i_s = []
     for i in image:
         i_s.append(
-            torch.nn.functional.grid_sample(i.to(device), id_grid, **DLT_KW_GRIDSAMPLE)
+            torch.nn.functional.grid_sample(i.to(device), id_grid, mode, **DLT_KW_GRIDSAMPLE)
         )
     if len(i_s) == 1:
         return i_s[0]
@@ -143,6 +199,56 @@ def pad_to_same_size(img_1, img_2):
     img_2_padded = torch.nn.functional.pad(img_2[0, 0], padding2)[None, None]
     return (img_1_padded, img_2_padded)
 
+def landmark_distance(land_1, land_2, round:bool=False):
+    """
+    compute the distance between two landmarks
+    return (land_1 - land_2.round()).abs().mean()
+
+    Parameters
+    -----------
+    land_1 : tensor [N,3]
+    land_2 : tensor [N,3]
+    """
+    # print(f"land type : {land_1.dtype}, {land_2.dtype}")
+    # print(f"round {round}")
+    if  not round or land_2.dtype == torch.int :
+        return (land_1 - land_2).abs().mean()
+    else:
+        return (land_1 - land_2.round()).abs().mean()
+
+
+def dice(img_1, img_2):
+    prod_im = img_1 * img_2
+    sum_im = img_1 + img_2
+
+    return 2 * prod_im.sum() / sum_im.sum()
+
+def average_dice(segs_1, segs_2, message = '', verbose = False):
+    # print(type(segs_1))
+    uni_1 = torch.unique(segs_1)
+    uni_2 = torch.unique(segs_2)
+
+    # print(uni_1, uni_2)
+    assert torch.equal(uni_1, uni_2), f"segs_1 and segs_2 are not equal, got  {uni_1} and {uni_2}"
+
+    mask_1 = torch.zeros_like(segs_1)
+    mask_2 = torch.zeros_like(segs_2)
+    dice_stock = {}
+    for c in uni_1:
+        if c == 0:
+            continue
+        mask_1[segs_1 == c] = 1
+        mask_1[segs_1 != c] = 0
+        mask_2[segs_2 == c] = 1
+        mask_2[segs_2 != c] = 0
+        dice_stock[f'{message} dice val {c}'] = dice(mask_1, mask_2)
+
+    av_dice = sum(dice_stock.values()) / len(dice_stock)
+    dice_stock[f"{message} dice average"] = av_dice
+    if verbose:
+        for k,v in dice_stock.items():
+            print(f"\t {k} : {v}")
+    return dice_stock
 
 def addGrid2im(img, n_line, cst=0.1, method='dots'):
     """ draw a grid to the image
@@ -477,11 +583,15 @@ def imCmp(I1, I2, method=None):
     Parameters
     ----------
     I1 : torch.Tensor
-        [B,C,H,W] or [B,C,K,H,W] tensor C = 1, B = 1
+        [B,C,H,W] or [B,C,D,H,W] tensor C = 1, B = 1
     I2 : torch.Tensor
-        [B,C,H,W] or [B,C,K,H,W] tensor C = 1, B = 1
+        [B,C,H,W] or [B,C,D,H,W] tensor C = 1, B = 1
     method: str
         method to compare the images, among {'compose','seg','segw','segh'}
+
+    Returns
+    ---------
+    image : numpy.array of shape (1, H, W, 4) or (1, D, H, W, 4)
     """
     from numpy import concatenate, zeros, ones, maximum, exp
     if len(I1.shape) in [4, 5]:
@@ -496,27 +606,22 @@ def imCmp(I1, I2, method=None):
     I2 = I2[0, 0, ...]
 
     if method is None:
-        return concatenate((I2[..., None], I1[..., None], zeros(shape_to_fill)), axis=-1)
+        return concatenate((I2[..., None], I1[..., None], zeros(shape_to_fill)), axis=-1)[None]
     elif 'seg' in method:
         u = I2[..., None] * I1[..., None]
         if 'w' in method:
             d = I1[..., None] - I2[..., None]
-            # z = np.zeros(d.shape)
-            # z[I1[..., None] + I2[...]] = 1
-            # print(f'd min = {d.min()},{d.max()}')
+
             r = maximum(d, 0) / np.abs(d).max()
             g = u + .1 * exp(-d ** 2) * u + maximum(-d, 0) * .2
             b = maximum(-d, 0) / np.abs(d).max()
-            # rr,gg,bb = r.copy(),g.copy(),b.copy()
-            # rr[r + g + b == 0] =1
-            # gg[r + g + b == 0] =1
-            # bb[r + g + b == 0] =1
+
             rgb = concatenate(
                 (r, g, b, ones(shape_to_fill)), axis=-1
             )
             rgb = np.clip(rgb, 0, 1)
             # print(f"r {r.min()};{r.max()}")
-            return rgb
+            return rgb[None]
         if 'k' in method:
             return concatenate(
                 (
@@ -526,7 +631,7 @@ def imCmp(I1, I2, method=None):
                     ones(shape_to_fill)
                     # np.maximum(I2[:,:,None], I1[:, :, None])
                 ), axis=-1
-            )
+            )[None]
         if 'h' in method:
             d = I1[..., None] - I2[..., None]
             # z = np.ones(d.shape)
@@ -538,7 +643,7 @@ def imCmp(I1, I2, method=None):
             rgb = concatenate(
                 (r, g, b, ones(shape_to_fill)), axis=-1
             )
-            return rgb
+            return rgb[None]
         else:
             return concatenate(
                 (
@@ -547,7 +652,7 @@ def imCmp(I1, I2, method=None):
                     I2[..., None] - u,
                     ones(shape_to_fill)
                 ), axis=-1
-            )
+            )[None]
     elif 'compose' in method:
         return concatenate(
             (
@@ -556,10 +661,10 @@ def imCmp(I1, I2, method=None):
                 I2[..., None],
                 ones(shape_to_fill)
             ), axis=-1
-        )
+        )[None]
 
 
-def temporal_img_cmp(img_1, img2, method="compose"):
+def temporal_img_cmp(img_1, img_2, seg = False, **kwargs):
     """
     Stack two gray-scales images to compare them. The images must have the same
     height and width and depth (for 3d). Images can be temporal meaning that
@@ -569,8 +674,12 @@ def temporal_img_cmp(img_1, img2, method="compose"):
     ----------
     img_1 : torch.Tensor
         [T_1,C,H,W] or [T_1,C,D,H,W] tensor C = 1
-    img2 : torch.Tensor
+    img_2 : torch.Tensor
         [T_2,C,H,W] or [T_2,C,D,H,W] tensor C = 1
+    seg : bool
+        tells the method to treat images as segmentation ot regular images. [default: False]
+    kwargs:
+        the additional arguments to pass to imCmp if seg = True,  or else segCmp
     .. note:
 
         T_1 = 1 and T_2 > 1 or T_1 > 1 and T_2 = 1 or T_1 = T_2 > 1 works, any other case will raise an error.
@@ -579,39 +688,41 @@ def temporal_img_cmp(img_1, img2, method="compose"):
         method to compare the images, among {'compose','seg','segw','segh'}
 
     """
+    comparator  = segCmp if seg else imCmp
+    print('Comparator :', comparator)
     T1, C1, D1, H1, W1 = img_1.shape
-    T2, C2, D2, H2, W2 = img2.shape
+    T2, C2, D2, H2, W2 = img_2.shape
     if D1 != D2 or H1 != H2 or W1 != W2:
         raise ValueError(
-            f"The images must have the same shape, got img_1 : {img_1.shape} and img_2 : {img2.shape}"
+            f"The images must have the same shape, got img_1 : {img_1.shape} and img_2 : {img_2.shape}"
         )
     if C1 > 1 or C2 > 1:
         raise ValueError(
-            f"The images must have only one channel, got img_1 : {img_1.shape} and img_2 : {img2.shape}"
+            f"The images must have only one channel, got img_1 : {img_1.shape} and img_2 : {img_2.shape}"
         )
 
     if T1 == T2 and T1 == 1:
-        return imCmp(img_1, img2, method=method)
+        return comparator(img_1, img_2, **kwargs)
     elif T2 > T1 and T1 == 1:
-        buffer_img = img2
-        img2 = img_1
+        buffer_img = img_2
+        img_2 = img_1
         img_1 = buffer_img
         T1, T2 = T2, T1
 
     if T1 > T2 and T2 == 1:
         t_img = np.zeros((T1, D1, H1, W1, 4))
         for t, im1 in enumerate(img_1):
-            t_img[t] = imCmp(im1[None], img2, method=method)
+            t_img[t] = comparator(im1[None], img_2, **kwargs)
         return t_img
 
     elif T1 == T2 and T1 > 1:
         t_img = np.zeros((T1, D1, H1, W1, 4))
-        for t, im1, im2 in enumerate(zip(img_1, img2)):
-            t_img[t] = imCmp(im1[None], im2[None], method=method)
+        for t, (im1, im2) in enumerate(zip(img_1, img_2)):
+            t_img[t] = comparator(im1[None], im2[None], **kwargs)
         return t_img
     else:
         raise ValueError(
-            f"Supports only temporal images with the same number of time of one temporal image and one static image, got img_1 : {img_1.shape} and img_2 : {img2.shape}"
+            f"Supports only temporal images with the same number of time of one temporal image and one static image, got img_1 : {img_1.shape} and img_2 : {img_2.shape}"
         )
 
 
@@ -651,6 +762,7 @@ def gridDef_plot_2d(deformation: torch.Tensor,
                     add_grid: bool = False,
                     check_diffeo: bool = False,
                     dx_convention: str = 'pixel',
+                    add_markers: bool = False,
                     title: str = "",
                     #  color : str | None = None,
                     # linewidth : int | float = None,
@@ -715,20 +827,43 @@ def gridDef_plot_2d(deformation: torch.Tensor,
     else:
         step_x, step_y = step
 
+    if add_markers:
+        c_b = "green"
+        c_g = "purple"
+        c_h = "red"
+        c_d =  "yellow"
+        H,W = deformation.shape[1:-1]
+        ax.vlines(0, 0, H, color=c_g)
+        ax.vlines(W, 0, H, color=c_d)
+        ax.hlines(0, 0, W, color=c_b)
+        ax.hlines(H, 0, W, color=c_h)
+
+    start = 0 if origin == 'lower' else deform.size(2)
     sign = 1 if origin == 'lower' else -1
     # kw = dict(color=color,linewidth=linewidth)
     l_a = ax.plot(deform[0, :, ::step_y, 0].numpy(),
-                  sign * deform[0, :, ::step_y, 1].numpy(), **kwargs)
+                  start +sign * deform[0, :, ::step_y, 1].numpy(), **kwargs)
     l_b = ax.plot(deform[0, ::step_x, :, 0].numpy().T,
-                  sign * deform[0, ::step_x, :, 1].numpy().T, **kwargs)
+                  start +sign * deform[0, ::step_x, :, 1].numpy().T, **kwargs)
 
     # add the last lines on the right and bottom edges
+    if add_markers:   kwargs["color"] = c_d
     l_c = ax.plot(deform[0, :, -1, 0].numpy(),
-                  sign * deform[0, :, -1, 1].numpy(), **kwargs)
+                  start +sign * deform[0, :, -1, 1].numpy(), **kwargs)
+    if add_markers:   kwargs["color"] = c_h
     l_d = ax.plot(deform[0, -1, :, 0].numpy().T,
-                  sign * deform[0, -1, :, 1].numpy().T, **kwargs)
+                  start +sign * deform[0, -1, :, 1].numpy().T, **kwargs)
+
+    if add_markers:
+        kwargs["color"] = c_b
+        l_e = ax.plot(deform[0, 0, :, 0].numpy().T,
+                      start +sign * deform[0, 0, :, 1].numpy().T, **kwargs)
+        kwargs["color"] = c_g
+        l_f = ax.plot(deform[0, :, 0, 0].numpy().T,
+                      start +sign * deform[0, :, 0, 1].numpy().T, **kwargs)
 
     lines = l_a + l_b + l_c + l_d
+    if add_markers: lines += l_e + l_f
 
     ax.set_aspect('equal')
     ax.set_title(title)
@@ -987,7 +1122,7 @@ def field2diffeo(in_vectField, N=None, save=False, forward=True):
     return vff.FieldIntegrator(method='fast_exp')(in_vectField.clone(), forward=forward)
 
 
-def imgDeform(img, deform_grid, dx_convention='2square', clamp=False):
+def imgDeform(img, deform_grid, dx_convention='2square', clamp=False, mode = 'bilinear', gridsample_kwargs= None):
     """
     Apply a deformation grid to an image
 
@@ -1001,6 +1136,8 @@ def imgDeform(img, deform_grid, dx_convention='2square', clamp=False):
         convention of the deformation grid (default '2square')
     clamp : bool, optional
         if True, clamp the image between 0 and 1 if the max value is less than 1 else between 0 and 255 (default False)
+    mode : str, optional
+        torch grid_sample argument for interpolation mode.
 
     Returns
     -------
@@ -1014,9 +1151,14 @@ def imgDeform(img, deform_grid, dx_convention='2square', clamp=False):
         deform_grid = pixel_to_2square_convention(deform_grid)
     elif dx_convention == 'square':
         deform_grid = square_to_2square_convention(deform_grid)
+    if gridsample_kwargs is None:
+        gridsample_kwargs = DLT_KW_GRIDSAMPLE
     deformed = F.grid_sample(img.to(deform_grid.dtype),
                              deform_grid,
-                             **DLT_KW_GRIDSAMPLE
+                             mode = mode,
+                             # **gridsample_kwargs
+                             padding_mode="zeros",
+                         align_corners=True
                              )
     # if len(I.shape) == 5:
     #     deformed = deformed.permute(0,1,4,3,2)
@@ -1765,7 +1907,7 @@ def make_regular_grid(deformation_shape,
 
     Parameters
     --------------
-    deformation_shape: tuple
+    deformation_shape: Tuple | List
         tuple such as (H,W) or (n,H,W,2) for 2D grid
         (D,H,W) or (n,D,H,W,3) for 3D gridim2
     device: torch.device

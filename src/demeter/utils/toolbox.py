@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import sys
 import os
+from math import floor, log, pow
 import torch
 from demeter.constants import ROOT_DIRECTORY
 DEFAULT_DATA_PATH = 'put_file_path_here'
@@ -56,6 +57,7 @@ def update_progress(progress,message = None):
         text += f' ({message[0]} ,{message[1]:8.4f}).'
     sys.stdout.write(text)
     sys.stdout.flush()
+    print()
 
 def format_time(seconds):
     m, s = divmod(seconds, 60)
@@ -83,6 +85,18 @@ def get_size(obj, seen=None):
         size += sum([get_size(i, seen) for i in obj])
     return size
 
+
+def convert_bytes_size(size_bytes):
+    if size_bytes is None:
+        return "None"
+    if size_bytes == 0:
+        return "0B"
+    size_name = ("B", "KB", "MB", "GB")
+    i = int(floor(log(size_bytes, 1024)))
+    p = pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return "%s %s" % (s, size_name[i])
+import time
 
 def heatmap(data, row_labels, col_labels, ax=None,
             cbar_kw={}, cbarlabel="", **kwargs):
@@ -302,3 +316,79 @@ def fig_to_image(fig,ax):
     image_from_plot = image_from_plot.reshape(fig.canvas.get_width_height()[::-1] + (4,))
     image_from_plot = image_from_plot[:, :, [1, 2, 3]]  # Convertir ARGB en RGB
     return image_from_plot
+
+
+def plot_loss_with_multiple_y_axes(loss_stock, title="Loss Evolution", ax=None):
+    """
+    Plots multiple loss values with multiple left y-axes, spaced to avoid overlap,
+    each with its own correctly positioned scientific offset text.
+
+    Args:
+        loss_stock (dict): Dictionary of {label: torch.Tensor or np.ndarray}.
+        title (str): Plot title.
+        ax (matplotlib.axes.Axes, optional): Existing axis to use.
+
+    Returns:
+        (fig, axes): Figure and list of created axes.
+    """
+    import numpy as np
+
+    # Convert to numpy if torch
+    series = {
+        k: (v.detach().cpu().numpy() if hasattr(v, "detach") else np.asarray(v))
+        for k, v in loss_stock.items()
+    }
+    labels = list(series.keys())
+    n = len(labels)
+
+    # Create base axis
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(9, 5))
+    else:
+        fig = ax.figure
+
+    # Add space for multiple left spines
+    left_margin = 0.12 + 0.06 * (n - 1)
+    left_margin = min(left_margin, 0.55)
+    fig.subplots_adjust(left=left_margin)
+
+    colors = plt.cm.tab10.colors
+    axes = []
+
+    for i, (name, y) in enumerate(series.items()):
+        color = colors[i % len(colors)]
+        a = ax if i == 0 else ax.twinx()
+
+        # Offset spines to the left
+        a.yaxis.set_label_position("left")
+        a.yaxis.set_ticks_position("left")
+        a.spines["left"].set_position(("outward", 60 * i))
+        if "right" in a.spines:
+            a.spines["right"].set_visible(False)
+
+        # Plot data
+        a.plot(y, color=color, linewidth=1.5, label=name)
+        a.set_ylabel(name, color=color)
+        a.tick_params(axis="y", colors=color)
+        a.spines["left"].set_color(color)
+
+        # Let matplotlib decide scientific formatting
+        a.ticklabel_format(style="sci", axis="y", scilimits=(-3, 3))
+        a.yaxis.offsetText.set_color(color)
+
+        axes.append(a)
+
+    # Adjust offset text positions (so they align with each spine)
+    fig.canvas.draw()  # force creation of offset text
+    for i, a in enumerate(axes):
+        offset_text = a.yaxis.get_offset_text()
+        # offset_text.set_x( - 0.165*i)  # move horizontally to follow each spine
+        offset_text.set_x( - 0.24*i)  # move horizontally to follow each spine
+
+        # offset_text.set_y(1.02)              # position slightly above top of axis
+        offset_text.set_ha("right")
+
+    ax.set_xlabel("Iteration")
+    ax.set_title(title)
+    fig.tight_layout()
+    return fig, axes
