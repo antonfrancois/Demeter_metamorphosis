@@ -39,7 +39,7 @@ def _find_meta_optimiser_from_repr_(repr_str):
     if "Simplex_sqrt_Shooting" in repr_str:
         return Simplex_sqrt_Metamorphosis_integrator, Simplex_sqrt_Shooting
     else:
-        raise ValueError("No class found for the given repr_str")
+        raise ValueError(f"No class found for the given repr_str : {repr_str}")
 
 
 def _find_kernelOp_from_repr_(repr_str):
@@ -126,6 +126,8 @@ def load_optimize_geodesicShooting(file_name, path=None, verbose=True):
         new_optim.compute_landmark_dist(
             opti_dict["landmarks"][0], opti_dict["landmarks"][1]
         )
+    if "segmentations" in opti_dict.keys():
+        new_optim.compute_DICE(opti_dict["segmentations"][0], opti_dict["segmentations"][1])
 
     new_optim.loaded_from_file = file_name
     if verbose:
@@ -144,14 +146,13 @@ def _load_light_optim(opti_dict, verbose):
     )
     ic(_find_kernelOp_from_repr_(opti_dict["args"]["kernelOperator"]["name"]))
     ic(opti_dict["args"]["kernelOperator"])
-    print("kernel Op :",kernelOp)
     kernelOp = kernelOp(**opti_dict["args"]["kernelOperator"])
 
     # and inject it in the args
     opti_dict["args"]["kernelOperator"] = kernelOp
     ## Re-shoot the integration
     mp = integrator(**opti_dict["args"])
-
+    print("Light save loaded : Reshooting integrator ...")
     mp.forward(
         opti_dict["source"],
         opti_dict["parameter"],
@@ -159,7 +160,7 @@ def _load_light_optim(opti_dict, verbose):
         plot=0,
         hamiltonian_integration = opti_dict["args"]["hamiltonian_integration"]
     )
-    print(mp)
+    # print(mp)
 
     # inject the shooting in the optimizer
     opti_dict["geodesic"] = mp
@@ -200,9 +201,9 @@ def _load_heavy_optim(opti_dict, verbose):
 
     else:
         new_optim = optimizer(
-            opti_dict["source"],
-            opti_dict["target"],
-            opti_dict["mp"],
+            source=opti_dict["source"],
+            target=opti_dict["target"],
+            geodesic=opti_dict["mp"],
             cost_cst=opti_dict["cost_cst"],
             optimizer_method=opti_dict["optimizer_method_name"],
             hamiltonian_integration=opti_dict["args"]["hamiltonian_integration"],
