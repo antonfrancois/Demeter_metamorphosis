@@ -348,8 +348,9 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
             )
 
         # --- Vector field and residuals ---
-        grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
-        field, norm_V = self._compute_vectorField_(momentum_I, grad_image)
+        # grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
+        # field, norm_V = self._compute_vectorField_(momentum_I, grad_image)
+        field = self._update_field_(momentum_I, image)
 
         residuals = (1 - self.rho) * momentum_I
 
@@ -368,7 +369,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         # --- Hamiltonian Integration ---
         if self.flag_hamiltonian_integration:
             norm_l2_on_z = .5 * (residuals ** 2).sum()
-            self.ham_value = norm_V + norm_l2_on_z + norm_R_2
+            self.ham_value = self.norm_v_i + norm_l2_on_z + norm_R_2
 
         # --- Always output the same things ---
         return (
@@ -403,8 +404,8 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         # else:
         #     self.translation = None
         #     self.flag_translation = False
-        self.translation = torch.zeros((momentum_R.shape[-1],), device=device)
-        self.scale = torch.ones((momentum_R.shape[-1],), device=device)
+        self.translation = torch.zeros((self._dim,), device=device)
+        self.scale = torch.ones((self._dim,), device=device)
 
         self.flag_field =  True if  "momentum_I" in momenta.keys() else False
 
@@ -817,29 +818,30 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
                                    verbose= verbose)
         self.dice = (rotation_dice, reg_dice)
         T,C,D,H,W = source_segmentation.shape
-        fig, ax = plt.subplots(2,4)
-        ax[0,0].imshow(source_segmentation[0,0, D//2].detach().cpu(), cmap=DLT_SEG_CMAP)
-        ax[0,0].set_title('Source')
-        ax[0,1].imshow(target_segmentation[0,0, D//2].detach().cpu(), cmap=DLT_SEG_CMAP)
-        ax[0,1].set_title('Target')
-        ax[1,0].imshow(self.source_seg_deformed[0,0, D//2].detach().cpu(), cmap=DLT_SEG_CMAP)
-        ax[1,0].set_title('Deformed')
-        ax[1,1].imshow(self.source_seg_rotated[0,0, D//2].detach().cpu(), cmap=DLT_SEG_CMAP)
-        ax[1,1].set_title('Rotated')
+        if plot:
+            fig, ax = plt.subplots(2,4)
+            ax[0,0].imshow(source_segmentation[0,0, D//2].detach().cpu(), cmap=DLT_SEG_CMAP)
+            ax[0,0].set_title('Source')
+            ax[0,1].imshow(target_segmentation[0,0, D//2].detach().cpu(), cmap=DLT_SEG_CMAP)
+            ax[0,1].set_title('Target')
+            ax[1,0].imshow(self.source_seg_deformed[0,0, D//2].detach().cpu(), cmap=DLT_SEG_CMAP)
+            ax[1,0].set_title('Deformed')
+            ax[1,1].imshow(self.source_seg_rotated[0,0, D//2].detach().cpu(), cmap=DLT_SEG_CMAP)
+            ax[1,1].set_title('Rotated')
 
-        st = tb.SegmentationComparator()(source_segmentation[:,:,D//2].detach().cpu(), target_segmentation[:,:,D//2])
-        ax[0,2].imshow(st[0])
-        ax[0,2].set_title('source vs target')
-        rt = tb.SegmentationComparator()(
-            self.source_seg_rotated[:,:,D//2],
-            target_segmentation[:,:,D//2])
-        ax[1,2].imshow(rt[0])
-        ax[1,2].set_title('rot vs target')
-        dt = tb.SegmentationComparator()(
-            self.source_seg_deformed[:,:,D//2],
-            target_segmentation[:,:,D//2])
-        ax[1,3].imshow(dt[0])
-        ax[1,3].set_title('def vs target')
+            st = tb.SegmentationComparator()(source_segmentation[:,:,D//2].detach().cpu(), target_segmentation[:,:,D//2])
+            ax[0,2].imshow(st[0])
+            ax[0,2].set_title('source vs target')
+            rt = tb.SegmentationComparator()(
+                self.source_seg_rotated[:,:,D//2],
+                target_segmentation[:,:,D//2])
+            ax[1,2].imshow(rt[0])
+            ax[1,2].set_title('rot vs target')
+            dt = tb.SegmentationComparator()(
+                self.source_seg_deformed[:,:,D//2],
+                target_segmentation[:,:,D//2])
+            ax[1,3].imshow(dt[0])
+            ax[1,3].set_title('def vs target')
 
-        plt.show()
+            plt.show()
         return (rotation_dice, reg_dice), (self.source_seg_rotated, self.source_seg_deformed)
