@@ -689,7 +689,7 @@ def execute_subcmd(cmd):
         print("STDERR:\n", result.stderr)
         # return result
     except subprocess.CalledProcessError as e:
-        print("Error running unigradicon-register")
+        print("Error running register")
         print("Return code:", e.returncode)
         print("STDOUT:\n", e.stdout)
         print("STDERR:\n", e.stderr)
