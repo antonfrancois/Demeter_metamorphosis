@@ -125,7 +125,7 @@ def initial_exploration(rigid_meta_optim,
 
 import matplotlib.pyplot as plt
 #%% rigid optimisation
-def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False, plot = False):
+def optimize_on_rigid(mr, top_params, rotation=True,translation=True,scaling= True, n_iter= 10, grad_coef = 1,verbose = False, plot = False):
     # best_loss = top_params[0][0]
     best_loss = torch.inf
     for i,(val,params_r) in  enumerate(top_params):
@@ -135,7 +135,7 @@ def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False,
 
         momenta = mtrt.prepare_momenta(
             mr.source.shape,
-            diffeo=False,rotation=True,translation=True,scaling= True,
+            diffeo=False,rotation=rotation,translation=translation,scaling= scaling,
             **params_r
         )
         try:
@@ -154,12 +154,18 @@ def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False,
         # )
 
         best = False
+        def _get_momentums(name):
+            try:
+                return mr.to_analyse[0][name].detach().cpu()
+            except KeyError:
+                return None
+
         if mr.data_loss < best_loss or mr.data_loss == 0:
             best_loss = mr.data_loss
             best_momenta = dict(
-                 rot_prior=mr.to_analyse[0]["momentum_R"].detach().cpu(),
-                trans_prior=mr.to_analyse[0]["momentum_T"].detach().cpu(),
-                scale_prior=mr.to_analyse[0]["momentum_S"].detach().cpu()
+                 rot_prior= _get_momentums("momentum_R"),
+                trans_prior=_get_momentums("momentum_T"),
+                scale_prior=_get_momentums("momentum_S")
             )
             best = True
             best_rot = mr.mp.rot_mat
@@ -183,9 +189,9 @@ def optimize_on_rigid(mr, top_params, n_iter= 10, grad_coef = 1,verbose = False,
             fig.suptitle(f"i = {i}, best = {best}, loss = {mr.data_loss:.4f}"
                          f"\n {params_r}"
                          f"\n {dict(
-                 rot_prior=mr.to_analyse[0]["momentum_R"].detach().cpu(),
-                trans_prior=mr.to_analyse[0]["momentum_T"].detach().cpu(),
-                scale_prior=mr.to_analyse[0]["momentum_S"].detach().cpu()
+                rot_prior= _get_momentums("momentum_R"),
+                trans_prior=_get_momentums("momentum_T"),
+                scale_prior=_get_momentums("momentum_S")
             )}")
             ax[0].imshow(img, cmap="gray")
             ax[0].set_title("Final image")
