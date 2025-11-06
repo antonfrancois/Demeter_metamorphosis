@@ -7,7 +7,6 @@ the abstract class `DataCost`. The module contains the following classes:
 
 import torch
 from abc import ABC, abstractmethod
-
 from ..utils import torchbox as tb
 from ..utils import cost_functions as cf
 from math import prod
@@ -75,6 +74,9 @@ class DataCost(ABC, torch.nn.Module):
 
     @abstractmethod
     def __call__(self, at_step=None, **kwargs):
+        if not hasattr(self, "optimizer"):
+            raise AttributeError("optimizer has not been initialized, you need to call `set_optimizer(mr)` before calling a DataCost object.")
+
         """
         :return:
         """
@@ -126,6 +128,7 @@ class Ssd(DataCost):
         torch.Tensor
             The computed SSD value.
         """
+        super().__call__()
         if at_step is None:
             return self.ssd(self.optimizer.mp.image)
         else:
@@ -170,6 +173,7 @@ class Ssd_normalized(DataCost):
         torch.Tensor
             The computed SSD value.
         """
+        super().__call__()
         # print("in ssd normalized img shape",self.optimizer.mp.image.shape)
         if at_step is None:
             return self.ssd(self.optimizer.mp.image) / prod(
@@ -203,6 +207,7 @@ class Cfm(DataCost):
         self.cfm = cf.SumSquaredDifference(target, cancer_seg=mask)
 
     def __call__(self, at_step=None):
+        super().__call__()
         if at_step is None:
             return self.cfm(self.optimizer.mp.image)
         else:
@@ -236,6 +241,7 @@ class SimiliSegs(DataCost):
         super(SimiliSegs, self).to_device(device)
 
     def __call__(self, at_step=None):
+        super().__call__()
         if at_step == -1:
             at_step = None
         mask_deform = tb.imgDeform(
@@ -334,6 +340,7 @@ class Mutual_Information(DataCost):
         self.mi = cf.Mutual_Information(bins, min, max)
 
     def __call__(self, at_step=-1):
+        super().__call__()
         if at_step == -1:
             mi = self.mi(self.optimizer.mp.image,self.target)
             return self.mult/mi
@@ -383,6 +390,7 @@ class Longitudinal_DataCost(DataCost):
 
     def __call__(self, at_step=None):
         """ """
+        super().__call__()
         cost = 0
         for td, bdc in zip(self.target_dict, self.baseline_dataCost_list):
             cost += bdc(at_step=td["time"])
