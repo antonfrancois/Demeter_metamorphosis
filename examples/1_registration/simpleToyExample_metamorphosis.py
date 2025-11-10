@@ -46,11 +46,8 @@ try:
 except NameError:
     pass
 
-
-import torch
-import matplotlib.pyplot as plt
 from demeter import *
-import demeter.utils.reproducing_kernels as rk
+import demeter.metamorphosis.reproducing_kernels as rk
 import demeter.metamorphosis as mt
 import demeter.utils.torchbox as tb
 
@@ -59,6 +56,10 @@ if 'runner' in location:
     location = os.path.dirname(os.path.dirname(location))
 
 EXPL_SAVE_FOLDER  = os.path.join(location,"saved_optim/")
+if torch.cuda.is_available():
+    device = 'cuda:0'
+else:
+    device = 'cpu'
 #%%
 #####################################################################
 # Open and visualise images before registration. The source and target are 'C' shapes.
@@ -71,7 +72,7 @@ source_name,target_name = 'm0t', 'm1c'
 # other suggestion of images to try
 # source_name,target_name = '17','20'        # easy, only deformation
 # source_name,target_name = '08','m1c'  # hard, big deformation !
-size = (1000,1000)
+size = (100,100)
 
 S = tb.reg_open(source_name,size = size)
 T = tb.reg_open(target_name,size = size)
@@ -84,6 +85,21 @@ ax[1].set_title('target')
 ax[2].imshow(tb.imCmp(S,T,'seg'),origin='lower')
 ax[2].set_title('superposition of S and T')
 plt.show()
+
+
+###################################################################
+# Domain definition
+import domains as do
+
+continuous_support = [(-1., 1.), (0.,1.)]
+
+Omega = do.Domain(type="continuous", dim=2, support=continuous_support)
+Mphys = do.RiemannianManifold(
+    domain=Omega,
+    metric=torch.eye(2,device=device,dtype=torch.get_default_dtype())
+)
+
+
 
 #####################################################################
 # Before choosing the optimisation method, we need to define a
@@ -108,10 +124,7 @@ plt.show()
 #%%
 #####################################################################
 # Perform a first Metamorphosis registration
-if torch.cuda.is_available():
-    device = 'cuda:0'
-else:
-    device = 'cpu'
+
 # call to whatever process using the GPU ##
 
 

@@ -3,7 +3,6 @@ In this file you will find everything you need to load a previously saved optimi
 """
 
 import pickle
-from icecream import ic
 
 from demeter.constants import *
 from .classic import Metamorphosis_integrator, Metamorphosis_Shooting
@@ -17,7 +16,7 @@ from .joined import (
     Weighted_joinedMask_Metamorphosis_Shooting,
 )
 from .simplex import Simplex_sqrt_Metamorphosis_integrator, Simplex_sqrt_Shooting
-from ..utils.reproducing_kernels import (
+from demeter.metamorphosis.reproducing_kernels import (
     GaussianRKHS,
     VolNormalizedGaussianRKHS,
     Multi_scale_GaussianRKHS,

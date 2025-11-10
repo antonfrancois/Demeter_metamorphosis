@@ -10,7 +10,6 @@ This example is part of an exercise, it has been truncated to make you complete 
 """
 #####################################################################
 # Import the necessary packages
-import matplotlib.pyplot as plt
 
 try:
     import sys, os
@@ -25,10 +24,9 @@ except NameError:
 
 from demeter.constants import *
 import torch
-import kornia.filters as flt
 # %reload_ext autoreload
 # %autoreload 2
-import demeter.utils.reproducing_kernels as rk
+import demeter.metamorphosis.reproducing_kernels as rk
 import demeter.metamorphosis as mt
 import demeter.utils.torchbox as tb
 

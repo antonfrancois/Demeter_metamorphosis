@@ -27,7 +27,7 @@ Where:
 from demeter.constants import *
 import demeter.utils.torchbox as tb
 import demeter.metamorphosis as mt
-import demeter.utils.reproducing_kernels as rk
+import demeter.metamorphosis.reproducing_kernels as rk
 
 ######################################################################
 # Openning the source and target images

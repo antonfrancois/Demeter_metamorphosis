@@ -9,9 +9,9 @@ from scipy.special import exp1, erf
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .fft_conv import fft_conv
-from .decorators import deprecated
-from .torchbox import make_regular_grid, gridDef_plot_2d
+from demeter.utils.fft_conv import fft_conv
+from demeter.utils.decorators import deprecated
+from demeter.utils.torchbox import make_regular_grid, gridDef_plot_2d
 
 def fft_filter(input: torch.Tensor, kernel: torch.Tensor,
              border_type: str = 'constant',

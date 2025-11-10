@@ -25,12 +25,11 @@ we also call $p \nabla I$ the field momentum.
 
 ######################################################################
 # Importing the necessary libraries
-import numpy as np
 
 from demeter.constants import DLT_KW_IMAGE
 import matplotlib.pyplot as plt
 import torch
-import demeter.utils.reproducing_kernels as rk
+import demeter.metamorphosis.reproducing_kernels as rk
 import demeter.utils.torchbox as tb
 import demeter.utils.bspline as bs
 import  demeter.metamorphosis as mt

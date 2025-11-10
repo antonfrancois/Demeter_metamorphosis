@@ -165,7 +165,7 @@ if __name__ == '__main__':
 
 #%%
 import torch
-import src.demeter.utils.reproducing_kernels as rk
+import demeter.metamorphosis.reproducing_kernels as rk
 
 #%%
 img = torch.rand(1,1,100,150,200)
@@ -211,7 +211,7 @@ rk.get_sigma_from_img_ratio()
 #%%
 # %load_ext autoreload
 # %autoreload 3
-import src.demeter.utils.reproducing_kernels as rk
+import demeter.metamorphosis.reproducing_kernels as rk
 import matplotlib.pyplot as plt
 #%%
 # %reload_ext autoreload
@@ -231,7 +231,7 @@ import torch
 import src.demeter.utils.bspline as bs
 import src.demeter.utils.torchbox as tb
 from math import prod, log10
-import src.demeter.utils.reproducing_kernels as rk
+import demeter.metamorphosis.reproducing_kernels as rk
 from src.demeter.utils import time_it
 
 @time_it

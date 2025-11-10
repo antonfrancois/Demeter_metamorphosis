@@ -1,17 +1,12 @@
 import pytest
 
-
-import os
-import csv
-import torch
-
 from src.demeter import *
 
 import src.demeter.utils.torchbox as tb
 import matplotlib.pyplot as plt
 import src.demeter.utils.bspline as bs
 import src.demeter.utils.vector_field_to_flow as vff
-import src.demeter.utils.reproducing_kernels as rk
+import demeter.metamorphosis.reproducing_kernels as rk
 
 # %load_ext autoreload
 # %autoreload 2

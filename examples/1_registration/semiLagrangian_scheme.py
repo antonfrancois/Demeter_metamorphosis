@@ -17,7 +17,7 @@ compromise between speed and accuracy.
 import matplotlib.pyplot as plt
 
 import demeter.metamorphosis as mt
-import demeter.utils.reproducing_kernels as rk
+import demeter.metamorphosis.reproducing_kernels as rk
 import demeter.utils.torchbox as tb
 from demeter.constants import DLT_KW_IMAGE
 

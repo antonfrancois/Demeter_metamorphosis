@@ -30,8 +30,7 @@ import matplotlib.pyplot as plt
 
 import demeter.metamorphosis as mt
 import demeter.utils.image_3d_plotter as i3p
-from demeter.utils import *
-import demeter.utils.reproducing_kernels as rk
+import demeter.metamorphosis.reproducing_kernels as rk
 import demeter.utils.torchbox as tb
 
 cuda = torch.cuda.is_available()
