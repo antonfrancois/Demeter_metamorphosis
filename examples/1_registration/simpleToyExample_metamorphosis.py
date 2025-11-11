@@ -77,12 +77,14 @@ size = (100,100)
 S = tb.reg_open(source_name,size = size)
 T = tb.reg_open(target_name,size = size)
 
+
+
 fig, ax = plt.subplots(1,3,figsize=(10,5))
 ax[0].imshow(S[0,0],**DLT_KW_IMAGE)
 ax[0].set_title('source')
 ax[1].imshow(T[0,0],**DLT_KW_IMAGE)
 ax[1].set_title('target')
-ax[2].imshow(tb.imCmp(S,T,'seg'),origin='lower')
+ax[2].imshow(tb.imCmp(S,T,'seg')[0],origin='lower')
 ax[2].set_title('superposition of S and T')
 plt.show()
 
@@ -98,9 +100,21 @@ Mphys = do.RiemannianManifold(
     domain=Omega,
     metric=torch.eye(2,device=device,dtype=torch.get_default_dtype())
 )
+Grid = do.Domain(type="discrete", dim=2, support=size)
+
+u_domain = do.UnionDomain(continuous= Omega, discrete= Grid)
+S = do.Field()
+
+# Pushforward discrete images to target grid
+phi0 = do.Discretize(source=F0.domain, target=Grid)
+phi1 = do.Discretize(source=F1.domain, target=Grid)
+q0 = phi0.pf(F0, align_corners=align_corners)  # Field on Grid
+qT = phi1.pf(F1, align_corners=align_corners)
 
 
 
+raise Error("Et oui")
+#%%
 #####################################################################
 # Before choosing the optimisation method, we need to define a
 # reproducing kernel and choose a good sigma. The simpler reproducing
