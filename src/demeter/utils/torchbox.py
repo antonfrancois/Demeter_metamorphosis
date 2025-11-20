@@ -572,6 +572,262 @@ def get_sobel_kernel_3d():
 # =================================================
 #            PLOT
 # =================================================
+
+def prepare_image_to_plt(image):
+    """
+    Converts a PyTorch tensor or NumPy array into a format suitable for Matplotlib or other
+    visualization libraries that expect channel-last layout.
+
+    Supported input formats and their corresponding outputs:
+
+
+    Parameters
+    ----------
+    image : torch.Tensor or np.ndarray
+        Input image data in one of the supported formats described above.
+
+    Returns
+    -------
+    np.ndarray
+        The image converted to a NumPy array in a layout compatible with visualization libraries.
+
+    Raises
+    ------
+    ValueError
+        If the input shape is not supported or inconsistent with the expected channel assumptions.
+    TypeError
+        If the input is neither a torch.Tensor nor a np.ndarray.
+
+    2d
+    input (B,C,H,W) torch tensor => output numpy (B,H,W, C) if C == 3
+    input (B,C,H,W) torch tensor => output numpy (B,H,W, 1) if C == 1
+    input (B,C,H,W) torch tensor => output numpy (B,H,W, 1) if C != 1 and C != 3 raises an Error wrong numbers of channels.
+
+    input (H,W) torch tensor => output numpy (1, H,W,1)
+    input (H, W, C) numpy => output numpy (1,H,W,C) if C == 3 else raise Error
+
+    3d
+    input (B,C, D, H,W) torch tensor => output numpy (B, D, H,W) if C != 3
+    input (B, C,D,H,W) torch tensor => output numpy (B, D, H,W,C) if C == 3
+    input (D,H,W) torch tensor => output numpy (1, D, H,W,1)
+    input (B, D, H, W) torch tensor => output numpy (B, D, H,W,1) if W != 3 else raise Error
+    input (D, H, W, C) numpy => output numpy (1,D,H,W,C) if C == 3 else raise Error
+    input(B, D, H,W,C) numpy => output numpy (B, D, H,W,C) if C in [1,3]  else raise Error
+    """
+    if isinstance(image, torch.Tensor):
+        image = image.detach().cpu()
+
+        if image.ndim == 4:
+            # (B, C, H, W)
+            B, C, H, W = image.shape
+            if C == 3:
+                return image.permute(0, 2, 3, 1).numpy()
+            elif C == 1:
+                return image.permute(0, 2, 3, 1).numpy()
+            else:
+                raise ValueError(f"Unsupported number of channels for 2D: {C}, got image shape {image.shape}")
+
+        elif image.ndim == 2:
+            # (H, W)
+            H, W = image.shape
+            return image.unsqueeze(0).unsqueeze(-1).numpy()  # (1, H, W, 1)
+
+        elif image.ndim == 5:
+            # (B, C, D, H, W)
+            B, C, D, H, W = image.shape
+            if C == 3:
+                return image.permute(0, 2, 3, 4, 1).numpy()  # (B, D, H, W, C)
+            else:
+                return image[:, 0, ...].unsqueeze(-1).numpy()  # (B, D, H, W, 1)
+
+        elif image.ndim == 4:
+            # Ambiguous: (B, D, H, W)
+            B, D, H, W = image.shape
+            if W == 3:
+                raise ValueError("Ambiguous input shape (B, D, H, W) with W == 3 is not allowed.")
+            return image.unsqueeze(-1).numpy()  # (B, D, H, W, 1)
+
+        elif image.ndim == 3:
+            # (D, H, W)
+            D, H, W = image.shape
+            return image.unsqueeze(0).unsqueeze(-1).numpy()  # (1, D, H, W, 1)
+
+        else:
+            raise ValueError(f"Unsupported tensor shape: {image.shape}")
+
+    elif isinstance(image, np.ndarray):
+        if image.ndim == 3:
+            H, W, C = image.shape
+            if C == 3:
+                return image[np.newaxis, ...]  # (1, H, W, C)
+            else:
+                raise ValueError(f"Unsupported channel count in 2D numpy image: {C};"
+                                 f" Numpy 3d images can be passed in the form [B,D,H,W], got {image.shape}")
+
+        elif image.ndim == 4:
+            # (B, D, H, W)
+            B, D, H, W = image.shape
+            if W == 3:
+                warnings.warn(f"Ambiguous shape (B, D, H, W) with W==3 in numpy, considered image to be 3d.")
+                return image[np.newaxis, ...] # (1,D, H, W, 3)
+            return image[..., np.newaxis]  # (B, D, H, W, 1)
+
+        elif image.ndim == 5:
+            # (B, D, H, W, C)
+            B, D, H, W, C = image.shape
+            if C in [1, 3, 4]:
+                return image
+            else:
+                raise ValueError(f"Unsupported number of channels in 3D numpy image: {C}; image shape : {image.shape}")
+
+        elif image.ndim == 4:
+            # (D, H, W, C)
+            D, H, W, C = image.shape
+            if C == 3:
+                return image[np.newaxis, ...]  # (1, D, H, W, C)
+            else:
+                raise ValueError(f"Unsupported channel count in (D, H, W, C): {C}")
+
+        else:
+            raise ValueError(f"Unsupported numpy shape: {image.shape}")
+
+    else:
+        raise TypeError("Input must be a torch.Tensor or np.ndarray")
+
+class SegmentationComparator:
+    """
+    Compare two segmentation maps and return a color-coded overlay image.
+
+    Attributes
+    ----------
+    labels_gt : list of int
+        List of labels in the ground truth segmentation.
+    labels_est : list of int
+        List of labels in the estimated segmentation.
+    green : list[float]
+        Color code for correct matches.
+    red : list[float]
+        Color code for missed detections (FN).
+    yellow : list[float]
+        Color code for false positives (FP).
+    blue : list[float]
+        Color code for mislabeling (wrong class match).
+    """
+
+    def __init__(self, labels_gt=None, labels_est=None,
+                 green=None, red=None, yellow=None, blue=None):
+        self.labels_gt = labels_gt
+        self.labels_est = labels_est
+
+        # Define colors as attributes
+        def to_np(array):
+            return np.array(array , dtype=np.float32)
+        self.green =  to_np([0, 1, 0, 1]) if green is None else green     # Correct match
+        self.red =      to_np([1, 0, 0, 1]) if red is None else red       # Missed detection (FN)
+        self.yellow = to_np([1, 1, 0, 1]) if yellow is None else yellow    # False positive (FP)
+        self.blue =    to_np([0, 0, 1, 1]) if blue is None else blue      # Mislabeling
+
+    def _build_est_to_gt_map(self,est, labels_gt, labels_est):
+        """
+        Build a lookup array M such that M[est_label] -> expected GT label.
+        If no mapping is provided, default to identity: M[i] = i.
+        Unmapped labels get -1 (never counted as correct).
+        """
+        est = np.asarray(est)
+        max_in_data = int(est.max()) if est.size else 0
+        if labels_est is not None and len(labels_est) > 0:
+            max_in_cfg = int(max(labels_est))
+            size = max(max_in_data, max_in_cfg) + 1
+        else:
+            size = max_in_data + 1
+
+        M = np.full(size, -1, dtype=np.int64)
+        if labels_gt is None or labels_est is None:
+            # Identity mapping
+            if size > 0:
+                M[:] = np.arange(size, dtype=np.int64)
+        else:
+            for lg, le in zip(labels_gt, labels_est):
+                if le < size:
+                    M[le] = int(lg)
+        return M
+
+    def __call__(self, gt, est, *, verbose: bool = False):
+        """
+        Vectorized comparison of two segmentation maps.
+
+        Returns
+        -------
+        color_img : np.ndarray
+            RGBA overlay image, float32 in [0,1], shape (*gt.shape, 4).
+        """
+        gt = prepare_image_to_plt(gt)[..., 0]
+        est = prepare_image_to_plt(est)[..., 0]
+
+        # Ensure integer arrays for label comparisons
+        gt = gt.astype(np.int64, copy=False)
+        est = est.astype(np.int64, copy=False)
+
+        if verbose:
+            print('gt shape:', gt.shape)
+            print('est shape:', est.shape)
+
+        # Build est->gt mapping (identity if no labels provided)
+        M = self._build_est_to_gt_map(est, self.labels_gt, self.labels_est)
+        mapped = M[est]  # expected GT label per voxel, from est label
+
+        gt_smth  = gt > 0
+        est_smth = est > 0
+
+        # Compute disjoint status codes per voxel:
+        # 0: background (both 0)
+        # 1: correct match            (green)
+        # 2: false positive (in Est only) (yellow)
+        # 3: missed (in GT only)         (red)
+        # 4: mislabel (both >0 but mismatch) (blue)
+        code = np.zeros(gt.shape, dtype=np.uint8)
+
+        # Start with the most specific to keep disjointness clean
+        both_pos = gt_smth & est_smth
+        correct  = both_pos & (mapped == gt)
+        mislabel = both_pos & ~correct
+
+        code[correct]  = 1
+        code[~gt_smth & est_smth] = 2   # false positive
+        code[gt_smth & ~est_smth] = 3   # missed
+        code[mislabel] = 4
+
+        # Build color LUT (RGBA)
+        # Background: transparent black (your previous code subtracted [1,1,1,0] then clipped → 0)
+        colors_lut = np.array([
+            [0, 0, 0, 0],         # 0 background
+            self.green,           # 1 correct
+            self.yellow,          # 2 false positive
+            self.red,             # 3 missed
+            self.blue             # 4 mislabel
+        ], dtype=np.float32)
+
+        color_img = colors_lut[code]
+        return color_img
+
+    def get_legend_patches(self):
+        """
+        Return legend patches for matplotlib plots.
+
+        Returns
+        -------
+        list[matplotlib.patches.Patch]
+        """
+        return [
+            mpatches.Patch(color=self.green, label='Correct (match)'),
+            mpatches.Patch(color=self.red, label='Missed (in GT only)'),
+            mpatches.Patch(color=self.yellow, label='False positive (in Est only)'),
+            mpatches.Patch(color=self.blue, label='Wrong label (mismatch)')
+        ]
+
+def segCmp(seg_1, seg2):
+    return SegmentationComparator().__call__(seg_1, seg2)
+
 def imCmp(I1, I2, method=None):
     """
     Stack two gray-scales images to compare them. The images must have the same

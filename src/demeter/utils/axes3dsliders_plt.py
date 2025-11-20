@@ -451,7 +451,7 @@ class Image3dAxes_slider(Base3dAxes_slider):
                  **kwargs
                  ):
          # ---------- init image shape
-        self.image = tb.img_torch_to_plt(image)
+        self.image = tb.prepare_image_to_plt(image)
 
         self.shown_image = self.image[-1]
         self.shape = self.image.shape
@@ -651,13 +651,13 @@ class Image3dAxes_slider(Base3dAxes_slider):
         Replace the current image and optionally update the display colormap and intensity range.
         """
         print("change image new image before", new_image.shape)
-        new_image = tb.img_torch_to_plt(new_image)
+        new_image = tb.prepare_image_to_plt(new_image)
 
         print("change image new image after", new_image.shape)
 
         if new_image.shape[1:-1] != self.shape[1:-1]:
             raise ValueError(f"Shape mismatch: {new_image.shape} != {self.shape}")
-        self.image = tb.img_torch_to_plt(new_image)
+        self.image = tb.prepare_image_to_plt(new_image)
         self.shown_image = self.image[-1, ..., 0]
 
         if new_cmap is not None:
@@ -697,7 +697,7 @@ class Image3dAxes_slider(Base3dAxes_slider):
         >>># dou.clear_overlay()
         >>>plt.show()
         """
-        image = tb.img_torch_to_plt(image)
+        image = tb.prepare_image_to_plt(image)
         assert image.shape[1:-1] == self.shape[1:-1], f"Shape mismatch: {image.shape} vs {self.shape}"
 
         self.overlay_image = image
@@ -952,7 +952,7 @@ class ToggleImage3D:
 
         cmap = None
         if not self.active:
-            img = np.zeros_like(tb.img_torch_to_plt(self._cl_(self.images[0])))
+            img = np.zeros_like(tb.prepare_image_to_plt(self._cl_(self.images[0])))
             seg = img
             # self.img_viewer.clear_overlay()
         elif len(self.active) == 1:
@@ -1396,7 +1396,7 @@ def compare_images_with_landmarks(
 
     # --------- Create image viewer
     # ias = Image3dAxes_slider(cmp_img, cmap=cmap, jupyter_sliders=jupyter_sliders)
-    ias = Image3dAxes_slider(tb.img_torch_to_plt(image0), cmap=cmap, jupyter_sliders=jupyter_sliders)
+    ias = Image3dAxes_slider(tb.prepare_image_to_plt(image0), cmap=cmap, jupyter_sliders=jupyter_sliders)
 
 
     ctx = ias.ctx
@@ -1410,8 +1410,8 @@ def compare_images_with_landmarks(
 
     # --------- Store state for image switching
     state = {
-        "image0": tb.img_torch_to_plt(image0),
-        "image1": tb.img_torch_to_plt(image1),
+        "image0": tb.prepare_image_to_plt(image0),
+        "image1": tb.prepare_image_to_plt(image1),
         "compose": cmp_img,
         "current": "image0"
     }
