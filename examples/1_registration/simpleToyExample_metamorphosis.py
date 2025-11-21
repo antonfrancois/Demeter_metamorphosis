@@ -33,6 +33,8 @@ creation of the field and the photometric addition controlled by the momentum $p
 
 
 """
+import time
+
 #####################################################################
 # Import the necessary packages
 
@@ -60,6 +62,11 @@ if torch.cuda.is_available():
     device = 'cuda:0'
 else:
     device = 'cpu'
+
+tic = time.time()
+import domains as do
+toc = time.time()
+print(f"import domains : {toc - tic}s")
 #%%
 #####################################################################
 # Open and visualise images before registration. The source and target are 'C' shapes.
@@ -77,10 +84,17 @@ size = (100,100)
 S = tb.reg_open(source_name,size = size)
 T = tb.reg_open(target_name,size = size)
 
+tic = time.time()
+s_field = do.png_to_field(S)
+toc = time.time()
+print(f"time spent to convert to field : {toc - tic:0.4f} s")
 
+print(s_field.val.shape)
 
+S_plt = s_field.to_plt()
+print(S_plt.shape)
 fig, ax = plt.subplots(1,3,figsize=(10,5))
-ax[0].imshow(S[0,0],**DLT_KW_IMAGE)
+ax[0].imshow(S_plt[0,0],**DLT_KW_IMAGE)
 ax[0].set_title('source')
 ax[1].imshow(T[0,0],**DLT_KW_IMAGE)
 ax[1].set_title('target')
@@ -89,9 +103,11 @@ ax[2].set_title('superposition of S and T')
 plt.show()
 
 
+
+
 ###################################################################
 # Domain definition
-import domains as do
+
 
 continuous_support = [(-1., 1.), (0.,1.)]
 
@@ -103,13 +119,16 @@ Mphys = do.RiemannianManifold(
 Grid = do.Domain(type="discrete", dim=2, support=size)
 
 u_domain = do.UnionDomain(continuous= Omega, discrete= Grid)
-S = do.Field()
 
-# Pushforward discrete images to target grid
-phi0 = do.Discretize(source=F0.domain, target=Grid)
-phi1 = do.Discretize(source=F1.domain, target=Grid)
-q0 = phi0.pf(F0, align_corners=align_corners)  # Field on Grid
-qT = phi1.pf(F1, align_corners=align_corners)
+
+
+# S = do.Field()
+#
+# # Pushforward discrete images to target grid
+# phi0 = do.Discretize(source=F0.domain, target=Grid)
+# phi1 = do.Discretize(source=F1.domain, target=Grid)
+# q0 = phi0.pf(F0, align_corners=align_corners)  # Field on Grid
+# qT = phi1.pf(F1, align_corners=align_corners)
 
 
 
