@@ -1038,7 +1038,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.optimizer = GradientDescent(self.cost, self.parameter, lr=dt_step)
 
     def _step_grad_descent_(self):
-        self.optimizer.step(verbose=False)
+        return self.optimizer.step()
 
     # LBFGS
     def _initialize_LBFGS_(self, dt_step):
@@ -1063,7 +1063,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.closure = closure
 
     def _step_LBFGS_(self):
-        self.optimizer.step(self.closure)
+        return self.optimizer.step(self.closure)
 
     # Adam
     def _initialize_Adam_(self, dt_step):
@@ -1113,7 +1113,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.closure = closure
 
     def _step_adadelta_(self):
-        self.optimizer.step(self.closure)
+        return self.optimizer.step(self.closure)
 
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1153,7 +1153,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                 grad_coef=1e-3,
                 verbose=True,
                 plot=False,
-                sharp=None
+                sharp=None,
+                convergence_tol=None,
+                convergence_patience=3,
                 ):
         r""" The function is and perform the optimisation with the desired method.
         The result is stored in the tuple self.to_analyse with two elements. First element is the optimized
@@ -1165,6 +1167,12 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         `require_grad` must be set to True.
         :param n_iter: (int) number of optimizer iterations
         :param verbose: (bool) display advancement
+        :param convergence_tol: (float | None) stop early when the relative
+            change of the loss stays below this threshold for
+            `convergence_patience` consecutive steps. Defaults to None
+            (no early stopping).
+        :param convergence_patience: (int) number of consecutive iterations
+            required to trigger convergence when `convergence_tol` is set.
 
         """
         def _detach(p):
@@ -1196,7 +1204,13 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             )
 
         self._iter_ = 0
-        self.cost(_detach(self.parameter))
+        initial_loss = self.cost(_detach(self.parameter))
+        last_loss_value = float(
+            initial_loss.detach() if hasattr(initial_loss, "detach") else initial_loss
+        )
+        stagnation_counter = 0
+        converged = False
+        iter_done = 1
 
         loss_stock = self._cost_saving_(n_iter, None)  # initialisation
         loss_stock = self._cost_saving_(0, loss_stock)
@@ -1204,8 +1218,15 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         for i in range(1, n_iter):
             self._iter_ = i
 
-            self._step_optimizer_()
+            loss_val = self._step_optimizer_()
+            if loss_val is None:
+                with torch.no_grad():
+                    loss_val = self.cost(self.parameter)
             loss_stock = self._cost_saving_(i, loss_stock)
+            loss_val_detached = (
+                loss_val.detach() if hasattr(loss_val, "detach") else loss_val
+            )
+            current_loss_value = float(loss_val_detached)
 
             if verbose:
                 update_progress(
@@ -1218,6 +1239,32 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             if plot and i in [n_iter // 4, n_iter // 2, 3 * n_iter // 4]:
                 self._plot_forward_()
 
+            if convergence_tol is not None:
+                rel_change = abs(current_loss_value - last_loss_value) / (
+                    1 + abs(last_loss_value)
+                )
+                if rel_change <= convergence_tol:
+                    stagnation_counter += 1
+                else:
+                    stagnation_counter = 0
+                last_loss_value = current_loss_value
+
+                if stagnation_counter >= convergence_patience:
+                    converged = True
+                    iter_done = i + 1
+                    loss_stock = loss_stock[:iter_done]
+                    if verbose:
+                        update_progress(
+                            (i + 1) / n_iter,
+                            message=("Converged", loss_stock[i, 0]),
+                        )
+                    break
+            else:
+                last_loss_value = current_loss_value
+
+        if not converged:
+            iter_done = n_iter
+
         # for future plots compute shooting with save = True
         self.mp.forward(self.source.clone(),
                         _detach(self.parameter),
@@ -1226,6 +1273,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                         )
 
         self.to_analyse = (_detach(self.parameter), loss_stock)
+        self.converged = converged
+        self.iter_done = iter_done
         self.to_device('cpu')
 
     def to_device(self, device):
