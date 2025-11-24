@@ -16,6 +16,7 @@ from kornia.geometry.transform import resize
 from numpy import newaxis
 from matplotlib.widgets import Slider
 
+import domains as do
 # import decorators
 from .toolbox import rgb2gray
 from . import bspline as mbs
@@ -850,6 +851,10 @@ def imCmp(I1, I2, method=None):
     image : numpy.array of shape (1, H, W, 4) or (1, D, H, W, 4)
     """
     from numpy import concatenate, zeros, ones, maximum, exp
+    if isinstance(I1, do.Field):
+        I1 = I1.val
+    if isinstance(I2, do.Field):
+        I2 = I2.val
     if len(I1.shape) in [4, 5]:
         shape_to_fill = I1.shape[2:] + (1,)
     else:
