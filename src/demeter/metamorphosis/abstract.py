@@ -28,8 +28,6 @@ $$E(p_0) = D_T(I_1) + \frac \lambda2 \int_{0}^1 \left( \|v_t\|_V^2 +\|z_t\|_Z^2 
 
 The $I_{t},v_t,z_{t}$ are still deduced from $p_0$. It is possible to switch between the two in the code using the `hamiltonian_integration` option in the children of `Optimize_geodesicShooting`.
 """
-
-
 import torch
 import matplotlib.pyplot as plt
 import warnings
@@ -597,7 +595,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                                     * self.orienting_mask[self._i][..., None])
 
         field =  -tb.im2grid(
-            self.kernelOperator(tb.grid2im(free_field + oriented_field))
+            self.rkhs.K(tb.grid2im(free_field + oriented_field))
         )
         return field
 

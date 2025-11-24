@@ -7,4 +7,5 @@ from ..utils.fill_saves_overview import *
 from .joined import Weighted_joinedMask_Metamorphosis_integrator,Weighted_joinedMask_Metamorphosis_Shooting
 from .simplex import Simplex_sqrt_Metamorphosis_integrator,Simplex_sqrt_Shooting
 from .data_cost import *
+from .image import *
 # import metamorphosis.data_cost

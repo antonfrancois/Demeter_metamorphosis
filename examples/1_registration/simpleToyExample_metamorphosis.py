@@ -84,8 +84,8 @@ source_name,target_name = 'm0t', 'm1c'
 S = tb.reg_open(source_name,size = (100,100))
 T = tb.reg_open(target_name,size = (200,200))
 
-S = do.torch_to_field(S)
-T = do.torch_to_field(T)
+# S = do.torch_to_field(S)
+# T = do.torch_to_field(T)
 
 
 # S_plt = s_field.to_plt()
@@ -100,27 +100,30 @@ T = do.torch_to_field(T)
 
 continuous_support = [(-1., 1.), (0.,1.)]
 nx, ny = 100,100
-Omega = do.Domain(type="continuous", dim=2, support=continuous_support)
-Mphys = do.RiemannianManifold(
-    domain=Omega,
-    metric=torch.eye(2,device=device,dtype=torch.get_default_dtype())
-)
-grid = do.Domain(type="discrete", dim=2, support=(nx, ny))
-# Geometry (continuous → discrete via Discretize)
-phig = do.Discretize(source=Omega, target=grid)
-Mdisc = phig.pf(Mphys)
+# Omega = do.Domain(type="continuous", dim=2, support=continuous_support)
+# Mphys = do.RiemannianManifold(
+#     domain=Omega,
+#     metric=torch.eye(2,device=device,dtype=torch.get_default_dtype())
+# )
+# grid = do.Domain(type="discrete", dim=2, support=(nx, ny))
+# # Geometry (continuous → discrete via Discretize)
+# phig = do.Discretize(source=Omega, target=grid)
+# Mdisc = phig.pf(Mphys)
+#
+# u_domain = do.UnionDomain(continuous= Omega, discrete= grid)
+#
+# ## Put back images on the same grid
+# phi0 = do.Discretize(source=S.domain, target=grid)
+# phi1 = do.Discretize(source=T.domain, target=grid)
+# qS = phi0.pf(S)#, align_corners=align_corners)  # Field on Grid
+# qT = phi1.pf(T)#, align_corners=align_corners)
+#
+# print("q0 support", qS.domain.support)
+# print("qT support", qT.domain.support)
+# print("device :", device)
 
-u_domain = do.UnionDomain(continuous= Omega, discrete= grid)
-
-## Put back images on the same grid
-phi0 = do.Discretize(source=S.domain, target=grid)
-phi1 = do.Discretize(source=T.domain, target=grid)
-qS = phi0.pf(S)#, align_corners=align_corners)  # Field on Grid
-qT = phi1.pf(T)#, align_corners=align_corners)
-
-print("q0 support", qS.domain.support)
-print("qT support", qT.domain.support)
-print("device :", device)
+qS = mt.fill_image(continuous_support, (nx, ny), S)
+qT = mt.fill_image(continuous_support, (nx, ny), T)
 
 fig, ax = plt.subplots(1,3,figsize=(10,5))
 ax[0].imshow(qS.to_plt(),**DLT_KW_IMAGE)
@@ -155,7 +158,7 @@ def k_gauss(dx: torch.Tensor) -> torch.Tensor:
 
 
 Hphys = do.RKHS(
-    manifold=Mphys,
+    manifold=qS.continuous_manifold,
     D=torch.eye(2, device=device, dtype=torch.get_default_dtype()),
     k_fun=k_gauss,
     support_radii=(3*sigma, 3*sigma),
