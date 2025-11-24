@@ -61,13 +61,16 @@ class DataCost(ABC, torch.nn.Module):
         used at the optimizer initialisation.
         """
         self.optimizer = optimizer
-        if self.target.shape != self.optimizer.source.shape and not self.target is None:
-            raise ValueError(
-                "Target and source shape are different."
-                f"Got source.shape = {self.optimizer.source.shape}"
-                f"and target.shape = {self.target.shape}."
-                f"Have you checked your DataCost initialisation ?"
-            )
+        if self.optimizer.source.field.domain != self.target.field.domain:
+            raise ValueError('target and image must have the same domain')
+
+        # if self.target.shape != self.optimizer.source.shape and not self.target is None:
+        #     raise ValueError(
+        #         "Target and source shape are different."
+        #         f"Got source.shape = {self.optimizer.source.shape}"
+        #         f"and target.shape = {self.target.shape}."
+        #         f"Have you checked your DataCost initialisation ?"
+        #     )
 
     def to_device(self, device):
         self.target = self.target.to(device)

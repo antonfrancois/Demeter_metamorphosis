@@ -61,6 +61,7 @@ EXPL_SAVE_FOLDER  = os.path.join(location,"saved_optim/")
 if torch.cuda.is_available():
     device = 'cuda:0'
 else:
+    print("device: cuda not available, fall back on cpu")
     device = 'cpu'
 
 tic = time.time()
@@ -125,14 +126,14 @@ nx, ny = 100,100
 qS = mt.fill_image(continuous_support, (nx, ny), S)
 qT = mt.fill_image(continuous_support, (nx, ny), T)
 
-fig, ax = plt.subplots(1,3,figsize=(10,5))
-ax[0].imshow(qS.to_plt(),**DLT_KW_IMAGE)
-ax[0].set_title('source')
-ax[1].imshow(qT.to_plt(),**DLT_KW_IMAGE)
-ax[1].set_title('target')
-ax[2].imshow(tb.imCmp(qS,qT,'seg')[0],origin='lower')
-ax[2].set_title('superposition of S and T')
-plt.show()
+# fig, ax = plt.subplots(1,3,figsize=(10,5))
+# ax[0].imshow(qS.to_plt(),**DLT_KW_IMAGE)
+# ax[0].set_title('source')
+# ax[1].imshow(qT.to_plt(),**DLT_KW_IMAGE)
+# ax[1].set_title('target')
+# ax[2].imshow(tb.imCmp(qS,qT,'seg')[0],origin='lower')
+# ax[2].set_title('superposition of S and T')
+# plt.show()
 
 
 
@@ -164,7 +165,7 @@ Hphys = do.RKHS(
     support_radii=(3*sigma, 3*sigma),
     k_tensor=None, S=None,
 )
-Hdisc = phig.pf(Hphys, backend = "torch_fft")
+Hdisc = qS.discretize.pf(Hphys, backend = "torch_fft")
 
 # # Version avec RKHS à la Demeter
 # image_subdivisions = 10
@@ -179,17 +180,17 @@ Hdisc = phig.pf(Hphys, backend = "torch_fft")
 
 # call to whatever process using the GPU ##
 
-
-torch.cuda.reset_peak_memory_stats(torch.device(device))
+if 'cuda' in device:
+    torch.cuda.reset_peak_memory_stats(torch.device(device))
 dx_convention = 'square'
 # dx_convention = 'pixel'
 
 rho = 0.05
 #
 # data_cost = mt.Ssd_normalized(T)
-data_cost = mt.Ssd(T)
+data_cost = mt.Ssd(qT)
 
-mr = mt.metamorphosis(S, T, 0,
+mr = mt.metamorphosis(qS, qT, 0,
                       rho,
                       cost_cst=.001,  # If the end result is far from the target, try decreasing the cost constant (reduce regularisation)
                       rkhs=Hdisc,
@@ -201,9 +202,9 @@ mr = mt.metamorphosis(S, T, 0,
                       hamiltonian_integration=True,  # Set to true if you want to have control over the intermediate steps of the optimisation
                       save_gpu_memory=False
                       )
-
-torch.cuda.synchronize()
-mem_usage = torch.cuda.max_memory_allocated(device)  # max memory used in bytes
+if "cuda" in device:
+    torch.cuda.synchronize()
+    mem_usage = torch.cuda.max_memory_allocated(device)  # max memory used in bytes
 # mr.save(f'round_to_mot_rho{rho}',light_save = True)
 #%%
 import math

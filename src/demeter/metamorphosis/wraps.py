@@ -1,22 +1,21 @@
 import torch
 # import __init__
-import sys
-from icecream import ic
-from warnings import warn
 
 # import metamorphosis as mt
 from . import classic as cl
+from demeter.image import constant_image_from
 from . import constrained as cn
 from . import simplex as sp
 from . import joined as jn
 
-from ..utils import torchbox as tb
 from ..utils.decorators import time_it
 
 
 def _commun_before(momentum_ini, source):
     if type(momentum_ini) in [int, float]:
-        momentum_ini = momentum_ini * torch.ones(source.shape, device=source.device)
+        # momentum_ini = momentum_ini * torch.ones(source.shape, device=source.device)
+        momentum_ini = constant_image_from(momentum_ini,source)
+
     momentum_ini.requires_grad = True
 
     return momentum_ini
@@ -162,7 +161,7 @@ def metamorphosis(
     mp = cl.Metamorphosis_integrator(
         method=integration_method,
         rho=rho,
-        kernelOperator=rkhs,
+        rkhs=rkhs,
         n_step=integration_steps,
         dx_convention=dx_convention,
         save_gpu_memory=save_gpu_memory,

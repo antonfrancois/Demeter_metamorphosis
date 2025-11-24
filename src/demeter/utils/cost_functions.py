@@ -2,52 +2,36 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 
+import domains as do
 from . import torchbox as tb
-
+from demeter import Image
 
 class SumSquaredDifference:
-    """ Compute the sum squared difference of two images """
+    """ Compute the sum squared difference of two images
+    1/2 * ||a - b||^2_{L^2(g)} using the intrinsic dot product of the manifold.
 
-    def __init__(self, target, cancer_seg=None,cancer_on_target=True):
+    Requirements:
+      - a, b share the same domain and channel dimension (a.dim == b.dim).
+    """
+
+    def __init__(self, target: Image,
+                 # cancer_seg=None,
+                 # cancer_on_target=True
+                 ):
         # self.source =source
+        if not isinstance(target, Image):
+            raise TypeError('target must be an instance of Image')
         self.target = target
-        # print('posterior init : source '+ str(source.shape))
-        self.field_size = target.shape[-2:]
-        # self.field_size = (source.shape[3],source.shape[2])
-        self.cancer_on_target = cancer_on_target
-        self.cancer_seg = cancer_seg  #mask # TODO : verifier que masks size = [N,0,H,W]
+        self.M = Image.discrete_manifold
+        # self.cancer_on_target = cancer_on_target
+        # self.cancer_seg = cancer_seg  #mask # TODO : verifier que masks size = [N,0,H,W]
 
-    def __call__(self,source_deform=None):
-        return self.function(source_deform)
+    def __call__(self,image=None):
+        if not isinstance(image, Image):
+            raise TypeError('target must be an instance of domains.Field')
+        diff = self.target.field - image.field
+        return .5 * self.M.dot(diff, diff)
 
-    def function(self,source_deform):
-        """
-
-        :param field_diff: tensor (H,W,2)
-        :return:
-        """
-        self.source_deform = source_deform
-        # print('poterior function : source_deform '+str(self.source_deform.shape))
-        if self.cancer_seg is None:
-            return .5*((self.target - self.source_deform)**2).sum()
-        elif self.cancer_on_target:
-            return .5*(self.cancer_seg* (self.target - self.source_deform)**2).sum()
-        else:
-            print("WARNING : la formule est fausse, corrige ça Anton du futur")
-            return .5*((self.target - self.cancer_seg * self.source_deform)**2).sum()
-
-
-    def imgShow(self,axes = None):
-        if axes is None:
-            fig,axes = plt.subplots(1,2)
-        axes[0].imshow(tb.imCmp(self.source,self.target))
-        axes[0].set_title('before')
-
-        axes[1].imshow(tb.imCmp(self.source_deform,self.target))
-        axes[1].set_title('after registration')
-
-        # plt.show()
-        return axes
 
 class Combine_ssd_CFM:
 

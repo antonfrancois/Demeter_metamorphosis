@@ -22,7 +22,7 @@ from .toolbox import rgb2gray
 from . import bspline as mbs
 from . import vector_field_to_flow as vff
 from . import decorators as deco
-from demeter.metamorphosis.image import Image
+from demeter.image import Image
 from demeter.constants import *
 import matplotlib.patches as mpatches
 

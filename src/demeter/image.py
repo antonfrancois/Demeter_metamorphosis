@@ -4,7 +4,39 @@ from numpy import ndarray
 from torch import Tensor, eye, get_default_dtype
 
 import domains as do
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+
+@dataclass
+class Image:
+    """
+    Lightweight container tying together a field, its continuous manifold, and the discretization
+    used to obtain the corresponding discrete manifold.
+    """
+    field : do.Field # considered as a discrete field
+    continuous_manifold : do.RiemannianManifold
+    discretize : do.Discretize | None
+    discrete_manifold : do.RiemannianManifold | None = None
+    shape : Tuple[int, ...] = None
+
+    def __post_init__(self):
+        if self.discrete_manifold is None and self.discretize is not None:
+            self.discrete_manifold = self.discretize.pf(self.continuous_manifold)
+        if self.discrete_manifold is None:
+            raise ValueError("Image needs either a discretize operator or a precomputed discrete_manifold")
+        if self.shape is None:
+            self.shape = self.field.val.shape
+
+    def to_plt(self):
+        return self.field.to_plt()
+
+    def to(self, value):
+        self.field.val = self.field.val.to(value)
+        return self
+
+    def detach(self):
+        self.field.val = self.field.val.detach()
+        return self
+
 
 def fill_image(
         continuous_support : List[Tuple],  # make [(-1,1)]* dim default
@@ -78,24 +110,11 @@ def fill_image(
 
     return img
 
-
-
-@dataclass
-class Image:
+def constant_image_from(cst: int | float, img: Image) -> Image:
     """
-    Lightweight container tying together a field, its continuous manifold, and the discretization
-    used to obtain the corresponding discrete manifold.
+    Build a constant Image taking them from another Image instance.
     """
-    field : do.Field # considered as a discrete field
-    continuous_manifold : do.RiemannianManifold
-    discretize : do.Discretize | None
-    discrete_manifold : do.RiemannianManifold | None = None
+    field = do.constant_field(cst, img.field.domain)
+    return replace(img, field=field)
 
-    def __post_init__(self):
-        if self.discrete_manifold is None and self.discretize is not None:
-            self.discrete_manifold = self.discretize.pf(self.continuous_manifold)
-        if self.discrete_manifold is None:
-            raise ValueError("Image needs either a discretize operator or a precomputed discrete_manifold")
 
-    def to_plt(self):
-        return self.field.to_plt()

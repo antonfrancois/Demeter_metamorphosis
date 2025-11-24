@@ -28,14 +28,10 @@ $$E(p_0) = D_T(I_1) + \frac \lambda2 \int_{0}^1 \left( \|v_t\|_V^2 +\|z_t\|_Z^2 
 
 The $I_{t},v_t,z_{t}$ are still deduced from $p_0$. It is possible to switch between the two in the code using the `hamiltonian_integration` option in the children of `Optimize_geodesicShooting`.
 """
-import torch
-import matplotlib.pyplot as plt
 import warnings
 from math import prod, sqrt
 import pickle
 import gc
-import os, sys, csv  # , time
-from icecream import ic
 
 from datetime import datetime
 from abc import ABC, abstractmethod
@@ -54,6 +50,7 @@ from ..utils import cost_functions as cf
 from ..utils import fill_saves_overview as fill_saves_overview
 
 from ..metamorphosis import data_cost as dt
+from demeter.image import Image
 
 # TO DRAW THE BACKWARD GRAPH
 # from torchviz import make_dot
@@ -70,6 +67,8 @@ def _get_device_from_momenta( momenta_ini):
         return next((tensor.device for tensor in momenta_ini.values() if tensor.is_cuda), 'cpu')
     elif isinstance(momenta_ini, torch.Tensor):
         return momenta_ini.device
+    elif isinstance(momenta_ini, Image):
+        return momenta_ini.field.val.device
     else:
         raise ValueError("momenta_ini must be a tensor or a dict ")
 
@@ -233,8 +232,8 @@ class Geodesic_integrator(torch.nn.Module, ABC):
              by default False
 
         """
-        device = _get_device_from_momenta(momenta)
-        self._forward_initialize_integration(image, momenta, device, save, sharp, hamiltonian_integration, plot)
+        device = _get_device_from_momenta(momentum_ini)
+        self._forward_initialize_integration(image, momentum_ini, device, save, sharp, hamiltonian_integration, plot)
         for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step)):
             self._i = i
             self._forward_single_step(verbose)
@@ -252,7 +251,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     def _forward_initialize_integration(self, image, momentum_ini, device, save, sharp, hamiltonian_integration, plot):
         self._init_sharp_(sharp)
         self.source = image.detach().to(device)
-        self.image = image.clone().to(device)
+        self.image = image.to(device)
         self.momentum = momentum_ini
         self.flag_hamiltonian_integration = hamiltonian_integration
         try:
@@ -291,7 +290,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         else:
             self._forward_direct_step()
 
-        self._test_nan_(self.image, self.momenta)
+        self._test_nan_(self.image, self.momentum)
 
         if self.flag_hamiltonian_integration:
             self.norm_v += self.norm_v_i / self.n_step
@@ -311,24 +310,24 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         momenta, self.image, self.field, self.residuals = torch.utils.checkpoint.checkpoint(
             self.step,
             self.image,
-            self.momenta,
+            self.momentum,
             use_reentrant=use_reentrant,
         )
         return 0
 
     def _forward_direct_step(self):
-        self.momenta, self.image, self.field, self.residuals = self.step(self.image, self.momenta)
+        self.momentum, self.image, self.field, self.residuals = self.step(self.image, self.momentum)
         return 0
 
     def _save_step(self):
         i = self._i
         self.image_stock[i] = self.image[0].detach().cpu() if self._detach_image else self.image[0]
         self.field_stock[i] = self.field[0].detach().cpu()
-        if isinstance(self.momenta, dict):
-            for k, v in self.momenta.items():
+        if isinstance(self.momentum, dict):
+            for k, v in self.momentum.items():
                 self.momentum_stock[i][k] = v.detach().cpu()
-        elif isinstance(self.momenta, torch.Tensor):
-            self.momentum_stock[i] = self.momenta.detach().cpu()
+        elif isinstance(self.momentum, torch.Tensor):
+            self.momentum_stock[i] = self.momentum.detach().cpu()
         self.residuals_stock[i] = self.residuals[0].detach().cpu()
 
 
@@ -413,6 +412,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
     # Done
     def _update_field_(self, momentum, image):
+        # TODO: Replace spatialGradient with the one from Domain
         grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
         # ic(grad_image.min().item(), grad_image.max().item(),self.dx_convention)
         field, self.norm_v_i = self._compute_vectorField_(momentum, grad_image)
@@ -874,8 +874,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
     @abstractmethod
     def __init__(
         self,
-        source: torch.Tensor,
-        target: torch.Tensor,
+        source: Image,
+        target: Image,
         geodesic: Geodesic_integrator,
         cost_cst,
         data_term=None,
@@ -1040,11 +1040,16 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
     def _step_grad_descent_(self):
         return self.optimizer.step()
 
+    def _prepare_parameter_(self):
+        # If not dict (... pour rotate il va falloir gerer
+        # le cas).
+        return [self.parameter]
+
     # LBFGS
     def _initialize_LBFGS_(self, dt_step):
 
         self.optimizer = torch.optim.LBFGS(
-                self._dict_or_torch_parameter_(),
+                self._prepare_parameter_(),
                 max_iter=self.lbfgs_max_iter,
                 history_size=self.lbfgs_history_size,
                lr=dt_step,
@@ -1182,17 +1187,19 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                 return {k: v.detach() for k, v in p.items()}.copy()
 
         device = _get_device_from_momenta(momentum_ini)
+        # ic(self.source.field.val.device)
+        self.source.to(device)
+        # ic(self.source.field.val.device)
 
-        self.source = self.source.to(device)
-        # self.target = self.target.to(z_0.device)
-        # self.mp.kernelOperator.kernel = self.mp.kernelOperator.kernel.to(z_0.device)
         self.data_term.to_device(device)
 
-        self.parameter = momentum_ini#.copy()  # optimized variable
+        self.parameter = momentum_ini.field.val#.copy()  # optimized variable
 
         # self.parameter = self._build_parameter_dict_(momenta_ini)
         self._initialize_optimizer_(grad_coef)
         self.n_iter = n_iter
+
+        ic(type(self.source))
 
         self.id_grid = tb.make_regular_grid(self.source.shape[2:],
                                             dx_convention=self.dx_convention,
