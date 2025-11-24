@@ -58,7 +58,7 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
         return (
             f"Simplex_srqt_Metamorphosis_integrator("
             f"\n\trho={self.rho},"
-            f"\n\tkernelOperator={self.kernelOperator},"
+            f"\n\tkernelOperator={self.rkhs},"
             f"\n\tn_step={self.n_step}\n)"
         )
 
@@ -70,7 +70,7 @@ class Simplex_sqrt_Metamorphosis_integrator(Geodesic_integrator):
         field = self._update_field_(momentum, image)
 
         try:
-            volDelta = prod(self.kernelOperator.dx)
+            volDelta = prod(self.rkhs.dx)
         except AttributeError:
             volDelta = 1
 
@@ -163,7 +163,7 @@ class Simplex_sqrt_Shooting(Optimize_geodesicShooting):
         # TODO:  use super for kernelOp, n_step ....
         return {
             "rho": self.mp.rho,
-            "kernelOperator": self.mp.kernelOperator,
+            "kernelOperator": self.mp.rkhs,
             "n_step": self.mp.n_step,
             "cost_cst": self.cost_cst,
         }

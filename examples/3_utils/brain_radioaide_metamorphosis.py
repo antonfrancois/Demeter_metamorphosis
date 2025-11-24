@@ -152,7 +152,7 @@ if recompute:
     print("\nApply Metamorphosis")
     mr_meta = mt.metamorphosis(S, T, momentum_ini,
                                rho=rho,  # ratio deformation / intensity addition
-                               kernelOperator=kernelOp,  #  Kernel
+                               rkhs=kernelOp,  #  Kernel
                                cost_cst=0.001,  # Regularization parameter
                                integration_steps=10,  # Number of integration steps
                                n_iter=15,  # Number of optimization steps

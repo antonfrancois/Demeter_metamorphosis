@@ -138,7 +138,7 @@ def metamorphosis(
     integration_steps,
     n_iter,
     grad_coef,
-    kernelOperator,
+    rkhs,
     data_term=None,
     sharp=False,
     safe_mode=True,
@@ -162,7 +162,7 @@ def metamorphosis(
     mp = cl.Metamorphosis_integrator(
         method=integration_method,
         rho=rho,
-        kernelOperator=kernelOperator,
+        kernelOperator=rkhs,
         n_step=integration_steps,
         dx_convention=dx_convention,
         save_gpu_memory=save_gpu_memory,

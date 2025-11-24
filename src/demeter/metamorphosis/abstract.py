@@ -120,7 +120,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
     Parameters
     ----------
-    kernelOperator : reproducing_kernel.ReproducingKernel
+    rkhs : reproducing_kernel.ReproducingKernel
         The kernel operator used to compute the vector field.
     n_step : int
         The number of steps for the geodesic integration.
@@ -135,7 +135,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
     @abstractmethod
     def __init__(self,
-                 kernelOperator,
+                 rkhs,
                  n_step,
                  dx_convention="pixel",
                  save_gpu_memory = False,
@@ -148,7 +148,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         self.save_gpu_memory = save_gpu_memory
         self.debug = debug
 
-        self.kernelOperator = kernelOperator
+        self.rkhs = rkhs
         self.n_step = n_step
 
 
@@ -370,7 +370,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
         # C = residuals.shape[1]
         field_momentum = (grad_image * momentum.unsqueeze(2)).sum(dim=1)
-        field =  self.kernelOperator(field_momentum)
+        field =  self.rkhs.K(field_momentum)
         norm_v = None
         if self.flag_hamiltonian_integration:
             norm_v = .5 * self.rho * (field_momentum.clone() * field.clone()).sum()
@@ -389,7 +389,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         W = wheigths.sum()
         # ic(residuals.shape,self.channel_weight.shape)
         return tb.im2grid(
-            self.kernelOperator(
+            self.rkhs.K(
                 (
                     -((wheigths * momentum).unsqueeze(2) * grad_image).sum(dim=1)
                     # / W
@@ -909,18 +909,20 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.debug = debug
 
         self.flag_hamiltonian_integration = hamiltonian_integration
-        self.mp.kernelOperator.init_kernel(source)
-        try:
-            self.dx = self.mp.kernelOperator.dx
-        except AttributeError:
-            if self.dx_convention == "pixel":
-                self.dx = (1,) * len(source.shape[2:])
-            elif self.dx_convention == "square":
-                self.dx = tuple([1 / (h - 1) for h in source.shape[2:]])
-            elif self.dx_convention == "2square":
-                self.dx = tuple([2 / (h - 1) for h in source.shape[2:]])
-            else:
-                raise ValueError("dx_convention must be in ['pixel','square']")
+        # TODO : check if self.rkhs is a child of do.RKHS
+        # self.mp.rkhs.init_kernel(source)
+        # TODO: This is not longer useful, will be handled by Domain.RKHS
+        # try:
+        #     self.dx = self.mp.rkhs.dx
+        # except AttributeError:
+        #     if self.dx_convention == "pixel":
+        #         self.dx = (1,) * len(source.shape[2:])
+        #     elif self.dx_convention == "square":
+        #         self.dx = tuple([1 / (h - 1) for h in source.shape[2:]])
+        #     elif self.dx_convention == "2square":
+        #         self.dx = tuple([2 / (h - 1) for h in source.shape[2:]])
+        #     else:
+        #         raise ValueError("dx_convention must be in ['pixel','square']")
 
         self.cost_cst = cost_cst
         # optimize on the cost as defined in the 2021 paper.
@@ -978,7 +980,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         # Computes only
         grad_source = tb.spatialGradient(image, dx_convention=self.dx_convention)
         field_momentum = (grad_source * momentum.unsqueeze(2)).sum(dim=1)  # / C
-        field = self.mp.kernelOperator(field_momentum)
+        field = self.mp.rkhs.K(field_momentum)
 
         norm_v = (field_momentum * field).sum()
         if norm_v < 0:
@@ -999,7 +1001,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         return {
             "n_step": self.mp.n_step,
             "cost_cst": self.cost_cst,
-            "kernelOperator": self.mp.kernelOperator.get_all_arguments(),
+            "rkhs": self.mp.rkhs.get_all_arguments(),
             "hamiltonian_integration": self.flag_hamiltonian_integration,
             "dx_convention": self.dx_convention,
         }

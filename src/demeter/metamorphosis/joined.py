@@ -104,7 +104,7 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
     def __repr__(self):
         return (self.__class__.__name__ +
                 f"(\n\trho (mask) = {self.rho},\n" +
-                f"\t\t{self.kernelOperator.__repr__()} \n\t)")
+                f"\t\t{self.rkhs.__repr__()} \n\t)")
 
 
     def _field_I_cst_mult_(self):
@@ -133,10 +133,10 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
         field_momentum = ((torch.sqrt(masks) * self.momentum) * grad_image_mask).sum(dim=1)
         # print("field_momentum",field_momentum.shape)
         # print("masks",masks.shape)
-        self.field = tb.im2grid(self.kernelOperator(-(field_momentum)))
+        self.field = tb.im2grid(self.rkhs(-(field_momentum)))
 
         try:
-            volDelta = prod(self.kernelOperator.dx)
+            volDelta = prod(self.rkhs.dx)
         except AttributeError:
             volDelta = 1
 
@@ -227,7 +227,7 @@ class Weighted_joinedMask_Metamorphosis_integrator(Geodesic_integrator):
         pre_field = (pre_field_I
                      + cst_M * self.residuals[:,1] * grad_image_mask[:,1])#.sum(dim=1,keepdim=True)
         # ic(pre_field.shape)
-        self.field = tb.im2grid(self.kernelOperator(-(pre_field)))
+        self.field = tb.im2grid(self.rkhs(-(pre_field)))
 #         ic(self.field.shape)
 #         ic(self.field.max())
 

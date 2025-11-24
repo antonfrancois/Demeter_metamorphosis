@@ -118,7 +118,7 @@ class ConstrainedMetamorphosis_integrator(Geodesic_integrator):
         param = f"n_step = {self.n_step}"
 
         return self.__class__.__name__ + f"({mode})\n" \
-                                         f"\t {param}\n\t{self.kernelOperator.__repr__()} "
+                                         f"\t {param}\n\t{self.rkhs.__repr__()} "
 
     def _get_rho_(self):
         return 0
@@ -316,7 +316,7 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
         # Norm V
         grad_source = tb.spatialGradient(self.source, dx_convention=self.dx_convention)
         field_momentum = (grad_source * momentum_ini.unsqueeze(2)).sum(dim=1) #/ C
-        field = self.mp.kernelOperator(field_momentum)
+        field = self.mp.rkhs(field_momentum)
 
         self.norm_v_2 = .5 * (field_momentum * field).sum() #* prod(self.dx)
 
@@ -459,7 +459,7 @@ class Reduce_field_Optim(Optimize_geodesicShooting):
         C = residuals_ini.shape[1]
         grad_source = tb.spatialGradient(self.source)
         grad_source_resi = (grad_source * residuals_ini.unsqueeze(2)).sum(dim=1) / C
-        K_grad_source_resi = self.mp.kernelOperator(grad_source_resi)
+        K_grad_source_resi = self.mp.rkhs(grad_source_resi)
         self.norm_v_2 = (grad_source_resi * K_grad_source_resi).sum()
 
         self.total_cost = self.ssd + lamb * self.norm_v_2

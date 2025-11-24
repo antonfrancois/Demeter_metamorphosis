@@ -44,7 +44,7 @@ def _optim_to_state_dict_(optim,file_name,write_dict=None,message=None):
         # "modifier": modifier_str,
         "meta_type": optim.__class__.__name__,
         "data_cost": optim.data_term.__class__.__name__,
-        "kernelOperator": rec(optim.mp.kernelOperator.__repr__()),
+        "kernelOperator": rec(optim.mp.rkhs.__repr__()),
         "optimizer_method": optim.optimizer_method_name,
         "hamiltonian_integration": optim.flag_hamiltonian_integration,
         "dx_convention": optim.dx_convention,

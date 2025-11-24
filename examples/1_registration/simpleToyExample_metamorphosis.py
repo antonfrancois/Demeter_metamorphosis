@@ -67,7 +67,7 @@ tic = time.time()
 import domains as do
 toc = time.time()
 print(f"import domains : {toc - tic}s")
-#%%
+
 #####################################################################
 # Open and visualise images before registration. The source and target are 'C' shapes.
 # The source is a 'C' shape that is deformed. The target is a 'C' shape that was
@@ -79,28 +79,17 @@ source_name,target_name = 'm0t', 'm1c'
 # other suggestion of images to try
 # source_name,target_name = '17','20'        # easy, only deformation
 # source_name,target_name = '08','m1c'  # hard, big deformation !
-size = (100,100)
+# size = (100,100)
 
-S = tb.reg_open(source_name,size = size)
-T = tb.reg_open(target_name,size = size)
+S = tb.reg_open(source_name,size = (100,100))
+T = tb.reg_open(target_name,size = (200,200))
 
-tic = time.time()
-s_field = do.png_to_field(S)
-toc = time.time()
-print(f"time spent to convert to field : {toc - tic:0.4f} s")
+S = do.torch_to_field(S)
+T = do.torch_to_field(T)
 
-print(s_field.val.shape)
 
-S_plt = s_field.to_plt()
-print(S_plt.shape)
-fig, ax = plt.subplots(1,3,figsize=(10,5))
-ax[0].imshow(S_plt[0,0],**DLT_KW_IMAGE)
-ax[0].set_title('source')
-ax[1].imshow(T[0,0],**DLT_KW_IMAGE)
-ax[1].set_title('target')
-ax[2].imshow(tb.imCmp(S,T,'seg')[0],origin='lower')
-ax[2].set_title('superposition of S and T')
-plt.show()
+# S_plt = s_field.to_plt()
+# print(S_plt.shape)
 
 
 
@@ -110,29 +99,41 @@ plt.show()
 
 
 continuous_support = [(-1., 1.), (0.,1.)]
-
+nx, ny = 100,100
 Omega = do.Domain(type="continuous", dim=2, support=continuous_support)
 Mphys = do.RiemannianManifold(
     domain=Omega,
     metric=torch.eye(2,device=device,dtype=torch.get_default_dtype())
 )
-Grid = do.Domain(type="discrete", dim=2, support=size)
+grid = do.Domain(type="discrete", dim=2, support=(nx, ny))
+# Geometry (continuous → discrete via Discretize)
+phig = do.Discretize(source=Omega, target=grid)
+Mdisc = phig.pf(Mphys)
 
-u_domain = do.UnionDomain(continuous= Omega, discrete= Grid)
+u_domain = do.UnionDomain(continuous= Omega, discrete= grid)
+
+## Put back images on the same grid
+phi0 = do.Discretize(source=S.domain, target=grid)
+phi1 = do.Discretize(source=T.domain, target=grid)
+qS = phi0.pf(S)#, align_corners=align_corners)  # Field on Grid
+qT = phi1.pf(T)#, align_corners=align_corners)
+
+print("q0 support", qS.domain.support)
+print("qT support", qT.domain.support)
+print("device :", device)
+
+fig, ax = plt.subplots(1,3,figsize=(10,5))
+ax[0].imshow(qS.to_plt(),**DLT_KW_IMAGE)
+ax[0].set_title('source')
+ax[1].imshow(qT.to_plt(),**DLT_KW_IMAGE)
+ax[1].set_title('target')
+ax[2].imshow(tb.imCmp(qS,qT,'seg')[0],origin='lower')
+ax[2].set_title('superposition of S and T')
+plt.show()
 
 
 
-# S = do.Field()
-#
-# # Pushforward discrete images to target grid
-# phi0 = do.Discretize(source=F0.domain, target=Grid)
-# phi1 = do.Discretize(source=F1.domain, target=Grid)
-# q0 = phi0.pf(F0, align_corners=align_corners)  # Field on Grid
-# qT = phi1.pf(F1, align_corners=align_corners)
 
-
-
-raise Error("Et oui")
 #%%
 #####################################################################
 # Before choosing the optimisation method, we need to define a
@@ -145,15 +146,30 @@ raise Error("Et oui")
 # is basically in how many parts we want to divide the image to get the size
 # of wanted details. The second function will plot the kernel on the image to
 # help us validate our choice of sigma.
+sigma = .01
+ic(sigma)
+# Version Domain Basic
+def k_gauss(dx: torch.Tensor) -> torch.Tensor:
+    q = (dx * dx).sum(dim=-1)
+    return torch.exp(-0.5 * q / (sigma * sigma))
 
-image_subdivisions = 10
-sigma = rk.get_sigma_from_img_ratio(T.shape,subdiv = image_subdivisions)
 
-kernelOperator = rk.GaussianRKHS(sigma,kernel_reach=4)
+Hphys = do.RKHS(
+    manifold=Mphys,
+    D=torch.eye(2, device=device, dtype=torch.get_default_dtype()),
+    k_fun=k_gauss,
+    support_radii=(3*sigma, 3*sigma),
+    k_tensor=None, S=None,
+)
+Hdisc = phig.pf(Hphys, backend = "torch_fft")
 
-rk.plot_kernel_on_image(kernelOperator,image= T,subdiv=image_subdivisions)
-plt.show()
-
+# # Version avec RKHS à la Demeter
+# image_subdivisions = 10
+# sigma = rk.get_sigma_from_img_ratio(qT.val.shape,subdiv = image_subdivisions)
+# kernelOperator = rk.GaussianRKHS(sigma,kernel_reach=4)
+#
+# rk.plot_kernel_on_image(kernelOperator,image= T,subdiv=image_subdivisions)
+# plt.show()
 #%%
 #####################################################################
 # Perform a first Metamorphosis registration
@@ -161,8 +177,6 @@ plt.show()
 # call to whatever process using the GPU ##
 
 
-S = S.to(device)
-T = T.to(device)
 torch.cuda.reset_peak_memory_stats(torch.device(device))
 dx_convention = 'square'
 # dx_convention = 'pixel'
@@ -172,18 +186,18 @@ rho = 0.05
 # data_cost = mt.Ssd_normalized(T)
 data_cost = mt.Ssd(T)
 
-mr = mt.metamorphosis(S,T,0,
+mr = mt.metamorphosis(S, T, 0,
                       rho,
-                      cost_cst=.001, # If the end result is far from the target, try decreasing the cost constant (reduce regularisation)
-                      kernelOperator=kernelOperator,
-                      integration_steps=10,   # If the deformation is big or complex, try increasing the number of integration steps
-                      n_iter=15,   #   If the optimisation did not converge, try increasing the number of iterations
+                      cost_cst=.001,  # If the end result is far from the target, try decreasing the cost constant (reduce regularisation)
+                      rkhs=Hdisc,
+                      integration_steps=10,  # If the deformation is big or complex, try increasing the number of integration steps
+                      n_iter=15,  #   If the optimisation did not converge, try increasing the number of iterations
                       grad_coef=1,  # if the optimisation diverged, try decreasing the gradient coefficient
                       dx_convention=dx_convention,
-                    data_term=data_cost,
-                    hamiltonian_integration=True,  # Set to true if you want to have control over the intermediate steps of the optimisation
-                    save_gpu_memory=False
-)
+                      data_term=data_cost,
+                      hamiltonian_integration=True,  # Set to true if you want to have control over the intermediate steps of the optimisation
+                      save_gpu_memory=False
+                      )
 
 torch.cuda.synchronize()
 mem_usage = torch.cuda.max_memory_allocated(device)  # max memory used in bytes

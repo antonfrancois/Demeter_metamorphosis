@@ -29,7 +29,7 @@ def perform_ref_of_size(size, save_gpu):
 
     try:
         start = time.time()
-        mt.metamorphosis(S, T, 0, 0.05, cost_cst=0.001, kernelOperator=kernelOperator,
+        mt.metamorphosis(S, T, 0, 0.05, cost_cst=0.001, rkhs=kernelOperator,
                          integration_steps=10, n_iter=15, grad_coef=1,
                          dx_convention='square', data_term=data_cost,
                          hamiltonian_integration=True, save_gpu_memory=save_gpu)

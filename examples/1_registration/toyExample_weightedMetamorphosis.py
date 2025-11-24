@@ -88,7 +88,7 @@ print("sigma", sigma)
 rho = 0.7
 momentum_ini = 0
 mr = mt.metamorphosis(source, target, momentum_ini,
-                      kernelOperator=kernelOp,
+                      rkhs=kernelOp,
                       rho=rho,
                       integration_steps=10,
                       cost_cst=1e-2,

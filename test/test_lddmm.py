@@ -270,8 +270,8 @@ def test_save_load(setup_lddmm, light_save):
     assert ax_i is not None, f"type ax_i {ax_i}"
 
     assert isinstance(
-        mr_2.mp.kernelOperator, torch.nn.Module
-    ), f"type {type(mr_2.mp.kernelOperator)} should be a torch.nn.Module"
+        mr_2.mp.rkhs, torch.nn.Module
+    ), f"type {type(mr_2.mp.rkhs)} should be a torch.nn.Module"
 
     mr_args = mr.get_all_arguments()
     mr_2_args = mr_2.get_all_arguments()
