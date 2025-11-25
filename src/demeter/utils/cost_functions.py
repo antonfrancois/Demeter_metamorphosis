@@ -29,6 +29,7 @@ class SumSquaredDifference:
     def __call__(self,image=None):
         if not isinstance(image, Image):
             raise TypeError('target must be an instance of domains.Field')
+        do.domains_compatible(self.target.field.domain, image.field.domain)
         diff = self.target.field - image.field
         return .5 * self.M.dot(diff, diff)
 

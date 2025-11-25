@@ -37,6 +37,10 @@ class Image:
         self.field.val = self.field.val.detach()
         return self
 
+    def clone(self):
+        """Return a shallow clone of this Image (like torch.clone())."""
+        new_field = self.field.clone()
+        return replace(self, field=new_field)
 
 def fill_image(
         continuous_support : List[Tuple],  # make [(-1,1)]* dim default
@@ -84,6 +88,7 @@ def fill_image(
         field = do.numpy_to_field(val)
     else:
         raise ValueError(f"type(val) should be Tensor or ndarray, got {type(val)}")
+
     # Optional if grid == field.domain
     grid = do.Domain(type="discrete", dim=d, support= n_pixels)
     if grid == field.domain:

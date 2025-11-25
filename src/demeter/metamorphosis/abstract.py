@@ -413,13 +413,23 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     # Done
     def _update_field_(self, momentum, image):
         # TODO: Replace spatialGradient with the one from Domain
-        grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
-        # ic(grad_image.min().item(), grad_image.max().item(),self.dx_convention)
-        field, self.norm_v_i = self._compute_vectorField_(momentum, grad_image)
-        # self.field *= self._field_cst_mult()
-        # self.field *= sqrt(self.rho)
+        # grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
+        # field, self.norm_v_i = self._compute_vectorField_(momentum, grad_image)
 
-        return field
+        # Momentum and RKHS velocity
+        M = image.discrete_manifold
+        p = momentum.field
+        q = image.field
+        ic(p, q)
+        m_k    = M.Sum_p_nablaq(p, q)   # VectorField (d, ...)
+        Km     = self.rkhs.K(m_k)
+
+        ic(type(m_k), type(Km))
+        if self.flag_hamiltonian_integration:
+            self.norm_v_i = .5 * self.rho * (m_k * Km).sum()
+
+
+        return Km
 
     # Done
     def _update_momentum_Eulerian_(self, momentum):
@@ -1043,7 +1053,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
     def _prepare_parameter_(self):
         # If not dict (... pour rotate il va falloir gerer
         # le cas).
-        return [self.parameter]
+        return [self.parameter.field.val]
 
     # LBFGS
     def _initialize_LBFGS_(self, dt_step):
@@ -1185,7 +1195,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                 return (p.detach().clone())
             except AttributeError:
                 return {k: v.detach() for k, v in p.items()}.copy()
-
+        ic(type(momentum_ini))
         device = _get_device_from_momenta(momentum_ini)
         # ic(self.source.field.val.device)
         self.source.to(device)
@@ -1193,7 +1203,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         self.data_term.to_device(device)
 
-        self.parameter = momentum_ini.field.val#.copy()  # optimized variable
+        self.parameter = momentum_ini # optimized variable
 
         # self.parameter = self._build_parameter_dict_(momenta_ini)
         self._initialize_optimizer_(grad_coef)

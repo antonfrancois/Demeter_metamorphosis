@@ -100,6 +100,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
 
     def _step_full_semiLagrangian(self, image, momentum):
 
+        ic(type(momentum), type(image))
         field = self._update_field_(
             momentum, image,
         )

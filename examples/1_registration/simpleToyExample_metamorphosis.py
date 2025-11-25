@@ -125,7 +125,7 @@ nx, ny = 100,100
 
 qS = mt.fill_image(continuous_support, (nx, ny), S)
 qT = mt.fill_image(continuous_support, (nx, ny), T)
-
+ic(qS.field)
 # fig, ax = plt.subplots(1,3,figsize=(10,5))
 # ax[0].imshow(qS.to_plt(),**DLT_KW_IMAGE)
 # ax[0].set_title('source')
