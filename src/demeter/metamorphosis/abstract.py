@@ -36,6 +36,8 @@ import gc
 from datetime import datetime
 from abc import ABC, abstractmethod
 
+import domains as do
+
 from ..utils.optim import GradientDescent
 from demeter.constants import *
 from ..utils import torchbox as tb
@@ -51,6 +53,7 @@ from ..utils import fill_saves_overview as fill_saves_overview
 
 from ..metamorphosis import data_cost as dt
 from demeter.image import Image
+
 
 # TO DRAW THE BACKWARD GRAPH
 # from torchviz import make_dot
@@ -259,13 +262,15 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         except AttributeError:
             self.save = save
 
-        self.id_grid = tb.make_regular_grid(
+        id_grid = tb.make_regular_grid(
             momentum_ini.shape[2:], dx_convention=self.dx_convention, device=device
         )
-        assert self.id_grid is not None
+        self.id_grid = do.VectorField(domain = self.image.field.domain,
+                                val = id_grid,
+                                codomain_dim = id_grid.shape[-1])
 
-        # field initialization to a regular grid
-        field = self.id_grid.clone().to(device)
+        # # field initialization to a regular grid
+        # field = self.id_grid.clone().to(device)
 
         if plot > 0:
             self.save = True
@@ -425,11 +430,12 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         Km     = self.rkhs.K(m_k)
 
         ic(type(m_k), type(Km))
+        ic(m_k.dim, Km.dim)
         if self.flag_hamiltonian_integration:
-            self.norm_v_i = .5 * self.rho * (m_k * Km).sum()
+            self.norm_v_i = .5 * self.rho * (m_k.val * Km.val).sum()
 
 
-        return Km
+        return Km.as_grid()
 
     # Done
     def _update_momentum_Eulerian_(self, momentum):
