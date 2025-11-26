@@ -91,7 +91,7 @@ def initial_exploration(rigid_meta_optim,
             print(f"Init search : {i+1} / {len(r_combi)}")
         momenta =mtrt.prepare_momenta(
             rigid_meta_optim.source.shape,
-            diffeo=False,rotation=True,translation=False,
+            diffeo=False,rotation=True,translation=False, scaling=False,
             rot_prior=params_r,
             requires_grad=False
         )
@@ -126,7 +126,16 @@ def initial_exploration(rigid_meta_optim,
 
 import matplotlib.pyplot as plt
 #%% rigid optimisation
-def optimize_on_rigid(mr, top_params, rotation=True,translation=True,scaling= True, affine= False, n_iter= 10, grad_coef = 1,verbose = False, plot = False):
+def optimize_on_rigid(mr,
+                      top_params,
+                      rotation=True,
+                      translation=True,
+                      scaling= True,
+                      affine= False,
+                      n_iter= 10,
+                      grad_coef = 1,
+                      verbose = False,
+                      plot = False):
     # best_loss = top_params[0][0]
     best_loss = torch.inf
     for i,(val,params_r) in  enumerate(top_params):
@@ -136,7 +145,7 @@ def optimize_on_rigid(mr, top_params, rotation=True,translation=True,scaling= Tr
 
         momenta = mtrt.prepare_momenta(
             mr.source.shape,
-            diffeo=False,rotation=rotation,translation=translation,scaling= scaling,affine=affine
+            diffeo=False,rotation=rotation,translation=translation,scaling= scaling,affine=affine,
             **params_r
         )
         try:
@@ -164,6 +173,7 @@ def optimize_on_rigid(mr, top_params, rotation=True,translation=True,scaling= Tr
         if mr.data_loss < best_loss or mr.data_loss == 0:
             best_loss = mr.data_loss
             best_momenta = dict(
+                affine_prior = _get_momentums("momentum_A"),
                  rot_prior= _get_momentums("momentum_R"),
                 trans_prior=_get_momentums("momentum_T"),
                 scale_prior=_get_momentums("momentum_S")

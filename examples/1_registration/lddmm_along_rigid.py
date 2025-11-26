@@ -27,8 +27,8 @@ def plot(self):
 
     img_rot = tb.imgDeform(self.mp.image.to('cpu'),affine,dx_convention='2square')
     source_rt = tb.imgDeform(self.source.to('cpu'),affine,dx_convention='2square')
-    srt = tb.imCmp(source_rt,mr.target,method = 'compose')
-    irt = tb.imCmp(img_rot,mr.target,method = 'compose')
+    srt = tb.imCmp(source_rt,self.target,method = 'compose')
+    irt = tb.imCmp(img_rot,self.target,method = 'compose')
     kwargs = {"origin": "lower", 'cmap': "gray"}
 
     fig,ax = plt.subplots(3,3, constrained_layout=True)
@@ -73,7 +73,7 @@ ax[1].set_title("target")
 ax[2].imshow(tb.imCmp(source,target, 'compose')[0])
 plt.show()
 
-#%% Align barycenters
+# Align barycenters
 
 source_b, target_b, trans_s, trans_t = rg.align_barycentres(source, target, verbose=True)
 fig, ax = plt.subplots(1,3, constrained_layout=True, figsize=(5.5,2))
@@ -85,7 +85,7 @@ ax[2].imshow(tb.imCmp(source_b,target_b, 'seg')[0])
 ax[2].set_title("Source vs Target")
 set_ticks_off(ax)
 plt.show()
-fig.savefig(path + "toyexample_sourcetarget.pdf")
+# fig.savefig(path + "toyexample_sourcetarget.pdf")
 
 # %%
 integration_steps = 10
@@ -94,7 +94,7 @@ integration_steps = 10
 
 kernelOperator = rk.DummyKernel()
 
-datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'), gamma=1)
+datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'), gamma=1, plot=False)
 # datacost = mt.Rotation_MutualInformation_Cost(target_b.to('cuda:0'), alpha=1)
 
 mr_rigid = mt.rigid_along_metamorphosis(
@@ -105,32 +105,44 @@ mr_rigid = mt.rigid_along_metamorphosis(
     integration_steps = integration_steps,
     optimizer_method='LBFGS_torch',
     cost_cst=.1,
-    n_iter=0
+    n_iter=0,
+    lbfgs_max_iter=10
 )
 
-top_params = rg.initial_exploration(mr_rigid,r_step=3,#10,
-                                    max_output = 10, verbose=True)
+top_params = rg.initial_exploration(mr_rigid, r_step = 100,
+                                    max_output = 5, verbose=True)
 print(top_params)
 
 best_loss, best_momenta, best_rot = rg.optimize_on_rigid(
-    mr_rigid, top_params, n_iter=10,verbose=True, plot = True,
+    mr_rigid, top_params,
+    n_iter=10, grad_coef = .1,
+    verbose=True, plot = True, affine=True,
 )
 print(f"best_loss : {best_loss}")
 print(f"best_rot : {best_rot}")
 print(f"best_momenta : {best_momenta}")
 id = 1
-#%%
-#####################################################
-# Choose a specific rigid optimisation changes the optimisation
 
-best_loss, best_momenta, best_rot = rg.optimize_on_rigid(
-    mr_rigid, [top_params[-1]], n_iter=2,verbose=True, plot = True,
-)
-print(f"best_loss : {best_loss}")
-print(f"best_rot : {best_rot}")
-print(f"best_momenta : {best_momenta}")
-# {'rot_prior': torch.tensor(-1.0472), 'trans_prior': None, 'scale_prior': None}
-id = 2
+
+# #%%
+# #####################################################
+# # Choose a specific rigid optimisation changes the optimisation
+#
+# best_loss, best_momenta, best_rot = rg.optimize_on_rigid(
+#     mr_rigid, [top_params[-1]], n_iter=2,verbose=True, plot = True,
+# )
+# print(f"best_loss : {best_loss}")
+# print(f"best_rot : {best_rot}")
+# print(f"best_momenta : {best_momenta}")
+# # {'rot_prior': torch.tensor(-1.0472), 'trans_prior': None, 'scale_prior': None}
+# id = 2
+#
+# #%%
+# best_momenta = {'affine_prior': torch.tensor([[-0.5799,  3.0117],
+#         [-3.0049, -0.5558]]),
+#                 'rot_prior': None,
+#                 'trans_prior': torch.tensor([0.4199, 0.0598]),
+#                 'scale_prior': None}
 #%%
 #####################################################
 # Check the rigid optimisation
@@ -141,6 +153,7 @@ param = best_momenta.copy()
 momenta = mt.prepare_momenta(
     source_b.shape,
     diffeo = False,
+    affine = True,
     device = "cpu",
     requires_grad = False,
     **param
@@ -163,8 +176,8 @@ sigma= [  7, 15]
 sigma = [(s,)*2 for s in sigma]
 alpha = .5
 rho = 1
-cost_cst = 10
-cst_field = 1000
+cost_cst = 1
+cst_field = 1
 
 kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False, kernel_reach =6)
 datacost = mt.Rotation_Ssd_Cost(target_b.to("cuda:0"), gamma=alpha)
@@ -175,7 +188,8 @@ datacost = mt.Rotation_Ssd_Cost(target_b.to("cuda:0"), gamma=alpha)
 #     print(f"\n\noptimistion {i} on  {len(top_param_rot)}")
 momenta = mt.prepare_momenta(
     source_b.shape,
-    rotation=True,scaling=True,translation=True,
+    affine = True,
+    # rotation=True,scaling=True,translation=True,
     **best_momenta
 )
 # momenta["momentum_R"].requires_grad = False
@@ -190,7 +204,8 @@ mr = mt.rigid_along_metamorphosis(
   data_term=datacost ,
   integration_steps = integration_steps,
   cost_cst=cost_cst,
-  cst_field=cst_field,
+  cost_field_cst=cst_field,
+  cost_affine_cst = 1,
   n_iter=10,
     grad_coef=.1,
     # optimizer_method='Adam',
@@ -222,6 +237,8 @@ mt.free_GPU_memory(mr)
 #%%
 plot(mr)
 plt.show()
+
+raise TypeError("miam")
 #%%
 
 n_figs = 5
