@@ -56,7 +56,8 @@ def _insert_(entry, top_losses, top_k = 10):
 def initial_exploration(rigid_meta_optim,
                         r_step = 4,
                         max_output = 10,
-                        verbose:bool = True):
+                        verbose:bool = True
+                        ):
     """
     Shoot in given directions, gives you the best outputs
 
@@ -125,7 +126,7 @@ def initial_exploration(rigid_meta_optim,
 
 import matplotlib.pyplot as plt
 #%% rigid optimisation
-def optimize_on_rigid(mr, top_params, rotation=True,translation=True,scaling= True, n_iter= 10, grad_coef = 1,verbose = False, plot = False):
+def optimize_on_rigid(mr, top_params, rotation=True,translation=True,scaling= True, affine= False, n_iter= 10, grad_coef = 1,verbose = False, plot = False):
     # best_loss = top_params[0][0]
     best_loss = torch.inf
     for i,(val,params_r) in  enumerate(top_params):
@@ -135,7 +136,7 @@ def optimize_on_rigid(mr, top_params, rotation=True,translation=True,scaling= Tr
 
         momenta = mtrt.prepare_momenta(
             mr.source.shape,
-            diffeo=False,rotation=rotation,translation=translation,scaling= scaling,
+            diffeo=False,rotation=rotation,translation=translation,scaling= scaling,affine=affine
             **params_r
         )
         try:

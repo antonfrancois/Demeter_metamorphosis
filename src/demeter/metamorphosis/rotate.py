@@ -1,6 +1,7 @@
 """
 Rotate.py
 """
+from logging import warning
 
 import matplotlib.pyplot as plt
 import torch
@@ -23,9 +24,11 @@ def prepare_momenta(image_shape,
                     rotation : bool = True,
                     translation : bool = True,
                     scaling : bool = True,
+                    affine : bool = False,
                     rot_prior = None,
                     trans_prior= None,
                     scale_prior= None,
+                    affine_prior= None,
                     device = "cuda:0",
                     requires_grad = True):
     dim = 2 if len(image_shape) == 4 else 3
@@ -41,6 +44,15 @@ def prepare_momenta(image_shape,
         scale_prior = torch.zeros((dim,))
     if not torch.is_tensor(scale_prior):
         scale_prior = torch.tensor(scale_prior)
+    if affine_prior is None:
+        affine_prior = torch.zeros((dim,dim))
+    if not torch.is_tensor(affine_prior):
+        affine_prior = torch.tensor(affine_prior)
+
+    if affine:
+        scaling = rotation = False
+        translation = True
+        warning("affine is true, scaling and rotation set to False, translation set to True")
 
     print("rot prior :", rot_prior,len(rot_prior.shape) )
     momenta = {}
@@ -69,6 +81,8 @@ def prepare_momenta(image_shape,
                         dtype=torch.float32, device='cuda:0')
         else:
             raise ValueError("Rotation prior must be 2 or 1 dimensional")
+    if affine:
+        momenta["momentum_A"] = affine_prior.to(kwargs["dtype"]).to(kwargs["device"])
     if translation:
         momenta["momentum_T"]= trans_prior.to(kwargs["dtype"]).to(kwargs["device"])
     if scaling:
@@ -327,7 +341,41 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         momentum_S = momentum_S - scale_inf * momentum_S /self.n_step
         return momentum_R, momentum_T, momentum_S, rot_mat, translation, scale, d_rot, norm_l2_on_R, norm_l2_on_S
 
-    def step(self, image, momentum_I, momentum_R, momentum_T, momentum_S, rot_mat, translation, scale):
+    def _compute_step_affine(self,
+                               momentum_A, A_mat,
+                               momentum_T , translation):
+        momA_rotated = momentum_A @ A_mat.T
+        pre_rot_inf = momA_rotated #+ momT_translated
+        d_rot = pre_rot_inf
+
+        momT_translated = momentum_T @ translation.T
+        pre_rot_inf += momT_translated
+
+
+        if self.debug:
+            print("rotA mat", A_mat)
+            print("momA_rotated",momA_rotated)
+        # momA_rotated =  (momA_rotated - momA_rotated.T) /2
+        #
+        # print('d_rot',self.d_rot)
+
+
+        if self._i == 0:
+            self._rot_inf_ini = d_rot.clone()
+
+        exp_A = torch.linalg.matrix_exp(d_rot/self.n_step)
+        A_mat = exp_A @ A_mat
+        translation =translation +  ((d_rot.T) @ translation + momentum_T) /self.n_step #
+
+
+        norm_l2_on_A = .5 * torch.trace(d_rot.T @ self._rot_inf_ini)
+
+        momentum_R = momentum_R - d_rot.T @ momentum_R  / self.n_step
+        momentum_T = momentum_T - d_rot.T @ momentum_T / self.n_step
+        momentum_S = momentum_S - scale_inf * momentum_S /self.n_step
+        return momentum_R, momentum_T, momentum_S, A_mat, translation, scale, d_rot, norm_l2_on_R, norm_l2_on_S
+
+    def step(self, image, momentum_I, momentum_R, momentum_T, momentum_S, momentum_A, rot_mat, translation, scale):
         """
         One integration step. Fully checkpoint-compliant: fixed number of outputs.
         """
@@ -340,7 +388,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
             momentum_I = self._contrainte_(momentum_I, self.source)
 
         # --- Rotation / Translation update ---
-        momentum_R, momentum_T, momentum_S, rot_mat, translation, scale, d_rot, norm_R_2, norm_S_2 = \
+        momentum_R, momentum_T, momentum_S,momentum_A, rot_mat, translation, scale, d_rot, norm_R_2, norm_S_2 = \
             self._compute_step_rotation_translation(
                 momentum_R, rot_mat,
                 momentum_T, translation,
@@ -394,9 +442,9 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         #     [-r,0]],
         #     dtype=torch.float32)
         # self.flag_field = True if "momentum_I" in momenta.keys() else False
-
-        momentum_R = momenta['momentum_R'].clone()
-        momenta['momentum_R'] =  (momentum_R - momentum_R.T) /2
+        if "momentum_R" in momenta.keys():
+            momentum_R = momenta['momentum_R'].clone()
+            momenta['momentum_R'] =  (momentum_R - momentum_R.T) /2
         self.to_device(momenta['momentum_R'].device)
         # if "momentum_T" in momenta:
         #     self.translation = torch.zeros_like(momenta['momentum_T'])
