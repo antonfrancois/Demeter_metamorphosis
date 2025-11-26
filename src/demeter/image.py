@@ -26,6 +26,25 @@ class Image:
         if self.shape is None:
             self.shape = self.field.val.shape
 
+    def __mul__(self, other):
+        return self.field.__mul__(other)
+
+    def __rmul__(self, other):
+        return self.field.__rmul__(other)
+
+    def __add__(self, other):
+        return self.field.__add__(other)
+
+    def __radd__(self, other):
+        return self.field.__radd__(other)
+
+    def __sub__(self, other):
+        return self.field.__sub__(other)
+
+    def __rsub__(self, other):
+        return self.field.__rsub__(other)
+
+
     def to_plt(self):
         return self.field.to_plt()
 

@@ -22,7 +22,7 @@ class SumSquaredDifference:
         if not isinstance(target, Image):
             raise TypeError('target must be an instance of Image')
         self.target = target
-        self.M = Image.discrete_manifold
+        self.M = target.discrete_manifold
         # self.cancer_on_target = cancer_on_target
         # self.cancer_seg = cancer_seg  #mask # TODO : verifier que masks size = [N,0,H,W]
 

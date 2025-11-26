@@ -118,7 +118,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
             sqrt(self.rho),
             sqrt(self.rho) * field,
         )
-
+        ic(type(image), type(momentum))
         return (momentum,
                 image,
                 self.rho * field.detach(),

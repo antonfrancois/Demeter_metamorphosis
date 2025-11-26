@@ -133,6 +133,7 @@ class Ssd(DataCost):
         """
         super().__call__()
         if at_step is None:
+            ic(type(self.optimizer.mp.image))
             return self.ssd(self.optimizer.mp.image)
         else:
             return self.ssd(self.optimizer.mp.image_stock[at_step][None])

@@ -29,12 +29,15 @@ $$E(p_0) = D_T(I_1) + \frac \lambda2 \int_{0}^1 \left( \|v_t\|_V^2 +\|z_t\|_Z^2 
 The $I_{t},v_t,z_{t}$ are still deduced from $p_0$. It is possible to switch between the two in the code using the `hamiltonian_integration` option in the children of `Optimize_geodesicShooting`.
 """
 import warnings
+from dataclasses import replace
 from math import prod, sqrt
 import pickle
 import gc
 
 from datetime import datetime
 from abc import ABC, abstractmethod
+
+from torch import Tensor
 
 import domains as do
 
@@ -322,6 +325,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
     def _forward_direct_step(self):
         self.momentum, self.image, self.field, self.residuals = self.step(self.image, self.momentum)
+        ic(self.image)
         return 0
 
     def _save_step(self):
@@ -432,7 +436,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         ic(type(m_k), type(Km))
         ic(m_k.dim, Km.dim)
         if self.flag_hamiltonian_integration:
-            self.norm_v_i = .5 * self.rho * (m_k.val * Km.val).sum()
+            self.norm_v_i = .5 * self.rho * (M.dot(m_k, Km)).sum()
 
 
         return Km.as_grid()
@@ -464,6 +468,16 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             - div_v_times_z / self.n_step
         )
 
+    def _advection_(self, image, deformation) -> do.Field:
+        if isinstance(image, Tensor):
+            image_def = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
+        elif isinstance(image, Image):
+            image_def = do.pushforward_sampling(deformation, image.field, dt = 1 / self.n_step)
+        else:
+            raise ValueError(f"Unsupported image type: {type(image)} should be Tensor or Image")
+        return image_def
+
+
     def _compute_div_momentum_semiLagrangian_(self,
                                               deformation,
                                               momentum,
@@ -492,17 +506,29 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         -------
         tensor array of shape [1,1,H,W] or [1,1,D,H,W]
         """
-
-        div_v_times_p = cst * (
-            momentum
-            * tb.Field_divergence(dx_convention=self.dx_convention)(field)[0, 0]
-        )
-        momentum = (
-            tb.imgDeform(
-                momentum, deformation, dx_convention=self.dx_convention, clamp=False
+        ic(type(momentum))
+        if isinstance(momentum, Tensor):
+            div_v_times_p = cst * (
+                momentum
+                * tb.Field_divergence(dx_convention=self.dx_convention)(field)[0, 0]
             )
-            - div_v_times_p / self.n_step
-        )
+        elif isinstance(momentum, Image):
+            M = momentum.discrete_manifold
+            div_field = M.div(field)
+            div_v_times_p = cst * momentum * div_field
+
+        ic(div_field)
+        # momentum_up type == Field
+        momentum_up = self._advection_(momentum, deformation)  - div_v_times_p / self.n_step
+
+        if isinstance(momentum, Image):
+            momentum = replace(momentum, field = momentum_up)
+        # momentum = (
+        #     tb.imgDeform(
+        #         momentum, deformation, dx_convention=self.dx_convention, clamp=False
+        #     )
+        #     - div_v_times_p / self.n_step
+        # )
         return momentum
 
     def _compute_sharp_intermediary_residuals_(self):
@@ -544,13 +570,19 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             # z = sqrt(1 - rho) * p and I = v gradI + sqrt(1-rho) * z
             residuals = (1 - self.rho) * momentum
         self.norm_z_i = None
+
         if self.flag_hamiltonian_integration:
             self.norm_z_i = .5 * residuals.pow(2).sum()
         # if self.rho > 0:
-        image_def = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
+
+        image_def = self._advection_(image, deformation)
 
         if self._get_rho_() < 1:
             image_def += residuals / self.n_step
+
+        if isinstance(image, Image):
+            image_def = replace(image, field = image_def)
+
         return image_def
 
     def _update_sharp_intermediary_field_(self):
