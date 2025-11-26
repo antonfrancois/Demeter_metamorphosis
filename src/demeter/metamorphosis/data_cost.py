@@ -426,6 +426,7 @@ class Rotation_Ssd_Cost(DataCost):
                  sigmoid_b = None,
                  sigmoid_c = 4,
                  verbose = False,
+                 plot = False,
                  **kwargs):
 
         super(Rotation_Ssd_Cost, self).__init__(target)
@@ -441,6 +442,7 @@ class Rotation_Ssd_Cost(DataCost):
         self.sigmoid_b = sigmoid_b
         self.sigmoid_c = sigmoid_c
         self.verbose = verbose
+        self.plot = plot
 
     def __repr__(self):
         return super().__repr__() + self.status
@@ -470,7 +472,7 @@ class Rotation_Ssd_Cost(DataCost):
         if self.verbose:
             print(f"[{self.__repr__()}]")
             print(f"\t gamma = {gamma:.3f} : ssd = {ssd:.3f}, ssd_rot = {ssd_rot:.3f} => Loss = {gamma * ssd_rot + (1-gamma) * ssd:.3f} ")
-        if self.optimizer._iter_  % 5 == 0:
+        if self.optimizer._iter_  % 5 == 0 and self.plot:
             fig, ax = plt.subplots(2,2)
             fig.suptitle(f" iter : {self.optimizer._iter_}: gamma = {gamma}; ssd = {ssd}, ssd_rot = {ssd_rot}")
             ax[0,0].imshow(rotated_image[0,0].detach().cpu().numpy())
