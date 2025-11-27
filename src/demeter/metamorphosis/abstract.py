@@ -851,7 +851,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             dx_convention=self.dx_convention,
         )
         tb.quiver_plot(
-            full_deformation - self.id_grid.cpu(),
+            full_deformation - self.id_grid.to("cpu"),
             step=int(max(self.image.shape) / 30),
             ax=axes[0, 1],
             check_diffeo=False,
@@ -860,24 +860,25 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
         # show S deformed by full_deformation
         S_deformed = tb.imgDeform(
-            self.source.cpu(), full_deformator, dx_convention=self.dx_convention
+            self.source.to("cpu"), full_deformator, dx_convention=self.dx_convention
         )
+        ic(S_deformed)
         # axes[1,0].imshow(self.source[0,0,:,:].cpu().permute(1,2,0),cmap='gray',origin='lower',vmin=0,vmax=1)
         # axes[1,1].imshow(target[0].cpu().permute(1,2,0),cmap='gray',origin='lower',vmin=0,vmax=1)
         # axes[2,0].imshow(S_deformed[0,0,:,:].permute(1,2,0),cmap='gray',origin='lower',vmin=0,vmax=1)
         # axes[2,1].imshow(tb.imCmp(target,S_deformed),origin='lower',vmin=0,vmax=1)
 
         axes[1, 0].imshow(
-            self.source[0, 0, :, :].cpu(), cmap="gray", origin="lower", vmin=0, vmax=1
+            self.source.to_plt(), cmap="gray", origin="lower", vmin=0, vmax=1
         )
         axes[1, 1].imshow(
-            target[0, 0].cpu(), cmap="gray", origin="lower", vmin=0, vmax=1
+            target.to_plt(), cmap="gray", origin="lower", vmin=0, vmax=1
         )
         axes[2, 0].imshow(
             S_deformed[0, 0, :, :], cmap="gray", origin="lower", vmin=0, vmax=1
         )
         axes[2, 1].imshow(
-            tb.imCmp(target[:, 0][None], S_deformed[:, 0][None], method="compose")[0],
+            tb.imCmp(target.to_plt(), S_deformed.to_plt(), method="compose")[0],
             origin="lower",
             vmin=0,
             vmax=1,
@@ -1855,18 +1856,21 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         fig, ax = plt.subplots(2, 2, figsize=(7, 7), constrained_layout=True)
         image_kw = dict(cmap="gray", origin=origin, vmin=0, vmax=1)
         set_ticks_off(ax)
-        ax[0, 0].imshow(self.source[0, 0, :, :].detach().cpu().numpy(), **image_kw)
+        # ax[0, 0].imshow(self.source[0, 0, :, :].detach().cpu().numpy(), **image_kw)
+        ax[0, 0].imshow(self.source.to_plt(), **image_kw)
+
         ax[0, 0].set_title("source", fontsize=25)
-        ax[0, 1].imshow(self.target[0, 0, :, :].detach().cpu().numpy(), **image_kw)
+        ax[0, 1].imshow(self.target.to_plt(), **image_kw)
         ax[0, 1].set_title("target", fontsize=25)
 
         ax[1, 1].imshow(
-            tb.imCmp(self.target, self.mp.image.detach().cpu(), method=cmp_method)[0],
+            tb.imCmp(self.target, self.mp.image, method=cmp_method)[0],
             **image_kw,
         )
         ax[1, 1].set_title("comparaison deformed image with target", fontsize=25)
-        ax[1, 0].imshow(self.mp.image[0, 0].detach().cpu().numpy(), **image_kw)
+        ax[1, 0].imshow(self.mp.image.to_plt(), **image_kw)
         ax[1, 0].set_title("Integrated source image", fontsize=25)
+        ic(self.mp.get_deformation().detach().cpu() - self.mp.id_grid)
         tb.quiver_plot(
             self.mp.get_deformation().detach().cpu() - self.mp.id_grid,
             ax=ax[1, 1],

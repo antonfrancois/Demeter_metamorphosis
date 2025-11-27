@@ -192,11 +192,11 @@ data_cost = mt.Ssd(qT)
 
 mr = mt.metamorphosis(qS, qT, 0,
                       rho,
-                      cost_cst=.001,  # If the end result is far from the target, try decreasing the cost constant (reduce regularisation)
+                      cost_cst=.1,  # If the end result is far from the target, try decreasing the cost constant (reduce regularisation)
                       rkhs=Hdisc,
                       integration_steps=10,  # If the deformation is big or complex, try increasing the number of integration steps
                       n_iter=15,  #   If the optimisation did not converge, try increasing the number of iterations
-                      grad_coef=1,  # if the optimisation diverged, try decreasing the gradient coefficient
+                      grad_coef=10,  # if the optimisation diverged, try decreasing the gradient coefficient
                       dx_convention=dx_convention,
                       data_term=data_cost,
                       hamiltonian_integration=True,  # Set to true if you want to have control over the intermediate steps of the optimisation
@@ -226,9 +226,10 @@ print("\n")
 
 #%%
 _, fig_ax = mr.plot()
-fig_cmp = fig_ax[0]
-fig_def = mr.plot_deform()
-mr.mp.plot()
+plt.show()
+# fig_cmp = fig_ax[0]
+# fig_def = mr.plot_deform()
+# mr.mp.plot()
 
 #%%
 #####################################################################

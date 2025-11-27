@@ -1173,6 +1173,8 @@ def quiver_plot(field,
     ax : matplotlib
         Axis object
     """
+    if isinstance(field, do.VectorField):
+        field = field.as_grid().val
     if not is_tensor(field):
         raise TypeError("field has to be tensor object")
     if field.size().__len__() != 4 or field.size()[0] > 1:
