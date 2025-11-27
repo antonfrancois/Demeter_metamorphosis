@@ -100,13 +100,10 @@ class Metamorphosis_integrator(Geodesic_integrator):
 
     def _step_full_semiLagrangian(self, image, momentum):
 
-        ic(type(momentum), type(image))
         field = self._update_field_(
             momentum, image,
         )
-        ic(field)
         # Lagrangian scheme on images and residuals
-        ic(self.id_grid, self.rho * field / self.n_step)
         deformation = self.id_grid - self.rho * field / self.n_step
         image = self._update_image_semiLagrangian_(
             momentum, image, deformation
@@ -118,7 +115,6 @@ class Metamorphosis_integrator(Geodesic_integrator):
             sqrt(self.rho),
             sqrt(self.rho) * field,
         )
-        ic(type(image), type(momentum))
         return (momentum,
                 image,
                 self.rho * field.detach(),

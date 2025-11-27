@@ -40,6 +40,7 @@ from abc import ABC, abstractmethod
 from torch import Tensor
 
 import domains as do
+from domains import Field
 
 from ..utils.optim import GradientDescent
 from demeter.constants import *
@@ -281,7 +282,10 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         if self.save:
             T = self.n_step
             shape_image = self.image.shape[1:]
-            shape_field = self.field.shape[1:]
+            ic(shape_image, type(self.image), self.image.shape)
+
+            shape_field = self.field.val.shape[1:]
+
             self.image_stock = torch.zeros((T,) + shape_image)
             self.field_stock = torch.zeros((T,) + shape_field)
             self.momentum_stock =  torch.zeros((T,) + shape_image)
@@ -325,19 +329,24 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
     def _forward_direct_step(self):
         self.momentum, self.image, self.field, self.residuals = self.step(self.image, self.momentum)
-        ic(self.image)
         return 0
 
     def _save_step(self):
         i = self._i
-        self.image_stock[i] = self.image[0].detach().cpu() if self._detach_image else self.image[0]
-        self.field_stock[i] = self.field[0].detach().cpu()
-        if isinstance(self.momentum, dict):
-            for k, v in self.momentum.items():
-                self.momentum_stock[i][k] = v.detach().cpu()
-        elif isinstance(self.momentum, torch.Tensor):
-            self.momentum_stock[i] = self.momentum.detach().cpu()
-        self.residuals_stock[i] = self.residuals[0].detach().cpu()
+        def _decider_(value):
+            if isinstance(value, Image):
+                return value.field.val[0].detach().cpu()
+            elif isinstance(value, Field):
+                return value.val[0].detach().cpu()
+            elif isinstance(value, Tensor):
+                return value[0].detach().cpu()
+            if isinstance(value, dict):
+                return {k :v.detach().cpu() for k, v in value.items()}
+
+        self.image_stock[i] = _decider_(self.image) if self._detach_image else self.image[0]
+        self.field_stock[i] = _decider_(self.field)
+        self.momentum_stock[i] = _decider_(self.momentum)
+        self.residuals_stock[i] = _decider_(self.residuals)
 
 
     def _log_step(self):
@@ -393,7 +402,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
         wheigths = self.channel_weight.to(momentum.device)
         W = wheigths.sum()
-        # ic(residuals.shape,self.channel_weight.shape)
         return tb.im2grid(
             self.rkhs.K(
                 (
@@ -429,12 +437,9 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         M = image.discrete_manifold
         p = momentum.field
         q = image.field
-        ic(p, q)
         m_k    = M.Sum_p_nablaq(p, q)   # VectorField (d, ...)
         Km     = self.rkhs.K(m_k)
 
-        ic(type(m_k), type(Km))
-        ic(m_k.dim, Km.dim)
         if self.flag_hamiltonian_integration:
             self.norm_v_i = .5 * self.rho * (M.dot(m_k, Km)).sum()
 
@@ -506,7 +511,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         -------
         tensor array of shape [1,1,H,W] or [1,1,D,H,W]
         """
-        ic(type(momentum))
         if isinstance(momentum, Tensor):
             div_v_times_p = cst * (
                 momentum
@@ -517,7 +521,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             div_field = M.div(field)
             div_v_times_p = cst * momentum * div_field
 
-        ic(div_field)
         # momentum_up type == Field
         momentum_up = self._advection_(momentum, deformation)  - div_v_times_p / self.n_step
 
@@ -651,7 +654,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         # TODO: completer ça
         try:
             self.image = self.image.to(device)
-            self.id_grid = self.id_grid.to(device)
+            self.id_grid = self.id_grid.to(device = device)
             self.field = self.field.to(device)
             self.residuals = self.residuals.to(device)
             self.momentum = self.momentum.to(device)
@@ -701,7 +704,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                 self.id_grid.detach().cpu()
                 + self.field_stock[0][None].detach().cpu() / self.n_step
             )
-        # ic(from_t,to_t,self.field_stock[from_t:to_t].shape)
         return temporal_integrator(
             self.field_stock[from_t:to_t] / self.n_step, forward=True
         )
@@ -737,7 +739,6 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                 self.id_grid.detach().cpu()
                 - self.field_stock[0][None].detach().cpu() / self.n_step
             )
-        # ic(from_t,to_t,self.field_stock[from_t:to_t].shape)
         return temporal_integrator(
             self.field_stock[from_t:to_t] / self.n_step, forward=False
         )
@@ -1095,7 +1096,6 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
     # LBFGS
     def _initialize_LBFGS_(self, dt_step):
-
         self.optimizer = torch.optim.LBFGS(
                 self._prepare_parameter_(),
                 max_iter=self.lbfgs_max_iter,
@@ -1230,19 +1230,15 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         """
         def _detach(p):
             try:
-                return (p.detach().clone())
+                return (p.clone().detach())
             except AttributeError:
                 return {k: v.detach() for k, v in p.items()}.copy()
-        ic(type(momentum_ini))
         device = _get_device_from_momenta(momentum_ini)
-        # ic(self.source.field.val.device)
         self.source.to(device)
-        # ic(self.source.field.val.device)
 
         self.data_term.to_device(device)
 
         self.parameter = momentum_ini # optimized variable
-
         # self.parameter = self._build_parameter_dict_(momenta_ini)
         self._initialize_optimizer_(grad_coef)
         self.n_iter = n_iter

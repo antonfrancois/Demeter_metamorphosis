@@ -16,7 +16,7 @@ def _commun_before(momentum_ini, source):
         # momentum_ini = momentum_ini * torch.ones(source.shape, device=source.device)
         momentum_ini = constant_image_from(momentum_ini,source)
 
-    momentum_ini.requires_grad = True
+    momentum_ini.field.val.requires_grad = True
 
     return momentum_ini
 
@@ -24,6 +24,7 @@ def _commun_before(momentum_ini, source):
 def _commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef):
     if n_iter == 0:
         return mr
+
     if not safe_mode:
         mr.forward(momentum_ini, n_iter=n_iter, grad_coef=grad_coef)
     else:
@@ -178,7 +179,6 @@ def metamorphosis(
         lbfgs_history_size=lbfgs_history_size,
         hamiltonian_integration=hamiltonian_integration,
     )
-
     mr = _commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef)
     return mr
 
