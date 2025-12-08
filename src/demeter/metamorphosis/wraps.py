@@ -14,7 +14,7 @@ from ..utils.decorators import time_it
 def _commun_before(momentum_ini, source):
     if type(momentum_ini) in [int, float]:
         # momentum_ini = momentum_ini * torch.ones(source.shape, device=source.device)
-        momentum_ini = constant_image_from(momentum_ini,source)
+        momentum_ini = constant_image_from(momentum_ini,source).to(source.field.val.device)
 
     momentum_ini.field.val.requires_grad = True
 
@@ -154,8 +154,8 @@ def metamorphosis(
 
 
     """
-
     momentum_ini = _commun_before(momentum_ini, source)
+    ic(source.field.val.device, momentum_ini.field.val.device)
     if sharp:
         integration_method = "sharp"
 

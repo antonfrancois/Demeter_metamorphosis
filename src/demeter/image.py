@@ -130,7 +130,7 @@ def fill_image(
         continuous_manifold=M,
         discretize=phig,
         discrete_manifold=M_discrete
-    )
+    ).to(device)
 
     return img
 

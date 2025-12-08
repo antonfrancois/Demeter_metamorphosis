@@ -37,6 +37,10 @@ import gc
 from datetime import datetime
 from abc import ABC, abstractmethod
 
+import os
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+
 from torch import Tensor
 
 import domains as do
@@ -437,8 +441,27 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         M = image.discrete_manifold
         p = momentum.field
         q = image.field
+
+        # Guard against NaNs/Infs before finite differences
+        if not torch.isfinite(p.val).all():
+            raise RuntimeError(
+                f"Non-finite momentum detected before Sum_p_nablaq: "
+                f"min={p.val.min().item()} max={p.val.max().item()}"
+            )
+        if not torch.isfinite(q.val).all():
+            raise RuntimeError(
+                f"Non-finite image detected before Sum_p_nablaq: "
+                f"min={q.val.min().item()} max={q.val.max().item()}"
+            )
+
         m_k    = M.Sum_p_nablaq(p, q)   # VectorField (d, ...)
-        Km     = self.rkhs.K(m_k)
+        Km     = - self.rkhs.K(m_k)
+
+        # Early guard: catch non-finite values before they poison the graph
+        if not torch.isfinite(m_k.val).all():
+            raise RuntimeError("Non-finite values in m_k during _update_field_.")
+        if not torch.isfinite(Km.val).all():
+            raise RuntimeError("Non-finite values in K(m_k) during _update_field_.")
 
         if self.flag_hamiltonian_integration:
             self.norm_v_i = .5 * self.rho * (M.dot(m_k, Km)).sum()
@@ -628,10 +651,16 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         if residuals is None:
             residuals = momentum
         image = self.source if sharp else image
-        image = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
-        image += residuals / self.n_step
 
-        return image
+        # Respect Image vs Tensor semantics (avoid grid_sample on Image)
+        image_def = self._advection_(image, deformation)
+        if self._get_rho_() < 1:
+            image_def += residuals / self.n_step
+
+        if isinstance(image, Image):
+            image_def = replace(image, field=image_def)
+
+        return image_def
 
 
     def _update_field_oriented_weighted_(self, momentum, image):
@@ -1146,7 +1175,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
     def _initialize_adadelta_(self, dt_step, max_iter=None):
         self.optimizer = torch.optim.Adadelta(
-            [self.parameter], lr=dt_step, rho=0.9, weight_decay=0
+            self._prepare_parameter_(), lr=dt_step, rho=0.9, weight_decay=0
         )
 
         def closure():
@@ -1234,8 +1263,10 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                 return (p.clone().detach())
             except AttributeError:
                 return {k: v.detach() for k, v in p.items()}.copy()
+        ic(self.source.field.val.device)
         device = _get_device_from_momenta(momentum_ini)
         self.source.to(device)
+        ic(device,self.source.field.val.device)
 
         self.data_term.to_device(device)
 
@@ -1244,10 +1275,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self._initialize_optimizer_(grad_coef)
         self.n_iter = n_iter
 
-        ic(type(self.source))
 
         self.id_grid = tb.make_regular_grid(self.source.shape[2:],
-                                            dx_convention=self.dx_convention,
+                                            dx_convention="pixel",
                                             device=device)
         # self.to_device(momenta_ini.device)
         if self.id_grid is None:
@@ -1269,7 +1299,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         for i in range(1, n_iter):
             self._iter_ = i
-
+            ic(self._iter)
             loss_val = self._step_optimizer_()
             if loss_val is None:
                 with torch.no_grad():
@@ -1876,7 +1906,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             ax=ax[1, 1],
             step=15,
             color=GRIDDEF_YELLOW,
-            dx_convention=self.dx_convention,
+            dx_convention="pixel",
         )
 
         try:

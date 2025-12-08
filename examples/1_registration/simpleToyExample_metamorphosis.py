@@ -60,14 +60,22 @@ if 'runner' in location:
 EXPL_SAVE_FOLDER  = os.path.join(location,"saved_optim/")
 if torch.cuda.is_available():
     device = 'cuda:0'
+
 else:
     print("device: cuda not available, fall back on cpu")
     device = 'cpu'
+print(f"device used: {device}")
 
 tic = time.time()
 import domains as do
 toc = time.time()
 print(f"import domains : {toc - tic}s")
+
+import faulthandler
+faulthandler.enable()
+
+torch.autograd.set_detect_anomaly(True)
+
 
 #####################################################################
 # Open and visualise images before registration. The source and target are 'C' shapes.
@@ -82,8 +90,8 @@ source_name,target_name = 'm0t', 'm1c'
 # source_name,target_name = '08','m1c'  # hard, big deformation !
 # size = (100,100)
 
-S = tb.reg_open(source_name,size = (100,100))
-T = tb.reg_open(target_name,size = (200,200))
+S = tb.reg_open(source_name)#,size = (100,100))
+T = tb.reg_open(target_name)#,size = (200,200))
 
 # S = do.torch_to_field(S)
 # T = do.torch_to_field(T)
@@ -99,8 +107,8 @@ T = tb.reg_open(target_name,size = (200,200))
 # Domain definition
 
 
-continuous_support = [(-1., 1.), (0.,1.)]
-nx, ny = 100,100
+continuous_support = [(-1., 1.), (-1.,1.)]
+nx, ny = 200,200
 # Omega = do.Domain(type="continuous", dim=2, support=continuous_support)
 # Mphys = do.RiemannianManifold(
 #     domain=Omega,
@@ -123,9 +131,9 @@ nx, ny = 100,100
 # print("qT support", qT.domain.support)
 # print("device :", device)
 
-qS = mt.fill_image(continuous_support, (nx, ny), S)
-qT = mt.fill_image(continuous_support, (nx, ny), T)
-ic(qS.field)
+qS = mt.fill_image(continuous_support, (nx, ny), S, device=device)
+qT = mt.fill_image(continuous_support, (nx, ny), T, device=device)
+ic(qS.field, qS.field.val.device)
 # fig, ax = plt.subplots(1,3,figsize=(10,5))
 # ax[0].imshow(qS.to_plt(),**DLT_KW_IMAGE)
 # ax[0].set_title('source')
@@ -150,7 +158,7 @@ ic(qS.field)
 # is basically in how many parts we want to divide the image to get the size
 # of wanted details. The second function will plot the kernel on the image to
 # help us validate our choice of sigma.
-sigma = .01
+sigma = .4
 ic(sigma)
 # Version Domain Basic
 def k_gauss(dx: torch.Tensor) -> torch.Tensor:
@@ -185,20 +193,22 @@ if 'cuda' in device:
 dx_convention = 'square'
 # dx_convention = 'pixel'
 
-rho = 0.05
+rho = 1
 #
 # data_cost = mt.Ssd_normalized(T)
 data_cost = mt.Ssd(qT)
 
 mr = mt.metamorphosis(qS, qT, 0,
                       rho,
-                      cost_cst=.1,  # If the end result is far from the target, try decreasing the cost constant (reduce regularisation)
+                      cost_cst=.00001,  # If the end result is far from the target, try decreasing the cost constant (reduce regularisation)
                       rkhs=Hdisc,
                       integration_steps=10,  # If the deformation is big or complex, try increasing the number of integration steps
-                      n_iter=15,  #   If the optimisation did not converge, try increasing the number of iterations
+                      n_iter=50,  #   If the optimisation did not converge, try increasing the number of iterations
                       grad_coef=10,  # if the optimisation diverged, try decreasing the gradient coefficient
                       dx_convention=dx_convention,
                       data_term=data_cost,
+                      # optimizer_method="",
+                      lbfgs_max_iter=2,
                       hamiltonian_integration=True,  # Set to true if you want to have control over the intermediate steps of the optimisation
                       save_gpu_memory=False
                       )
@@ -206,6 +216,8 @@ if "cuda" in device:
     torch.cuda.synchronize()
     mem_usage = torch.cuda.max_memory_allocated(device)  # max memory used in bytes
 # mr.save(f'round_to_mot_rho{rho}',light_save = True)
+mr.plot_cost()
+plt.show()
 #%%
 import math
 
@@ -223,6 +235,18 @@ print('-_'*15)
 print("memory used : ",convert_size(mem_usage))
 print('-_'*15)
 print("\n")
+
+#%%
+import demeter.utils.torchbox as tb
+vec = mr.mp.get_deformation().detach().cpu() - mr.mp.id_grid
+tb.quiver_plot(
+    vec,
+    step=15,
+    color=GRIDDEF_YELLOW,
+    # dx_convention=,
+)
+plt.show()
+
 
 #%%
 _, fig_ax = mr.plot()
