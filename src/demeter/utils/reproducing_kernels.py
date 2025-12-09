@@ -1139,12 +1139,13 @@ def get_sigma_from_img_ratio(img_shape,subdiv,c=.1):
 
 
     :param img_shape: torch.Tensor or Tuple[int] : shape of the image
-    :param subdiv: int or Tuple[int] or List[Tuple[float]] or List[List[int]] :
+    :param subdiv: int or Tuple[int] or List[int] or List[Tuple[float]] or List[List[int]] :
         meant to encode the number of subdivisions of the grid, lets details
         the different cases:
          - int : the grid is divided in the same number of subdivisions in each direction
          - Tuple[int] : the grid is divided in the number of subdivisions given in the tuple
                             according to the dimensions of the image
+         - List[int] : each integer is broadcast to all dimensions, returning a list of sigma tuples
          - List[Tuple[float]] : If a tuple is given, we consider that it contains values of sigmas
          - List[List[int]] : If a list of list is given, we consider that each element of the list
                             is a list of integers that represent the number of subdivisions in each direction
@@ -1176,18 +1177,31 @@ def get_sigma_from_img_ratio(img_shape,subdiv,c=.1):
         _check_subdiv_tuple_size(subdiv,d)
         subdiv = [subdiv]
     elif isinstance(subdiv,list):
+        sigma_list = []
+        if all(isinstance(x,int) for x in subdiv):
+            for s_scalar in subdiv:
+                sb = tuple((s_scalar,) * d)
+                sigma_list.append(tuple(_get_sigma_monodim(u,s,c) for s,u in zip(sb,img_shape)))
+            return sigma_list
+
         for sb in subdiv:
-            if isinstance(sb,list):
-
-                for j in range(len(sb)):
-                    if not isinstance(sb[j],int):
-                        raise ValueError(f"subdiv was given as a list of lists {subdiv},"
-                                         f" all elements must be integers")
-                    sb[j] = get_sigma_from_img_ratio(img_shape,sb[j],c)
-
-            elif isinstance(sb,tuple):
+            if isinstance(sb,tuple):
                 _check_subdiv_tuple_size(sb,d)
-        return subdiv
+                sigma_list.append(tuple(_get_sigma_monodim(u,s,c) for s,u in zip(sb,img_shape)))
+            elif isinstance(sb,list):
+                if not all(isinstance(x,int) for x in sb):
+                    raise ValueError(f"subdiv was given as a list of lists {subdiv},"
+                                     f" all elements must be integers")
+                if len(sb) == 1:
+                    sb = tuple((sb[0],) * d)
+                elif len(sb) == d:
+                    sb = tuple(sb)
+                else:
+                    raise ValueError(f"subdiv list {sb} must have length 1 or {d} to match image shape {img_shape}")
+                sigma_list.append(tuple(_get_sigma_monodim(u,s,c) for s,u in zip(sb,img_shape)))
+            else:
+                raise ValueError(f"Unsupported element {sb} in subdiv list; expected list or tuple")
+        return sigma_list
 
     if len(subdiv) == 1:
         sigma = tuple([_get_sigma_monodim(u,s,c) for s,u in zip(subdiv[0],img_shape)])
@@ -1199,4 +1213,3 @@ def get_sigma_from_img_ratio(img_shape,subdiv,c=.1):
         ]
 
         return sigma
-
