@@ -235,8 +235,8 @@ class Geodesic_integrator(torch.nn.Module, ABC):
              by default False
 
         """
-        device = _get_device_from_momenta(momenta)
-        self._forward_initialize_integration(image, momenta, device, save, sharp, hamiltonian_integration, plot)
+        device = _get_device_from_momenta(momentum_ini)
+        self._forward_initialize_integration(image, momentum_ini, device, save, sharp, hamiltonian_integration, plot)
         for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step)):
             self._i = i
             self._forward_single_step(verbose)
@@ -293,7 +293,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         else:
             self._forward_direct_step()
 
-        self._test_nan_(self.image, self.momenta)
+        self._test_nan_(self.image, self.momentum)
 
         if self.flag_hamiltonian_integration:
             self.norm_v += self.norm_v_i / self.n_step
@@ -313,24 +313,24 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         momenta, self.image, self.field, self.residuals = torch.utils.checkpoint.checkpoint(
             self.step,
             self.image,
-            self.momenta,
+            self.momentum,
             use_reentrant=use_reentrant,
         )
         return 0
 
     def _forward_direct_step(self):
-        self.momenta, self.image, self.field, self.residuals = self.step(self.image, self.momenta)
+        self.momentum, self.image, self.field, self.residuals = self.step(self.image, self.momentum)
         return 0
 
     def _save_step(self):
         i = self._i
         self.image_stock[i] = self.image[0].detach().cpu() if self._detach_image else self.image[0]
         self.field_stock[i] = self.field[0].detach().cpu()
-        if isinstance(self.momenta, dict):
-            for k, v in self.momenta.items():
+        if isinstance(self.momentum, dict):
+            for k, v in self.momentum.items():
                 self.momentum_stock[i][k] = v.detach().cpu()
-        elif isinstance(self.momenta, torch.Tensor):
-            self.momentum_stock[i] = self.momenta.detach().cpu()
+        elif isinstance(self.momentum, torch.Tensor):
+            self.momentum_stock[i] = self.momentum.detach().cpu()
         self.residuals_stock[i] = self.residuals[0].detach().cpu()
 
 
@@ -1044,7 +1044,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
     def _initialize_LBFGS_(self, dt_step):
 
         self.optimizer = torch.optim.LBFGS(
-                self._dict_or_torch_parameter_(),
+                [self.parameter],
                 max_iter=self.lbfgs_max_iter,
                 history_size=self.lbfgs_history_size,
                lr=dt_step,

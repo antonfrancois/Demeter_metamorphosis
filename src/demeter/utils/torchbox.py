@@ -117,26 +117,78 @@ def resize_image(image: torch.Tensor | list[torch.Tensor],
     if isinstance(image, torch.Tensor):
         image = [image]
     device = image[0].device
-    Ishape = image[0].shape[2:]
+
+
+    def _spatial_shape_from_image(img: torch.Tensor):
+        """Infer spatial dims, accepting BCHW/BCDHW, channel-last, or bare volumes."""
+        if img.dim() >= 3 and img.shape[0] <= 4 and img.shape[1] <= 4:
+            return img.shape[2:]
+        if img.dim() > 2 and img.shape[-1] <= 4:
+            return img.shape[:-1]
+        return img.shape
+
+    spatial_shape = _spatial_shape_from_image(image[0])
+    spatial_dim = len(spatial_shape)
+    if spatial_dim < 2:
+        raise ValueError("resize_image expects at least 2 spatial dimensions")
+
+    def _extract_target_spatial(shape):
+        shape = tuple(int(s) for s in shape)
+        if len(shape) == spatial_dim:
+            return shape
+        if len(shape) >= spatial_dim + 2 and shape[0] <= 4 and shape[1] <= 4:
+            return shape[-spatial_dim:]
+        if len(shape) == spatial_dim + 1 and shape[-1] <= 4:
+            return shape[:-1]
+        if len(shape) > spatial_dim:
+            return shape[-spatial_dim:]
+        return shape
 
     if to_shape is None:
         if scale_factor is None:
             raise ValueError("Please provide either scale_factor or to_shape")
         if isinstance(scale_factor, float | int):
-            scale_factor = (scale_factor,) * len(Ishape)
-        Ishape_D = tuple([int(s * f) for s, f in zip(Ishape, scale_factor)])
+            scale_factor = (scale_factor,) * spatial_dim
+        Ishape_D = tuple(int(s * f) for s, f in zip(spatial_shape, scale_factor))
     else:
-        Ishape_D = to_shape
+        Ishape_D = _extract_target_spatial(to_shape)
 
     id_grid = make_regular_grid(Ishape_D, dx_convention='2square').to(device).to(image[0].dtype)
-    i_s = []
-    for i in image:
-        i_s.append(
-            torch.nn.functional.grid_sample(i.to(device), id_grid, mode, **DLT_KW_GRIDSAMPLE)
-        )
-    if len(i_s) == 1:
-        return i_s[0]
-    return i_s
+
+    def _prepare_image(img: torch.Tensor):
+        """Return (tensor shaped [B,C,*spatial], undo_fn)."""
+        undo = lambda x: x
+        if img.dim() == spatial_dim:
+            img = img.unsqueeze(0).unsqueeze(0)
+            undo = lambda x: x.squeeze(0).squeeze(0)
+        elif img.dim() == spatial_dim + 1:
+            if img.shape[-1] <= 4:
+                permute_order = (img.dim() - 1,) + tuple(range(img.dim() - 1))
+                img = img.permute(permute_order).unsqueeze(0)
+
+                def undo(x):
+                    x = x.squeeze(0)
+                    inv_order = tuple(range(1, x.dim())) + (0,)
+                    return x.permute(inv_order)
+            else:
+                img = img.unsqueeze(0)
+                undo = lambda x: x.squeeze(0)
+        elif img.dim() >= spatial_dim + 2:
+            pass  # already [B,C,*spatial]
+        else:
+            raise ValueError(f"Unsupported image shape {tuple(img.shape)} for resize_image")
+        return img, undo
+
+    outputs = []
+    for img in image:
+        img_prepared, undo = _prepare_image(img.to(device))
+        grid = id_grid if img_prepared.shape[0] == 1 else id_grid.expand(img_prepared.shape[0], *id_grid.shape[1:])
+        resized = torch.nn.functional.grid_sample(img_prepared, grid, mode, **DLT_KW_GRIDSAMPLE)
+        outputs.append(undo(resized))
+
+    if len(outputs) == 1:
+        return outputs[0]
+    return outputs
 
 
 
