@@ -6,6 +6,7 @@ import numpy as np
 import appdirs
 from dotenv import load_dotenv
 import csv
+from pathlib import Path
 
 from icecream import ic
 from matplotlib.colors import ListedColormap
@@ -13,9 +14,9 @@ from matplotlib.colors import ListedColormap
 # Charger les variables d'environnement à partir du fichier .env
 load_dotenv()
 
-ROOT_DIRECTORY = os.path.dirname(os.path.dirname(
+ROOT_DIRECTORY = Path(os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))
-))
+)))
 
 # ROOT_DIRECTORY = os.getcwd()
 # while not ROOT_DIRECTORY.endswith("Demeter_metamorphosis"):

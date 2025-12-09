@@ -58,8 +58,9 @@ def reg_open(number, size=None, requires_grad=False, device='cpu'):
   to the range `[0, 1]`.
       """
 
-    path = ROOT_DIRECTORY
-    path += '/examples/im2Dbank/reg_test_' + number + '.png'
+    path = (ROOT_DIRECTORY /
+            f'examples/im2Dbank/reg_test_{number}.png')
+    # path +=
 
     I = rgb2gray(plt.imread(path))
     I = torch.tensor(I[newaxis, newaxis, :],
