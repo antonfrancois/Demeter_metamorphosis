@@ -17,9 +17,10 @@ import demeter.utils.reproducing_kernels as rk
 import demeter.metamorphosis as mt
 import matplotlib.pyplot as plt
 
+from draft.Build_simplex_brain import data_cost
 
 cuda = torch.cuda.is_available()
-cuda = False
+# cuda = False
 device = 'cpu'
 if cuda:
     device = 'cuda:0'
@@ -156,25 +157,27 @@ def slc_plt(img, coord):
 
 def open_nii(path):
     # Load a NIfTI file and return it as a torch tensor on the chosen device.
-    nump = nib.load(path).get_fdata()
+    nii = nib.load(path)
+    nump = nib.as_closest_canonical(nii).get_fdata()
     return torch.from_numpy(nump).to(device)[None,None]
 
 img_path = ROOT_DIRECTORY / "examples/im3Dbank/"
 moving_p  = "IXI015-HH-1258-T1.nii.gz"
-fixed_p = "sri_spm_template_T1.nii"
+# fixed_p = "sri_spm_template_T1.nii"
+fixed_p = "mni_icbm152_t1_tal_nlin_asym_09c_masked.nii.gz"
 
 moving = open_nii(img_path / moving_p)
 fixed = open_nii(img_path / fixed_p)
 
-# Images have differents shapes
+# Images may have differents shapes
 ic(moving.shape, fixed.shape)
-fixed = fixed[...,0]
 
 # For real applications,
 to_shape = fixed.shape
-to_shape = (1,1,25,25,25)  # to test on cpu
-fixed = tb.resize_image(fixed, to_shape = to_shape) # to test on cpu
-moving = tb.resize_image(moving, to_shape = fixed.shape)
+# to_shape = (1,1,25,25,25)  # to test on cpu
+if to_shape != moving.shape:
+    fixed = tb.resize_image(fixed, to_shape = to_shape) # to test on cpu
+    moving = tb.resize_image(moving, to_shape = fixed.shape)
 ic(moving.shape, fixed.shape)
 _,_,D,W,H = fixed.shape
 coord = (D//2, H//2, W//3)
@@ -184,7 +187,7 @@ coord = (D//2, H//2, W//3)
 fixed = fixed /fixed.max()
 moving = moving /moving.max()
 
-cmp_img = tb.imCmp(moving, fixed)[0]
+cmp_img = tb.imCmp(moving, fixed, 'seg')[0]
 fig, ax = plt.subplots(3,1)
 # Quick visual inspection of the initial alignment
 ax[0].imshow(slc_plt(moving, coord), cmap='gray')
@@ -199,14 +202,14 @@ plt.show()
 # Build a multi-scale Gaussian RKHS kernel that controls the deformation
 # smoothness/scale used by the LDDMM optimizer.
 #%%
-ratios = [50, 40]
+ratios = [50, 30, 20]
 sigmas = rk.get_sigma_from_img_ratio(moving.shape, ratios)
 
 # sigma should be of the form [(s,s,s),(u,u,u),..]
 kernelOp = rk.Multi_scale_GaussianRKHS(
     sigmas, normalized= False
 )
-ic(kernelOp)
+print(kernelOp)
 
 
 ################################################
@@ -215,15 +218,21 @@ ic(kernelOp)
 # deformation, visualize convergence, and save the results.
 # rho = 0  Pure photometric registration
 # rho = 1  Pure geometric registration
+
+# data_cost = mt.Ssd(fixed)
+data_cost = mt.Mutual_Information(fixed)
+
+
 rho = .7
 print("\nApply LDDMM")
 mr = mt.metamorphosis(moving,fixed,
     momentum_ini = 0,
     rho = rho,
     kernelOperator=kernelOp,       #  Kernel
+    data_cost=data_cost,      # You can also design your own data_cost
     cost_cst=0.001,         # Regularization parameter
     integration_steps=10,   # Number of integration steps
-    n_iter=3,             # Number of optimization steps
+    n_iter=15,             # Number of optimization steps
     grad_coef=1,            # max Gradient coefficient
     data_term=None,         # Data term (default Ssd)
     safe_mode = False,      # Safe mode toggle (does not crash when nan values are encountered)
@@ -233,11 +242,11 @@ mr = mt.metamorphosis(moving,fixed,
 mr.plot_cost()
 # Extract the deformation field to inspect/serialize if needed.
 deform = mr.mp.get_deformation().detach()
-img_deformed = tb.imgDeform(fixed, deform, dx_convention= mr.dx_convention)
-cmp_imgtar = tb.imCmp(mr.mp.image.detach(), fixed, 'seg')[0]
-cmp_deftar = tb.imCmp(img_deformed, fixed, 'seg')[0]
+img_deformed = tb.imgDeform(fixed.to("cpu"), deform, dx_convention= mr.dx_convention)
+cmp_imgtar = tb.imCmp(mr.mp.image.detach(), fixed.cpu(), 'seg')[0]
+cmp_deftar = tb.imCmp(img_deformed, fixed.cpu(), 'seg')[0]
 
-fig, ax = plt.subplots(2,3)
+fig, ax = plt.subplots(2,3, figsize=(15,10), constrained_layout=True)
 ax[0,0].imshow(slc_plt(moving, coord), cmap='gray')
 ax[0,0].set_title('moving')
 ax[0,1].imshow(slc_plt(mr.mp.image, coord), cmap='gray')
@@ -252,7 +261,8 @@ ax[1,1].set_title('img deformed vs target')
 ax[1,2].imshow(slc_plt(cmp_imgtar, coord))
 ax[1,2].set_title('img integrated vs target')
 plt.show()
+fig.savefig(ROOT_DIRECTORY / f"examples/results/lddmm_on_MRIbrains_rho_{rho}.png")
 
 
 # Save the registration object (controls, deformation, etc.) for reuse.
-# mr.save("test_lddm_on_MRIbrains")
+mr.save("test_lddm_on_MRIbrains")
