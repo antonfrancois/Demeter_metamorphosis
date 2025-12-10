@@ -9,7 +9,7 @@ import torch
 import __init__
 from math import prod, sqrt
 
-from kornia.geometry import scale
+
 
 from demeter.utils.decorators import time_it
 from demeter.metamorphosis import Geodesic_integrator,Optimize_geodesicShooting
@@ -389,6 +389,141 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         momentum_A = (momentum_A - d_affine.T @ momentum_A  / self.n_step)
         # momentum_T = momentum_T # Momentum T is constant
         return momentum_A, momentum_T, A_mat, translation, norm_l2_on_A
+
+    def _step_rotation_translation_(self, image, momentum_I, momentum_R, momentum_T, momentum_S, momentum_A, rot_mat, translation, scale):
+        momentum_R, momentum_T, momentum_S, rot_mat, translation, scale, d_rot, norm_R_2, norm_S_2 = \
+                self._compute_step_rotation_translation(
+                    momentum_R, rot_mat,
+                    momentum_T, translation,
+                    momentum_S, scale
+                )
+
+        # --- Vector field and residuals ---
+        # grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
+        # field, norm_V = self._compute_vectorField_(momentum_I, grad_image)
+        field = self._update_field_(momentum_I, image)
+
+        residuals = (1 - self.rho) * momentum_I
+
+        # --- Image update ---
+        deformation = self.id_grid - self.rho * field / self.n_step
+        image = self._update_image_semiLagrangian_(momentum_I, image, deformation, residuals)
+
+        # --- Momentum update ---
+        momentum_I = self._compute_div_momentum_semiLagrangian_(
+            deformation,
+            momentum_I,
+            cst=-sqrt(self.rho),
+            field=sqrt(self.rho) * field
+        )
+
+        # --- Hamiltonian Integration ---
+        if self.flag_hamiltonian_integration:
+            norm_l2_on_z = .5 * (residuals ** 2).sum()
+            self.ham_value = self.norm_v_i + norm_l2_on_z + norm_R_2
+
+        # --- Always output the same things ---
+        return (
+            momentum_I,
+            momentum_R,
+            momentum_T,
+            momentum_S,
+            momentum_A,
+            image,
+            self.rho * field,
+            residuals,
+            rot_mat,
+            translation,
+            scale
+        )
+
+    def _update_field_affine_(self, momentum, image, inv_A,b):
+        grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
+        # ic(grad_image.min().item(), grad_image.max().item(),self.dx_convention)
+
+
+        field_momentum = (grad_image * momentum.unsqueeze(2)).sum(dim=1)
+        affine_grid = tb.grid_from_rotation_translation(
+            self.id_grid,inv_A, -b
+        )
+        field_m_transported = tb.imgDeform(field_momentum, affine_grid)
+        field_momentum_grid = tb.grid_from_rotation(
+            tb.im2grid(field_m_transported), inv_A.T
+        )
+        field_momentum_a = tb.grid2im(field_momentum_grid)
+        field =  self.kernelOperator(field_momentum_a)
+        norm_v = None
+        if self.flag_hamiltonian_integration:
+            norm_v = .5 * self.rho * (field_momentum_a.clone() * field.clone()).sum()
+
+        field = -tb.im2grid(field)
+        self.norm_v_i = norm_v
+
+
+        # field, self.norm_v_i = self._compute_vectorField_(momentum, grad_image)
+        # self.field *= self._field_cst_mult()
+        # self.field *= sqrt(self.rho)
+
+        return field
+
+    def _step_affine_(self, image, momentum_I, momentum_R, momentum_T, momentum_S, momentum_A, rot_mat, translation, scale):
+        """
+        One integration step. Fully checkpoint-compliant: fixed number of outputs.
+        """
+        if self.debug:
+            print("\n" + "="*25)
+            print('step', self._i)
+
+        # --- Apply constraints ---
+        if self._i == 0 and self.constraints:
+            momentum_I = self._contrainte_(momentum_I, self.source)
+
+        # --- Rotation / Translation update ---
+        ic(momentum_A.requires_grad)
+        momentum_A, momentum_T, rot_mat, translation, norm_l2_on_A = self._compute_step_affine(
+                           momentum_A, rot_mat,
+                           momentum_T , translation
+        )
+        inv_a = torch.inverse(rot_mat)
+        # --- Vector field and residuals ---
+        # grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
+        # field, norm_V = self._compute_vectorField_(momentum_I, grad_image)
+        field = self._update_field_(momentum_I, image)
+
+        residuals = (1 - self.rho) * momentum_I
+
+        # --- Image update ---
+        deformation = self.id_grid - self.rho * field / self.n_step
+        image = self._update_image_semiLagrangian_(momentum_I, image, deformation, residuals)
+
+        # --- Momentum update ---
+        momentum_I = self._compute_div_momentum_semiLagrangian_(
+            deformation,
+            momentum_I,
+            cst=-sqrt(self.rho),
+            field=sqrt(self.rho) * field
+        )
+
+        # --- Hamiltonian Integration ---
+        if self.flag_hamiltonian_integration:
+            norm_l2_on_z = .5 * (residuals ** 2).sum()
+            self.ham_value = self.norm_v_i + norm_l2_on_z + norm_R_2
+
+        # --- Always output the same things ---
+        return (
+            momentum_I,
+            momentum_R,
+            momentum_T,
+            momentum_S,
+            momentum_A,
+            image,
+            self.rho * field,
+            residuals,
+            rot_mat,
+            translation,
+            scale
+        )
+
 
     def step(self, image, momentum_I, momentum_R, momentum_T, momentum_S, momentum_A, rot_mat, translation, scale):
         """
