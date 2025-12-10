@@ -16,6 +16,7 @@ from kornia.geometry.transform import resize
 from numpy import newaxis
 from matplotlib.widgets import Slider
 
+from demeter.utils.decorators import deprecated
 # import decorators
 from .toolbox import rgb2gray
 from . import bspline as mbs
@@ -197,7 +198,7 @@ def pad_to_same_size(img_1, img_2):
     return (img_1_padded, img_2_padded)
 
 
-def grid_from_rotation(grid, rot_mat):
+def grid_from_matrix(grid, rot_mat):
     if tuple(rot_mat.shape) == (2,2) and len(grid.shape) == 4:
         return  torch.einsum('ij,bhwj->bhwi',rot_mat, grid)
         # return rotated_grid
@@ -213,7 +214,7 @@ def grid_from_rotation(grid, rot_mat):
 def grid_from_rotation_translation(grid, rot_mat, translation):
 
         trans_grid  = grid + translation
-        rot_def =   grid_from_rotation(trans_grid, rot_mat)
+        rot_def =   grid_from_matrix(trans_grid, rot_mat)
         return rot_def
 
 def grid_from_rotation_translation_scaling(grid, rot_mat, translation, scale):
@@ -1143,17 +1144,13 @@ def temporal_img_cmp(img_1, img_2, seg = False, **kwargs):
 def checkDiffeo(field):
     if len(field.shape) == 4:
         _, H, W, _ = field.shape
-        det_jaco = detOfJacobian(field_2d_jacobian(field))[0]
+        det_jaco = detOfJacobian(field_jacobian(field))[0]
         I = .4 * torch.ones((H, W, 3))
         I[:, :, 0] = (det_jaco <= 0) * 0.83
         I[:, :, 1] = (det_jaco >= 0)
         return I
     elif len(field.shape) == 5:
-        field_im = grid2im(field)
-        jaco = SpatialGradient3d()(field_im)
-        # jaco = spacialGradient_3d(field,dx_convention='pixel')
-        det_jaco = detOfJacobian(jaco)
-        return det_jaco
+        return detOfJacobian(field_jacobian(field))
 
 
 @deco.deprecated("Please specify the dimension by using gridDef_plot_2d ot gridDef_plot_3d")
@@ -1806,6 +1803,30 @@ class RandomGaussianField:
         return divergence[None, None]
 
 
+def field_jacobian(field: torch.Tensor) -> torch.Tensor:
+    r"""
+    Compute the jacobian of a 2D or 3D vector field.
+
+    parameters:
+    -----------
+    field: torch.Tensor
+        2D field of shape (b, h, w, 2) or 3D field of shape (b, d, h, w, 3)
+
+    returns:
+    --------
+    jacobian of the field of shape (b, 2, 2, h, w) or (b, 3, 3, d, h, w)
+    """
+    if field.shape[-1] == 2 and field.dim() == 4:
+        f_d = grid2im(field)
+        return SpatialGradient()(f_d)#return field_2d_jacobian(field)
+    if field.shape[-1] == 3 and field.dim() == 5:
+        field_im = grid2im(field)
+        return SpatialGradient3d()(field_im)
+    raise ValueError(
+        f"field_jacobian expects a 2D or 3D field shaped as (b,h,w,2) or (b,d,h,w,3), got {tuple(field.shape)}"
+    )
+
+@deprecated
 def field_2d_jacobian(field):
     r"""
     compute the jacobian of the field
@@ -1842,9 +1863,9 @@ def field_2d_jacobian(field):
 
         plt.show()
     """
-
-    f_d = grid2im(field)
-    return SpatialGradient()(f_d)
+    return field_jacobian(field)
+    # f_d = grid2im(field)
+    # return SpatialGradient()(f_d)
 
 
 def field_2d_hessian(field_grad):

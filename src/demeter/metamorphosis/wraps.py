@@ -454,11 +454,13 @@ def rigid_along_metamorphosis(
     """
     if n_iter > 0 and momenta_ini == 0:
         for key in momenta_ini.keys():
-            if not key in ['momentum_I', 'momentum_R', 'momentum_T']:
+            if not key in ['momentum_I', 'momentum_R', 'momentum_T', 'momentum_A']:
                 raise ValueError("momenta_ini must be a dictionary containing the keywords:"
                         " - 'momentum_I' for the image"
                         " - 'momentum_R' for the rotation"
-                        " - 'momentum_T' for the translation")
+                        " - 'momentum_T' for the translation"
+                        " - 'momentum_A' for a full affine transformation (momentum R) will be ignored"
+                                 )
 
 
     mp = rd.RigidMetamorphosis_integrator(

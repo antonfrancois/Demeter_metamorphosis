@@ -390,7 +390,12 @@ class Geodesic_integrator(torch.nn.Module, ABC):
              by default False
 
         """
+        if 'momenta_A' in momenta.keys():
+            ic(momenta['momentum_A'].requires_grad)
         device = _get_device_from_momenta(momenta)
+        if 'momenta_A' in momenta.keys():
+            ic(momenta['momentum_A'].requires_grad)
+
         self._forward_initialize_integration(image, momenta, device, save, sharp, hamiltonian_integration, plot)
         for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step)):
             self._i = i
@@ -1058,6 +1063,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.lbfgs_max_iter = lbfgs_max_iter
         self.lbfgs_history_size = lbfgs_history_size
         self.debug = debug
+        if self.debug:
+            self.mp.debug = self.debug
 
         self.flag_hamiltonian_integration = hamiltonian_integration
         self.mp.kernelOperator.init_kernel(source)

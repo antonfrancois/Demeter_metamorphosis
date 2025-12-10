@@ -98,7 +98,7 @@ def initial_exploration(rigid_meta_optim,
         print(momenta.keys())
         rigid_meta_optim.mp.forward(rigid_meta_optim.source, momenta, save=False)
 
-        rot_def =   tb.grid_from_rotation(rigid_meta_optim.mp.id_grid, rigid_meta_optim. mp.rot_mat.T)
+        rot_def =   tb.grid_from_matrix(rigid_meta_optim.mp.id_grid, rigid_meta_optim. mp.rot_mat.T)
         img_rot = tb.imgDeform(rigid_meta_optim.source, rot_def.to('cpu'), dx_convention='2square')
         # img_rot = torch.clip(img_rot, 0, 1)
         loss_val = cf.SumSquaredDifference(rigid_meta_optim.target)(img_rot)
@@ -145,9 +145,14 @@ def optimize_on_rigid(mr,
 
         momenta = mtrt.prepare_momenta(
             mr.source.shape,
-            diffeo=False,rotation=rotation,translation=translation,scaling= scaling,affine=affine,
+            diffeo=False,
+            rotation=rotation,
+            translation=translation,
+            scaling= scaling,
+            affine=affine,
             **params_r
         )
+
         try:
             mr.forward(momenta, n_iter = n_iter, grad_coef= grad_coef)
         except OverflowError:
@@ -185,6 +190,8 @@ def optimize_on_rigid(mr,
         # )
         # plt.show()
         if plot:
+            mr.plot_cost()
+            plt.show()
             rot_def = mr.mp.get_rigidor()
             rotated_source = tb.imgDeform(mr.source,rot_def,dx_convention='2square')
             if len(mr.source.shape) == 5:
@@ -220,9 +227,9 @@ def optimize_on_rigid(mr,
             # print("anti best mom", (best_momentum - best_momentum.T)/2)
             # print("best loss",mr.data_loss)
             print("<"*10)
-        if best_loss < 1:
-            print("rigid_optim stop.")
-            break
+        # if best_loss < 1:
+        #     print("rigid_optim stop.")
+        #     break
     if verbose:
         print("Best find : ")
         print("loss :",best_loss)

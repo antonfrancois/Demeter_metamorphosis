@@ -1,3 +1,5 @@
+from xmlrpc.client import Error
+
 import __init__
 import torch
 from math import cos,sin
@@ -56,12 +58,18 @@ def plot(self):
     ax[2,2].set_title("source affine vs Target")
 
 path = "examples/results/rigid_meta/"
+device = "cuda:0"
 ###########################################################
 # open images
 size = (300, 300)
-source = tb.reg_open('rigid_s',size=size)
-target = tb.reg_open('rigid_t',size=size)
+# source = tb.reg_open('rigid_s',size=size)
+# target = tb.reg_open('rigid_t',size=size)
+# source = tb.reg_open('33',size=size)
+# target = tb.reg_open('fish',size=size)
+source = tb.reg_open('20',size=size)
+target = tb.reg_open('17',size=size)
 
+source.to(device)
 # source = smooth(source, 20)
 # target = smooth(target, 20)
 
@@ -88,13 +96,18 @@ plt.show()
 # fig.savefig(path + "toyexample_sourcetarget.pdf")
 
 # %%
+print("")
+print("="*20)
+print("Initial exploration")
 integration_steps = 10
 
 
 
 kernelOperator = rk.DummyKernel()
 
-datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'), gamma=1, plot=False)
+datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'),
+                                gamma=1, normalize_ssd=False,
+                                plot=False)
 # datacost = mt.Rotation_MutualInformation_Cost(target_b.to('cuda:0'), alpha=1)
 
 mr_rigid = mt.rigid_along_metamorphosis(
@@ -109,22 +122,28 @@ mr_rigid = mt.rigid_along_metamorphosis(
     lbfgs_max_iter=20
 )
 
-top_params = rg.initial_exploration(mr_rigid, r_step = 50,
+top_params = rg.initial_exploration(mr_rigid, r_step = 20,
                                     max_output = 1, verbose=True)
-print(top_params)
+print("top_params : ",top_params)
 
-best_loss, best_momenta, best_rot = rg.optimize_on_rigid(
+print("")
+print("="*20)
+print("Optimize on best exploration ")
+best_loss, best_priors, best_rot = rg.optimize_on_rigid(
     mr_rigid, top_params,
     n_iter=10, grad_coef = .1,
-    verbose=True, plot = True, affine=True,
+    # affine=True,
+    rotation=True, scaling=False, translation=True,
+    verbose=True, plot = True,
 )
 print(f"best_loss : {best_loss}")
 print(f"best_rot : {best_rot}")
-print(f"best_momenta : {best_momenta}")
+print(f"best_priors : {best_priors}")
 id = 1
 
 
-# #%%
+
+#%%
 # #####################################################
 # # Choose a specific rigid optimisation changes the optimisation
 #
@@ -136,7 +155,8 @@ id = 1
 # print(f"best_momenta : {best_momenta}")
 # # {'rot_prior': torch.tensor(-1.0472), 'trans_prior': None, 'scale_prior': None}
 # id = 2
-#
+
+
 # #%%
 # best_momenta = {'affine_prior': torch.tensor([[-0.5799,  3.0117],
 #         [-3.0049, -0.5558]]),
@@ -146,42 +166,49 @@ id = 1
 #%%
 #####################################################
 # Check the rigid optimisation
+print("")
+print("="*20)
+print("Check the rigid optimisation")
 
-
-print(f"best_momenta : {best_momenta}")
-param = best_momenta.copy()
+print(f"best_momenta : {best_priors}")
+param = best_priors.copy()
 momenta = mt.prepare_momenta(
     source_b.shape,
     diffeo = False,
-    affine = True,
+    # affine = True,
+    rotation=True, scaling=False, translation=True,
     device = "cpu",
     requires_grad = False,
     **param
 )
-print(f"best_momenta : {best_momenta}")
+print(f"best_priors : {best_priors}")
 
 print(f"momenta : {momenta}")
-
+mr_rigid.mp.debug = False
 mr_rigid.mp.forward(source_b, momenta.copy(), save =  True)
 
 plot(mr_rigid)
 plt.show()
 
-#%%
 
+
+#%%
+integration_steps = 10
 #%% lddmm along rigid
 #########################################################
 # perfom lddmm along rigid
-sigma= [  7, 15]
+sigma= [  7, 10]
 sigma = [(s,)*2 for s in sigma]
-alpha = .5
+alpha = 1
 rho = 1
-cost_cst = 1
-cost_field_cst = 1000
-cost_affine_cst = 1
+cost_cst = 0
+cost_field_cst = 1
+cost_affine_cst = 0
 
 kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False, kernel_reach =6)
-datacost = mt.Rotation_Ssd_Cost(target_b.to("cuda:0"), gamma=alpha)
+datacost = mt.Rotation_Ssd_Cost(target_b.to("cuda:0"),
+                                gamma=alpha, normalize_ssd=False,
+                                verbose=True, plot=True)
 
 
 # best_loss = torch.inf
@@ -189,17 +216,27 @@ datacost = mt.Rotation_Ssd_Cost(target_b.to("cuda:0"), gamma=alpha)
 #     print(f"\n\noptimistion {i} on  {len(top_param_rot)}")
 momenta = mt.prepare_momenta(
     source_b.shape,
-    affine = True,
-    # rotation=True,scaling=True,translation=True,
+    # affine = True,
+    # diffeo = False,
+    rotation=True,scaling=False,translation=True,
+    device = "cuda:0",
     # **best_momenta
 )
 # momenta["momentum_R"].requires_grad = False
 # momenta["momentum_S"].requires_grad = False
 # momenta["momentum_T"].requires_grad = False
 
+momenta_n = {
+    'momentum_R': momenta['momentum_R'],
+    'momentum_T': momenta['momentum_T'],
+    'momentum_I': momenta['momentum_I'],
+    # 'momentum_R': momenta['momentum_R'],
+}
+
+#%%
 
 mr = mt.rigid_along_metamorphosis(
-  source_b, target_b, momenta_ini=momenta,
+  source_b, target_b, momenta_ini=momenta_n,
   kernelOperator= kernelOperator,
   rho = rho,
   data_term=datacost ,
@@ -207,13 +244,14 @@ mr = mt.rigid_along_metamorphosis(
   cost_cst=cost_cst,
   cost_field_cst = cost_field_cst,
   cost_affine_cst = cost_affine_cst,
-  n_iter=10,
+  n_iter=5,
     grad_coef=.1,
-    # optimizer_method='Adam',
+    # optimizer_method='adadelta',
   save_gpu_memory=False,
   lbfgs_max_iter = 40,
   lbfgs_history_size = 20,
-    safe_mode=True
+    safe_mode=True,
+    debug=False,
 )
 best = False
 mr.plot_cost()
@@ -237,7 +275,7 @@ mt.free_GPU_memory(mr)
 
 #%%
 plot(mr)
-plt.show()
+# plt.show()
 
 
 #%%
