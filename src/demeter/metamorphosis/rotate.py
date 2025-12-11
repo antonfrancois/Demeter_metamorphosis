@@ -488,7 +488,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         # --- Vector field and residuals ---
         # grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
         # field, norm_V = self._compute_vectorField_(momentum_I, grad_image)
-        field = self._update_field_(momentum_I, image)
+        field = self._update_field_affine_(momentum_I, image, inv_a, -translation)
 
         residuals = (1 - self.rho) * momentum_I
 
@@ -507,7 +507,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         # --- Hamiltonian Integration ---
         if self.flag_hamiltonian_integration:
             norm_l2_on_z = .5 * (residuals ** 2).sum()
-            self.ham_value = self.norm_v_i + norm_l2_on_z + norm_R_2
+            self.ham_value = self.norm_v_i + norm_l2_on_z
 
         # --- Always output the same things ---
         return (
