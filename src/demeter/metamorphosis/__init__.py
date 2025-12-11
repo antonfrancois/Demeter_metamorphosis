@@ -8,4 +8,5 @@ from .joined import Weighted_joinedMask_Metamorphosis_integrator,Weighted_joined
 from .simplex import Simplex_sqrt_Metamorphosis_integrator,Simplex_sqrt_Shooting
 from .rotate import *
 from .data_cost import *
+from .var_classes import Momenta
 # import metamorphosis.data_cost
