@@ -34,7 +34,7 @@ ax[0].imshow(S[0,0].cpu(),**DLT_KW_IMAGE)
 ax[0].set_title('source')
 ax[1].imshow(T[0,0].cpu(),**DLT_KW_IMAGE)
 ax[1].set_title('target')
-ax[2].imshow(tb.imCmp(S,T,'seg'),origin='lower')
+ax[2].imshow(tb.imCmp(S,T,'seg')[0],origin='lower')
 ax[2].set_title('superposition of S and T')
 
 ######################################################################
@@ -45,10 +45,10 @@ momentum_ini = 0
 mr = mt.lddmm(S, T, momentum_ini,
       kernelOperator = kernel_op,
       cost_cst=.0001,
-      integration_steps=100,
+      integration_steps=10,
       n_iter=15,
       grad_coef=1,
-      integration_method="Eulerian",
+      # integration_method="Eulerian",
       dx_convention='pixel',
 )
 mr.plot()

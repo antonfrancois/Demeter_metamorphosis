@@ -81,7 +81,7 @@ ax[0].imshow(S[0,0],**DLT_KW_IMAGE)
 ax[0].set_title('source')
 ax[1].imshow(T[0,0],**DLT_KW_IMAGE)
 ax[1].set_title('target')
-ax[2].imshow(tb.imCmp(S,T,'seg'),origin='lower')
+ax[2].imshow(tb.imCmp(S,T,'seg')[0],origin='lower')
 ax[2].set_title('superposition of S and T')
 plt.show()
 

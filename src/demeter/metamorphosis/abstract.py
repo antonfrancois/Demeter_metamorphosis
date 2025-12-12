@@ -58,6 +58,7 @@ from ..utils import cost_functions as cf
 from ..utils import fill_saves_overview as fill_saves_overview
 
 from ..metamorphosis import data_cost as dt
+from .var_classes import Momenta
 
 # TO DRAW THE BACKWARD GRAPH
 # from torchviz import make_dot
@@ -69,13 +70,34 @@ from ..metamorphosis import data_cost as dt
 # =========================================================================
 # See them as a toolkit
 
-def _get_device_from_momenta( momenta_ini):
-    if isinstance(momenta_ini, dict):
-        return next((tensor.device for tensor in momenta_ini.values() if tensor.is_cuda), 'cpu')
-    elif isinstance(momenta_ini, torch.Tensor):
-        return momenta_ini.device
-    else:
-        raise ValueError("momenta_ini must be a tensor or a dict ")
+def _get_device_from_momenta(momenta_ini: Momenta):
+    if isinstance(momenta_ini, Momenta):
+        for tensor in momenta_ini.as_dict().values():
+            if tensor.is_cuda:
+                return tensor.device
+        # fall back to first tensor device or cpu
+        first = next(iter(momenta_ini.as_dict().values()), None)
+        return first.device if first is not None else "cpu"
+    raise TypeError(f"momenta_ini must be a Momenta instance, got {type(momenta_ini)}")
+
+
+def _momenta_to_device(momenta: Momenta, device: str) -> Momenta:
+    return Momenta(**{k: v.to(device) for k, v in momenta.as_dict().items()})
+
+
+def _momenta_detach(momenta: Momenta) -> Momenta:
+    return Momenta(**{k: v.detach().clone() for k, v in momenta.as_dict().items()})
+
+
+def _zero_like_momenta(momenta: Momenta, device: str) -> Momenta:
+    return Momenta(**{k: torch.zeros_like(v).to(device) for k, v in momenta.as_dict().items()})
+
+
+def _primary_tensor(momenta: Momenta) -> torch.Tensor:
+    values = momenta.as_dict().values()
+    if not values:
+        raise ValueError("Momenta has no tensor fields")
+    return next(iter(values))
 
 def free_GPU_memory(mr):
     mr.to_device('cpu')
@@ -191,8 +213,8 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         for tensor in tensors:
             if isinstance(tensor, torch.Tensor):
                 self.check_nan(tensor)
-            elif isinstance(tensor, dict):
-                for v in tensor.values():
+            elif isinstance(tensor, Momenta):
+                for v in tensor.as_dict().values():
                     self.check_nan(v)
 
     def _flatten_momenta(self,momenta_dict):
@@ -353,7 +375,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
     def forward(self,
                 image,
-                momenta,
+                momenta: Momenta,
                 save=True,
                 plot=0,
                 t_max=1,
@@ -390,8 +412,18 @@ class Geodesic_integrator(torch.nn.Module, ABC):
              by default False
 
         """
+        if not isinstance(momenta, Momenta):
+            raise TypeError(f"'momenta' must be a Momenta instance, got {type(momenta)}")
         device = _get_device_from_momenta(momenta)
-        self._forward_initialize_integration(image, momenta, device, save, sharp, hamiltonian_integration, plot)
+        self._forward_initialize_integration(
+            image,
+            _momenta_to_device(momenta, device),
+            device,
+            save,
+            sharp,
+            hamiltonian_integration,
+            plot,
+        )
         for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step)):
             self._i = i
             self._forward_single_step(verbose)
@@ -406,7 +438,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
 
 
-    def _forward_initialize_integration(self, image, momenta, device, save, sharp, hamiltonian_integration, plot):
+    def _forward_initialize_integration(self, image, momenta: Momenta, device, save, sharp, hamiltonian_integration, plot):
         self._init_sharp_(sharp)
         self.source = image.detach().to(device)
         self.image = image.clone().to(device)
@@ -428,10 +460,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             shape_field = self.field.shape[1:]
             self.image_stock = torch.zeros((T,) + shape_image)
             self.field_stock = torch.zeros((T,) + shape_field)
-            if isinstance(momenta, torch.Tensor):
-                self.momentum_stock =  torch.zeros((T,) + shape_image)
-            elif isinstance(momenta, dict):
-                self.momentum_stock = [{k: torch.zeros_like(v) for k, v in momenta.items()} for _ in range(T)]
+            self.momentum_stock = [_zero_like_momenta(momenta, device="cpu") for _ in range(T)]
             self.residuals_stock = torch.zeros((T,) + shape_image)
 
         if self.flag_hamiltonian_integration:
@@ -478,11 +507,9 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         i = self._i
         self.image_stock[i] = self.image[0].detach().cpu() if self._detach_image else self.image[0]
         self.field_stock[i] = self.field[0].detach().cpu()
-        if isinstance(self.momenta, dict):
-            for k, v in self.momenta.items():
-                self.momentum_stock[i][k] = v.detach().cpu()
-        elif isinstance(self.momenta, torch.Tensor):
-            self.momentum_stock[i] = self.momenta.detach().cpu()
+        if isinstance(self.momenta, Momenta):
+            detached = {k: v.detach().cpu() for k, v in self.momenta.as_dict().items()}
+            self.momentum_stock[i] = Momenta(**detached)
         self.residuals_stock[i] = self.residuals[0].detach().cpu()
 
 
@@ -520,8 +547,11 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         :return: (tensor array) of shape [B,H,W,2]
         """
 
+        # if isinstance(momentum, Momenta):
+        #     momentum = _primary_tensor(momentum)
+
         # C = residuals.shape[1]
-        field_momentum = (grad_image * momentum.unsqueeze(2)).sum(dim=1)
+        field_momentum = (grad_image * momentum.momentum_I.unsqueeze(2)).sum(dim=1)
         field =  self.kernelOperator(field_momentum)
         norm_v = None
         if self.flag_hamiltonian_integration:
@@ -537,6 +567,8 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         :return: (tensor array) of shape [B,H,W,2]
         """
 
+        if isinstance(momentum, Momenta):
+            momentum = _primary_tensor(momentum)
         wheigths = self.channel_weight.to(momentum.device)
         W = wheigths.sum()
         # ic(residuals.shape,self.channel_weight.shape)
@@ -632,27 +664,28 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         """
 
         div_v_times_p = cst * (
-            momentum
+            momentum.momentum_I
             * tb.Field_divergence(dx_convention=self.dx_convention)(field)[0, 0]
         )
-        momentum = (
+        momentum.momentum_I = (
             tb.imgDeform(
-                momentum, deformation, dx_convention=self.dx_convention, clamp=False
+                momentum.momentum_I, deformation, dx_convention=self.dx_convention, clamp=False
             )
             - div_v_times_p / self.n_step
         )
         return momentum
 
     def _compute_sharp_intermediary_residuals_(self):
-        device = self.momenta.device
-        resi_cumul = torch.zeros(self.momenta.shape, device=device)
+        base = _primary_tensor(self.momenta)
+        device = base.device
+        resi_cumul = torch.zeros(base.shape, device=device)
         # for k,phi in enumerate(self._phis[self._i][:]):
         for k, phi in enumerate(self._phis[self._i][1:]):
-            resi_cumul += tb.imgDeform(self.momentum_stock[k][None].to(device),
+            resi_cumul += tb.imgDeform(_primary_tensor(self.momentum_stock[k])[None].to(device),
                                        phi,
                                        dx_convention=self.dx_convention,
                                        clamp=False)
-        resi_cumul = resi_cumul + self.momenta
+        resi_cumul = resi_cumul + base
         return resi_cumul
         # Non sharp but working residual
         # if self._i >0:
@@ -678,7 +711,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     def _update_image_semiLagrangian_(self, momentum, image, deformation, residuals=None, sharp=False):
         if residuals is None:
             # z = sqrt(1 - rho) * p and I = v gradI + sqrt(1-rho) * z
-            residuals = (1 - self.rho) * momentum
+            residuals = (1 - self.rho) * momentum.momentum_I
         self.norm_z_i = None
         if self.flag_hamiltonian_integration:
             self.norm_z_i = .5 * residuals.pow(2).sum()
@@ -758,7 +791,8 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             self.id_grid = self.id_grid.to(device)
             self.field = self.field.to(device)
             self.residuals = self.residuals.to(device)
-            self.momenta = self.momenta.to(device)
+            if isinstance(self.momenta, Momenta):
+                self.momenta = _momenta_to_device(self.momenta, device)
 
             # self.
 
@@ -866,8 +900,8 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             cmap="gray", extent=[-1, 1, -1, 1], origin="lower", vmin=0, vmax=1
         )
         # v_abs_max = (self.residuals_stock.abs().max()).max()
-        v_abs_max = torch.quantile(self.momenta.abs(), 0.99)
-        # v_abs_max = torch.quantile(self.momenta['momentum_I'].abs(), 0.99)
+        base_momentum = _primary_tensor(self.momenta)
+        v_abs_max = torch.quantile(base_momentum.abs(), 0.99)
         kw_residuals_args = dict(
             cmap="RdYlBu_r",
             extent=[-1, 1, -1, 1],
@@ -876,7 +910,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             vmax=v_abs_max,
         )
         size_fig = 5
-        C = self.momentum_stock.shape[1]
+        C = 1
         fig, ax = plt.subplots(
             n_figs,
             2 + C,
@@ -895,7 +929,8 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
             for j in range(C):
                 r_s = ax[i, j + 1].imshow(
-                    self.momentum_stock[t, j].detach().numpy(), **kw_residuals_args
+                    self.momentum_stock[t].detach().momentum_I[0,0].numpy(),
+                    **kw_residuals_args
                 )
                 ax[i, j + 1].axis("off")
 
@@ -1126,9 +1161,11 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         :return: float
         """
 
+        # if isinstance(momentum, Momenta):
+        #     momentum = _primary_tensor(momentum)
         # Computes only
         grad_source = tb.spatialGradient(image, dx_convention=self.dx_convention)
-        field_momentum = (grad_source * momentum.unsqueeze(2)).sum(dim=1)  # / C
+        field_momentum = (grad_source * momentum.momentum_I.unsqueeze(2)).sum(dim=1)  # / C
         field = self.mp.kernelOperator(field_momentum)
 
         norm_v = (field_momentum * field).sum()
@@ -1157,16 +1194,16 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
     def get_geodesic_distance(self, only_zero=False):
         if only_zero:
-            return float(self._compute_V_norm_(self.to_analyse[0], self.source))
+            return float(self._compute_V_norm_(_primary_tensor(self.to_analyse[0]), self.source))
         else:
             dist = float(
-                self._compute_V_norm_(self.mp.momentum_stock[0][None],
+                self._compute_V_norm_(_primary_tensor(self.mp.momentum_stock[0])[None],
                                       self.mp.source)
             )
-            for t in range(self.mp.momentum_stock.shape[0] - 1):
+            for t in range(len(self.mp.momentum_stock) - 1):
                 dist += float(
                     self._compute_V_norm_(
-                        self.mp.momentum_stock[t + 1][None],
+                        _primary_tensor(self.mp.momentum_stock[t + 1])[None],
                         self.mp.image_stock[t][None],
                     )
                 )
@@ -1192,8 +1229,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.optimizer.step(verbose=False)
 
     def _dict_or_torch_parameter_(self):
-        if isinstance(self.parameter, dict):
-            return [v for k, v in self.parameter.items()]
+        if isinstance(self.parameter, Momenta):
+            return [v for v in self.parameter.as_dict().values()]
         elif isinstance(self.parameter, torch.Tensor):
             return [self.parameter]
 
@@ -1296,14 +1333,12 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         plt.show()
 
     def _build_parameter_dict_(self, momentum_ini):
-        if isinstance(momentum_ini, dict):
+        if isinstance(momentum_ini, Momenta):
             return momentum_ini
-        elif isinstance(momentum_ini, torch.Tensor):
-            return {'momentum_ini': momentum_ini}
-        else:
-            raise ValueError("In Optimize_geodesicShooting forward, "
-                             "momentum_ini must be a tensor or a dict "
-                             f"of tensors. Got : {type(momentum_ini)}")
+        raise ValueError(
+            "In Optimize_geodesicShooting forward, momentum_ini must be a Momenta "
+            f"instance. Got : {type(momentum_ini)}"
+        )
 
 
 
@@ -1330,12 +1365,13 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         """
         def _detach(p):
-            try:
-                return (p.detach().clone())
-            except AttributeError:
-                return {k: v.detach() for k, v in p.items()}.copy()
+            if isinstance(p, Momenta):
+                return _momenta_detach(p)
+            raise TypeError(f"parameter must be Momenta, got {type(p)}")
 
         print("momenta type", type(momenta_ini))
+        if not isinstance(momenta_ini, Momenta):
+            raise TypeError(f"momenta_ini must be a Momenta instance, got {type(momenta_ini)}")
         device = _get_device_from_momenta(momenta_ini)
 
         self.source = self.source.to(device)
@@ -1343,7 +1379,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         # self.mp.kernelOperator.kernel = self.mp.kernelOperator.kernel.to(z_0.device)
         self.data_term.to_device(device)
 
-        self.parameter = momenta_ini#.copy()  # optimized variable
+        self.parameter = _momenta_to_device(momenta_ini, device)
 
         # self.parameter = self._build_parameter_dict_(momenta_ini)
         self._initialize_optimizer_(grad_coef)
@@ -1370,7 +1406,6 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             # print("//////" * 20)
             # print(f"      {self._iter_}/{n_iter}")
             # print("//////" * 20)
-            ic("PARAM",self.parameter)
             self._step_optimizer_()
             loss_stock = self._cost_saving_(i, loss_stock)
 
@@ -1402,17 +1437,14 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.mp.to_device(device)
         self.source = self.source.to(device)
         self.target = self.target.to(device)
-        if isinstance(self.parameter, dict):
-            self.parameter = {k: v.to(device) for k, v in self.parameter.items()}
-        else:
-            self.parameter = self.parameter.to(device)
+        if isinstance(self.parameter, Momenta):
+            self.parameter = _momenta_to_device(self.parameter, device)
         self.id_grid = self.id_grid.to(device)
         self.data_term.to_device(device)
         try:
-            self.to_analyse = (
-                {k: v.to(device) for k, v in self.to_analyse[0].items()},
-                self.to_analyse[1].to(device)
-            )
+            analysed_param = self.to_analyse[0]
+            analysed_param = _momenta_to_device(analysed_param, device)
+            self.to_analyse = (analysed_param, self.to_analyse[1].to(device))
         except AttributeError:
             pass
 

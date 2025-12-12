@@ -4,8 +4,9 @@ import sys
 from icecream import ic
 from warnings import warn
 
-# import metamorphosis as mt
+# Import directly to avoid circular imports through __init__
 from . import classic as cl
+from .var_classes import Momenta
 from . import constrained as cn
 from . import simplex as sp
 from . import joined as jn
@@ -13,11 +14,17 @@ from . import rotate as rd
 
 from ..utils import torchbox as tb
 from ..utils.decorators import time_it, monitor_gpu
+# from demeter.metamorphosis.var_classes import Momenta
 
 
 def _commun_before(momentum_ini, source):
     if type(momentum_ini) in [int, float]:
-        momentum_ini = momentum_ini * torch.ones(source.shape, device=source.device)
+        # momentum_ini = momentum_ini * torch.ones(source.shape, device=source.device)
+        momentum_ini = Momenta.from_config(
+            image_shape=source.shape,
+            diffeo=True, rotation=False, affine=False,translation=False,scaling=False
+        )
+        ic(momentum_ini)
     momentum_ini.requires_grad = True
 
     return momentum_ini

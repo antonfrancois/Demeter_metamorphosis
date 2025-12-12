@@ -85,6 +85,26 @@ class Momenta:
                 tensor.requires_grad_(flag)
         return self
 
+    def detach(self) -> "Momenta":
+        """Detach all present tensor fields and return self."""
+        for name in _MOMENTA_FIELDS:
+            tensor = getattr(self, name)
+            if tensor is not None:
+                setattr(self, name, tensor.detach())
+        return self
+
+    def __repr__(self):
+        # Keep a readable summary even when optional tensors are absent
+        lines = ["Momenta("]
+        for name in _MOMENTA_FIELDS:
+            tensor = getattr(self, name)
+            if tensor is None:
+                lines.append(f"\t{name}=None")
+            else:
+                lines.append(f"\t{name}=Tensor(shape={tuple(tensor.shape)}, device={tensor.device}, dtype={tensor.dtype})")
+        lines.append(")")
+        return ",\n".join(lines)
+
     @classmethod
     def from_config(
         cls,

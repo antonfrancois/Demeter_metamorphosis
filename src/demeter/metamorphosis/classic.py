@@ -25,6 +25,7 @@ import torch
 from math import prod, sqrt
 
 from .abstract import Geodesic_integrator, Optimize_geodesicShooting
+from .var_classes import Momenta
 
 from demeter.constants import *
 from ..utils import torchbox as tb
@@ -123,7 +124,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
         return (momentum,
                 image,
                 self.rho * field.detach(),
-                (1 - self.rho) * momentum.detach())
+                (1 - self.rho) * momentum.momentum_I.detach())
 
     def _step_sharp_semiLagrangian(self):
         # device = self.image.device
@@ -246,7 +247,7 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
         return {**params_all, **params_spe}
 
     # @monitor_gpu
-    def cost(self, momentum_ini: torch.Tensor) -> torch.Tensor:
+    def cost(self, momentum_ini: Momenta) -> torch.Tensor:
         r"""
         cost computation
 
@@ -279,7 +280,7 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
 
 
             # # Norm on the residuals only
-            self.norm_l2_on_z = .5 * (momentum_ini ** 2).sum() / prod(self.source.shape[2:])
+            self.norm_l2_on_z = .5 * (momentum_ini.momentum_I ** 2).sum() / prod(self.source.shape[2:])
 #             print_gpumemory("In cost; After norm_z")
 
         self.total_cost = self.data_loss + \
