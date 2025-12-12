@@ -110,7 +110,7 @@ mr_rigid = mt.rigid_along_metamorphosis(
 )
 
 top_params = rg.initial_exploration(mr_rigid, r_step = 100,
-                                    max_output = 5, verbose=True)
+                                    max_output = 1, verbose=True)
 print(top_params)
 
 best_loss, best_momenta, best_rot = rg.optimize_on_rigid(
@@ -122,6 +122,7 @@ print(f"best_loss : {best_loss}")
 print(f"best_rot : {best_rot}")
 print(f"best_momenta : {best_momenta}")
 id = 1
+
 
 
 # #%%
@@ -162,7 +163,7 @@ print(f"best_momenta : {best_momenta}")
 
 print(f"momenta : {momenta}")
 
-mr_rigid.mp.forward(source_b, momenta.copy(), save =  True)
+mr_rigid.mp.forward(source_b, momenta.clone(), save =  True)
 
 plot(mr_rigid)
 plt.show()
@@ -192,6 +193,7 @@ momenta = mt.prepare_momenta(
     # rotation=True,scaling=True,translation=True,
     **best_momenta
 )
+ic(momenta)
 # momenta["momentum_R"].requires_grad = False
 # momenta["momentum_S"].requires_grad = False
 # momenta["momentum_T"].requires_grad = False

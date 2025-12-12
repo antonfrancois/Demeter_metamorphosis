@@ -198,15 +198,20 @@ class Geodesic_integrator(torch.nn.Module, ABC):
     def step(self, image, momentum):
         pass
 
-    def check_nan(self, tensor):
-        if tensor.isnan().any():
-            raise OverflowError("Some nan where produced ! the integration diverged",
+    def check_nan(self, input):
+        if isinstance(input, torch.Tensor):
+            if input.isnan().any():
+                raise OverflowError("Some nan where produced ! the integration diverged",
                                 "changing the parameters is needed. "
                                 "You can try:"
                                 "\n- increasing n_step (deformation more complex"
                                 "\n- decreasing grad_coef (convergence slower but more stable)"
                                 "\n- increasing sigma_v (catching less details)"
                                 )
+        elif isinstance(input, Momenta):
+            if input.has_nan():
+                raise OverflowError("Some nan where produced ! the integration diverged,"
+                                    f"Momentum nan report {input.nan_report()}",)
 
     def _test_nan_(self, *tensors):
 
@@ -667,13 +672,13 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             momentum.momentum_I
             * tb.Field_divergence(dx_convention=self.dx_convention)(field)[0, 0]
         )
-        momentum.momentum_I = (
+        momentum_I = (
             tb.imgDeform(
                 momentum.momentum_I, deformation, dx_convention=self.dx_convention, clamp=False
             )
             - div_v_times_p / self.n_step
         )
-        return momentum
+        return momentum_I
 
     def _compute_sharp_intermediary_residuals_(self):
         base = _primary_tensor(self.momenta)

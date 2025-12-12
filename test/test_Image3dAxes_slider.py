@@ -4,7 +4,6 @@ import pytest
 import matplotlib.pyplot as plt
 
 from demeter.utils.torchbox import temporal_img_cmp
-from draft.visualiseGeo_refactor import Image3dAxes_slider
 
 
 # Path to your test file

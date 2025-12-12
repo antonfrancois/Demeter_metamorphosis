@@ -138,6 +138,8 @@ def optimize_on_rigid(mr,
                       plot = False):
     # best_loss = top_params[0][0]
     best_loss = torch.inf
+    best_momenta = None
+    best_rot = None
     for i,(val,params_r) in  enumerate(top_params):
         if verbose:
             print(">"*10)
@@ -164,22 +166,17 @@ def optimize_on_rigid(mr,
         # )
 
         best = False
-        def _get_momentums(name):
-            try:
-                return mr.to_analyse[0][name].detach().cpu()
-            except KeyError:
-                return None
-
         if mr.data_loss < best_loss or mr.data_loss == 0:
             best_loss = mr.data_loss
-            best_momenta = dict(
-                affine_prior = mr.to_analyse[0].detach().momentum_A,
-                 rot_prior= mr.to_analyse[0].detach().momentum_R,
-                trans_prior=mr.to_analyse[0].detach().momentum_T,
-                scale_prior=mr.to_analyse[0].detach().momentum_S
-            )
+            if mr.optimized_momenta is not None:
+                best_momenta = dict(
+                    affine_prior = mr.optimized_momenta.detach().momentum_A,
+                     rot_prior= mr.optimized_momenta.detach().momentum_R,
+                    trans_prior=mr.optimized_momenta.detach().momentum_T,
+                    scale_prior=mr.optimized_momenta.detach().momentum_S
+                )
+                best_rot = mr.mp.rot_mat
             best = True
-            best_rot = mr.mp.rot_mat
 
         # mr.plot_cost(
         # )
@@ -200,9 +197,9 @@ def optimize_on_rigid(mr,
             fig.suptitle(f"i = {i}, best = {best}, loss = {mr.data_loss:.4f}"
                          f"\n {params_r}"
                          f"\n {dict(
-                rot_prior= _get_momentums("momentum_R"),
-                trans_prior=_get_momentums("momentum_T"),
-                scale_prior=_get_momentums("momentum_S")
+                rot_prior= mr.optimized_momenta.detach().momentum_R,
+                trans_prior=mr.optimized_momenta.detach().momentum_T,
+                scale_prior=mr.optimized_momenta.detach().momentum_S,
             )}")
             ax[0].imshow(img, cmap="gray")
             ax[0].set_title("Final image")

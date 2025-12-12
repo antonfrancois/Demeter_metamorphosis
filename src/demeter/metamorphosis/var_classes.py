@@ -73,6 +73,13 @@ class Momenta:
     momentum_S: Optional[Tensor] = None
     momentum_A: Optional[Tensor] = None
 
+    def __post_init__(self):
+        for name in _MOMENTA_FIELDS:
+            tensor = getattr(self, name)
+            if not (isinstance(tensor, Tensor) or tensor is None):
+                raise TypeError(f"Momentum.{name} must be a tensor, got {type(tensor)} at initialization")
+
+
     def as_dict(self) -> dict:
         """Return a dict that matches the previous API (skips None entries)."""
         return {name: getattr(self, name) for name in _MOMENTA_FIELDS if getattr(self, name) is not None}
@@ -92,6 +99,42 @@ class Momenta:
             if tensor is not None:
                 setattr(self, name, tensor.detach())
         return self
+
+    def clone(self) -> "Momenta":
+        """Return a deep copy of the container with cloned tensors."""
+        return Momenta(
+            **{
+                name: (getattr(self, name).clone() if getattr(self, name) is not None else None)
+                for name in _MOMENTA_FIELDS
+            }
+        )
+
+    def nan_report(self):
+        """
+        Check NaNs field by field.
+
+        Returns
+        -------
+        dict
+            Keys match momentum names; values are booleans or None when the field is absent.
+            Includes an extra key 'any' summarizing if any present tensor contains NaN.
+        """
+        report = {}
+        any_nan = False
+        for name in _MOMENTA_FIELDS:
+            tensor = getattr(self, name)
+            if tensor is None:
+                report[name] = None
+            else:
+                has_nan = bool(tensor.isnan().any().item())
+                report[name] = has_nan
+                any_nan = any_nan or has_nan
+        report["any"] = any_nan
+        return report
+
+    def has_nan(self) -> bool:
+        """Return True if any present tensor contains NaNs."""
+        return self.nan_report()["any"]
 
     def __repr__(self):
         # Keep a readable summary even when optional tensors are absent
