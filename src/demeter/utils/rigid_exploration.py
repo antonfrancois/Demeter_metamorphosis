@@ -89,13 +89,13 @@ def initial_exploration(rigid_meta_optim,
     for i,params_r in  enumerate(r_combi):
         if verbose:
             print(f"Init search : {i+1} / {len(r_combi)}")
-        momenta =mtrt.prepare_momenta(
+        momenta = mtrt.prepare_momenta(
             rigid_meta_optim.source.shape,
             diffeo=False,rotation=True,translation=False, scaling=False,
             rot_prior=params_r,
             requires_grad=False
         )
-        print(momenta.keys())
+        print(momenta)
         rigid_meta_optim.mp.forward(rigid_meta_optim.source, momenta, save=False)
 
         rot_def =   tb.grid_from_rotation(rigid_meta_optim.mp.id_grid, rigid_meta_optim. mp.rot_mat.T)
@@ -173,10 +173,10 @@ def optimize_on_rigid(mr,
         if mr.data_loss < best_loss or mr.data_loss == 0:
             best_loss = mr.data_loss
             best_momenta = dict(
-                affine_prior = _get_momentums("momentum_A"),
-                 rot_prior= _get_momentums("momentum_R"),
-                trans_prior=_get_momentums("momentum_T"),
-                scale_prior=_get_momentums("momentum_S")
+                affine_prior = mr.to_analyse[0].detach().momentum_A,
+                 rot_prior= mr.to_analyse[0].detach().momentum_R,
+                trans_prior=mr.to_analyse[0].detach().momentum_T,
+                scale_prior=mr.to_analyse[0].detach().momentum_S
             )
             best = True
             best_rot = mr.mp.rot_mat
