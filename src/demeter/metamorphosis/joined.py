@@ -423,7 +423,9 @@ class Weighted_joinedMask_Metamorphosis_Shooting(Optimize_geodesicShooting):
     def plot_cost(self):
         fig1, ax1 = plt.subplots(1, 2,figsize=(10,10))
 
-        cost_stock = self.to_analyse[1].detach().numpy()
+        cost_stock = self.loss_stock
+        if torch.is_tensor(cost_stock):
+            cost_stock = cost_stock.detach().cpu().numpy()
 
 
         ssd_plot = cost_stock[:, 0]

@@ -56,6 +56,27 @@ def _find_kernelOp_from_repr_(repr_str):
         raise ValueError("no existing kernelOperator was found for the given repr_str")
 
 
+def _extract_analysis_results(opti_dict):
+    integration_diverged = False
+    if ("optimized_momenta" in opti_dict) or ("loss_stock" in opti_dict):
+        optimized_momenta = opti_dict.get("optimized_momenta")
+        loss_stock = opti_dict.get("loss_stock")
+    elif "to_analyse" in opti_dict:
+        analysis = opti_dict["to_analyse"]
+        if isinstance(analysis, (tuple, list)) and len(analysis) == 2:
+            optimized_momenta, loss_stock = analysis
+        else:
+            optimized_momenta, loss_stock = None, analysis
+    else:
+        optimized_momenta, loss_stock = None, None
+
+    if isinstance(loss_stock, str) and loss_stock == "Integration diverged":
+        integration_diverged = True
+        loss_stock = None
+
+    return optimized_momenta, loss_stock, integration_diverged
+
+
 def load_optimize_geodesicShooting(file_name, path=None, verbose=True):
     """
     load previously saved optimisation. Usually the file will be saved in the
@@ -170,7 +191,7 @@ def  _load_light_optim(opti_dict, verbose):
 
     opti_dict["hamiltonian_integration"] = opti_dict["args"]["hamiltonian_integration"]
     mr = optimizer(**opti_dict)
-    mr.to_analyse = opti_dict["to_analyse"]
+    mr.optimized_momenta, mr.loss_stock, mr.integration_diverged = _extract_analysis_results(opti_dict)
 
     return mr
 
@@ -213,6 +234,14 @@ def _load_heavy_optim(opti_dict, verbose):
         )
 
     for k in FIELD_TO_SAVE[5:]:
-        new_optim.__dict__[k] = opti_dict[k]
+        if k in opti_dict:
+            new_optim.__dict__[k] = opti_dict[k]
+
+    optimized_momenta, loss_stock, integration_diverged = _extract_analysis_results(opti_dict)
+    if getattr(new_optim, "optimized_momenta", None) is None:
+        new_optim.optimized_momenta = optimized_momenta
+    if getattr(new_optim, "loss_stock", None) is None:
+        new_optim.loss_stock = loss_stock
+    new_optim.integration_diverged = getattr(new_optim, "integration_diverged", False) or integration_diverged
 
     return new_optim

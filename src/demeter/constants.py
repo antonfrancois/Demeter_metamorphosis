@@ -61,7 +61,7 @@ FIELD_TO_SAVE = [
             'mp',
             'source', 'target', 'cost_cst', 'optimizer_method_name','data_term',
             'parameter','ssd', 'norm_v_2', 'norm_l2_on_z',
-            'total_cost', 'to_analyse','dice'
+            'total_cost', 'optimized_momenta', 'loss_stock','dice'
         ]
 
 # Vérifier que le répertoire existe, sinon le créer
@@ -178,4 +178,3 @@ def set_ticks_off(ax):
     except AttributeError:
         for a in ax.ravel():
             set_ticks_off(a)
-

@@ -1148,6 +1148,32 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         # # Default parameters to save (write to file)
         # self.field_to_save = FIELD_TO_SAVE
+        self.optimized_momenta = None
+        self.loss_stock = None
+        self.integration_diverged = False
+
+    @property
+    def to_analyse(self):
+        warnings.warn(
+            "to_analyse is deprecated. Use optimized_momenta and loss_stock instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if self.optimized_momenta is None and self.loss_stock is None:
+            return None
+        return self.optimized_momenta, self.loss_stock
+
+    @to_analyse.setter
+    def to_analyse(self, value):
+        warnings.warn(
+            "to_analyse is deprecated. Use optimized_momenta and loss_stock instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if isinstance(value, (tuple, list)) and len(value) == 2:
+            self.optimized_momenta, self.loss_stock = value
+        else:
+            self.optimized_momenta, self.loss_stock = None, value
 
     # @abstractmethod
     # def _compute_V_norm_(self,*args):
@@ -1194,7 +1220,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
     def get_geodesic_distance(self, only_zero=False):
         if only_zero:
-            return float(self._compute_V_norm_(_primary_tensor(self.to_analyse[0]), self.source))
+            if self.optimized_momenta is None:
+                raise ValueError("No optimized momenta available to compute distance.")
+            return float(self._compute_V_norm_(_primary_tensor(self.optimized_momenta), self.source))
         else:
             dist = float(
                 self._compute_V_norm_(_primary_tensor(self.mp.momentum_stock[0])[None],
@@ -1353,9 +1381,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                 sharp=None
                 ):
         r""" The function is and perform the optimisation with the desired method.
-        The result is stored in the tuple self.to_analyse with two elements. First element is the optimized
+        The result is stored in two attributes. `self.optimized_momenta` holds the optimized
         initial residual ($z_O$ in the article) used for the shooting.
-        The second is a tensor with the values of the loss norms over time. The function
+        `self.loss_stock` stores the values of the loss norms over time. The function
         plot_cost() is designed to show them automatically.
 
         :param momenta_ini: initial momentum. It is the variable on which we optimize.
@@ -1373,6 +1401,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         if not isinstance(momenta_ini, Momenta):
             raise TypeError(f"momenta_ini must be a Momenta instance, got {type(momenta_ini)}")
         device = _get_device_from_momenta(momenta_ini)
+        self.integration_diverged = False
 
         self.source = self.source.to(device)
         # self.target = self.target.to(z_0.device)
@@ -1429,7 +1458,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                         plot=0,
                         )
 
-        self.to_analyse = (_detach(self.parameter), loss_stock)
+        self.optimized_momenta = _detach(self.parameter)
+        self.loss_stock = loss_stock
         self.to_device('cpu')
 
     def to_device(self, device):
@@ -1441,12 +1471,20 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             self.parameter = _momenta_to_device(self.parameter, device)
         self.id_grid = self.id_grid.to(device)
         self.data_term.to_device(device)
-        try:
-            analysed_param = self.to_analyse[0]
-            analysed_param = _momenta_to_device(analysed_param, device)
-            self.to_analyse = (analysed_param, self.to_analyse[1].to(device))
-        except AttributeError:
-            pass
+        if isinstance(self.optimized_momenta, Momenta):
+            self.optimized_momenta = _momenta_to_device(self.optimized_momenta, device)
+        def _loss_to_device(loss):
+            if loss is None or isinstance(loss, str):
+                return loss
+            if torch.is_tensor(loss):
+                return loss.to(device)
+            if isinstance(loss, dict):
+                return {
+                    key: (val.to(device) if hasattr(val, "to") else val)
+                    for key, val in loss.items()
+                }
+            return loss
+        self.loss_stock = _loss_to_device(self.loss_stock)
 
     def forward_safe_mode(self,
                           z_0,
@@ -1474,7 +1512,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         except OverflowError:
             if mode is None:
                 print("Integration diverged : Stop.\n\n")
-                self.to_analyse = "Integration diverged"
+                self.integration_diverged = True
+                self.optimized_momenta = None
+                self.loss_stock = None
             elif mode == "grad_coef":
                 print(f"Integration diverged :" f" set grad_coef to {grad_coef*0.1}")
                 self.forward_safe_mode(z_0, n_iter, grad_coef * 0.1, verbose, mode=mode)
@@ -1636,7 +1676,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             path of the file saved
         """
 
-        if self.to_analyse == "Integration diverged":
+        if self.integration_diverged:
             print("Can't save optimisation that didn't converged")
             return 0
         self.to_device("cpu")
@@ -1886,23 +1926,48 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         )
         return path, im
 
+    def _get_loss_components(self):
+        if self.loss_stock is None:
+            raise ValueError("Loss history is not available.")
+        loss_stock = self.loss_stock
+        if isinstance(loss_stock, dict):
+            data_loss = loss_stock.get("data_loss")
+            norm_v_2 = loss_stock.get("norm_v_2")
+            norm_l2_on_z = loss_stock.get("norm_l2_on_z")
+        else:
+            data_loss = loss_stock[:, 0]
+            norm_v_2 = loss_stock[:, 1]
+            norm_l2_on_z = loss_stock[:, 2] if loss_stock.shape[1] > 2 else None
+        return data_loss, norm_v_2, norm_l2_on_z
 
+    @staticmethod
+    def _to_numpy_array(value):
+        if torch.is_tensor(value):
+            return value.detach().cpu().numpy()
+        return value
+
+    def _loss_history_length(self):
+        if self.loss_stock is None or isinstance(self.loss_stock, str):
+            return 0
+        if isinstance(self.loss_stock, dict):
+            try:
+                return len(next(iter(self.loss_stock.values())))
+            except StopIteration:
+                return 0
+        return len(self.loss_stock)
 
     # ==================================================================
     #                 PLOTS
     # ==================================================================
 
     def get_total_cost(self):
-        total_cost = self.to_analyse[1][:, 0] + self.cost_cst * self.to_analyse[1][:, 1]
-        if self._get_rho_() < 1:
-            if type(self._get_rho_()) == float:
-                total_cost += (
-                    self.cost_cst * (self._get_rho_()) * self.to_analyse[1][:, 2]
-                )
-            elif type(self._get_rho_()) == tuple:
-                total_cost += (
-                    self.cost_cst * (self._get_rho_()[0]) * self.to_analyse[1][:, 2]
-                )
+        data_loss, norm_v_2, norm_l2_on_z = self._get_loss_components()
+        total_cost = data_loss + self.cost_cst * norm_v_2
+
+        rho = self._get_rho_()
+        rho_val = rho[0] if isinstance(rho, tuple) else rho
+        if isinstance(rho_val, (float, int)) and rho_val < 1 and norm_l2_on_z is not None:
+            total_cost += self.cost_cst * rho_val * norm_l2_on_z
         return total_cost
 
     def plot_cost(self, y_log=False):
@@ -1913,7 +1978,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             ax1[0].set_yscale("log")
             ax1[1].set_yscale("log")
 
-        ssd_plot = self.to_analyse[1][:, 0].numpy()
+        data_loss, norm_v_2, norm_l2_on_z = self._get_loss_components()
+        ssd_plot = self._to_numpy_array(data_loss)
         ax1[0].plot(
             ssd_plot, "--", color="blue", label=self.data_term.__class__.__name__
         )
@@ -1922,21 +1988,21 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         )
 
         nbpix = prod(self.source.shape[2:])
-        normv_plot = self.cost_cst * self.to_analyse[1][:, 1].detach().numpy()
+        normv_plot = self.cost_cst * self._to_numpy_array(norm_v_2)
         ax1[0].plot(normv_plot, "--", color="green", label="normv")
         ax1[1].plot(
-            self.to_analyse[1][:, 1].detach().numpy(),
+            self._to_numpy_array(norm_v_2),
             "--",
             color="green",
             label="normv",
         )
         total_cost = ssd_plot + normv_plot
-        if self._get_rho_() < 1:
-            norm_l2_on_z = self.cost_cst * self.to_analyse[1][:, 2].numpy()
-            total_cost += norm_l2_on_z
-            ax1[0].plot(norm_l2_on_z, "--", color="orange", label="norm_l2_on_z")
+        if norm_l2_on_z is not None:
+            norm_l2_on_z_val = self.cost_cst * self._to_numpy_array(norm_l2_on_z)
+            total_cost += norm_l2_on_z_val
+            ax1[0].plot(norm_l2_on_z_val, "--", color="orange", label="norm_l2_on_z")
             ax1[1].plot(
-                self.to_analyse[1][:, 2].numpy(),
+                self._to_numpy_array(norm_l2_on_z),
                 "--",
                 color="orange",
                 label="norm_l2_on_z",
@@ -2018,7 +2084,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         by the deformation field.
         """
 
-        residuals = self.to_analyse[0]
+        if self.optimized_momenta is None:
+            raise ValueError("No optimized momenta available, run forward() first.")
+        residuals = self.optimized_momenta
         # print(residuals.device,self.source.device)
         self.mp.forward(self.source.clone(), residuals, save=True, plot=0)
         self.mp.plot_deform(self.target, temporal_nfigs)

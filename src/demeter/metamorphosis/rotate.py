@@ -907,7 +907,7 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
         if y_log:
             ax1[0].set_yscale('log')
             ax1[1].set_yscale('log')
-        cost_stock = _handle_old_lossstock_(self.to_analyse[1])
+        cost_stock = _handle_old_lossstock_(self.loss_stock)
         # names= ["data_loss",  "norm_v_2",  "norm_l2_on_z",  "norm_l2_on_R",  "norm_S_2"]
         colors = plt.cm.tab10.colors
 

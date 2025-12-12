@@ -54,9 +54,27 @@ def _optim_to_state_dict_(optim,file_name,write_dict=None,message=None):
         "rho": optim._get_rho_(),
         "lamb": optim.cost_cst,
         "n_step": optim.mp.n_step,
-        "n_iter": len(optim.to_analyse[1]),
+        "n_iter": None,
         "message": '' if message is None else message
     }
+    if state_dict["n_iter"] is None:
+        if hasattr(optim, "_loss_history_length"):
+            state_dict["n_iter"] = optim._loss_history_length()
+        else:
+            loss_stock = getattr(optim, "loss_stock", None)
+            if loss_stock is None and hasattr(optim, "to_analyse"):
+                ta = getattr(optim, "to_analyse")
+                if isinstance(ta, (tuple, list)) and len(ta) == 2:
+                    loss_stock = ta[1]
+            if isinstance(loss_stock, dict):
+                try:
+                    state_dict["n_iter"] = len(next(iter(loss_stock.values())))
+                except StopIteration:
+                    state_dict["n_iter"] = 0
+            elif loss_stock is not None:
+                state_dict["n_iter"] = len(loss_stock)
+            else:
+                state_dict["n_iter"] = 0
     return  {**write_dict , **state_dict}
 
 def _write_dict_to_csv(dict,csv_file = None,path=None):

@@ -292,12 +292,14 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
 
     def get_total_cost(self):
 
-        total_cost = self.to_analyse[1][:,0] + \
-                    self.cost_cst * self.to_analyse[1][:,1]
+        if self.loss_stock is None:
+            raise ValueError("Loss history is not available.")
+        total_cost = self.loss_stock[:,0] + \
+                    self.cost_cst * self.loss_stock[:,1]
         if self._get_mu_() != 0 :
-            total_cost += self.cost_cst*(self._get_rho_())* self.to_analyse[1][:,2]
+            total_cost += self.cost_cst*(self._get_rho_())* self.loss_stock[:,2]
         if self.mp.flag_O:
-            total_cost += self.cost_cst*(self._get_gamma_())*self.to_analyse[1][:,3]
+            total_cost += self.cost_cst*(self._get_gamma_())*self.loss_stock[:,3]
 
         return total_cost
 
@@ -370,7 +372,9 @@ class ConstrainedMetamorphosis_Shooting(Optimize_geodesicShooting):
         if y_log:
             ax1[0].set_yscale('log')
             ax1[1].set_yscale('log')
-        cost_stock = self.to_analyse[1].detach().numpy()
+        cost_stock = self.loss_stock
+        if torch.is_tensor(cost_stock):
+            cost_stock = cost_stock.detach().cpu().numpy()
 
         ssd_plot = cost_stock[:, 0]
         ax1[0].plot(ssd_plot, "--", color='blue', label='ssd')
@@ -443,7 +447,10 @@ class Reduce_field_Optim(Optimize_geodesicShooting):
         return loss_stock
 
     def get_total_cost(self):
-        return super().get_total_cost() + self.cost_cst * self._get_gamma_() * self.to_analyse[1][:,3]
+        base_cost = super().get_total_cost()
+        if self.loss_stock is None:
+            return base_cost
+        return base_cost + self.cost_cst * self._get_gamma_() * self.loss_stock[:,3]
 
     def cost(self, residuals_ini: torch.Tensor) -> torch.Tensor:
 
@@ -507,7 +514,9 @@ class Reduce_field_Optim(Optimize_geodesicShooting):
         plt.rcParams['figure.figsize'] = [10, 10]
         fig1, ax1 = plt.subplots(1, 2)
 
-        cost_stock = self.to_analyse[1].detach().numpy()
+        cost_stock = self.loss_stock
+        if torch.is_tensor(cost_stock):
+            cost_stock = cost_stock.detach().cpu().numpy()
 
         ssd_plot = cost_stock[:, 0]
         ax1[0].plot(ssd_plot, "--", color='blue', label='ssd')
