@@ -477,9 +477,10 @@ class Rotation_Ssd_Cost(DataCost):
         if self.verbose:
             print(f"[{self.__repr__()}]")
             print(f"\t gamma = {gamma:.3f} : ssd = {ssd:.3f}, ssd_rot = {ssd_rot:.3f} => Loss = {gamma * ssd_rot + (1-gamma) * ssd:.3f} ")
-        if self.optimizer._iter_  % 5 == 0 and self.plot:
+        # if self.optimizer._iter_  % 5 == 0 and self.plot:
+        if self.plot:
             fig, ax = plt.subplots(2,2)
-            fig.suptitle(f" iter : {self.optimizer._iter_}: gamma = {gamma}; ssd = {ssd}, ssd_rot = {ssd_rot}")
+            fig.suptitle(f" iter : {self.optimizer._iter_}: gamma = {gamma:.3f}; ssd = {ssd:.2f}, ssd_rot = {ssd_rot:.2f}")
             ax[0,0].imshow(rotated_image[0,0].detach().cpu().numpy())
             ax[0,0].set_title('rotated Image')
             ax[0,1].imshow(rotated_source[0,0].detach().cpu().numpy())

@@ -440,6 +440,8 @@ def rigid_along_metamorphosis(
        save_gpu_memory = False,
         lbfgs_max_iter = 20,
         lbfgs_history_size = 100,
+        adam_dt_step_field=1e-3,
+        adam_dt_step_affine=5e-2,
         debug=False
     ):
     """
@@ -486,6 +488,8 @@ def rigid_along_metamorphosis(
         debug = debug,
         lbfgs_max_iter = lbfgs_max_iter,
         lbfgs_history_size = lbfgs_history_size,
+        adam_dt_step_field=adam_dt_step_field,
+        adam_dt_step_affine=adam_dt_step_affine,
     )
     # state_dict = mr.state_dict()
     # for i, (name, tensor) in enumerate(state_dict.items()):

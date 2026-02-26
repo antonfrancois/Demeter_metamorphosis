@@ -2,6 +2,7 @@
 Rotate.py
 """
 from logging import warning
+from numbers import Number
 
 import matplotlib.pyplot as plt
 import torch
@@ -420,7 +421,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
             affine_grid = tb.grid_from_matrix(self.id_grid, A_mat) + translation
             # ic(affine_grid.shape, field.shape)
             # affine_field = affine_grid + tb.im2grid(field) # [B, (D,) H, W, (2,3)]
-            affine_field = tb.compose_fields(affine_grid, tb.im2grid(field)) # TODO: Choisir la bonne chose.
+            affine_field = tb.compose_fields(tb.im2grid(field), affine_grid) # TODO: Choisir la bonne chose.
             field_momentum = field_momentum.reshape(B,d,1,N) # [B, (2,3), 1, H * W (* D)] R^(d x 1)
             x_flat = self.id_grid.reshape(B, 1, d, N)
             jaco_field = tb.field_jacobian(affine_field).reshape(B,d,d,N)
@@ -446,7 +447,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
 
         momentum_A = (momentum_A - d_affine.T @ momentum_A  / self.n_step)
         if compute_field:
-            momentum_A += -integral_1 + integral_2
+            momentum_A += (-integral_1 + integral_2) / self.n_step
         # momentum_A -= torch.autograd.grad(field,momentum_A)
         # momentum_T = momentum_T # Momentum T is constant
         return momentum_A, momentum_T, field, A_mat, translation , norm_l2_on_A
@@ -484,6 +485,9 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
                     momentum_T, translation,
                     momentum_S, scale
                 )
+            # momentum_R = self.cos * momentum_R
+            # momentum_T = self.cos * momentum_T
+            # momentum_S = self.cos * momentum_S
             grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
             field, norm_V = self._compute_vectorField_(momentum_I, grad_image)
             field = self._update_field_(momentum_I, image)
@@ -596,6 +600,14 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
                 self.scale
             )
             self.momenta["momentum_I"] = momentum_I
+            if momentum_R is not None:
+                self.momenta["momentum_R"] = momentum_R
+            if momentum_T is not None:
+                self.momenta["momentum_T"] = momentum_T
+            if momentum_S is not None:
+                self.momenta["momentum_S"] = momentum_S
+            if momentum_A is not None:
+                self.momenta["momentum_A"] = momentum_A
         else:
             if flag_affine:
                 momentum_I = torch.zeros_like(self.image)
@@ -773,11 +785,20 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
 
 class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
 
-    def __init__(self, cost_field_cst = .5, cost_affine_cst = 1, **kwargs):
+    def __init__(
+        self,
+        cost_field_cst=.5,
+        cost_affine_cst=1,
+        adam_dt_step_field=None,
+        adam_dt_step_affine=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self._cost_saving_ = self._rotating_cost_saving_
         self.cost_field_cst = cost_field_cst
         self.cost_affine_cst = cost_affine_cst
+        self.adam_dt_step_field = adam_dt_step_field
+        self.adam_dt_step_affine = adam_dt_step_affine
 
     def _get_rho_(self):
         return float(self.mp.rho)
@@ -787,11 +808,67 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
         params_spe = {
             'rho':self._get_rho_(),
             'cst_field':self.cost_field_cst,
+            'adam_dt_step_field': self.adam_dt_step_field,
+            'adam_dt_step_affine': self.adam_dt_step_affine,
         }
         return {**params_all,**params_spe}
 
     def get_all_parameters(self):
         pass
+
+    def _initialize_Adam_(self, dt_step):
+        """Adam with optional per-block step sizes for field vs affine momenta."""
+        def _as_float_lr(value, name):
+            if isinstance(value, Number):
+                return float(value)
+            if isinstance(value, torch.Tensor) and value.numel() == 1:
+                return float(value.item())
+            if isinstance(value, (list, tuple)) and len(value) == 1:
+                return _as_float_lr(value[0], name)
+            raise TypeError(
+                f"{name} must be a scalar float-like value, got {type(value)}: {value}"
+            )
+
+        if not isinstance(self.parameter, dict):
+            return super()._initialize_Adam_(dt_step)
+
+        base_lr = _as_float_lr(dt_step, "dt_step")
+        field_lr = (
+            base_lr
+            if self.adam_dt_step_field is None
+            else _as_float_lr(self.adam_dt_step_field, "adam_dt_step_field")
+        )
+        affine_lr = (
+            base_lr
+            if self.adam_dt_step_affine is None
+            else _as_float_lr(self.adam_dt_step_affine, "adam_dt_step_affine")
+        )
+
+        field_params = []
+        affine_params = []
+        for k, p in self.parameter.items():
+            if not isinstance(p, torch.Tensor):
+                continue
+            if k == "momentum_I":
+                field_params.append(p)
+            elif k in {"momentum_R", "momentum_T", "momentum_S", "momentum_A"}:
+                affine_params.append(p)
+
+        param_groups = []
+        if field_params:
+            param_groups.append({"params": field_params, "lr": field_lr})
+        if affine_params:
+            param_groups.append({"params": affine_params, "lr": affine_lr})
+
+        if not param_groups:
+            return super()._initialize_Adam_(dt_step)
+
+        self.optimizer = torch.optim.Adam(
+            param_groups,
+            betas=(0.9, 0.999),
+            eps=1e-8,
+            weight_decay=0,
+        )
 
     def cost(self,momenta,**kwargs):
 
@@ -801,6 +878,7 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
         except KeyError:
             device = momenta['momentum_A'].device
         self.to_device(device)
+
         self.mp.forward(self.source,momenta,
                         save=False,
                         plot=0,
@@ -820,9 +898,10 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
                 volDelta = prod(self.dx)
                 z = sqrt(1 - rho) * (momenta['momentum_I']/volDelta)
                 self.norm_l2_on_z = .5 * (z ** 2).sum() * volDelta
+
             else:
-                self.norm_v_2 = torch.tensor([0], device=self.data_loss.device)
-                self.norm_l2_on_z = torch.tensor([0], device=self.data_loss.device)
+                self.norm_v_2 = torch.tensor(0, device=self.data_loss.device)
+                self.norm_l2_on_z = torch.tensor(0, device=self.data_loss.device)
 
             # Norm L2 on R
             # ic(self.mp._rot_inf_ini, self.mp._rot_inf_ini.T @ self.mp._rot_inf_ini, torch.trace( self.mp._rot_inf_ini.T @ self.mp._rot_inf_ini))
@@ -832,11 +911,12 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
             except AttributeError:
                 self.norm_S_2 = torch.tensor([0], device=self.data_loss.device)
 
-        ic(self.norm_v_2, self.norm_v_2 * self.cost_field_cst)
         self.total_cost = self.data_loss + \
                           self.cost_cst * (
                                   self.cost_field_cst * (self.norm_v_2 + self.norm_l2_on_z) +
                                   self.cost_affine_cst * (self.norm_l2_on_R + self.norm_S_2)
+                                  # (self.norm_v_2 + self.norm_l2_on_z) +
+                                  #  (self.norm_l2_on_R + self.norm_S_2)
                           )
 
         return self.total_cost

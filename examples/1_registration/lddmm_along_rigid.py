@@ -1,5 +1,3 @@
-from xmlrpc.client import Error
-
 import __init__
 import torch
 from math import cos,sin
@@ -12,6 +10,7 @@ import demeter.metamorphosis as mt
 import demeter.utils.cost_functions as cf
 import demeter.utils.rigid_exploration as rg
 from demeter.constants import set_ticks_off, GRIDDEF_YELLOW
+from demeter.utils.cost_functions import SumSquaredDifference
 
 
 #
@@ -57,6 +56,87 @@ def plot(self):
     ax[2,2].imshow(srt[0], **kwargs)
     ax[2,2].set_title("source affine vs Target")
 
+def _norm(x):
+    return torch.linalg.norm(x.reshape(-1)).item()
+
+def install_momenta_grad_debug(momenta, every=10, max_print=60):
+    counters = {k: 0 for k in momenta.keys()}
+    handles = []
+
+    for key, tensor in momenta.items():
+        if not tensor.requires_grad:
+            continue
+
+        def _hook(grad, _k=key):
+            counters[_k] += 1
+            c = counters[_k]
+            if c <= max_print and (c == 1 or c % every == 0):
+                gnorm = _norm(grad.detach())
+                gmax = grad.detach().abs().max().item()
+                print(f"[grad:{_k}] call={c:03d} |g|={gnorm:.4e} |g|max={gmax:.4e}")
+
+        handles.append(tensor.register_hook(_hook))
+
+    return handles
+
+def print_momenta_delta(before, after):
+    print("\n[Momenta delta summary]")
+    for key in sorted(before.keys()):
+        if key not in after:
+            print(f"  - {key}: absent in final momenta")
+            continue
+        b = before[key].detach()
+        a = after[key].detach()
+        d = a - b
+        bn = _norm(b)
+        dn = _norm(d)
+        rel = dn / (bn + 1e-12)
+        print(f"  - {key}: |before|={bn:.4e} |delta|={dn:.4e} rel_delta={rel:.4e}")
+
+def summarize_registration_case(name, mr, target):
+    ssd_fn = cf.SumSquaredDifference(target)
+    grid_rt = mr.mp.get_rigidor()
+    rotated_image = tb.imgDeform(mr.mp.image, grid_rt, dx_convention='2square')
+    rotated_source = tb.imgDeform(mr.source, grid_rt, dx_convention='2square')
+
+    final_data_loss = float(mr.to_analyse[1]["data_loss"][-1])
+    ssd = float(ssd_fn(rotated_image))
+    ssd_rot = float(ssd_fn(rotated_source))
+
+    rot_mat = mr.mp.rot_mat.detach()
+    theta_deg = torch.atan2(rot_mat[1, 0], rot_mat[0, 0]).item() * 180.0 / torch.pi
+
+    t = mr.mp.translation.detach()
+    h, w = mr.source.shape[-2:]
+    tx_pix = t[0].item() * (w - 1) / 2.0
+    ty_pix = t[1].item() * (h - 1) / 2.0
+
+    print(f"\n[{name}]")
+    print(f"  - final_data_loss: {final_data_loss:.6f}")
+    print(f"  - ssd(image->target): {ssd:.6f}")
+    print(f"  - ssd(source_rigid->target): {ssd_rot:.6f}")
+    print(f"  - angle_deg: {theta_deg:.4f}")
+    print(f"  - translation_2square: [{t[0].item():.6f}, {t[1].item():.6f}]")
+    print(f"  - translation_pixels:  [{tx_pix:.3f}, {ty_pix:.3f}]")
+
+    if isinstance(mr.to_analyse[0], dict):
+        p = mr.to_analyse[0]
+        if "momentum_R" in p:
+            print(f"  - |momentum_R|: {_norm(p['momentum_R']):.6e}")
+        if "momentum_T" in p:
+            print(f"  - |momentum_T|: {_norm(p['momentum_T']):.6e}")
+        if "momentum_I" in p:
+            print(f"  - |momentum_I|: {_norm(p['momentum_I']):.6e}")
+
+    return {
+        "final_data_loss": final_data_loss,
+        "ssd": ssd,
+        "ssd_rot": ssd_rot,
+        "theta_deg": theta_deg,
+        "tx_pix": tx_pix,
+        "ty_pix": ty_pix,
+    }
+
 path = "examples/results/rigid_meta/"
 device = "cuda:0"
 ###########################################################
@@ -64,10 +144,12 @@ device = "cuda:0"
 size = (300, 300)
 # source = tb.reg_open('rigid_s',size=size)
 # target = tb.reg_open('rigid_t',size=size)
-# source = tb.reg_open('33',size=size)
-# target = tb.reg_open('fish',size=size)
-source = tb.reg_open('20',size=size)
-target = tb.reg_open('17',size=size)
+source = tb.reg_open('33',size=size)
+target = tb.reg_open('fish',size=size)
+# source = tb.reg_open('20',size=size)
+# target = tb.reg_open('17',size=size)
+
+
 
 source.to(device)
 # source = smooth(source, 20)
@@ -84,6 +166,11 @@ ax[2].imshow(tb.imCmp(source,target, 'compose')[0])
 # Align barycenters
 
 source_b, target_b, trans_s, trans_t = rg.align_barycentres(source, target, verbose=True)
+
+
+ssd  = SumSquaredDifference(target_b)
+print("ssd target_b - source_b :",ssd(source_b))
+
 fig, ax = plt.subplots(1,3, constrained_layout=True, figsize=(5.5,2))
 ax[0].imshow(source_b[0,0],cmap='gray')
 ax[0].set_title("Source")
@@ -199,60 +286,105 @@ integration_steps = 10
 # perfom lddmm along rigid
 sigma= [  7, 10]
 sigma = [(s,)*2 for s in sigma]
-alpha = 1
+alpha = .9
 rho = 1
-cost_cst = 0
+cost_cst = 1
 cost_field_cst = 1
-cost_affine_cst = 0
+cost_affine_cst = 1
+adam_dt_step_field=1e-6,
+adam_dt_step_affine=1e-1,
+
+verbose_datacost = False
+plot_datacost = True
+enable_grad_debug = False
 
 kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False, kernel_reach =6)
-datacost = mt.Rotation_Ssd_Cost(target_b.to("cuda:0"),
-                                gamma=alpha, normalize_ssd=False,
-                                verbose=True, plot=True)
+def make_datacost():
+    return mt.Rotation_Ssd_Cost(
+        target_b.to("cuda:0"),
+        gamma=alpha,
+        normalize_ssd=False,
+        verbose=verbose_datacost,
+        plot=plot_datacost,
+    )
 
 
 # best_loss = torch.inf
 # for i,param in enumerate(top_param_rot):
 #     print(f"\n\noptimistion {i} on  {len(top_param_rot)}")
-momenta = mt.prepare_momenta(
-    source_b.shape,
-    # affine = True,
-    # diffeo = False,
-    rotation=True,scaling=False,translation=True,
-    device = "cuda:0",
-    # **best_momenta
-)
-# momenta["momentum_R"].requires_grad = False
-# momenta["momentum_S"].requires_grad = False
-# momenta["momentum_T"].requires_grad = False
+cases = [("with_I", True)
+    # , ("without_I", False)
+         ]
+case_results = {}
 
-momenta_n = {
-    'momentum_R': momenta['momentum_R'],
-    'momentum_T': momenta['momentum_T'],
-    'momentum_I': momenta['momentum_I'],
-    # 'momentum_R': momenta['momentum_R'],
-}
+for case_name, with_diffeo in cases:
+    print("\n" + "=" * 20)
+    print(f"Run case: {case_name}")
+    momenta = mt.prepare_momenta(
+        source_b.shape,
+        diffeo=with_diffeo,
+        rotation=True,
+        scaling=False,
+        translation=True,
+        device="cuda:0",
+        # **best_priors
+    )
 
-#%%
+    momenta_before = {k: v.detach().clone() for k, v in momenta.items()}
+    if enable_grad_debug:
+        debug_handles = install_momenta_grad_debug(momenta, every=10, max_print=40)
+    else:
+        debug_handles = []
 
-mr = mt.rigid_along_metamorphosis(
-  source_b, target_b, momenta_ini=momenta_n,
-  kernelOperator= kernelOperator,
-  rho = rho,
-  data_term=datacost ,
-  integration_steps = integration_steps,
-  cost_cst=cost_cst,
-  cost_field_cst = cost_field_cst,
-  cost_affine_cst = cost_affine_cst,
-  n_iter=5,
-    grad_coef=.1,
-    # optimizer_method='adadelta',
-  save_gpu_memory=False,
-  lbfgs_max_iter = 40,
-  lbfgs_history_size = 20,
-    safe_mode=True,
-    debug=False,
-)
+    mr_case = mt.rigid_along_metamorphosis(
+      source_b, target_b, momenta_ini=momenta,
+      kernelOperator= kernelOperator,
+      rho = rho,
+      data_term=make_datacost(),
+      integration_steps = integration_steps,
+      cost_cst=cost_cst,
+      cost_field_cst = cost_field_cst,
+      cost_affine_cst = cost_affine_cst,
+      n_iter=100,
+        grad_coef=.1,
+        # optimizer_method='adadelta',
+      # lbfgs_max_iter = 20,
+      # lbfgs_history_size = 20,
+      optimizer_method='Adam',
+      adam_dt_step_field=adam_dt_step_field,
+      adam_dt_step_affine=adam_dt_step_affine,
+      save_gpu_memory=False,
+        safe_mode=True,
+        debug=False,
+    )
+
+    for h in debug_handles:
+        h.remove()
+
+    if isinstance(mr_case.to_analyse[0], dict):
+        print_momenta_delta(momenta_before, mr_case.to_analyse[0])
+    if isinstance(mr_case.to_analyse[1], dict):
+        ls = mr_case.to_analyse[1]
+        print("\n[Last loss components]")
+        print(f"  - data_loss   : {float(ls['data_loss'][-1]):.6e}")
+        print(f"  - norm_v_2    : {float(ls['norm_v_2'][-1]):.6e}")
+        print(f"  - norm_l2_on_z: {float(ls['norm_l2_on_z'][-1]):.6e}")
+        print(f"  - norm_l2_on_R: {float(ls['norm_l2_on_R'][-1]):.6e}")
+        if 'norm_S_2' in ls:
+            print(f"  - norm_S_2    : {float(ls['norm_S_2'][-1]):.6e}")
+
+    summary = summarize_registration_case(case_name, mr_case, target_b)
+    case_results[case_name] = {"mr": mr_case, "summary": summary}
+
+# print("\n" + "=" * 20)
+# print("[Comparison summary]")
+# for key in ["final_data_loss", "ssd", "ssd_rot", "theta_deg", "tx_pix", "ty_pix"]:
+#     a = case_results["with_I"]["summary"][key]
+#     b = case_results["without_I"]["summary"][key]
+#     print(f"  - {key}: with_I={a:.6f} | without_I={b:.6f}")
+
+mr = case_results["with_I"]["mr"]
+
 best = False
 mr.plot_cost()
 plt.show()
