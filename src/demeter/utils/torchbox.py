@@ -198,23 +198,56 @@ def pad_to_same_size(img_1, img_2):
     return (img_1_padded, img_2_padded)
 
 
-def grid_from_matrix(grid, rot_mat):
-    if tuple(rot_mat.shape) == (2,2) and len(grid.shape) == 4:
-        return  torch.einsum('ij,bhwj->bhwi',rot_mat, grid)
-        # return rotated_grid
-    elif  tuple(rot_mat.shape) == (3,3) and len(grid.shape) == 5:
-        return  torch.einsum('ij,bdhwj->bdhwi',rot_mat, grid)
-    else:
+def matrix_time_grid(grid: torch.Tensor, rot_mat: torch.Tensor) -> torch.Tensor:
+    """Apply a linear transform matrix to every vector in a sampling grid.
+    Given a vector v and a matrix A, it performs the operation
+    $$ b = Av$$
+
+    Parameters
+    ----------
+    grid : torch.Tensor[B, H, W, 2] | torch.Tensor[B, D, H, W, 3]
+        Sampling grid containing 2D or 3D vectors.
+    rot_mat : torch.Tensor[2, 2] | torch.Tensor[3, 3]
+        Linear transform matrix matching the vector dimensionality.
+
+    Returns
+    -------
+    torch.Tensor
+        Transformed grid with the same shape as `grid`.
+
+    Raises
+    ------
+    ValueError
+        If `grid` and `rot_mat` shapes are not a supported 2D or 3D pair.
+    """
+    d = grid.shape[-1]
+    if rot_mat.shape != (d, d):
         raise ValueError(
-            "In 2d, grid must be of shape [B,H,W,2] and rot_mat [2, 2],"
-            " In 3d grid must be of shape [B, D, H, W,3] and rot_mat [3, 3]"
-            f"got grid.shape : {grid.shape} and rot_mat.shape = {rot_mat.shape}"
+            f"Expected rot_mat shape {(d,d)} to match grid last dim {d}, "
+            f"got grid.shape={tuple(grid.shape)} rot_mat.shape={tuple(rot_mat.shape)}"
         )
+
+    # Ensure same device/dtype (optional but usually what you want)
+    rot_mat = rot_mat.to(device=grid.device, dtype=grid.dtype)
+
+    return grid @ rot_mat.T
+    # if tuple(rot_mat.shape) == (2,2) and len(grid.shape) == 4:
+    #     return  torch.einsum('ij,bhwj->bhwi',rot_mat, grid)
+    #     # return rotated_grid
+    # elif  tuple(rot_mat.shape) == (3,3) and len(grid.shape) == 5:
+    #     return  torch.einsum('ij,bdhwj->bdhwi',rot_mat, grid)
+    # else:
+    #     raise ValueError(
+    #         "In 2d, grid must be of shape [B,H,W,2] and rot_mat [2, 2],"
+    #         " In 3d grid must be of shape [B, D, H, W,3] and rot_mat [3, 3]"
+    #         f"got grid.shape : {grid.shape} and rot_mat.shape = {rot_mat.shape}"
+    #     )
+
 
 def grid_from_rotation_translation(grid, rot_mat, translation):
 
         trans_grid  = grid + translation
-        rot_def =   grid_from_matrix(trans_grid, rot_mat)
+        rot_def =   matrix_time_grid(trans_grid, rot_mat)
         return rot_def
 
 def grid_from_rotation_translation_scaling(grid, rot_mat, translation, scale):

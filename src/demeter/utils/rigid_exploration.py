@@ -98,7 +98,7 @@ def initial_exploration(rigid_meta_optim,
         print(momenta.keys())
         rigid_meta_optim.mp.forward(rigid_meta_optim.source, momenta, save=False)
 
-        rot_def =   tb.grid_from_matrix(rigid_meta_optim.mp.id_grid, rigid_meta_optim. mp.rot_mat.T)
+        rot_def =   tb.matrix_time_grid(rigid_meta_optim.mp.id_grid, rigid_meta_optim. mp.rot_mat.T)
         img_rot = tb.imgDeform(rigid_meta_optim.source, rot_def.to('cpu'), dx_convention='2square')
         # img_rot = torch.clip(img_rot, 0, 1)
         loss_val = cf.SumSquaredDifference(rigid_meta_optim.target)(img_rot)
