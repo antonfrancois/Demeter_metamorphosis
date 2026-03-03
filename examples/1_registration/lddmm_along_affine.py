@@ -9,8 +9,7 @@ import demeter.utils.reproducing_kernels as rk
 import demeter.metamorphosis as mt
 import demeter.utils.cost_functions as cf
 import demeter.utils.rigid_exploration as rg
-# from build.lib.demeter import ROOT_DIRECTORY
-from demeter.constants import set_ticks_off, GRIDDEF_YELLOW, ROOT_DIRECTORY
+from demeter.constants import set_ticks_off, GRIDDEF_YELLOW,  ROOT_DIRECTORY
 from demeter.utils.cost_functions import SumSquaredDifference
 
 
@@ -138,33 +137,6 @@ def summarize_registration_case(name, mr, target):
         "ty_pix": ty_pix,
     }
 
-
-
-import subprocess
-from pathlib import Path
-
-def frames_to_video_ffmpeg(frames_dir, stem, out_name=None, fps=12):
-  frames_dir = Path(frames_dir)
-  out_name = out_name or f"{stem}.mp4"
-  output = frames_dir / out_name
-
-  # expects files like: {stem}_000.png, {stem}_001.png, ...
-  input_pattern = str(frames_dir / f"{stem}_%03d.png")
-
-  cmd = [
-      "ffmpeg", "-y",
-      "-framerate", str(fps),
-      "-i", input_pattern,
-      "-c:v", "libx264",
-      "-pix_fmt", "yuv420p",
-      "-movflags", "+faststart",
-      str(output),
-  ]
-
-  subprocess.run(cmd, check=True)
-  return output
-
-
 path = "examples/results/rigid_meta/"
 device = "cuda:0"
 ###########################################################
@@ -240,15 +212,15 @@ mr_rigid = mt.rigid_along_metamorphosis(
 top_params = rg.initial_exploration(mr_rigid, r_step = 20,
                                     max_output = 1, verbose=True)
 print("top_params : ",top_params)
-
-print("")
+#
+# print("")
 print("="*20)
 print("Optimize on best exploration ")
 best_loss, best_priors, best_rot = rg.optimize_on_rigid(
     mr_rigid, top_params,
     n_iter=10, grad_coef = .1,
-    # affine=True,
-    rotation=True, scaling=False, translation=True,
+    affine=True,
+    # rotation=True, scaling=False, translation=True,
     verbose=True, plot = True,
 )
 print(f"best_loss : {best_loss}")
@@ -258,57 +230,37 @@ id = 1
 
 
 
-#%%
-# #####################################################
-# # Choose a specific rigid optimisation changes the optimisation
-#
-# best_loss, best_momenta, best_rot = rg.optimize_on_rigid(
-#     mr_rigid, [top_params[-1]], n_iter=2,verbose=True, plot = True,
-# )
-# print(f"best_loss : {best_loss}")
-# print(f"best_rot : {best_rot}")
-# print(f"best_momenta : {best_momenta}")
-# # {'rot_prior': torch.tensor(-1.0472), 'trans_prior': None, 'scale_prior': None}
-# id = 2
 
-
-# #%%
-# best_momenta = {'affine_prior': torch.tensor([[-0.5799,  3.0117],
-#         [-3.0049, -0.5558]]),
-#                 'rot_prior': None,
-#                 'trans_prior': torch.tensor([0.4199, 0.0598]),
-#                 'scale_prior': None}
 #%%
 #####################################################
 # Check the rigid optimisation
-print("")
-print("="*20)
-print("Check the rigid optimisation")
-
-print(f"best_momenta : {best_priors}")
-param = best_priors.copy()
-momenta = mt.prepare_momenta(
-    source_b.shape,
-    diffeo = False,
-    # affine = True,
-    rotation=True, scaling=False, translation=True,
-    device = "cpu",
-    requires_grad = False,
-    **param
-)
-print(f"best_priors : {best_priors}")
-
-print(f"momenta : {momenta}")
-mr_rigid.mp.debug = False
-mr_rigid.mp.forward(source_b, momenta.copy(), save =  True)
-
-plot(mr_rigid)
-plt.show()
+# print("")
+# print("="*20)
+# print("Check the rigid optimisation")
+# input("Press Enter to continue")
+#
+# print(f"best_momenta : {best_priors}")
+# param = best_priors.copy()
+# momenta = mt.prepare_momenta(
+#     source_b.shape,
+#     diffeo = False,
+#     affine = True,
+#     device = "cpu",
+#     requires_grad = False,
+#     **param
+# )
+# print(f"best_priors : {best_priors}")
+#
+# print(f"momenta : {momenta}")
+# mr_rigid.mp.debug = False
+# mr_rigid.mp.forward(source_b, momenta.copy(), save =  True)
+#
+# plot(mr_rigid)
+# plt.show()
 
 
 
 #%%
-
 sigmoid_a = 20
 sigmoid_b = 70
 sigmoid_c = -5
@@ -321,12 +273,16 @@ gamma = 1/(1 + torch.exp(-g))
 
 plt.plot(iter, gamma)
 plt.show()
-
 #%% lddmm along rigid
 #########################################################
 # perfom lddmm along rigid
 integration_steps = 10
-sigma= [  3, 7]
+
+print("")
+print("="*20)
+print("Start real optimization")
+# input("Press Enter to continue")
+sigma= [  7, 10]
 sigma = [(s,)*2 for s in sigma]
 alpha = .5
 rho = 1
@@ -334,30 +290,18 @@ cost_cst = 1
 cost_field_cst = 1
 cost_affine_cst = 1
 adam_dt_step_field=1e-6,
-adam_dt_step_affine=3e-1,
+adam_dt_step_affine=1e-2,
 
 verbose_datacost = False
 plot_datacost = True
 enable_grad_debug = False
 
-rotation=True
-scaling=False
-translation=True
-
-def _strf_(valbool):
-    return "T" if valbool else "F"
-modifier_str = (
-        "r"+_strf_(rotation)+
-        "_s"+_strf_(scaling)+
-        "_t"+_strf_(translation)
-                )
-
-
-saving_plots= Path(
+saving_plots= (
         ROOT_DIRECTORY +
-       "/examples/results/rigid_meta_integrations/rigid_lddmm/" +
-        f"decoupled_rigid_{modifier_str}_lddmm"
+       "/examples/results/rigid_meta_integrations/affine_lddmm/" +
+        f"general_affine_lddmm"
 )
+
 
 kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False, kernel_reach =6)
 def make_datacost():
@@ -368,70 +312,74 @@ def make_datacost():
         normalize_ssd=False,
         verbose=verbose_datacost,
         plot=plot_datacost,
-        save_plot= saving_plots,
+        save_plot=saving_plots
     )
 
 
 # best_loss = torch.inf
 # for i,param in enumerate(top_param_rot):
 #     print(f"\n\noptimistion {i} on  {len(top_param_rot)}")
+cases = [("with_I", True)
+    # , ("without_I", False)
+         ]
+case_results = {}
 
-print("\n" + "=" * 20)
-momenta = mt.prepare_momenta(
-    source_b.shape,
-    diffeo=True,
-    rotation=rotation,
-    scaling=scaling,
-    translation=translation,
-    device="cuda:0",
-    # **best_priors
-)
+for case_name, with_diffeo in cases:
+    print("\n" + "=" * 20)
+    print(f"Run case: {case_name}")
+    momenta = mt.prepare_momenta(
+        source_b.shape,
+        diffeo=with_diffeo,
+        affine=True,
+        device="cuda:0",
+        **best_priors
+    )
 
-momenta_before = {k: v.detach().clone() for k, v in momenta.items()}
-if enable_grad_debug:
-    debug_handles = install_momenta_grad_debug(momenta, every=10, max_print=40)
-else:
-    debug_handles = []
+    momenta_before = {k: v.detach().clone() for k, v in momenta.items()}
+    if enable_grad_debug:
+        debug_handles = install_momenta_grad_debug(momenta, every=10, max_print=40)
+    else:
+        debug_handles = []
 
-mr = mt.rigid_along_metamorphosis(
-  source_b, target_b, momenta_ini=momenta,
-  kernelOperator= kernelOperator,
-  rho = rho,
-  data_term=make_datacost(),
-  integration_steps = integration_steps,
-  cost_cst=cost_cst,
-  cost_field_cst = cost_field_cst,
-  cost_affine_cst = cost_affine_cst,
-  n_iter=100,
-    grad_coef=.1,
-    # optimizer_method='adadelta',
-  # lbfgs_max_iter = 20,
-  # lbfgs_history_size = 20,
-  optimizer_method='Adam',
-  adam_dt_step_field=adam_dt_step_field,
-  adam_dt_step_affine=adam_dt_step_affine,
-  save_gpu_memory=False,
-    safe_mode=True,
-    debug=False,
-)
+    mr_case = mt.rigid_along_metamorphosis(
+      source_b, target_b, momenta_ini=momenta,
+      kernelOperator= kernelOperator,
+      rho = rho,
+      data_term=make_datacost(),
+      integration_steps = integration_steps,
+      cost_cst=cost_cst,
+      cost_field_cst = cost_field_cst,
+      cost_affine_cst = cost_affine_cst,
+      n_iter=100,
+        grad_coef=.1,
+        # optimizer_method='adadelta',
+      # lbfgs_max_iter = 20,
+      # lbfgs_history_size = 20,
+      optimizer_method='Adam',
+      adam_dt_step_field=adam_dt_step_field,
+      adam_dt_step_affine=adam_dt_step_affine,
+      save_gpu_memory=False,
+        safe_mode=True,
+        debug=False,
+    )
 
-for h in debug_handles:
-    h.remove()
+    for h in debug_handles:
+        h.remove()
 
-if isinstance(mr_case.to_analyse[0], dict):
-    print_momenta_delta(momenta_before, mr_case.to_analyse[0])
-if isinstance(mr_case.to_analyse[1], dict):
-    ls = mr_case.to_analyse[1]
-    print("\n[Last loss components]")
-    print(f"  - data_loss   : {float(ls['data_loss'][-1]):.6e}")
-    print(f"  - norm_v_2    : {float(ls['norm_v_2'][-1]):.6e}")
-    print(f"  - norm_l2_on_z: {float(ls['norm_l2_on_z'][-1]):.6e}")
-    print(f"  - norm_l2_on_R: {float(ls['norm_l2_on_R'][-1]):.6e}")
-    if 'norm_S_2' in ls:
-        print(f"  - norm_S_2    : {float(ls['norm_S_2'][-1]):.6e}")
+    if isinstance(mr_case.to_analyse[0], dict):
+        print_momenta_delta(momenta_before, mr_case.to_analyse[0])
+    if isinstance(mr_case.to_analyse[1], dict):
+        ls = mr_case.to_analyse[1]
+        print("\n[Last loss components]")
+        print(f"  - data_loss   : {float(ls['data_loss'][-1]):.6e}")
+        print(f"  - norm_v_2    : {float(ls['norm_v_2'][-1]):.6e}")
+        print(f"  - norm_l2_on_z: {float(ls['norm_l2_on_z'][-1]):.6e}")
+        print(f"  - norm_l2_on_R: {float(ls['norm_l2_on_R'][-1]):.6e}")
+        if 'norm_S_2' in ls:
+            print(f"  - norm_S_2    : {float(ls['norm_S_2'][-1]):.6e}")
 
-# summary = summarize_registration_case(case_name, mr_case, target_b)
-# case_results[case_name] = {"mr": mr_case, "summary": summary}
+    summary = summarize_registration_case(case_name, mr_case, target_b)
+    case_results[case_name] = {"mr": mr_case, "summary": summary}
 
 # print("\n" + "=" * 20)
 # print("[Comparison summary]")
@@ -440,19 +388,11 @@ if isinstance(mr_case.to_analyse[1], dict):
 #     b = case_results["without_I"]["summary"][key]
 #     print(f"  - {key}: with_I={a:.6f} | without_I={b:.6f}")
 
-frames_to_video_ffmpeg(
-  frames_dir=saving_plots.parent,
-  # frames_dir="examples/results/rigid_meta_integrations/rigid_lddmm",
-  stem=saving_plots.name,
-  fps=12,
-)
-
-
-
+mr = case_results["with_I"]["mr"]
 
 best = False
 fig_cost, _ = mr.plot_cost()
-fig_cost.savefig(str(saving_plots) + "_cost.png")
+fig_cost.savefig(saving_plots + "_cost.png")
 plt.show()
 plot(mr)
 plt.show()
