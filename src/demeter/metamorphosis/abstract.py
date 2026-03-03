@@ -614,26 +614,42 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                                               field
                                               ):
         r"""
-        Compute the divergence of the momentum in the semiLagrangian scheme
-        meaning
-        $$ c \times \nabla \cdot (a v) = cv \cdot \nabla a + c a \nabla \cdot v$$
-        with $cv \cdot \nabla a$ being the transport of a by the deformation $x + cv$
-        with $a : \Omega \to \mathbb{R}$ and $v : \Omega \to \mathbb{R}^d$
+        Semi-Lagrangian momentum update for a divergence term.
+
+        This method applies an explicit discretization of
+        :math:`c\,\nabla \cdot (p\,v)` where :math:`p` is a scalar momentum and
+        :math:`v` is a vector field:
+
+        .. math::
+            c\,\nabla\cdot(pv) = c\,v\cdot\nabla p + c\,p\,\nabla\cdot v
+
+        In practice, the transport term is handled by warping ``momentum`` with
+        ``deformation`` and the divergence term is evaluated on ``field``:
+
+        .. math::
+            p_{k+1} = \mathrm{warp}(p_k, \phi_k) -
+            \frac{c}{n_{\text{step}}}\,p_k\,\nabla\cdot v_k
 
         Parameters
         ----------
-
-        deformation (tensor array)
-            tensor of shape [1,H,W,2] or [1,D,H,W,3]
-        momentum (tensor array)
-            tensor of shape [1,1,H,W] or [1,1,D,H,W]
-        cst (float | tensor array)
-            the constant $c$ in the above equation, if tensor array,
-             it must have the same shape as momentum
+        deformation : torch.Tensor
+            Sampling grid used to advect the momentum (typically
+            ``id_grid - cst * field / n_step``). Shape
+            ``[B,H,W,2]`` in 2D or ``[B,D,H,W,3]`` in 3D.
+        momentum : torch.Tensor
+            Scalar momentum map to update. Shape ``[B,1,H,W]`` in 2D or
+            ``[B,1,D,H,W]`` in 3D.
+        cst : float or torch.Tensor
+            Multiplicative coefficient ``c`` in front of the divergence term.
+            Can be a scalar or a tensor broadcastable to ``momentum``.
+        field : torch.Tensor
+            Vector field ``v`` used to compute ``div(v)``. Shape
+            ``[B,H,W,2]`` in 2D or ``[B,D,H,W,3]`` in 3D.
 
         Returns
         -------
-        tensor array of shape [1,1,H,W] or [1,1,D,H,W]
+        torch.Tensor
+            Updated momentum with the same shape as ``momentum``.
         """
 
         div_v_times_p = cst * (
