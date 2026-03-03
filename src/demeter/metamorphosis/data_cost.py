@@ -428,6 +428,7 @@ class Rotation_Ssd_Cost(DataCost):
                  normalize_ssd = False,
                  verbose = False,
                  plot = False,
+                 save_plot=None,
                  **kwargs):
 
         super(Rotation_Ssd_Cost, self).__init__(target)
@@ -444,6 +445,7 @@ class Rotation_Ssd_Cost(DataCost):
         self.sigmoid_c = sigmoid_c
         self.verbose = verbose
         self.plot = plot
+        self.save_plot = save_plot
         self.normalize_ssd = normalize_ssd
 
     def __repr__(self):
@@ -458,6 +460,27 @@ class Rotation_Ssd_Cost(DataCost):
             return gamma
         else:
             return self.gamma
+
+    def _plot_(self, rotated_image, rotated_source, gamma, ssd, ssd_rot):
+        fig, ax = plt.subplots(2,2, constrained_layout=True)
+
+        fig.suptitle(f" iter : {self.optimizer._iter_}: gamma = {gamma:.3f}; ssd = {ssd:.2f}, ssd_rot = {ssd_rot:.2f}")
+        ax[0,0].imshow(rotated_image[0,0].detach().cpu().numpy(), cmap='gray')
+        ax[0,0].set_title('rotated Image')
+        ax[0,1].imshow(rotated_source[0,0].detach().cpu().numpy(), cmap='gray')
+        ax[0,1].set_title('rotated Source')
+        im1 = tb.imCmp(rotated_image.detach().cpu(), self.target.detach().cpu(), "seg")
+        ax[1,0].imshow(im1[0])
+        # ax[1,0].imshow(torch.abs(rotated_image - self.target)[0,0].detach().cpu().numpy())
+        ax[1,0].set_title('rot img vs target')
+        im2 = tb.imCmp(rotated_source.detach().cpu(), self.target.detach().cpu(), "seg")
+        ax[1,1].imshow(im2[0])
+        # ax[1,1].imshow(torch.abs(rotated_source - self.target)[0,0].detach().cpu().numpy())
+        ax[1,1].set_title('rot source vs target')
+        if self.save_plot is not None:
+            fig.savefig(str(self.save_plot) + f"_{self.optimizer._iter_:03d}.png")
+        plt.show()
+
 
     def __call__(self,at_step=None):
         super().__call__()
@@ -479,17 +502,7 @@ class Rotation_Ssd_Cost(DataCost):
             print(f"\t gamma = {gamma:.3f} : ssd = {ssd:.3f}, ssd_rot = {ssd_rot:.3f} => Loss = {gamma * ssd_rot + (1-gamma) * ssd:.3f} ")
         # if self.optimizer._iter_  % 5 == 0 and self.plot:
         if self.plot:
-            fig, ax = plt.subplots(2,2)
-            fig.suptitle(f" iter : {self.optimizer._iter_}: gamma = {gamma:.3f}; ssd = {ssd:.2f}, ssd_rot = {ssd_rot:.2f}")
-            ax[0,0].imshow(rotated_image[0,0].detach().cpu().numpy())
-            ax[0,0].set_title('rotated Image')
-            ax[0,1].imshow(rotated_source[0,0].detach().cpu().numpy())
-            ax[0,1].set_title('rotated Source')
-            ax[1,0].imshow(torch.abs(rotated_image - self.target)[0,0].detach().cpu().numpy())
-            ax[1,0].set_title('rot img vs target')
-            ax[1,1].imshow(torch.abs(rotated_source - self.target)[0,0].detach().cpu().numpy())
-            ax[1,1].set_title('rot source vs target')
-            plt.show()
+            self._plot_(rotated_image, rotated_source, gamma, ssd, ssd_rot)
 
         return gamma * ssd_rot + (1-gamma) * ssd
 
