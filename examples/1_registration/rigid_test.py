@@ -42,7 +42,7 @@ mr = mt.rigid_along_metamorphosis(
 # mr.plot_cost()
 # plt.show()
 #%%
-grid = mr.mp.get_rigidor()
+grid = mr.mp.get_affine_deformator()
 rot_source = tb.imgDeform(source, grid.detach().cpu())
 
 fig, ax = plt.subplots(1,5)

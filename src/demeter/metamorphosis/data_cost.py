@@ -486,7 +486,7 @@ class Rotation_Ssd_Cost(DataCost):
         super().__call__()
 
         gamma = self._compute_gamma_(self.optimizer._iter_)
-        grid_rt = self.optimizer.mp.get_rigidor()
+        grid_rt = self.optimizer.mp.get_affine_deformator()
 
 
         rotated_image =  tb.imgDeform(self.optimizer.mp.image,grid_rt,dx_convention='2square')
@@ -523,7 +523,7 @@ class Rotation_MutualInformation_Cost(DataCost):
         # if at_step == -1:
         super().__call__()
         # rot_def =   tb.grid_from_rotation(self.optimizer.mp.id_grid, self.optimizer.mp.rot_mat.T)
-        rot_def = self.optimizer.mp.get_rigidor()
+        rot_def = self.optimizer.mp.get_affine_deformator()
         # if self.optimizer.mp.flag_translation:
             # raise Error("Ca va bugger, fait une expe avant.")
         rot_def += self.optimizer.mp.translation

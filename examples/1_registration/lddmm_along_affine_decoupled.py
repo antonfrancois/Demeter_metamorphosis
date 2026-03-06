@@ -23,9 +23,9 @@ def smooth(image, sigma):
     return rk.fft_filter(image,kernel,border_type='constant')
 
 def plot(self):
-    affine = self.mp.get_rigidor()
+    affine = self.mp.get_affine_deformator()
     deform = self.mp.get_deformation()
-    deform = self.mp.get_rigid(deform)
+    deform = self.mp.get_affine_deformation(deform)
 
     img_rot = tb.imgDeform(self.mp.image.to('cpu'),affine,dx_convention='2square')
     source_rt = tb.imgDeform(self.source.to('cpu'),affine,dx_convention='2square')
@@ -96,7 +96,7 @@ def print_momenta_delta(before, after):
 
 def summarize_registration_case(name, mr, target):
     ssd_fn = cf.SumSquaredDifference(target)
-    grid_rt = mr.mp.get_rigidor()
+    grid_rt = mr.mp.get_affine_deformator()
     rotated_image = tb.imgDeform(mr.mp.image, grid_rt, dx_convention='2square')
     rotated_source = tb.imgDeform(mr.source, grid_rt, dx_convention='2square')
 
@@ -531,10 +531,10 @@ for i, t in enumerate(plot_id):
         # color = color
     )
 
-    deform = mr.mp.get_rigid(deform)
+    deform = mr.mp.get_affine_deformation(deform)
     img = tb.imgDeform(
         mr.mp.image_stock[t, :, :, :][None],
-        mr.mp.get_rigidor()
+        mr.mp.get_affine_deformator()
     ).detach().numpy()[0,0]
 
     ax[i, 2].imshow(img, **kw_image_args,)
@@ -565,9 +565,9 @@ raise TypeError("GARUGA")
 
 #%%
 def small_plot(self):
-    affine = self.mp.get_rigidor()
+    affine = self.mp.get_affine_deformator()
     deform = self.mp.get_deformation()
-    deform = self.mp.get_rigid(deform)
+    deform = self.mp.get_affine_deformation(deform)
 
     img_rot = tb.imgDeform(self.mp.image.to('cpu'),affine,dx_convention='2square')
     source_rt = tb.imgDeform(self.source.to('cpu'),affine,dx_convention='2square')
@@ -632,7 +632,7 @@ plot(mr_rigid_first)
 plt.show()
 #%%
 source_lddmm = source_b.clone()
-target_lddmm = tb.imgDeform(target_b, mr_rigid_first.mp.get_rigidor())
+target_lddmm = tb.imgDeform(target_b, mr_rigid_first.mp.get_affine_deformator())
 ref = "source"
 fig, ax = plt.subplots(1,3, constrained_layout=True)
 ax[0].imshow(source_lddmm[0,0],cmap='gray')
@@ -642,7 +642,7 @@ ax[2].imshow(target_lddmm[0,0],cmap='gray')
 ax[2].set_title("target")
 plt.show()
 #%%%
-source_lddmm = tb.imgDeform(source_b, mr_rigid.mp.get_rigidor())
+source_lddmm = tb.imgDeform(source_b, mr_rigid.mp.get_affine_deformator())
 target_lddmm = target_b.clone()
 ref = 'target'
 fig, ax = plt.subplots(1,3, constrained_layout=True)

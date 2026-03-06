@@ -9,7 +9,8 @@ from . import classic as cl
 from . import constrained as cn
 from . import simplex as sp
 from . import joined as jn
-from . import affine as rd
+from . import affine as aff
+from . import affine_decoupled as ad
 
 from ..utils import torchbox as tb
 from ..utils.decorators import time_it, monitor_gpu
@@ -55,48 +56,51 @@ def lddmm(
     lbfgs_history_size: int = 100,
 ):
     """
-    Perform a Large Deformation Diffeomorphic Metric Mapping (LDDMM) transformation between a source and a target.
+    Run LDDMM registration from ``source`` to ``target``.
 
     Parameters
     ----------
-    # source : torch.Tensor
-        Source image. [B,C,H,W] or [B, C, H, W, D]
+    source : torch.Tensor
+        Source image of shape ``[B, C, H, W]`` or ``[B, C, H, W, D]``.
     target : torch.Tensor
-        Target image. [B,C,H,W] or [B, C, H, W, D]
+        Target image with the same shape as ``source``.
     momentum_ini : torch.Tensor or float
-        Initial momentum, the variable to optimize on. If float, will be broadcasted to the same shape as source.
+        Initial momentum to optimize. A scalar is broadcast to ``source.shape``.
     kernelOperator : callable
-        Kernel operator for computing transformations.
+        Reproducing kernel operator used by the geodesic integrator.
     cost_cst : float
-        Cost constant for regularization.
+        Weight of the regularization term.
     integration_steps : int
-        Number of integration steps.
+        Number of geodesic integration steps.
     n_iter : int
-        Number of iterations for optimization.
+        Number of optimization iterations.
     grad_coef : float
-        Gradient coefficient for optimization.
+        Multiplier applied to the optimization step.
     data_term : optional
-        Data term for optimization. must be a child of DataCost class.
+        Data attachment term. Expected to be a ``DataCost`` subclass instance.
     sharp : bool, optional
-        If True, use "sharp" integration method.
+        If ``True``, forces ``integration_method="sharp"``.
     safe_mode : bool, optional
-        If True, use safe mode for integration.
+        If ``True``, use ``forward_safe_mode`` for optimization.
     integration_method : str, optional
-        Integration method to use (default is "semiLagrangian").
+        Integrator method passed to ``Metamorphosis_integrator``.
     dx_convention : str, optional
-        dx convention to use (default is "pixel").
+        Spatial convention used for finite differences.
     optimizer_method : str, optional
-        Optimization method to use (default is "adadelta").
+        Optimizer used by ``Metamorphosis_Shooting``.
+    hamiltonian_integration : bool, optional
+        Enable Hamiltonian integration in the optimizer.
+    save_gpu_memory : bool, optional
+        Enable memory-saving mode in the geodesic integrator.
+    lbfgs_max_iter : int, optional
+        Maximum number of internal iterations for LBFGS steps.
+    lbfgs_history_size : int, optional
+        History size used by LBFGS.
 
     Returns
     -------
-    Metamorphosis_Shooting
-        LDDMM shooting object after transformation.
-
-    Examples
-    --------
-    TODO : Add examples
-
+    cl.Metamorphosis_Shooting
+        Configured optimizer after running the requested optimization iterations.
     """
 
     momentum_ini = _commun_before(momentum_ini, source)
@@ -152,8 +156,56 @@ def metamorphosis(
     save_gpu_memory = False,
 ):
     """
+    Run metamorphosis registration from ``source`` to ``target``.
 
+    This is the generic metamorphosis wrapper (with user-provided ``rho``),
+    whereas :func:`lddmm` is the special case with ``rho=1``.
 
+    Parameters
+    ----------
+    source : torch.Tensor
+        Source image of shape ``[B, C, H, W]`` or ``[B, C, H, W, D]``.
+    target : torch.Tensor
+        Target image with the same shape as ``source``.
+    momentum_ini : torch.Tensor or float
+        Initial momentum to optimize. A scalar is broadcast to ``source.shape``.
+    rho : float
+        Metamorphosis trade-off parameter.
+    cost_cst : float
+        Weight of the regularization term.
+    integration_steps : int
+        Number of geodesic integration steps.
+    n_iter : int
+        Number of optimization iterations.
+    grad_coef : float
+        Multiplier applied to the optimization step.
+    kernelOperator : callable
+        Reproducing kernel operator used by the geodesic integrator.
+    data_term : optional
+        Data attachment term. Expected to be a ``DataCost`` subclass instance.
+    sharp : bool, optional
+        If ``True``, forces ``integration_method="sharp"``.
+    safe_mode : bool, optional
+        If ``True``, use ``forward_safe_mode`` for optimization.
+    integration_method : str, optional
+        Integrator method passed to ``Metamorphosis_integrator``.
+    optimizer_method : str, optional
+        Optimizer used by ``Metamorphosis_Shooting``.
+    dx_convention : str, optional
+        Spatial convention used for finite differences.
+    hamiltonian_integration : bool, optional
+        Enable Hamiltonian integration in the optimizer.
+    lbfgs_max_iter : int, optional
+        Maximum number of internal iterations for LBFGS steps.
+    lbfgs_history_size : int, optional
+        History size used by LBFGS.
+    save_gpu_memory : bool, optional
+        Enable memory-saving mode in the geodesic integrator.
+
+    Returns
+    -------
+    cl.Metamorphosis_Shooting
+        Configured optimizer after running the requested optimization iterations.
     """
 
     momentum_ini = _commun_before(momentum_ini, source)
@@ -418,7 +470,7 @@ def simplex_metamorphosis(
     return mr
 
 @monitor_gpu
-def rigid_along_metamorphosis(
+def affine_along_metamorphosis(
         source,
         target,
         momenta_ini,
@@ -445,14 +497,73 @@ def rigid_along_metamorphosis(
         debug=False
     ):
     """
+    Run metamorphosis with an affine component (full affine or decoupled rigid-like).
 
-    Note: momenta_ini must be a dictionary containing the keywords:
-        - "momentum_I" for the image
-        - "momentum_R" for the rotation
-        - "momentum_T" for the translation
+    The affine mode is selected from ``momenta_ini`` keys:
+    - ``"momentum_A"``: full affine mode via ``aff`` classes.
+    - ``"momentum_R"``: decoupled affine/rigid mode via ``ad`` classes.
 
-    if you want to do not optimise over one of the above don't
+    Parameters
+    ----------
+    source : torch.Tensor
+        Source image.
+    target : torch.Tensor
+        Target image.
+    momenta_ini : dict
+        Dictionary of initial momenta. Supported keys include
+        ``"momentum_I"``, ``"momentum_R"``, ``"momentum_T"``, and ``"momentum_A"``.
+        Exactly one of ``"momentum_A"`` or ``"momentum_R"`` must be present.
+    kernelOperator : callable
+        Reproducing kernel operator used for the deformable field.
+    rho : float
+        Metamorphosis trade-off parameter.
+    data_term : optional
+        Data attachment term.
+    integration_steps : int, optional
+        Number of geodesic integration steps.
+    n_iter : int, optional
+        Number of optimization iterations.
+    grad_coef : float, optional
+        Multiplier applied to the optimization step.
+    cost_cst : float, optional
+        Weight of the regularization term.
+    cost_field_cst : float, optional
+        Weight of the deformable-field regularization.
+    cost_affine_cst : float, optional
+        Weight of the affine regularization.
+    plot : bool, optional
+        Kept for API compatibility.
+    safe_mode : bool, optional
+        If ``True``, use ``forward_safe_mode`` for optimization.
+    constraints : bool, optional
+        Enable or disable affine constraints in the integrator.
+    optimizer_method : str, optional
+        Optimizer used by the affine optimizer class.
+    hamiltonian_integration : bool, optional
+        Enable Hamiltonian integration in the optimizer.
+    save_gpu_memory : bool, optional
+        Enable memory-saving mode in the geodesic integrator.
+    lbfgs_max_iter : int, optional
+        Maximum number of internal iterations for LBFGS steps.
+    lbfgs_history_size : int, optional
+        History size used by LBFGS.
+    adam_dt_step_field : float, optional
+        Learning rate for field variables with Adam-like optimizers.
+    adam_dt_step_affine : float, optional
+        Learning rate for affine variables with Adam-like optimizers.
+    debug : bool, optional
+        Enable debug mode in integrator/optimizer.
 
+    Returns
+    -------
+    object
+        The configured affine metamorphosis optimizer instance after optimization.
+
+    Raises
+    ------
+    ValueError
+        If both ``"momentum_A"`` and ``"momentum_R"`` are provided, or if neither
+        key is present in ``momenta_ini``.
     """
     if n_iter > 0 and momenta_ini == 0:
         for key in momenta_ini.keys():
@@ -464,8 +575,20 @@ def rigid_along_metamorphosis(
                         " - 'momentum_A' for a full affine transformation (momentum R) will be ignored"
                                  )
 
+    if "momentum_A" and "momentum_R" in momenta_ini.keys():
+        raise ValueError(f"momentum_A and momentum_R keys cannot be both in momenta_ini,"
+                         f" got momenta_ini.keys = {momenta_ini.keys()}")
+    elif "momentum_A" in momenta_ini.keys():
+        integrator = aff.Affine_Metamorphosis_integrator
+        optimizer =  aff.Affine_Metamorphosis_Optimizer
+    elif "momentum_R" in momenta_ini.keys():
+        integrator = ad.Affine_Decoupled_Metamorphosis_integrator
+        optimizer = ad.Affine_Decoupled_Metamorphosis_Optimizer
+    else:
+        raise ValueError(f"momenta_ini must be either a dictionary containing one of the keywords:"
+                         f" momentum_R or momentum_A, got {momenta_ini.keys()}")
 
-    mp = rd.RigidMetamorphosis_integrator(
+    mp = integrator(
         rho=rho,
         n_step=integration_steps,
         kernelOperator=kernelOperator,
@@ -475,7 +598,7 @@ def rigid_along_metamorphosis(
         constraints = constraints,
     )
 
-    mr = rd.RigidMetamorphosis_Optimizer(
+    mr = optimizer(
         source= source.clone(),
         target= target.clone(),
         geodesic = mp,

@@ -192,7 +192,7 @@ def optimize_on_rigid(mr,
         if plot:
             mr.plot_cost()
             plt.show()
-            rot_def = mr.mp.get_rigidor()
+            rot_def = mr.mp.get_affine_deformator()
             rotated_source = tb.imgDeform(mr.source,rot_def,dx_convention='2square')
             if len(mr.source.shape) == 5:
                 img = rotated_source[0,0,..., mr.source.shape[-1]//2].detach().cpu()

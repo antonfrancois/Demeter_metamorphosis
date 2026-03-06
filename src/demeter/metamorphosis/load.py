@@ -17,7 +17,8 @@ from .joined import (
     Weighted_joinedMask_Metamorphosis_Shooting,
 )
 from .simplex import Simplex_sqrt_Metamorphosis_integrator, Simplex_sqrt_Shooting
-from .affine import RigidMetamorphosis_integrator, RigidMetamorphosis_Optimizer
+from .affine import Affine_Metamorphosis_integrator, Affine_Metamorphosis_Optimizer
+from .affine_decoupled import Affine_Decoupled_Metamorphosis_integrator, Affine_Decoupled_Metamorphosis_Optimizer
 from ..utils.reproducing_kernels import (
     GaussianRKHS,
     VolNormalizedGaussianRKHS,
@@ -39,8 +40,10 @@ def _find_meta_optimiser_from_repr_(repr_str):
         )
     if "Simplex_sqrt_Shooting" in repr_str:
         return Simplex_sqrt_Metamorphosis_integrator, Simplex_sqrt_Shooting
-    if "RigidMetamorphosis_Optimizer" in repr_str:
-        return RigidMetamorphosis_integrator, RigidMetamorphosis_Optimizer
+    if "RigidMetamorphosis_Optimizer" or "Affine_Decoupled_Metamorphosis_Optimizer" in repr_str:
+        return Affine_Decoupled_Metamorphosis_integrator, Affine_Decoupled_Metamorphosis_Optimizer
+    if "Affine_Metamorphosis_Optimizer" in repr_str:
+        return Affine_Metamorphosis_integrator, Affine_Metamorphosis_Optimizer
     else:
         raise ValueError(f"No class found for the given repr_str : {repr_str}")
 
