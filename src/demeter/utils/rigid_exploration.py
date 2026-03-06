@@ -172,7 +172,7 @@ def optimize_on_rigid(mr,
         def _get_momentums(name):
             try:
                 return mr.to_analyse[0][name].detach().cpu()
-            except KeyError:
+            except AttributeError:
                 return None
 
         if mr.data_loss < best_loss or mr.data_loss == 0:

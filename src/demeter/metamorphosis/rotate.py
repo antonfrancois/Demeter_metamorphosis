@@ -363,23 +363,14 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
                              compute_field=True
                              ):
 
-
-        # 1. Compute affine mat (A)
+        # 1. Compute infinitesimal affine mat M
         d_affine = momentum_A @ A_mat.T + momentum_T @ translation.T # d_affine = M
 
         if self._i == 0:
             self._rot_inf_ini = d_affine.clone()
 
-        exp_A = torch.linalg.matrix_exp(d_affine / self.n_step)
-        A_mat = exp_A @ A_mat
-
-        # 2. Compute translation
-        translation = translation + momentum_T / self.n_step  # translation = b
-
         #  norm_l2_on_A
-        if self.debug:
-            print("A_mat :", A_mat)
-            print("translation :", translation)
+
         norm_l2_on_A = .5 * torch.trace(d_affine.T @ self._rot_inf_ini)
         if self.debug:
             ic(self._i, momentum_A, momentum_T,
@@ -388,68 +379,62 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
                )
 
         # 3. Compute field (v)
-        inv_A_mat = torch.linalg.inv(A_mat)
         if compute_field:
             grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
-
-            # field, self.norm_v_i = self._compute_vectorField_(momentum_I, grad_image)
+            # ic(grad_image.min().item(), grad_image.max().item(),self.dx_convention)
             field_momentum = (grad_image * momentum_I.unsqueeze(2)).sum(dim=1)
-            # ic(A_mat, inv_A_mat, A_mat.T, A_mat.T @ A_mat)
-            inv_affine_grid = tb.matrix_time_grid(self.id_grid- translation, inv_A_mat)
-            # affine_field_momentum = torch.einsum('ij,bjhw->bihw',
-            #                                      inv_A_mat.T, tb.imgDeform(field_momentum, inv_affine_grid)
-            #                                      )
-            affine_field_momentum = tb.matrix_time_grid(
-                tb.im2grid(tb.imgDeform(field_momentum, inv_affine_grid)),
-                inv_A_mat.T
-            )
-            field = (- self.kernelOperator(tb.grid2im(affine_field_momentum))
-                     / torch.det(A_mat))
+            field =  self.kernelOperator(field_momentum)
+            norm_v = None
+            if self.flag_hamiltonian_integration:
+                self.norm_v_i = .5 * self.rho * (field_momentum.clone() * field.clone()).sum()
+
+            field = -tb.im2grid(field)
+            # field, self.norm_v_i = self._compute_vectorField_(momentum_I, grad_image)
+
+            # grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
+            #
+            # # field, self.norm_v_i = self._compute_vectorField_(momentum_I, grad_image)
+            # field_momentum = (grad_image * momentum_I.unsqueeze(2)).sum(dim=1)
+            # # ic(A_mat, inv_A_mat, A_mat.T, A_mat.T @ A_mat)
+            # inv_affine_grid = tb.matrix_time_grid(self.id_grid- translation, inv_A_mat)
+            # # affine_field_momentum = torch.einsum('ij,bjhw->bihw',
+            # #                                      inv_A_mat.T, tb.imgDeform(field_momentum, inv_affine_grid)
+            # #                                      )
+            # affine_field_momentum = tb.matrix_time_grid(
+            #     tb.im2grid(tb.imgDeform(field_momentum, inv_affine_grid)),
+            #     inv_A_mat.T
+            # )
+            # field = (- self.kernelOperator(tb.grid2im(affine_field_momentum))
+            #          / torch.det(A_mat))
         else:
             field = None
 
 
+
+        # affine_grid = tb.matrix_time_grid(self.id_grid, A_mat) + translation
+        # # if torch.allclose(A_mat, torch.tensor([[1., 0.],[0., 1.]], device='cuda:0')):
+        # #     assert torch.allclose(affine_grid, self.id_grid)
+        # if compute_field:
+        #     affine_field_inv = affine_grid - tb.im2grid(field)/ self.n_step
+        #     affine_field = affine_grid + tb.im2grid(field)
+        #     # affine_field_inv = tb.compose_fields(- tb.im2grid(field), affine_grid)  # TODO: Choisir la bonne chose.
+        #     # affine_field = tb.compose_fields(- tb.im2grid(field), affine_grid)
+        # else:
+        #     affine_field_inv = affine_grid
+        # invA_affine_field = tb.matrix_time_grid(affine_field_inv, inv_A_mat)
+        #
+        #
+        # # if torch.allclose(A_mat, torch.tensor([[1., 0.],[0., 1.]], device='cuda:0')):
+        # #     assert torch.allclose(affine_grid, invA_affine_field)
+        # image = tb.imgDeform(image, invA_affine_field)
         # 4. Compute image (I)
-        ic("before image : ", image.sum(), image.mean())
-        affine_grid = tb.matrix_time_grid(self.id_grid, A_mat) + translation
-        # if torch.allclose(A_mat, torch.tensor([[1., 0.],[0., 1.]], device='cuda:0')):
-        #     assert torch.allclose(affine_grid, self.id_grid)
         if compute_field:
-            affine_field_inv = affine_grid - tb.im2grid(field)/ self.n_step
-            affine_field = affine_grid + tb.im2grid(field)
-            # affine_field_inv = tb.compose_fields(- tb.im2grid(field), affine_grid)  # TODO: Choisir la bonne chose.
-            # affine_field = tb.compose_fields(- tb.im2grid(field), affine_grid)
-        else:
-            affine_field_inv = affine_grid
-        invA_affine_field = tb.matrix_time_grid(affine_field_inv, inv_A_mat)
-
-
-        # if torch.allclose(A_mat, torch.tensor([[1., 0.],[0., 1.]], device='cuda:0')):
-        #     assert torch.allclose(affine_grid, invA_affine_field)
-        image = tb.imgDeform(image, invA_affine_field)
-
-        # ic(affine_grid.sum(), (affine_grid**2).sum(), affine_grid.mean())
-        # ic(affine_field.sum(), (affine_field**2).sum(), affine_field.mean())
-        # ic(invA_affine_field.sum(), (invA_affine_field**2).sum(), invA_affine_field.mean())
-
-        if compute_field:
-            ic(self._i)
-            ic(A_mat, inv_A_mat)
-            ic(translation)
-            ic(momentum_I.min(), momentum_I.max(), momentum_I.mean())
-            fig, ax = plt.subplots(2,2)
-            tb.gridDef_plot_2d(affine_field.detach().cpu(), step = 40, ax = ax[0,0])
-            # tb.gridDef_plot_2d(affine_field_inv.detach().cpu(), step = 40, ax = ax[0,1])
-            tb.gridDef_plot_2d(invA_affine_field.detach().cpu(), step = 40, ax = ax[1,0])
-            ax[1,1].imshow(image.detach().cpu()[0,0])
-            plt.show()
+            deformation = self.id_grid - self.rho * field / self.n_step
+            image = self._update_image_semiLagrangian_(momentum_I, image, deformation, residuals)
         if self._get_rho_() != 1:
             raise NotImplementedError("Residuals are not implemented nor theorized yet in this settings")
         else:
             residuals = torch.zeros_like(image)
-        ic("ater image : ", image.sum(), image.mean())
-
-
 
 
 
@@ -466,51 +451,54 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
         # 5. momentum_I (p^I)
         if compute_field:
             momentum_I = self._compute_div_momentum_semiLagrangian_(
-                invA_affine_field,
+                deformation,
                 momentum_I,
-                cst=-sqrt(self.rho),
-                field=sqrt(self.rho) * (
-                    tb.matrix_time_grid(affine_field, inv_A_mat)
-                )
+                cst = -sqrt(self.rho),
+                field = sqrt(self.rho) * field
             )
 
         # 6. momentum_T (p^\tau)
         momentum_T = momentum_T - (d_affine.T @ momentum_T)/self.n_step
         if compute_field:
+            inv_A_mat = torch.linalg.inv(A_mat)
             field_momentum = field_momentum.reshape(B, d, 1, N)  # [B, (2,3), 1, H * W (* D)] R^(d x 1)
-            jaco_field = tb.field_jacobian(affine_field).reshape(B, d, d, N)
-            affine_field = affine_field.reshape(B, 1, d, N)  # [B, 1, (2,3), H * W (* D)] R^(1 x d)
+            jaco_field = tb.field_jacobian(field).reshape(B, d, d, N)
             inv_A_matT = inv_A_mat.T
 
-            momentum_T += torch.einsum("ijn, jn -> i",
+            momentum_T += (inv_A_matT @ torch.einsum("ijn, jn -> i", # TODO : check efficiency einsum
                  jaco_field[0].transpose(0,1),
-                inv_A_matT @ field_momentum[0,:,0]
-                 ) / self.n_step
+                 field_momentum[0,:,0]
+                 )) / self.n_step
 
         # 7. momentum_A (p^M):
         momentum_A = (momentum_A - d_affine.T @ momentum_A / self.n_step)
         if compute_field:
             # >>> Integral 1
             # inv_A_matT = inv_A_mat.T
-            temp = (field_momentum * affine_field).sum(dim=-1)[0]
-            integral_1 = (inv_A_matT @ temp @ inv_A_matT)
-
-            # ic("integral_1 should be [B, 2,2] :",integral_1.shape)
+            field_flat = field.reshape(B, 1, d, N)  # [B, 1, (2,3), H * W (* D)] R^(1 x d)
+            integral_1 = inv_A_matT @ (field_momentum * field_flat).sum(dim=-1)[0]
 
             # >>>> Integral 2
-            # integral_2 = jaco_field @ (inv_A_matT @ (field_momentum * x_flat))
-
             x_flat = self.id_grid.reshape(B, 1, d, N)
-            temp = inv_A_matT @ (field_momentum * x_flat)
-            integral_2 = torch.einsum("ijn, jkn -> ik", jaco_field[0], temp[0])
-            # ic("integral_2 should be [B, 2,2, H*W] :",integral_2.shape)
-            # integral_2 = integral_2.sum(dim = -1)
+            integral_2 = inv_A_matT @torch.einsum("ijn, jkn -> ik",
+                                              jaco_field[0].transpose(0,1),
+                                              (field_momentum * x_flat)[0]
+                                    )
             momentum_A += (-integral_1 + integral_2) / self.n_step
 
-            field = tb.im2grid(field)
+
+        # X. Compute affine mat (A)
+        exp_A = torch.linalg.matrix_exp(d_affine / self.n_step)
+        A_mat = exp_A @ A_mat
+
+        # X. Compute translation = b
+        translation = translation + (d_affine @ translation + momentum_T) / self.n_step
+        if self.debug:
+            print("A_mat :", A_mat)
+            print("translation :", translation)
         # momentum_A -= torch.autograd.grad(field,momentum_A)
         # momentum_T = momentum_T # Momentum T is constant
-        return momentum_A, momentum_T, image, field, residuals, A_mat, translation, norm_l2_on_A
+        return momentum_I, momentum_A, momentum_T, image, field, residuals, A_mat, translation, norm_l2_on_A
 
     def step_decoupled_rigidity(self, momentum_I, momentum_R, momentum_T, momentum_S, image, rot_mat, translation,
                                 scale):
@@ -564,7 +552,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
 
         # --- Rotation / Translation update ---
         if momentum_A is not None:
-            momentum_A, momentum_T, image, field, residuals, rot_mat, translation, norm_l2_on_A = \
+            momentum_I, momentum_A, momentum_T, image, field, residuals, rot_mat, translation, norm_l2_on_A = \
                 self._compute_step_affine(
                     momentum_I, image,
                     momentum_A, rot_mat,
@@ -674,7 +662,7 @@ class RigidMetamorphosis_integrator(Geodesic_integrator):
             if flag_affine:
                 momentum_I = torch.zeros_like(self.image)
                 field = torch.zeros(self.field.shape, device=self.field.device)
-                momentum_A, momentum_T, _, _, _, self.rot_mat, self.translation, norm_l2_on_A = self._compute_step_affine(
+                _ ,momentum_A, momentum_T, _, _, _, self.rot_mat, self.translation, norm_l2_on_A = self._compute_step_affine(
                     momentum_I, self.image,
                     momentum_A, self.rot_mat,
                     momentum_T, self.translation,
@@ -937,8 +925,12 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
         rho = self._get_rho_()
         try:
             device = momenta['momentum_R'].device
+            self.flag_decoupled = True
+            self.flag_affine = False
         except KeyError:
             device = momenta['momentum_A'].device
+            self.flag_decoupled = False
+            self.flag_affine = True
         self.to_device(device)
 
         self.mp.forward(self.source, momenta,
@@ -965,21 +957,36 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
                 self.norm_v_2 = torch.tensor(0, device=self.data_loss.device)
                 self.norm_l2_on_z = torch.tensor(0, device=self.data_loss.device)
 
-            # Norm L2 on R
-            # ic(self.mp._rot_inf_ini, self.mp._rot_inf_ini.T @ self.mp._rot_inf_ini, torch.trace( self.mp._rot_inf_ini.T @ self.mp._rot_inf_ini))
-            self.norm_l2_on_R = .5 * torch.trace(self.mp._rot_inf_ini.T @ self.mp._rot_inf_ini)
-            try:
-                self.norm_S_2 = .5 * ((self.mp.scale_inf_ini) ** 2).sum()
-            except AttributeError:
-                self.norm_S_2 = torch.tensor([0], device=self.data_loss.device)
+            if self.flag_decoupled:
+                # if self.mp.flag_field:
+                    # Norm V
+                    # self.norm_v_2 = .5 * rho * self._compute_V_norm_(momenta['momentum_I'], self.source)
+
+                # Norm L2 on R
+                self.norm_l2_on_R = .5 * torch.trace(self.mp._rot_inf_ini.T @ self.mp._rot_inf_ini)
+                try:
+                    self.norm_S_2 = .5 * ((self.mp.scale_inf_ini) ** 2).sum()
+                except AttributeError:
+                    self.norm_S_2 = torch.tensor([0], device=self.data_loss.device)
+
+            if self.flag_affine:
+                # torch.trace(momenta["momentum_A"] @ A_mat.T + momenta["momentum_T"] @ translation.T)
+                self.norm_A  = .5 * torch.trace(momenta["momentum_A"])
+                self.norm_T = .5 * (momenta["momentum_T"]**2).sum().sqrt()
+
+                # if self.mp.flag_field:
+                #     # Norm V
+                #     self.norm_v_2 = .5 * rho *
 
         self.total_cost = self.data_loss + \
                           self.cost_cst * (
-                                  self.cost_field_cst * (self.norm_v_2 + self.norm_l2_on_z) +
-                                  self.cost_affine_cst * (self.norm_l2_on_R + self.norm_S_2)
-                              # (self.norm_v_2 + self.norm_l2_on_z) +
-                              #  (self.norm_l2_on_R + self.norm_S_2)
+                                  self.cost_field_cst * (self.norm_v_2 + self.norm_l2_on_z)
+                                  #+ self.cost_affine_cst * (self.norm_l2_on_R + self.norm_S_2)
                           )
+        if self.flag_decoupled:
+            self.total_cost += self.cost_cst * (self.cost_affine_cst * (self.norm_l2_on_R + self.norm_S_2))
+        if self.flag_affine:
+            self.total_cost += self.cost_cst * (self.cost_affine_cst * (self.norm_A + self.norm_T))
 
         return self.total_cost
 
@@ -999,14 +1006,14 @@ class RigidMetamorphosis_Optimizer(Optimize_geodesicShooting):
         loss_stock["data_loss"][i] = self.data_loss.detach().cpu()
         loss_stock["norm_v_2"][i] = self.norm_v_2.detach().cpu()
         loss_stock["norm_l2_on_z"][i] = self.norm_l2_on_z.detach().cpu()
-        loss_stock["norm_l2_on_R"][i] = self.norm_l2_on_R.detach().cpu()
-        loss_stock["norm_S_2"][i] = self.norm_S_2.detach().cpu()
+        loss_stock["norm_l2_on_R"][i] = self.norm_l2_on_R.detach().cpu() if self.flag_decoupled else self.norm_A.detach().cpu()
+        loss_stock["norm_S_2"][i] = self.norm_S_2.detach().cpu() if self.flag_decoupled else self.norm_T.detach().cpu()
 
-        print("\t\tdata_loss :", self.data_loss.detach())
-        print("\t\tnorm_v_2 :", self.norm_v_2.detach())
-        print("\t\tnorm_l2_on_z :", self.norm_l2_on_z.detach())
-        print("\t\tnorm_l2_on_R :", self.norm_l2_on_R.detach())
-        print("\t\tnorm_S_2 :", self.norm_S_2.detach())
+        # print("\t\tdata_loss :", self.data_loss.detach())
+        # print("\t\tnorm_v_2 :", self.norm_v_2.detach())
+        # print("\t\tnorm_l2_on_z :", self.norm_l2_on_z.detach())
+        # print("\t\tnorm_l2_on_R :", self.norm_l2_on_R.detach())
+        # print("\t\tnorm_S_2 :", self.norm_S_2.detach())
 
         return loss_stock
 

@@ -1393,7 +1393,6 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             # print("//////" * 20)
             # print(f"      {self._iter_}/{n_iter}")
             # print("//////" * 20)
-            ic("PARAM",self.parameter)
             self._step_optimizer_()
             loss_stock = self._cost_saving_(i, loss_stock)
 
