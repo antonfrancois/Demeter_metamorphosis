@@ -564,10 +564,14 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
     ):
         sigma= [1, 3,  7]
         sigma = [(s,)*3 for s in sigma]
-        alpha = .3
+        gamma = .5
         rho = 1
-        cost_cst = 1e6
-        cst_field = .005
+        cost_cst = 1e3
+        cst_field = 1
+        cost_affine = 1
+        cost_field = 1
+        adam_dt_step_field=1e-6,
+        adam_dt_step_affine=1e-2,
         integration_steps = 10
         print(f"\nPatient : {paths["subject_dir"].name}")
         # 2) Rigid search
@@ -578,26 +582,26 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
         seg_source_b = tb.imgDeform(seg_source, (id_grid + trans_s), mode="nearest")
 
         # 2.b Intial exploration:
-        kernelOperator = rk.DummyKernel()
-        datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'), alpha=1)
+        # kernelOperator = rk.DummyKernel()
+        # datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'), alpha=1)
         # datacost = mt.Rotation_MutualInformation_Cost(target_b.to('cuda:0'), alpha=1)
 
 
-        mr = mt.rigid_along_metamorphosis(
-            source_b, target_b, momenta_ini=0,
-            kernelOperator= kernelOperator,
-            rho = 1,
-            data_term=datacost ,
-            integration_steps = integration_steps,
-            cost_cst=.1,
-        )
-        top_params = rg.initial_exploration(mr,r_step=10, max_output = 15, verbose=True)
-        print(top_params)
-
-        # 2.c Optimize on best finds
-        best_loss, best_momenta, best_rot = rg.optimize_on_rigid(mr, top_params, n_iter=5,verbose=False)
-        print(f"\nPatient : {paths["subject_dir"].name}")
-        print("best_momenta = ",best_momenta)
+        # mr = mt.rigid_along_metamorphosis(
+        #     source_b, target_b, momenta_ini=0,
+        #     kernelOperator= kernelOperator,
+        #     rho = 1,
+        #     data_term=datacost ,
+        #     integration_steps = integration_steps,
+        #     cost_cst=.1,
+        # )
+        # top_params = rg.initial_exploration(mr,r_step=10, max_output = 15, verbose=True)
+        # print(top_params)
+        #
+        # # 2.c Optimize on best finds
+        # best_loss, best_momenta, best_rot = rg.optimize_on_rigid(mr, top_params, n_iter=5,verbose=False)
+        # print(f"\nPatient : {paths["subject_dir"].name}")
+        # print("best_momenta = ",best_momenta)
 
         # 3) [Optionnal] Check rigid search
         # rot_def = mr.mp.get_rigidor()
@@ -624,52 +628,90 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
         kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
 
         # D(I,T) =  alpha *| S \cdot A.T  - T |^2 + (1 - alpha) * | I_1 \cdot A.T - T|^2
-        datacost = mt.Rotation_Ssd_Cost(target_b.to("cuda:0"), alpha=alpha)
+        datacost = mt.Rotation_Ssd_Cost(
+            target_b.to("cuda:0"),
+            gamma=gamma,
+            # sigmoid_a=sigmoid_a,sigmoid_b=sigmoid_b,sigmoid_c=sigmoid_c,
+            normalize_ssd=False,
+            verbose=True,
+            plot=False,
+            save_plot=None
+        )
+        rotation=True
+        scaling=True
+        translation=True
+        affine = False
         momenta = mt.prepare_momenta(
             source_b.shape,
-            device = device,
-            **best_momenta,
+            diffeo=True,
+            rotation=rotation, scaling = scaling, translation = translation,
+            device="cuda:0",
+            # **best_priors
         )
-
 
 
         mr = mt.rigid_along_metamorphosis(
-          source_b, target_b, momenta_ini=momenta,
-          kernelOperator= kernelOperator,
-          rho = rho,
-          data_term=datacost ,
-          integration_steps = integration_steps,
-          cost_cst=cost_cst,
-          cst_field=cst_field,
-          n_iter=50,
-          save_gpu_memory=False,
-          lbfgs_max_iter = 40,
-          lbfgs_history_size = 20,
+            source_b.to("cuda:0"), target_b.to("cuda:0"), momenta_ini=momenta,
+            kernelOperator= kernelOperator,
+            rho = rho,
+            data_term=datacost ,
+            integration_steps = integration_steps,
+            cost_cst=cost_cst,
+            cost_affine_cst = cost_affine,
+            cost_field_cst = cost_field,
+            n_iter=100,
+            save_gpu_memory=False,
+            optimizer_method='Adam',
+            adam_dt_step_field=adam_dt_step_field,
+            adam_dt_step_affine=adam_dt_step_affine,
+            # lbfgs_max_iter = 10,
+            # lbfgs_history_size = 30,
+            # hamiltonian_integration=True
         )
 
+        name = 'affine_lddmm' if affine else "decoupled_lddmm"
         dices, _ =mr.compute_DICE(seg_source_b, seg_target_b, verbose=True)
-        file_save, path = mr.save(f"{paths["subject_dir"].name}_rigid_along_lddmm",
+        file_save, path = mr.save(f"{paths["subject_dir"].name}_{name}",
                 light_save=True,
-                save_path = os.path.join(result_folder, "rigid_along_lddmm")
+                save_path = os.path.join(result_folder, name)
                 )
         mt.free_GPU_memory(mr)
+
+
+
+        def _strf_(valbool):
+            return "T" if valbool else "F"
+        modifier_str = (
+                "_r"+_strf_(rotation)+
+                "_s"+_strf_(scaling)+
+                "_t"+_strf_(translation)
+                        ) if not affine else "aT"
+
         dice = dices[0] | dices[1]
         now = datetime.datetime.now()
         log_metrics(
             db_path,
             patient_id=paths["subject_dir"].name,
-            method="rigid_along_lddmm b",
-            metrics={'rigid_along_lddmm ' + k: v for k,v in dice.items()},
+            method= name + modifier_str ,
+            metrics={name + ' '+ k: v for k,v in dice.items()},
             run_id= str(now) + ' at ' + location,
             step=0,
-            meta={"gpu":torch.cuda.get_device_name(),
-                  "alpha" : alpha,
-                  "rho" : rho,
-                  "cost_cst" : cost_cst,
-                  "cst_field" : cst_field,
-                  "sigma" : sigma,
-                  "integration_steps" : integration_steps,
-                  "file": os.path.join(path, file_save)
+            meta={
+                "gpu":torch.cuda.get_device_name(),
+                "gamma" : gamma,
+                "rho" : rho,
+                "cost_cst" : cost_cst,
+                "cst_field" : cst_field,
+                "sigma" : sigma,
+                "integration_steps" : integration_steps,
+                "diffeo":True,
+                "rotation":rotation,
+                "scaling" : scaling,
+                "translation" : translation,
+                "affine" : affine,
+                "adam_dt_step_field" : adam_dt_step_field,
+                "adam_dt_step_affine" : adam_dt_step_affine,
+                "file": os.path.join(path, file_save)
                   }
             )
 
@@ -1154,22 +1196,31 @@ if __name__ == '__main__':
     # subjects_numbers = [40,41,42,43,44,45,46,48,49] # 4
     # subjects_numbers = [50,51,52,53,54,55,56,57,58,59] # 5
     # subjects_numbers = [60,61,62,63,64,65,66,67,68,69] # 6
+    # subjects_numbers = [35, 37, 61, 66, 34, 49]
 
-    subjects_numbers = [35, 37, 61, 66, 34, 49]
+    # all
+    subjects_numbers = [2,12,13,14,15,16,17,19, # 1
+     20,21,22,23,24,25,26,27,28,29, # 2
+     30,31,33,34,35,36,37,38,39, # 3
+     40,41,42,43,44,45,46,48,49, # 4
+     50,51,52,53,54,55,56,57,58,59, # 5
+     60,61,62,63,64,65,66,67,68,69] # 6
+    # subjects_numbers = [35, 37, 61, 66, 34, 49]
+
 
     # = [35,36,37,38,39,41,42,43] Done
     # [44,45,46,48,49,50,51,52,53,54, Done
     # 55,56,57,58,59,60,61,62, Done
     #     # subjects_numbers = [63,64,65,66,67,68,69]
     # subjects_numbers = None
-    # subjects_numbers = [2]#, 40, 26, 50,2, 12]
+    # subjects_numbers = [2, 40]#, 26, 50,2, 12]
     RECOMPUTE = False
     RESIZE_FACTOR = .5 if location == 'local' else 1
 
     # init_csv(result_folder)
 
     if location == "meso": # don't touch this line
-        file_db = "ixi_results.db"
+        file_db = "ixi_results_2026.db"
     else: # here you can sandbox what you need to do.
         file_db = f"ixi_results_{location}.db"
         # file_db = "ixi_results_meso_20250917.db"
@@ -1178,10 +1229,10 @@ if __name__ == '__main__':
 
     # execute_dummy(pp, subjects_numbers)
     # execute_control(pp,subjects_numbers)
-    # if location == 'meso':
-    # #     execute_uniGradIcon(pp, subjects_numbers)
+    if location == 'meso':
+        execute_uniGradIcon(pp, subjects_numbers)
     # execute_flirt_lddmm(pp, subjects_numbers)
     # elif location == 'local':
-    execute_rigid_along_metamorphosis(pp, subjects_numbers)
+    # execute_rigid_along_metamorphosis(pp, subjects_numbers)
 
 

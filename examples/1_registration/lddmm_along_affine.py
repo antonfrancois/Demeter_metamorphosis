@@ -228,6 +228,10 @@ print(f"best_rot : {best_rot}")
 print(f"best_priors : {best_priors}")
 id = 1
 
+best_priors = {'affine_prior': torch.tensor([[-0.3171, -1.0310],
+        [ 0.8974, -0.6376]]),
+               'rot_prior': None,
+               'trans_prior': torch.tensor([-0.0269,  0.0821]), 'scale_prior': None}
 
 
 
@@ -304,8 +308,7 @@ saving_plots= (
 
 
 kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False, kernel_reach =6)
-def make_datacost():
-    return mt.Rotation_Ssd_Cost(
+datacost = mt.Rotation_Ssd_Cost(
         target_b.to("cuda:0"),
         # gamma=alpha,
         sigmoid_a=sigmoid_a,sigmoid_b=sigmoid_b,sigmoid_c=sigmoid_c,
@@ -314,72 +317,48 @@ def make_datacost():
         plot=plot_datacost,
         save_plot=saving_plots
     )
-
+# datacost = mt.Ssd(target_b.to("cuda:0"))
 
 # best_loss = torch.inf
 # for i,param in enumerate(top_param_rot):
 #     print(f"\n\noptimistion {i} on  {len(top_param_rot)}")
-cases = [("with_I", True)
-    # , ("without_I", False)
-         ]
-case_results = {}
+print("\n" + "=" * 20)
+momenta = mt.prepare_momenta(
+    source_b.shape,
+    diffeo=True,
+    affine=True,
+    device="cuda:0",
+    **best_priors
+)
+# momenta["momentum_A"].requires_grad = False
+# momenta["momentum_T"].requires_grad = False
 
-for case_name, with_diffeo in cases:
-    print("\n" + "=" * 20)
-    print(f"Run case: {case_name}")
-    momenta = mt.prepare_momenta(
-        source_b.shape,
-        diffeo=with_diffeo,
-        affine=True,
-        device="cuda:0",
-        **best_priors
-    )
+for k,v in momenta.items():
+    print(k, v.requires_grad)
 
-    momenta_before = {k: v.detach().clone() for k, v in momenta.items()}
-    if enable_grad_debug:
-        debug_handles = install_momenta_grad_debug(momenta, every=10, max_print=40)
-    else:
-        debug_handles = []
 
-    mr_case = mt.rigid_along_metamorphosis(
-      source_b, target_b, momenta_ini=momenta,
-      kernelOperator= kernelOperator,
-      rho = rho,
-      data_term=make_datacost(),
-      integration_steps = integration_steps,
-      cost_cst=cost_cst,
-      cost_field_cst = cost_field_cst,
-      cost_affine_cst = cost_affine_cst,
-      n_iter=100,
-        grad_coef=.1,
-        # optimizer_method='adadelta',
-      # lbfgs_max_iter = 20,
-      # lbfgs_history_size = 20,
-      optimizer_method='Adam',
-      adam_dt_step_field=adam_dt_step_field,
-      adam_dt_step_affine=adam_dt_step_affine,
-      save_gpu_memory=False,
-        safe_mode=True,
-        debug=False,
-    )
+mr = mt.rigid_along_metamorphosis(
+  source_b, target_b, momenta_ini=momenta,
+  kernelOperator= kernelOperator,
+  rho = rho,
+  data_term=datacost,
+  integration_steps = integration_steps,
+  cost_cst=cost_cst,
+  cost_field_cst = cost_field_cst,
+  cost_affine_cst = cost_affine_cst,
+  n_iter=10,
+    grad_coef=.1,
+    # optimizer_method='adadelta',
+  # lbfgs_max_iter = 20,
+  # lbfgs_history_size = 20,
+  optimizer_method='Adam',
+  adam_dt_step_field=adam_dt_step_field,
+  adam_dt_step_affine=adam_dt_step_affine,
+  save_gpu_memory=False,
+    safe_mode=True,
+    debug=False,
+)
 
-    for h in debug_handles:
-        h.remove()
-
-    if isinstance(mr_case.to_analyse[0], dict):
-        print_momenta_delta(momenta_before, mr_case.to_analyse[0])
-    if isinstance(mr_case.to_analyse[1], dict):
-        ls = mr_case.to_analyse[1]
-        print("\n[Last loss components]")
-        print(f"  - data_loss   : {float(ls['data_loss'][-1]):.6e}")
-        print(f"  - norm_v_2    : {float(ls['norm_v_2'][-1]):.6e}")
-        print(f"  - norm_l2_on_z: {float(ls['norm_l2_on_z'][-1]):.6e}")
-        print(f"  - norm_l2_on_R: {float(ls['norm_l2_on_R'][-1]):.6e}")
-        if 'norm_S_2' in ls:
-            print(f"  - norm_S_2    : {float(ls['norm_S_2'][-1]):.6e}")
-
-    summary = summarize_registration_case(case_name, mr_case, target_b)
-    case_results[case_name] = {"mr": mr_case, "summary": summary}
 
 # print("\n" + "=" * 20)
 # print("[Comparison summary]")
@@ -388,7 +367,7 @@ for case_name, with_diffeo in cases:
 #     b = case_results["without_I"]["summary"][key]
 #     print(f"  - {key}: with_I={a:.6f} | without_I={b:.6f}")
 
-mr = case_results["with_I"]["mr"]
+
 
 best = False
 fig_cost, _ = mr.plot_cost()
