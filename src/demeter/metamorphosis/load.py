@@ -17,7 +17,7 @@ from .joined import (
     Weighted_joinedMask_Metamorphosis_Shooting,
 )
 from .simplex import Simplex_sqrt_Metamorphosis_integrator, Simplex_sqrt_Shooting
-from .rotate import RigidMetamorphosis_integrator, RigidMetamorphosis_Optimizer
+from .affine import RigidMetamorphosis_integrator, RigidMetamorphosis_Optimizer
 from ..utils.reproducing_kernels import (
     GaussianRKHS,
     VolNormalizedGaussianRKHS,

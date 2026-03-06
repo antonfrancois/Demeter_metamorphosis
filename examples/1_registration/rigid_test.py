@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 
 import demeter.utils.torchbox as tb
-import demeter.metamorphosis.rotate as mtrt
+import demeter.metamorphosis.affine as mtrt
 import demeter.metamorphosis as mt
 import demeter.utils.reproducing_kernels as rk
 

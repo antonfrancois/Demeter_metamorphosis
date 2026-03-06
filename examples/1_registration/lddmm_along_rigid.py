@@ -4,7 +4,7 @@ from math import cos,sin
 import matplotlib.pyplot as plt
 
 import demeter.utils.torchbox as tb
-import demeter.metamorphosis.rotate as mtrt
+import demeter.metamorphosis.affine as mtrt
 import demeter.utils.reproducing_kernels as rk
 import demeter.metamorphosis as mt
 import demeter.utils.cost_functions as cf

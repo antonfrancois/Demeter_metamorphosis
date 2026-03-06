@@ -9,7 +9,7 @@ from . import classic as cl
 from . import constrained as cn
 from . import simplex as sp
 from . import joined as jn
-from . import rotate as rd
+from . import affine as rd
 
 from ..utils import torchbox as tb
 from ..utils.decorators import time_it, monitor_gpu

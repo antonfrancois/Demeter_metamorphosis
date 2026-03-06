@@ -4,7 +4,7 @@ from demeter.metamorphosis import prepare_momenta
 from demeter.utils.decorators import time_it
 import demeter.utils.torchbox as tb
 import demeter.utils.cost_functions as cf
-import  demeter.metamorphosis.rotate as mtrt
+import  demeter.metamorphosis.affine as mtrt
 
 def compute_img_barycentre(img, id_grid = None, dx_convention= '2square'):
     if id_grid is None:
