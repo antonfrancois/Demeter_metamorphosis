@@ -574,14 +574,12 @@ def affine_along_metamorphosis(
                         " - 'momentum_T' for the translation"
                                  )
 
-
-    try:
+    ic(type(momenta_ini), momenta_ini)
+    if not isinstance(momenta_ini, int):
         if "momentum_R" in momenta_ini.keys():
             raise ValueError(f"In affine_along_metamorphosis momenta_ini must not contain 'momentum_R',"
                              f" if you wand to estimate a rotation individually,"
                              f" please use `affine_decoupled_along_metamorphosis` instead.")
-    except AttributeError:
-        pass
 
     mp = aff.Affine_Metamorphosis_integrator(
         rho=rho,

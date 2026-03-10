@@ -203,7 +203,9 @@ mr_rigid = mt.affine_along_metamorphosis(
     rho = 1,
     data_term=datacost ,
     integration_steps = integration_steps,
-    optimizer_method='LBFGS_torch',
+    # optimizer_method='LBFGS_torch',
+    optimizer_method="Adam",
+    adam_dt_step_affine= 1e-6,
     cost_cst=.1,
     n_iter=0,
     lbfgs_max_iter=20
@@ -218,7 +220,7 @@ print("="*20)
 print("Optimize on best exploration ")
 best_loss, best_priors, best_rot = rg.optimize_on_rigid(
     mr_rigid, top_params,
-    n_iter=10, grad_coef = .1,
+    n_iter=10, grad_coef = .001,
     affine=True,
     # rotation=True, scaling=False, translation=True,
     verbose=True, plot = True,

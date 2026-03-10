@@ -774,6 +774,7 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
     def to_device(self, device):
         # TODO: completer ça
+        self.device = device
         try:
             self.image = self.image.to(device)
             self.id_grid = self.id_grid.to(device)

@@ -202,12 +202,12 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
         return momentum_I
 
     def _compute_step_affine(self,
-                             momentum_I, image,
                              momentum_A, A_mat,
                              momentum_T, translation,
-                             compute_field=True
                              ):
 
+        ic("\n",self._i)
+        ic("before",momentum_A, momentum_T, A_mat, translation)
         # 1. Compute infinitesimal affine mat M
         d_affine = momentum_A @ A_mat.T + momentum_T @ translation.T # d_affine = M
 
@@ -223,114 +223,12 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
                translation, norm_l2_on_A
                )
 
-        # 3. Compute field (v)
-        if compute_field:
-            grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
-            # ic(grad_image.min().item(), grad_image.max().item(),self.dx_convention)
-            field_momentum = (grad_image * momentum_I.unsqueeze(2)).sum(dim=1)
-            field =  self.kernelOperator(field_momentum)
-            norm_v = None
-            if self.flag_hamiltonian_integration:
-                self.norm_v_i = .5 * self.rho * (field_momentum.clone() * field.clone()).sum()
-
-            field = -tb.im2grid(field)
-            # field, self.norm_v_i = self._compute_vectorField_(momentum_I, grad_image)
-
-            # grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
-            #
-            # # field, self.norm_v_i = self._compute_vectorField_(momentum_I, grad_image)
-            # field_momentum = (grad_image * momentum_I.unsqueeze(2)).sum(dim=1)
-            # # ic(A_mat, inv_A_mat, A_mat.T, A_mat.T @ A_mat)
-            # inv_affine_grid = tb.matrix_time_grid(self.id_grid- translation, inv_A_mat)
-            # # affine_field_momentum = torch.einsum('ij,bjhw->bihw',
-            # #                                      inv_A_mat.T, tb.imgDeform(field_momentum, inv_affine_grid)
-            # #                                      )
-            # affine_field_momentum = tb.matrix_time_grid(
-            #     tb.im2grid(tb.imgDeform(field_momentum, inv_affine_grid)),
-            #     inv_A_mat.T
-            # )
-            # field = (- self.kernelOperator(tb.grid2im(affine_field_momentum))
-            #          / torch.det(A_mat))
-        else:
-            field = None
-
-
-
-        # affine_grid = tb.matrix_time_grid(self.id_grid, A_mat) + translation
-        # # if torch.allclose(A_mat, torch.tensor([[1., 0.],[0., 1.]], device='cuda:0')):
-        # #     assert torch.allclose(affine_grid, self.id_grid)
-        # if compute_field:
-        #     affine_field_inv = affine_grid - tb.im2grid(field)/ self.n_step
-        #     affine_field = affine_grid + tb.im2grid(field)
-        #     # affine_field_inv = tb.compose_fields(- tb.im2grid(field), affine_grid)  # TODO: Choisir la bonne chose.
-        #     # affine_field = tb.compose_fields(- tb.im2grid(field), affine_grid)
-        # else:
-        #     affine_field_inv = affine_grid
-        # invA_affine_field = tb.matrix_time_grid(affine_field_inv, inv_A_mat)
-        #
-        #
-        # # if torch.allclose(A_mat, torch.tensor([[1., 0.],[0., 1.]], device='cuda:0')):
-        # #     assert torch.allclose(affine_grid, invA_affine_field)
-        # image = tb.imgDeform(image, invA_affine_field)
-        # 4. Compute image (I)
-        if compute_field:
-            deformation = self.id_grid - self.rho * field / self.n_step
-            image = self._update_image_semiLagrangian_(momentum_I, image, deformation, residuals)
-        if self._get_rho_() != 1:
-            raise NotImplementedError("Residuals are not implemented nor theorized yet in this settings")
-        else:
-            residuals = torch.zeros_like(image)
-
-
-
         # Momenta update
-        N = prod(image.shape[2:])
-        d = len(image.shape[2:])
-        B = image.shape[0]
-        if B != 1:
-            Warning(
-                "_compute_step_affine_ does not support batch, B must be 1 got {}. Only first dim is considered".format(
-                    B))
-            B = 1
-
-        # 5. momentum_I (p^I)
-        if compute_field:
-            momentum_I = self._compute_div_momentum_semiLagrangian_(
-                deformation,
-                momentum_I,
-                cst = -sqrt(self.rho),
-                field = sqrt(self.rho) * field
-            )
-
         # 6. momentum_T (p^\tau)
         momentum_T = momentum_T - (d_affine.T @ momentum_T)/self.n_step
-        if compute_field:
-            inv_A_mat = torch.linalg.inv(A_mat)
-            field_momentum = field_momentum.reshape(B, d, 1, N)  # [B, (2,3), 1, H * W (* D)] R^(d x 1)
-            jaco_field = tb.field_jacobian(field).reshape(B, d, d, N)
-            inv_A_matT = inv_A_mat.T
-
-            momentum_T += (inv_A_matT @ torch.einsum("ijn, jn -> i", # TODO : check efficiency einsum
-                 jaco_field[0].transpose(0,1),
-                 field_momentum[0,:,0]
-                 )) / self.n_step
 
         # 7. momentum_A (p^M):
         momentum_A = (momentum_A - d_affine.T @ momentum_A / self.n_step)
-        if compute_field:
-            # >>> Integral 1
-            # inv_A_matT = inv_A_mat.T
-            field_flat = field.reshape(B, 1, d, N)  # [B, 1, (2,3), H * W (* D)] R^(1 x d)
-            integral_1 = inv_A_matT @ (field_momentum * field_flat).sum(dim=-1)[0]
-
-            # >>>> Integral 2
-            x_flat = self.id_grid.reshape(B, 1, d, N)
-            integral_2 = inv_A_matT @torch.einsum("ijn, jkn -> ik",
-                                              jaco_field[0].transpose(0,1),
-                                              (field_momentum * x_flat)[0]
-                                    )
-            momentum_A += (-integral_1 + integral_2) / self.n_step
-
 
         # X. Compute affine mat (A)
         exp_A = torch.linalg.matrix_exp(d_affine / self.n_step)
@@ -338,14 +236,16 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
 
         # X. Compute translation = b
         translation = translation + (d_affine @ translation + momentum_T) / self.n_step
+        ic("After",momentum_A, momentum_T, A_mat, translation)
+
         if self.debug:
             print("A_mat :", A_mat)
             print("translation :", translation)
         # momentum_A -= torch.autograd.grad(field,momentum_A)
         # momentum_T = momentum_T # Momentum T is constant
-        return momentum_I, momentum_A, momentum_T, image, field, residuals, A_mat, translation, norm_l2_on_A
+        return momentum_A, momentum_T, A_mat, translation, norm_l2_on_A
 
-    def step(self, image, momentum_I, momentum_A, momentum_T, rot_mat, translation):
+    def step(self, image, momentum_I, momentum_A, momentum_T, A_mat, translation):
         """
         One integration step. Fully checkpoint-compliant: fixed number of outputs.
         """
@@ -362,14 +262,78 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
         # field, norm_V = self._compute_vectorField_(momentum_I, grad_image)
         # field = self._update_field_(momentum_I, image)
 
-        # --- Rotation / Translation update ---
-        if momentum_A is not None:
-            momentum_I, momentum_A, momentum_T, image, field, residuals, rot_mat, translation, norm_l2_on_A = \
-                self._compute_step_affine(
-                    momentum_I, image,
-                    momentum_A, rot_mat,
-                    momentum_T, translation
-                )
+        # --- Affine part update, not depending on I---
+        momentum_A, momentum_T, A_mat, translation, norm_l2_on_A = \
+            self._compute_step_affine(
+                momentum_A, A_mat,
+                momentum_T, translation
+        )
+
+        # 3. Compute field (v)
+        grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
+        # ic(grad_image.min().item(), grad_image.max().item(),self.dx_convention)
+        field_momentum = (grad_image * momentum_I.unsqueeze(2)).sum(dim=1)
+        field =  self.kernelOperator(field_momentum)
+        norm_v = None
+        if self.flag_hamiltonian_integration:
+            self.norm_v_i = .5 * self.rho * (field_momentum.clone() * field.clone()).sum()
+
+        field = -tb.im2grid(field)
+
+        # 4. Compute image (I)
+        deformation = self.id_grid - self.rho * field / self.n_step
+        if self._get_rho_() != 1:
+            raise NotImplementedError("Residuals are not implemented nor theorized yet in this settings")
+        else:
+            residuals = torch.zeros_like(image)
+        image = self._update_image_semiLagrangian_(momentum_I, image, deformation, residuals)
+
+        # Momenta update
+        N = prod(image.shape[2:])
+        d = len(image.shape[2:])
+        B = image.shape[0]
+        if B != 1:
+            Warning(
+                "_compute_step_affine_ does not support batch, B must be 1 got {}. Only first dim is considered".format(
+                    B))
+            B = 1
+
+        # 5. momentum_I (p^I)
+        momentum_I = self._compute_div_momentum_semiLagrangian_(
+            deformation,
+            momentum_I,
+            cst = -sqrt(self.rho),
+            field = sqrt(self.rho) * field
+        )
+
+        # 6. momentum_T (p^\tau)
+        inv_A_mat = torch.linalg.inv(A_mat)
+        field_momentum = field_momentum.reshape(B, d, 1, N)  # [B, (2,3), 1, H * W (* D)] R^(d x 1)
+        jaco_field = tb.field_jacobian(field).reshape(B, d, d, N)
+        inv_A_matT = inv_A_mat.T
+
+        momentum_T += (inv_A_matT @ torch.einsum("ijn, jn -> i", # TODO : check efficiency einsum
+             jaco_field[0].transpose(0,1),
+             field_momentum[0,:,0]
+             )) / self.n_step
+
+        # 7. momentum_A (p^M):
+        # >>> Integral 1
+        # inv_A_matT = inv_A_mat.T
+        field_flat = field.reshape(B, 1, d, N)  # [B, 1, (2,3), H * W (* D)] R^(1 x d)
+        integral_1 =  (field_momentum * field_flat).sum(dim=-1)[0]
+
+        # >>>> Integral 2
+        x_flat = self.id_grid.reshape(B, 1, d, N)
+        integral_2 = torch.einsum("ijn, jkn -> ik",
+                                          jaco_field[0].transpose(0,1),
+                                          (field_momentum * x_flat)[0]
+                                )
+
+        momentum_A -= inv_A_matT @ (integral_1 - integral_2)
+
+
+
         # --- Always output the same things ---
         return (
             momentum_I,
@@ -378,7 +342,7 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
             image,
             self.rho * field,
             residuals,
-            rot_mat,
+            A_mat,
             translation,
         )
 
@@ -391,9 +355,8 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
         self.rot_mat = torch.eye(self._dim)
 
         if "momentum_R" in momenta.keys():
-            raise ValueError("momentum_R detected in momenta,"
-                             " please remove it or use"
-                             " Affine_Decoupled_Metamorphosis_integrator instead")
+            momenta["momentum_A"] = momenta["momentum_R"]
+            del momenta["momentum_R"]
 
         device = momenta['momentum_A'].device
         self.to_device(device)
@@ -408,14 +371,18 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
         # print("_forward_direct_step in rotate")
         if "momentum_A" in self.momenta.keys():
             momentum_A = self.momenta["momentum_A"]
-            momentum_T = self.momenta["momentum_T"]
+
             flag_affine = True
             momentum_R = momentum_S = None
         else:
             raise ValueError("Momenta must contain at least momentum_A.")
+        if "momentum_T" in self.momenta.keys():
+            momentum_T = self.momenta["momentum_T"]
+        else:
+            momentum_T = torch.zeros((self._dim,), device=self.device)
 
         if self.flag_field:
-
+            print("FIELD + AFFINE")
             momentum_I = self.momenta["momentum_I"]
             momentum_I, momentum_A, momentum_T, self.image, self.field, self.residuals, self.rot_mat, self.translation \
                 = self.step(
@@ -431,13 +398,10 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
             if momentum_T is not None:
                 self.momenta["momentum_T"] = momentum_T
         else:
-            momentum_I = torch.zeros_like(self.image)
-            field = torch.zeros(self.field.shape, device=self.field.device)
-            _ ,momentum_A, momentum_T, _, _, _, self.rot_mat, self.translation, norm_l2_on_A = self._compute_step_affine(
-                momentum_I, self.image,
+            print("AFFINE")
+            momentum_A, momentum_T, self.rot_mat, self.translation, norm_l2_on_A = self._compute_step_affine(
                 momentum_A, self.rot_mat,
                 momentum_T, self.translation,
-                compute_field=False
             )
             self.momenta["momentum_A"] = momentum_A
             self.momenta["momentum_T"] = momentum_T
@@ -714,10 +678,10 @@ class Affine_Metamorphosis_Optimizer(Optimize_geodesicShooting):
                 self.norm_l2_on_z = torch.tensor(0, device=self.data_loss.device)
 
 
-            if self.flag_affine:
-                # torch.trace(momenta["momentum_A"] @ A_mat.T + momenta["momentum_T"] @ translation.T)
-                self.norm_A  = .5 * torch.trace(momenta["momentum_A"])
-                self.norm_T = .5 * (momenta["momentum_T"]**2).sum().sqrt()
+
+            # torch.trace(momenta["momentum_A"] @ A_mat.T + momenta["momentum_T"] @ translation.T)
+            self.norm_A  = .5 * torch.trace(momenta["momentum_A"])
+            self.norm_T = .5 * (momenta["momentum_T"]**2).sum().sqrt()
 
                 # if self.mp.flag_field:
                 #     # Norm V
