@@ -138,6 +138,8 @@ def optimize_on_rigid(mr,
                       plot = False):
     # best_loss = top_params[0][0]
     best_loss = torch.inf
+    best_momenta = None
+    best_rot = None
     for i,(val,params_r) in  enumerate(top_params):
         if verbose:
             print(">"*10)
@@ -153,10 +155,17 @@ def optimize_on_rigid(mr,
             **params_r
         )
 
+        converged = True
         try:
             mr.forward(momenta, n_iter = n_iter, grad_coef= grad_coef)
         except OverflowError:
+            converged = False
             print("xxxxxx Optimization diverged xxxxxx")
+
+        if (not converged) or (not hasattr(mr, "to_analyse")) or mr.to_analyse == "Integration diverged":
+            if verbose:
+                print("Skipping iteration: no analyzable result available.")
+            continue
         # mr = rigid_along_metamorphosis(
         #     source,target,momenta, kernelOperator,
         #     rho= rho,
@@ -177,8 +186,16 @@ def optimize_on_rigid(mr,
             except KeyError:
                 return None
 
-        if mr.data_loss < best_loss or mr.data_loss == 0:
-            best_loss = mr.data_loss
+        current_loss = mr.data_loss
+        if isinstance(current_loss, torch.Tensor):
+            if not torch.isfinite(current_loss).item():
+                if verbose:
+                    print("Skipping iteration: non-finite data loss.")
+                continue
+            current_loss = current_loss.detach().cpu()
+
+        if current_loss < best_loss or current_loss == 0:
+            best_loss = current_loss
             best_momenta = dict(
                 affine_prior = _get_momentums("momentum_A"),
                  rot_prior= _get_momentums("momentum_R"),
@@ -206,7 +223,7 @@ def optimize_on_rigid(mr,
                 img_source = tb.imCmp(rotated_source.detach().cpu(), mr.source.detach().cpu(), "compose")[0]
 
             fig,ax = plt.subplots(1,3)
-            fig.suptitle(f"i = {i}, best = {best}, loss = {mr.data_loss:.4f}"
+            fig.suptitle(f"i = {i}, best = {best}, loss = {float(current_loss):.4f}"
                          f"\n {params_r}"
                          f"\n {dict(
                 rot_prior= _get_momentums("momentum_R"),
@@ -224,7 +241,10 @@ def optimize_on_rigid(mr,
             print(f"best = {best}")
             print("translation = ",mr.mp.translation)
             print("rotation matrix = ",mr.mp.rot_mat)
-            print("scaling = ", mr.mp.scale)
+            try:
+                print("scaling = ", mr.mp.scale)
+            except AttributeError:
+                pass
             # print("best mom",best_momentum)
             # print("anti best mom", (best_momentum - best_momentum.T)/2)
             # print("best loss",mr.data_loss)
@@ -237,5 +257,5 @@ def optimize_on_rigid(mr,
         print("loss :",best_loss)
         print(f"best_momenta : {best_momenta}")
 
-        print("best_rotation =", mr.mp.rot_mat)
+        print("best_rotation =", best_rot)
     return best_loss, best_momenta, best_rot

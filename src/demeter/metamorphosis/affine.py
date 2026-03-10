@@ -206,8 +206,6 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
                              momentum_T, translation,
                              ):
 
-        ic("\n",self._i)
-        ic("before",momentum_A, momentum_T, A_mat, translation)
         # 1. Compute infinitesimal affine mat M
         d_affine = momentum_A @ A_mat.T + momentum_T @ translation.T # d_affine = M
 
@@ -236,7 +234,6 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
 
         # X. Compute translation = b
         translation = translation + (d_affine @ translation + momentum_T) / self.n_step
-        ic("After",momentum_A, momentum_T, A_mat, translation)
 
         if self.debug:
             print("A_mat :", A_mat)
@@ -382,7 +379,6 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
             momentum_T = torch.zeros((self._dim,), device=self.device)
 
         if self.flag_field:
-            print("FIELD + AFFINE")
             momentum_I = self.momenta["momentum_I"]
             momentum_I, momentum_A, momentum_T, self.image, self.field, self.residuals, self.rot_mat, self.translation \
                 = self.step(
@@ -398,7 +394,6 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
             if momentum_T is not None:
                 self.momenta["momentum_T"] = momentum_T
         else:
-            print("AFFINE")
             momentum_A, momentum_T, self.rot_mat, self.translation, norm_l2_on_A = self._compute_step_affine(
                 momentum_A, self.rot_mat,
                 momentum_T, self.translation,
@@ -681,7 +676,8 @@ class Affine_Metamorphosis_Optimizer(Optimize_geodesicShooting):
 
             # torch.trace(momenta["momentum_A"] @ A_mat.T + momenta["momentum_T"] @ translation.T)
             self.norm_A  = .5 * torch.trace(momenta["momentum_A"])
-            self.norm_T = .5 * (momenta["momentum_T"]**2).sum().sqrt()
+            # Stable L2 norm: avoid undefined gradient at exactly zero.
+            self.norm_T = .5 * torch.sqrt((momenta["momentum_T"] ** 2).sum() + 1e-12)
 
                 # if self.mp.flag_field:
                 #     # Norm V

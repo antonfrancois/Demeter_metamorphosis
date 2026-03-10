@@ -267,11 +267,11 @@ best_priors = {'affine_prior': torch.tensor([[-0.3171, -1.0310],
 
 
 #%%
-sigmoid_a = 20
-sigmoid_b = 70
-sigmoid_c = -5
+sigmoid_a = 15
+sigmoid_b = 40
+sigmoid_c = -3
 
-iter = torch.linspace(0,100, 100)
+iter = torch.linspace(0,50, 100)
 alpha = 2 * sigmoid_c /( sigmoid_b - sigmoid_a)
 beta = - (sigmoid_a + sigmoid_b) / 2
 g = alpha *( iter + beta)
@@ -288,7 +288,7 @@ print("")
 print("="*20)
 print("Start real optimization")
 # input("Press Enter to continue")
-sigma= [  7, 10]
+sigma= [  3, 4, 8]
 sigma = [(s,)*2 for s in sigma]
 alpha = .5
 rho = 1
@@ -339,7 +339,7 @@ for k,v in momenta.items():
     print(k, v.requires_grad)
 
 
-mr = mt.rigid_along_metamorphosis(
+mr = mt.affine_along_metamorphosis(
   source_b, target_b, momenta_ini=momenta,
   kernelOperator= kernelOperator,
   rho = rho,
@@ -348,7 +348,7 @@ mr = mt.rigid_along_metamorphosis(
   cost_cst=cost_cst,
   cost_field_cst = cost_field_cst,
   cost_affine_cst = cost_affine_cst,
-  n_iter=10,
+  n_iter=50,
     grad_coef=.1,
     # optimizer_method='adadelta',
   # lbfgs_max_iter = 20,

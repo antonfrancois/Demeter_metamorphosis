@@ -573,7 +573,8 @@ class Affine_Decoupled_Metamorphosis_Optimizer(Optimize_geodesicShooting):
             if self.flag_affine:
                 # torch.trace(momenta["momentum_A"] @ A_mat.T + momenta["momentum_T"] @ translation.T)
                 self.norm_A  = .5 * torch.trace(momenta["momentum_A"])
-                self.norm_T = .5 * (momenta["momentum_T"]**2).sum().sqrt()
+                # Stable L2 norm: avoid undefined gradient at exactly zero.
+                self.norm_T = .5 * torch.sqrt((momenta["momentum_T"] ** 2).sum() + 1e-12)
 
                 # if self.mp.flag_field:
                 #     # Norm V
@@ -771,6 +772,5 @@ class Affine_Decoupled_Metamorphosis_Optimizer(Optimize_geodesicShooting):
 
             plt.show()
         return (rotation_dice, reg_dice), (self.source_seg_rotated, self.source_seg_deformed)
-
 
 
