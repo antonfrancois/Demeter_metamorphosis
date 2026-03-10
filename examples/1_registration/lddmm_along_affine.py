@@ -197,7 +197,7 @@ datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'),
                                 plot=False)
 # datacost = mt.Rotation_MutualInformation_Cost(target_b.to('cuda:0'), alpha=1)
 
-mr_rigid = mt.rigid_along_metamorphosis(
+mr_rigid = mt.affine_along_metamorphosis(
     source_b, target_b, momenta_ini=0,
     kernelOperator= kernelOperator,
     rho = 1,

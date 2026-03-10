@@ -225,7 +225,7 @@ datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'),
                                 plot=False)
 # datacost = mt.Rotation_MutualInformation_Cost(target_b.to('cuda:0'), alpha=1)
 
-mr_rigid = mt.rigid_along_metamorphosis(
+mr_rigid = mt.affine_decoupled_along_metamorphosis(
     source_b, target_b, momenta_ini=0,
     kernelOperator= kernelOperator,
     rho = 1,
@@ -333,8 +333,8 @@ rho = 1
 cost_cst = 1
 cost_field_cst = 1
 cost_affine_cst = 1
-adam_dt_step_field=1e-6,
-adam_dt_step_affine=3e-1,
+adam_dt_step_field=5e-6,
+adam_dt_step_affine=1e-1,
 
 verbose_datacost = False
 plot_datacost = True
@@ -393,7 +393,7 @@ if enable_grad_debug:
 else:
     debug_handles = []
 
-mr = mt.rigid_along_metamorphosis(
+mr = mt.affine_decoupled_along_metamorphosis(
   source_b, target_b, momenta_ini=momenta,
   kernelOperator= kernelOperator,
   rho = rho,
@@ -418,10 +418,10 @@ mr = mt.rigid_along_metamorphosis(
 for h in debug_handles:
     h.remove()
 
-if isinstance(mr_case.to_analyse[0], dict):
-    print_momenta_delta(momenta_before, mr_case.to_analyse[0])
-if isinstance(mr_case.to_analyse[1], dict):
-    ls = mr_case.to_analyse[1]
+if isinstance(mr.to_analyse[0], dict):
+    print_momenta_delta(momenta_before, mr.to_analyse[0])
+if isinstance(mr.to_analyse[1], dict):
+    ls = mr.to_analyse[1]
     print("\n[Last loss components]")
     print(f"  - data_loss   : {float(ls['data_loss'][-1]):.6e}")
     print(f"  - norm_v_2    : {float(ls['norm_v_2'][-1]):.6e}")
@@ -429,24 +429,6 @@ if isinstance(mr_case.to_analyse[1], dict):
     print(f"  - norm_l2_on_R: {float(ls['norm_l2_on_R'][-1]):.6e}")
     if 'norm_S_2' in ls:
         print(f"  - norm_S_2    : {float(ls['norm_S_2'][-1]):.6e}")
-
-# summary = summarize_registration_case(case_name, mr_case, target_b)
-# case_results[case_name] = {"mr": mr_case, "summary": summary}
-
-# print("\n" + "=" * 20)
-# print("[Comparison summary]")
-# for key in ["final_data_loss", "ssd", "ssd_rot", "theta_deg", "tx_pix", "ty_pix"]:
-#     a = case_results["with_I"]["summary"][key]
-#     b = case_results["without_I"]["summary"][key]
-#     print(f"  - {key}: with_I={a:.6f} | without_I={b:.6f}")
-
-frames_to_video_ffmpeg(
-  frames_dir=saving_plots.parent,
-  # frames_dir="examples/results/rigid_meta_integrations/rigid_lddmm",
-  stem=saving_plots.name,
-  fps=12,
-)
-
 
 
 
@@ -462,6 +444,13 @@ plt.show()
 
 mt.free_GPU_memory(mr)
 
+#%%
+frames_to_video_ffmpeg(
+  frames_dir=saving_plots.parent,
+  # frames_dir="examples/results/rigid_meta_integrations/rigid_lddmm",
+  stem=saving_plots.name,
+  fps=12,
+)
 
 # file_save, path = mr.save(f"{paths["subject_dir"].name}_rigid_along_lddmm",
 #         light_save=True,
@@ -604,7 +593,7 @@ kernelOperator = rk.DummyKernel()
 datacost = mt.Rotation_Ssd_Cost(source_b.to('cuda:0'), gamma=1)
 # datacost = mt.Rotation_MutualInformation_Cost(target_b.to('cuda:0'), alpha=1)
 
-mr_rigid_first = mt.rigid_along_metamorphosis(
+mr_rigid_first = mt.affine_along_metamorphosis(
     target_b,source_b, momenta_ini=0,
     kernelOperator= kernelOperator,
     rho = 1,
@@ -756,7 +745,7 @@ momenta = mt.prepare_momenta(
 # momenta["momentum_T"].requires_grad = False
 
 
-mr = mt.rigid_along_metamorphosis(
+mr = mt.affine_along_metamorphosis(
   source_lddmm, target_lddmm, momenta_ini=momenta,
   kernelOperator= kernelOperator,
   rho = rho,

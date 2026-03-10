@@ -487,6 +487,7 @@ class Rotation_Ssd_Cost(DataCost):
 
         gamma = self._compute_gamma_(self.optimizer._iter_)
         grid_rt = self.optimizer.mp.get_affine_deformator()
+        # grid_rt = self.optimizer.mp.get_affine_deformation()
 
 
         rotated_image =  tb.imgDeform(self.optimizer.mp.image,grid_rt,dx_convention='2square')

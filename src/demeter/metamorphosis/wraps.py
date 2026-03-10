@@ -501,7 +501,7 @@ def affine_along_metamorphosis(
 
     The affine mode is selected from ``momenta_ini`` keys:
     - ``"momentum_A"``: full affine mode via ``aff`` classes.
-    - ``"momentum_R"``: decoupled affine/rigid mode via ``ad`` classes.
+    - ``"momentum_R"``: decoupled affine/rigid mode via ``ad`` classes. should not be used in this function
 
     Parameters
     ----------
@@ -570,25 +570,20 @@ def affine_along_metamorphosis(
             if not key in ['momentum_I', 'momentum_R', 'momentum_T', 'momentum_A']:
                 raise ValueError("momenta_ini must be a dictionary containing the keywords:"
                         " - 'momentum_I' for the image"
-                        " - 'momentum_R' for the rotation"
-                        " - 'momentum_T' for the translation"
                         " - 'momentum_A' for a full affine transformation (momentum R) will be ignored"
+                        " - 'momentum_T' for the translation"
                                  )
 
-    if "momentum_A" and "momentum_R" in momenta_ini.keys():
-        raise ValueError(f"momentum_A and momentum_R keys cannot be both in momenta_ini,"
-                         f" got momenta_ini.keys = {momenta_ini.keys()}")
-    elif "momentum_A" in momenta_ini.keys():
-        integrator = aff.Affine_Metamorphosis_integrator
-        optimizer =  aff.Affine_Metamorphosis_Optimizer
-    elif "momentum_R" in momenta_ini.keys():
-        integrator = ad.Affine_Decoupled_Metamorphosis_integrator
-        optimizer = ad.Affine_Decoupled_Metamorphosis_Optimizer
-    else:
-        raise ValueError(f"momenta_ini must be either a dictionary containing one of the keywords:"
-                         f" momentum_R or momentum_A, got {momenta_ini.keys()}")
 
-    mp = integrator(
+    try:
+        if "momentum_R" in momenta_ini.keys():
+            raise ValueError(f"In affine_along_metamorphosis momenta_ini must not contain 'momentum_R',"
+                             f" if you wand to estimate a rotation individually,"
+                             f" please use `affine_decoupled_along_metamorphosis` instead.")
+    except AttributeError:
+        pass
+
+    mp = aff.Affine_Metamorphosis_integrator(
         rho=rho,
         n_step=integration_steps,
         kernelOperator=kernelOperator,
@@ -598,7 +593,155 @@ def affine_along_metamorphosis(
         constraints = constraints,
     )
 
-    mr = optimizer(
+    mr = aff.Affine_Metamorphosis_Optimizer(
+        source= source.clone(),
+        target= target.clone(),
+        geodesic = mp,
+        cost_cst=cost_cst,
+        cost_field_cst=cost_field_cst,
+        cost_affine_cst=cost_affine_cst,
+        data_term=data_term,
+        hamiltonian_integration=hamiltonian_integration,
+        optimizer_method=optimizer_method,
+        debug = debug,
+        lbfgs_max_iter = lbfgs_max_iter,
+        lbfgs_history_size = lbfgs_history_size,
+        adam_dt_step_field=adam_dt_step_field,
+        adam_dt_step_affine=adam_dt_step_affine,
+    )
+    # state_dict = mr.state_dict()
+    # for i, (name, tensor) in enumerate(state_dict.items()):
+    #     print(f"{i}: {name} → shape={tensor.shape}, dtype={tensor.dtype}")
+    mr = _commun_after(mr, momenta_ini, safe_mode, n_iter, grad_coef)
+
+    return mr
+
+
+@monitor_gpu
+def affine_decoupled_along_metamorphosis(
+        source,
+        target,
+        momenta_ini,
+        kernelOperator,
+        rho,
+        data_term,
+        # dx_convention="2square",
+        integration_steps=10,
+        n_iter=0,
+        grad_coef=2,
+        cost_cst=0.001,
+        cost_field_cst = .5,
+        cost_affine_cst = 1,
+        plot=False,
+        safe_mode=False,
+        constraints = True,
+        optimizer_method="LBFGS_torch",
+        hamiltonian_integration=False,
+       save_gpu_memory = False,
+        lbfgs_max_iter = 20,
+        lbfgs_history_size = 100,
+        adam_dt_step_field=1e-3,
+        adam_dt_step_affine=5e-2,
+        debug=False
+    ):
+    """
+    Run metamorphosis with an affine component (full affine or decoupled rigid-like).
+
+    The affine mode is selected from ``momenta_ini`` keys:
+    - ``"momentum_A"``: full affine mode via ``aff`` classes.
+    - ``"momentum_R"``: decoupled affine/rigid mode via ``ad`` classes.
+
+    Parameters
+    ----------
+    source : torch.Tensor
+        Source image.
+    target : torch.Tensor
+        Target image.
+    momenta_ini : dict
+        Dictionary of initial momenta. Supported keys include
+        ``"momentum_I"``, ``"momentum_R"``, ``"momentum_T"``, and ``"momentum_A"``.
+        Exactly one of ``"momentum_A"`` or ``"momentum_R"`` must be present.
+    kernelOperator : callable
+        Reproducing kernel operator used for the deformable field.
+    rho : float
+        Metamorphosis trade-off parameter.
+    data_term : optional
+        Data attachment term.
+    integration_steps : int, optional
+        Number of geodesic integration steps.
+    n_iter : int, optional
+        Number of optimization iterations.
+    grad_coef : float, optional
+        Multiplier applied to the optimization step.
+    cost_cst : float, optional
+        Weight of the regularization term.
+    cost_field_cst : float, optional
+        Weight of the deformable-field regularization.
+    cost_affine_cst : float, optional
+        Weight of the affine regularization.
+    plot : bool, optional
+        Kept for API compatibility.
+    safe_mode : bool, optional
+        If ``True``, use ``forward_safe_mode`` for optimization.
+    constraints : bool, optional
+        Enable or disable affine constraints in the integrator.
+    optimizer_method : str, optional
+        Optimizer used by the affine optimizer class.
+    hamiltonian_integration : bool, optional
+        Enable Hamiltonian integration in the optimizer.
+    save_gpu_memory : bool, optional
+        Enable memory-saving mode in the geodesic integrator.
+    lbfgs_max_iter : int, optional
+        Maximum number of internal iterations for LBFGS steps.
+    lbfgs_history_size : int, optional
+        History size used by LBFGS.
+    adam_dt_step_field : float, optional
+        Learning rate for field variables with Adam-like optimizers.
+    adam_dt_step_affine : float, optional
+        Learning rate for affine variables with Adam-like optimizers.
+    debug : bool, optional
+        Enable debug mode in integrator/optimizer.
+
+    Returns
+    -------
+    object
+        The configured affine metamorphosis optimizer instance after optimization.
+
+    Raises
+    ------
+    ValueError
+        If both ``"momentum_A"`` and ``"momentum_R"`` are provided, or if neither
+        key is present in ``momenta_ini``.
+    """
+    if n_iter > 0 and momenta_ini == 0:
+        for key in momenta_ini.keys():
+            if not key in ['momentum_I', 'momentum_R', 'momentum_T', 'momentum_S']:
+                raise ValueError("momenta_ini must be a dictionary containing the keywords:"
+                        " - 'momentum_I' for the image"
+                        " - 'momentum_R' for the rotation"
+                        " - 'momentum_T' for the translation"
+                        "- 'momentum_S' for the scaling"
+                                 )
+
+    try:
+        if "momentum_A" in momenta_ini.keys():
+            raise ValueError(f"In affine_along_metamorphosis momenta_ini must not contain 'momentum_A',"
+                             f" if you wand to estimate a general affine deformation,"
+                             f" please use `affine_along_metamorphosis` instead.")
+    except AttributeError:
+        pass
+
+    mp = ad.Affine_Decoupled_Metamorphosis_integrator(
+        rho=rho,
+        n_step=integration_steps,
+        kernelOperator=kernelOperator,
+        dx_convention="2square",
+        debug=debug,
+        save_gpu_memory = save_gpu_memory,
+        constraints = constraints,
+    )
+
+    mr = ad.Affine_Decoupled_Metamorphosis_Optimizer(
         source= source.clone(),
         target= target.clone(),
         geodesic = mp,

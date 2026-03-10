@@ -174,6 +174,8 @@ def optimize_on_rigid(mr,
                 return mr.to_analyse[0][name].detach().cpu()
             except AttributeError:
                 return None
+            except KeyError:
+                return None
 
         if mr.data_loss < best_loss or mr.data_loss == 0:
             best_loss = mr.data_loss
