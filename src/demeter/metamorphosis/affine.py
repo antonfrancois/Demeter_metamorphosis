@@ -822,7 +822,7 @@ class Affine_Metamorphosis_Optimizer(Optimize_geodesicShooting):
 
         # Option 1 bis:
         deformator = self.mp.get_deformator()
-        deformator = self.mp.get_rigidor(deformator)
+        deformator = self.mp.get_affine_deformator(deformator)
         self.source_seg_deformed = tb.imgDeform(
             self.source_segmentation, deformator.to(device),
             dx_convention=self.dx_convention,
