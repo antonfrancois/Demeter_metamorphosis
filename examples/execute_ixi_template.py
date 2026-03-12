@@ -573,6 +573,22 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
         adam_dt_step_field=1e-6,
         adam_dt_step_affine=1e-2,
         integration_steps = 10
+
+        if FLAG_DECOUPLED:
+            affine_optim = mt.affine_decoupled_along_metamorphosis
+            aff_kwargs = {"rotation": True, "scaling" : True, "translation": True}
+            rotation = True
+            scaling = True
+            translation = True
+            affine = False
+        else:
+            affine_optim = mt.affine_along_metamorphosis
+            aff_kwargs = {"affine":True}
+            rotation = False
+            scaling = False
+            translation = True
+            affine = True
+
         print(f"\nPatient : {paths["subject_dir"].name}")
         # 2) Rigid search
         # 2.a  Align barycenters
@@ -637,20 +653,17 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
             plot=False,
             save_plot=None
         )
-        rotation=True
-        scaling=True
-        translation=True
-        affine = False
+
         momenta = mt.prepare_momenta(
             source_b.shape,
             diffeo=True,
-            rotation=rotation, scaling = scaling, translation = translation,
             device="cuda:0",
+            **aff_kwargs,
             # **best_priors
         )
 
 
-        mr = mt.rigid_along_metamorphosis(
+        mr = affine_optim(
             source_b.to("cuda:0"), target_b.to("cuda:0"), momenta_ini=momenta,
             kernelOperator= kernelOperator,
             rho = rho,
@@ -669,7 +682,7 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
             # hamiltonian_integration=True
         )
 
-        name = 'affine_lddmm' if affine else "decoupled_lddmm"
+        name = 'affine_lddmm' if not FLAG_DECOUPLED else "decoupled_lddmm"
         dices, _ =mr.compute_DICE(seg_source_b, seg_target_b, verbose=True)
         file_save, path = mr.save(f"{paths["subject_dir"].name}_{name}",
                 light_save=True,
@@ -1195,16 +1208,16 @@ if __name__ == '__main__':
     # subjects_numbers = [30,31,33,34,35,36,37,38,39] # 3
     # subjects_numbers = [40,41,42,43,44,45,46,48,49] # 4
     # subjects_numbers = [50,51,52,53,54,55,56,57,58,59] # 5
-    # subjects_numbers = [60,61,62,63,64,65,66,67,68,69] # 6
+    subjects_numbers = [60,61,62,63,64,65,66,67,68,69] # 6
     # subjects_numbers = [35, 37, 61, 66, 34, 49]
 
     # all
-    subjects_numbers = [2,12,13,14,15,16,17,19, # 1
-     20,21,22,23,24,25,26,27,28,29, # 2
-     30,31,33,34,35,36,37,38,39, # 3
-     40,41,42,43,44,45,46,48,49, # 4
-     50,51,52,53,54,55,56,57,58,59, # 5
-     60,61,62,63,64,65,66,67,68,69] # 6
+    # subjects_numbers = [2,12,13,14,15,16,17,19, # 1
+    #  20,21,22,23,24,25,26,27,28,29, # 2
+    #  30,31,33,34,35,36,37,38,39, # 3
+    #  40,41,42,43,44,45,46,48,49, # 4
+    #  50,51,52,53,54,55,56,57,58,59, # 5
+    #  60,61,62,63,64,65,66,67,68,69] # 6
     # subjects_numbers = [35, 37, 61, 66, 34, 49]
 
 
@@ -1216,6 +1229,7 @@ if __name__ == '__main__':
     # subjects_numbers = [2, 40]#, 26, 50,2, 12]
     RECOMPUTE = False
     RESIZE_FACTOR = .5 if location == 'local' else 1
+    FLAG_DECOUPLED = False
 
     # init_csv(result_folder)
 
@@ -1229,10 +1243,10 @@ if __name__ == '__main__':
 
     # execute_dummy(pp, subjects_numbers)
     # execute_control(pp,subjects_numbers)
-    if location == 'meso':
-        execute_uniGradIcon(pp, subjects_numbers)
+    # if location == 'meso':
+    #     execute_uniGradIcon(pp, subjects_numbers)
     # execute_flirt_lddmm(pp, subjects_numbers)
     # elif location == 'local':
-    # execute_rigid_along_metamorphosis(pp, subjects_numbers)
+    execute_rigid_along_metamorphosis(pp, subjects_numbers)
 
 

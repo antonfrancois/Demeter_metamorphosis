@@ -40,7 +40,7 @@ def _find_meta_optimiser_from_repr_(repr_str):
         )
     if "Simplex_sqrt_Shooting" in repr_str:
         return Simplex_sqrt_Metamorphosis_integrator, Simplex_sqrt_Shooting
-    if "RigidMetamorphosis_Optimizer" or "Affine_Decoupled_Metamorphosis_Optimizer" in repr_str:
+    if "RigidMetamorphosis_Optimizer" in repr_str or "Affine_Decoupled_Metamorphosis_Optimizer" in repr_str:
         return Affine_Decoupled_Metamorphosis_integrator, Affine_Decoupled_Metamorphosis_Optimizer
     if "Affine_Metamorphosis_Optimizer" in repr_str:
         return Affine_Metamorphosis_integrator, Affine_Metamorphosis_Optimizer
