@@ -287,10 +287,10 @@ class Visualize_GeodesicOptim_plt:
         self.flag_grid = False
         self.grid_was_init = False
 
-        self.button_quiver = Button(ax_button_quiver, "show_flow", **kw_button)
-        self.button_quiver.on_clicked(self._toggle_quiver)
-        self.flow_was_init = False
-        self.flag_quiver = False
+        # self.button_quiver = Button(ax_button_quiver, "show_flow", **kw_button)
+        # self.button_quiver.on_clicked(self._toggle_quiver)
+        # self.flow_was_init = False
+        # self.flag_quiver = False
 
         self.button_img_type = Button(ax_button_imgtype, "compare", **kw_button)
         self.button_img_type.on_clicked(self._toggle_imgcmp)

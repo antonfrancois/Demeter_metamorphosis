@@ -1,6 +1,9 @@
 import __init__
 import torch
 from math import cos,sin
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path("examples/1_registration").resolve()))
+import lddmm_along_utils as lu
 import matplotlib.pyplot as plt
 
 import demeter.utils.torchbox as tb
@@ -172,16 +175,64 @@ device = "cuda:0"
 size = (300, 300)
 # source = tb.reg_open('rigid_s',size=size)
 # target = tb.reg_open('rigid_t',size=size)
-source = tb.reg_open('33',size=size)
-target = tb.reg_open('fish',size=size)
+# source = tb.reg_open('33',size=size)
+# target = tb.reg_open('fish',size=size)
 # source = tb.reg_open('20',size=size)
 # target = tb.reg_open('17',size=size)
+source = tb.reg_open('L',size=size)
+
+import demeter.utils.bspline as bs
+import lddmm_along_utils as lu
+cms = bs.getCMS_turn()
+cms = bs.getCMS_allcombinaision()
+field = bs.field2D_bspline(cms, n_pts=size, degree=(2,2), dim_stack=-1)
+id_grid = tb.make_regular_grid((1,)+source.shape[2:]+ (2,), dx_convention='2square')
+deform = id_grid + field /6
+target_d = tb.imgDeform(source, deform)
 
 
+
+fig,ax = plt.subplots(2,2)
+ax[0,0].imshow(source[0,0], cmap='gray')
+tb.gridDef_plot_2d(deform, ax = ax[1,0], step = 10, check_diffeo=False)
+ax[0,1].imshow(target_d[0,0], cmap='gray')
+ax[1,1].imshow(tb.imCmp(source,target_d)[0], cmap='gray')
+plt.show()
+
+#%%
+
+theta = torch.tensor([0.35])              # radians
+translation = torch.tensor([[-0.25, 0.2]]) # in 2square coords
+scale = torch.tensor([.9])
+
+A_full = torch.tensor([
+    [1.10, 0.39],
+    [-0.08, 0.92]
+], dtype=target_d.dtype)
+
+res = lu.apply_registration_models(
+    target_d,
+    rotation=theta,
+    translation=translation,
+    scale=scale,
+    full_affine=A_full,
+)
+keys = ["full_affine","rotation_translation_scaling","rotation_translation","rotation_scaling"]
+lu.show_deforms(target_d, res, keys)
+
+target_aff  = res["full_affine"]["image"]
+target_rts  = res["rotation_translation_scaling"]["image"]
+target_rt   = res["rotation_translation"]["image"]
+target_rs   = res["rotation_scaling"]["image"]
+
+
+
+#%%
 
 source.to(device)
 # source = smooth(source, 20)
 # target = smooth(target, 20)
+target = target_rts
 
 fig, ax = plt.subplots(1,3)
 ax[0].imshow(source[0,0],cmap='gray')
@@ -237,7 +288,7 @@ mr_rigid = mt.affine_decoupled_along_metamorphosis(
     lbfgs_max_iter=20
 )
 
-top_params = rg.initial_exploration(mr_rigid, r_step = 20,
+top_params = rg.initial_exploration(mr_rigid, r_step = 30,
                                     max_output = 1, verbose=True)
 print("top_params : ",top_params)
 
@@ -248,7 +299,7 @@ best_loss, best_priors, best_rot = rg.optimize_on_rigid(
     mr_rigid, top_params,
     n_iter=10, grad_coef = .1,
     # affine=True,
-    rotation=True, scaling=False, translation=True,
+    rotation=True, scaling=True, translation=True,
     verbose=True, plot = True,
 )
 print(f"best_loss : {best_loss}")
@@ -326,15 +377,15 @@ plt.show()
 #########################################################
 # perfom lddmm along rigid
 integration_steps = 10
-sigma= [  3, 7]
+sigma= [7, 15]
 sigma = [(s,)*2 for s in sigma]
 alpha = .5
 rho = 1
 cost_cst = 1
 cost_field_cst = 1
 cost_affine_cst = 1
-adam_dt_step_field=5e-6,
-adam_dt_step_affine=1e-1,
+adam_dt_step_field=1e-6,
+adam_dt_step_affine=1e-3,
 
 verbose_datacost = False
 plot_datacost = True
@@ -363,8 +414,8 @@ kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False, kernel_rea
 def make_datacost():
     return mt.Rotation_Ssd_Cost(
         target_b.to("cuda:0"),
-        # gamma=alpha,
-        sigmoid_a=sigmoid_a,sigmoid_b=sigmoid_b,sigmoid_c=sigmoid_c,
+        gamma=alpha,
+        # sigmoid_a=sigmoid_a,sigmoid_b=sigmoid_b,sigmoid_c=sigmoid_c,
         normalize_ssd=False,
         verbose=verbose_datacost,
         plot=plot_datacost,
@@ -384,7 +435,7 @@ momenta = mt.prepare_momenta(
     scaling=scaling,
     translation=translation,
     device="cuda:0",
-    # **best_priors
+    **best_priors
 )
 
 momenta_before = {k: v.detach().clone() for k, v in momenta.items()}

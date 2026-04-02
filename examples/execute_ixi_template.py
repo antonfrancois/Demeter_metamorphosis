@@ -597,27 +597,29 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
         seg_target_b = tb.imgDeform(seg_target, (id_grid + trans_t), mode="nearest")
         seg_source_b = tb.imgDeform(seg_source, (id_grid + trans_s), mode="nearest")
 
+        search = False
         # 2.b Intial exploration:
-        # kernelOperator = rk.DummyKernel()
-        # datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'), alpha=1)
-        # datacost = mt.Rotation_MutualInformation_Cost(target_b.to('cuda:0'), alpha=1)
+        kernelOperator = rk.DummyKernel()
+        datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'), alpha=1)
+        datacost = mt.Rotation_MutualInformation_Cost(target_b.to('cuda:0'), alpha=1)
 
 
-        # mr = mt.rigid_along_metamorphosis(
-        #     source_b, target_b, momenta_ini=0,
-        #     kernelOperator= kernelOperator,
-        #     rho = 1,
-        #     data_term=datacost ,
-        #     integration_steps = integration_steps,
-        #     cost_cst=.1,
-        # )
-        # top_params = rg.initial_exploration(mr,r_step=10, max_output = 15, verbose=True)
-        # print(top_params)
-        #
-        # # 2.c Optimize on best finds
-        # best_loss, best_momenta, best_rot = rg.optimize_on_rigid(mr, top_params, n_iter=5,verbose=False)
-        # print(f"\nPatient : {paths["subject_dir"].name}")
-        # print("best_momenta = ",best_momenta)
+        mr = mt.rigid_along_metamorphosis(
+            source_b, target_b, momenta_ini=0,
+            kernelOperator= kernelOperator,
+            rho = 1,
+            data_term=datacost ,
+            integration_steps = integration_steps,
+            cost_cst=.1,
+        )
+        top_params = rg.initial_exploration(mr,r_step=10, max_output = 15, verbose=True)
+        print(top_params)
+
+        # 2.c Optimize on best finds
+        best_loss, best_momenta, best_rot = rg.optimize_on_rigid(mr, top_params, n_iter=5,verbose=False)
+        print(f"\nPatient : {paths["subject_dir"].name}")
+        print("best_momenta = ",best_momenta)
+        search = True
 
         # 3) [Optionnal] Check rigid search
         # rot_def = mr.mp.get_rigidor()
@@ -685,7 +687,7 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
         name = 'affine_lddmm' if not FLAG_DECOUPLED else "decoupled_lddmm"
         dices, _ =mr.compute_DICE(seg_source_b, seg_target_b, verbose=True)
         file_save, path = mr.save(f"{paths["subject_dir"].name}_{name}",
-                light_save=True,
+                light_save=False,
                 save_path = os.path.join(result_folder, name)
                 )
         mt.free_GPU_memory(mr)
@@ -722,6 +724,7 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
                 "scaling" : scaling,
                 "translation" : translation,
                 "affine" : affine,
+                "prelim_search": search,
                 "adam_dt_step_field" : adam_dt_step_field,
                 "adam_dt_step_affine" : adam_dt_step_affine,
                 "file": os.path.join(path, file_save)

@@ -1,7 +1,12 @@
+
+
 import __init__
 import torch
 from math import cos,sin
 import matplotlib.pyplot as plt
+from docutils.nodes import target
+
+# from kornia.geometry.transform import resize
 
 import demeter.utils.torchbox as tb
 import demeter.metamorphosis.affine as mtrt
@@ -136,19 +141,72 @@ def summarize_registration_case(name, mr, target):
         "tx_pix": tx_pix,
         "ty_pix": ty_pix,
     }
+import numpy as np
+from skimage.transform import resize
+def open_fish(name, factor= None):
+    name_list = ["bass_1","bass_2","bluegill_1","catfish_1","catfish_2","crappie_1"]
+    if name not in name_list:
+        raise ValueError(f"Name {name} not in {name_list}")
+    path = ROOT_DIRECTORY
+    path += '/examples/im2Dbank/fish_' + name + '.png'
+    path_seg = ROOT_DIRECTORY +'/examples/im2Dbank/fish_' + name + '_seg.png'
+    I = plt.imread(path)
+    I_seg = plt.imread(path_seg)
+    H, W,_ = I.shape
+    min_pad = 50
+    if factor is not None:
+        H,W  = (int(H* factor), int(W* factor))
+        I = resize(I, (H,W))
+        I_seg = resize(I_seg, (H,W))
+    if W > H:
+        I     = np.pad(I, (((W-H)//2 + min_pad, (W-H)//2 + min_pad) ,(min_pad, min_pad), (0,0)))
+        I_seg = np.pad(I_seg, (((W-H)//2 + min_pad, (W-H)//2 + min_pad) ,(min_pad, min_pad), (0,0)))
+    I = torch.tensor(I[None,None])
+    I_seg = torch.tensor(tb.rgb2gray(I_seg)[None,None])
+    I_gray = torch.tensor(tb.rgb2gray(I))
+    return I, I_gray, I_seg
+
+# /home/turtlefox/Documents/11_metamorphoses/Demeter_metamorphosis/examples/im2Dbank/fish_bass_1.png
+source_rgb, source_g, source = open_fish("bass_1", factor=.3)
+target_rgb, target_g, target = open_fish("crappie_1", factor=.3)
+
+# from kornia.filters import bilateral_blur
+# source = bilateral_blur(source, 5, sigma_color=5, sigma_space=(5, 5))
+# target =  bilateral_blur(target, 5, sigma_color=5, sigma_space=(5, 5))
+
+#
+rot_mat = tb.create_rot_mat_2d(torch.tensor(3./torch.pi))
+# rot_mat = torch.eye(2)
+rot_mat[1,1] /= 1.5
+trans = torch.tensor([0.2, -0.2])
+id_grid = tb.make_regular_grid((1,)+source.shape[2:]+ (2,), dx_convention='2square')
+grid = tb.grid_from_rotation_translation(id_grid, rot_mat, trans)
+target = tb.imgDeform(target, grid)
+target_rgb = target_rgb[0,...,:-1].transpose(2, 3).transpose(1, 2)
+target_rgb_r = tb.imgDeform(target_rgb, grid).transpose(1, 2).transpose(2, 3)
+
+
+fig, ax = plt.subplots(1,3, constrained_layout=True)
+ax[0].imshow(source[0,0], cmap='gray')
+ax[1].imshow(target_rgb_r[0], cmap='gray')
+ax[2].imshow(tb.imCmp(source,target, 'seg')[0])
+plt.show()
+# raise ValueError("kvnlk")
+#%%
 
 path = "examples/results/rigid_meta/"
 device = "cuda:0"
-###########################################################
-# open images
+# ###########################################################
+# # open images
 size = (300, 300)
-# source = tb.reg_open('rigid_s',size=size)
-# target = tb.reg_open('rigid_t',size=size)
-source = tb.reg_open('33',size=size)
-target = tb.reg_open('fish',size=size)
+# # source = tb.reg_open('rigid_s',size=size)
+# # target = tb.reg_open('rigid_t',size=size)
+# source = tb.reg_open('33',size=size)
+# target = tb.reg_open('fish',size=size)
 # source = tb.reg_open('20',size=size)
 # target = tb.reg_open('17',size=size)
-
+source = tb.reg_open('34',size=size)
+target = tb.reg_open('35',size=size)
 
 
 source.to(device)
@@ -161,8 +219,8 @@ ax[0].set_title("source")
 ax[1].imshow(target[0,0],cmap='gray')
 ax[1].set_title("target")
 ax[2].imshow(tb.imCmp(source,target, 'compose')[0])
-# plt.show()
-
+plt.show()
+#%%
 # Align barycenters
 
 source_b, target_b, trans_s, trans_t = rg.align_barycentres(source, target, verbose=True)
@@ -205,14 +263,14 @@ mr_rigid = mt.affine_along_metamorphosis(
     integration_steps = integration_steps,
     # optimizer_method='LBFGS_torch',
     optimizer_method="Adam",
-    adam_dt_step_affine= 1e-6,
+    adam_dt_step_affine= 1e-2,
     cost_cst=.1,
     n_iter=0,
     lbfgs_max_iter=20
 )
 
 top_params = rg.initial_exploration(mr_rigid, r_step = 20,
-                                    max_output = 1, verbose=True)
+                                    max_output = 4, verbose=True)
 print("top_params : ",top_params)
 #
 # print("")
@@ -220,7 +278,7 @@ print("="*20)
 print("Optimize on best exploration ")
 best_loss, best_priors, best_rot = rg.optimize_on_rigid(
     mr_rigid, top_params,
-    n_iter=10, grad_coef = .001,
+    n_iter=50, grad_coef = .001,
     affine=True,
     # rotation=True, scaling=False, translation=True,
     verbose=True, plot = True,
@@ -230,48 +288,49 @@ print(f"best_rot : {best_rot}")
 print(f"best_priors : {best_priors}")
 id = 1
 
-best_priors = {'affine_prior': torch.tensor([[-0.3171, -1.0310],
-        [ 0.8974, -0.6376]]),
-               'rot_prior': None,
-               'trans_prior': torch.tensor([-0.0269,  0.0821]), 'scale_prior': None}
+# best_priors = {'affine_prior': torch.tensor([[-0.3171, -1.0310],
+#         [ 0.8974, -0.6376]]),
+#                'rot_prior': None,
+#                'trans_prior': torch.tensor([-0.0269,  0.0821]), 'scale_prior': None}
 
 
 
 #%%
 #####################################################
 # Check the rigid optimisation
-# print("")
-# print("="*20)
-# print("Check the rigid optimisation")
+print("")
+print("="*20)
+print("Check the rigid optimisation")
 # input("Press Enter to continue")
-#
-# print(f"best_momenta : {best_priors}")
-# param = best_priors.copy()
-# momenta = mt.prepare_momenta(
-#     source_b.shape,
-#     diffeo = False,
-#     affine = True,
-#     device = "cpu",
-#     requires_grad = False,
-#     **param
-# )
-# print(f"best_priors : {best_priors}")
-#
-# print(f"momenta : {momenta}")
-# mr_rigid.mp.debug = False
-# mr_rigid.mp.forward(source_b, momenta.copy(), save =  True)
-#
-# plot(mr_rigid)
-# plt.show()
+
+print(f"best_momenta : {best_priors}")
+param = best_priors.copy()
+momenta = mt.prepare_momenta(
+    source_b.shape,
+    diffeo = False,
+    affine = True,
+    device = "cpu",
+    requires_grad = False,
+    **param
+)
+print(f"best_priors : {best_priors}")
+
+print(f"momenta : {momenta}")
+mr_rigid.mp.debug = False
+mr_rigid.mp.forward(source_b, momenta.copy(), save =  True)
+
+plot(mr_rigid)
+plt.show()
 
 
 
 #%%
-sigmoid_a = 15
-sigmoid_b = 40
+n_iter = 100
+sigmoid_a = 30
+sigmoid_b = 70
 sigmoid_c = -3
 
-iter = torch.linspace(0,50, 100)
+iter = torch.linspace(0,n_iter, 100)
 alpha = 2 * sigmoid_c /( sigmoid_b - sigmoid_a)
 beta = - (sigmoid_a + sigmoid_b) / 2
 g = alpha *( iter + beta)
@@ -288,7 +347,7 @@ print("")
 print("="*20)
 print("Start real optimization")
 # input("Press Enter to continue")
-sigma= [  3, 4, 8]
+sigma= [  4, 15,]
 sigma = [(s,)*2 for s in sigma]
 alpha = .5
 rho = 1
@@ -296,7 +355,7 @@ cost_cst = 1
 cost_field_cst = 1
 cost_affine_cst = 1
 adam_dt_step_field=1e-6,
-adam_dt_step_affine=1e-2,
+adam_dt_step_affine=1e-3,
 
 verbose_datacost = False
 plot_datacost = True
@@ -312,8 +371,8 @@ saving_plots= (
 kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False, kernel_reach =6)
 datacost = mt.Rotation_Ssd_Cost(
         target_b.to("cuda:0"),
-        # gamma=alpha,
-        sigmoid_a=sigmoid_a,sigmoid_b=sigmoid_b,sigmoid_c=sigmoid_c,
+        gamma=alpha,
+        # sigmoid_a=sigmoid_a,sigmoid_b=sigmoid_b,sigmoid_c=sigmoid_c,
         normalize_ssd=False,
         verbose=verbose_datacost,
         plot=plot_datacost,
@@ -348,7 +407,7 @@ mr = mt.affine_along_metamorphosis(
   cost_cst=cost_cst,
   cost_field_cst = cost_field_cst,
   cost_affine_cst = cost_affine_cst,
-  n_iter=50,
+  n_iter=n_iter,
     grad_coef=.1,
     # optimizer_method='adadelta',
   # lbfgs_max_iter = 20,
@@ -393,8 +452,29 @@ mt.free_GPU_memory(mr)
 # plt.show()
 
 #%%
-plot(mr)
-# plt.show()
+deformator = mr.mp.get_deformator()
+deformation = mr.mp.get_deformation()
+
+
+source_rgb_t = source_rgb[0,...,:-1].transpose(2, 3).transpose(1, 2)
+source_rgb_deform = tb.imgDeform(source_rgb_t, deformator).transpose(1, 2).transpose(2, 3)
+
+affine = mr.mp.get_affine_deformator()
+# full = mr.mp.get_affine_deformator(affine)
+source_r = tb.imgDeform(source_b, affine)#.transpose(1, 2).transpose(2, 3)
+
+fig, ax = plt.subplots(2,2, constrained_layout=True)
+ax[0, 0].imshow(source_rgb[0,0])
+ax[0, 0].set_title("Source RGB")
+ax[0, 1].imshow(target_rgb[0])
+ax[0, 1].set_title("Target RGB")
+ax[1,0].imshow(source_rgb_deform[0])
+ax[1,0].set_title("Source RGB Deform")
+# ax[1, 1].imshow(source_r[0,0], cmap='gray')
+# ax[1,1].imshow(tb.imCmp(source_r,target_b, 'seg')[0])
+# ax[1,1].set_title("source vs target")
+tb.gridDef_plot_2d(deformation, ax = ax[1,1], step = 30)
+plt.show()
 
 
 #%%

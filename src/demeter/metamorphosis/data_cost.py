@@ -462,7 +462,7 @@ class Rotation_Ssd_Cost(DataCost):
             return self.gamma
 
     def _plot_(self, rotated_image, rotated_source, gamma, ssd, ssd_rot):
-        fig, ax = plt.subplots(2,2, constrained_layout=True)
+        fig, ax = plt.subplots(2,3, constrained_layout=True)
 
         fig.suptitle(f" iter : {self.optimizer._iter_}: gamma = {gamma:.3f}; ssd = {ssd:.2f}, ssd_rot = {ssd_rot:.2f}")
         ax[0,0].imshow(rotated_image[0,0].detach().cpu().numpy(), cmap='gray')
@@ -477,6 +477,10 @@ class Rotation_Ssd_Cost(DataCost):
         ax[1,1].imshow(im2[0])
         # ax[1,1].imshow(torch.abs(rotated_source - self.target)[0,0].detach().cpu().numpy())
         ax[1,1].set_title('rot source vs target')
+        ax[0,2].imshow(self.source.detach().cpu().numpy())
+        ax[0,2].set_title('source')
+        ax[1,2].imshow(self.target.detach().cpu().numpy())
+        ax[1,2].set_title('target')
         if self.save_plot is not None:
             fig.savefig(str(self.save_plot) + f"_{self.optimizer._iter_:03d}.png")
         plt.show()

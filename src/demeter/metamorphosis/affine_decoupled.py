@@ -695,7 +695,7 @@ class Affine_Decoupled_Metamorphosis_Optimizer(Optimize_geodesicShooting):
         self.target_segmentation = target_segmentation
 
         # print(f"diffeo dice : {diffeo_dice}")
-        rigidor = self.mp.get_rigidor()
+        rigidor = self.mp.get_affine_deformator()
         self.source_seg_rotated = tb.imgDeform(source_segmentation, rigidor,
                                                dx_convention='2square',
                                                mode="nearest"
