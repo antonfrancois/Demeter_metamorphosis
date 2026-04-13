@@ -125,9 +125,11 @@ def initial_exploration(rigid_meta_optim,
 
 
 import matplotlib.pyplot as plt
+
 #%% rigid optimisation
+
 def optimize_on_rigid(mr,
-                      top_params,
+                      top_params = None,
                       rotation=True,
                       translation=True,
                       scaling= True,
@@ -140,6 +142,34 @@ def optimize_on_rigid(mr,
     best_loss = torch.inf
     best_momenta = None
     best_rot = None
+
+    def _get_momentums(name):
+        try:
+            return mr.to_analyse[0][name].detach().cpu()
+        except AttributeError:
+            return None
+        except KeyError:
+            return None
+
+    if top_params is None:
+        momenta = mtrt.prepare_momenta(
+            mr.source.shape,
+            diffeo=False,
+            rotation=rotation,
+            translation=translation,
+            scaling= scaling,
+            affine=affine,
+        )
+        mr.forward(momenta, n_iter = n_iter, grad_coef= grad_coef)
+
+        priors = dict(
+                affine_prior = _get_momentums("momentum_A"),
+                 rot_prior= _get_momentums("momentum_R"),
+                trans_prior=_get_momentums("momentum_T"),
+                scale_prior=_get_momentums("momentum_S")
+            )
+        return mr.data_loss, priors, mr.mp.rot_mat
+
     for i,(val,params_r) in  enumerate(top_params):
         if verbose:
             print(">"*10)
@@ -154,7 +184,12 @@ def optimize_on_rigid(mr,
             affine=affine,
             **params_r
         )
-
+        priors =  dict(
+                affine_prior = _get_momentums("momentum_A"),
+                 rot_prior= _get_momentums("momentum_R"),
+                trans_prior=_get_momentums("momentum_T"),
+                scale_prior=_get_momentums("momentum_S")
+            )
         converged = True
         try:
             mr.forward(momenta, n_iter = n_iter, grad_coef= grad_coef)
@@ -178,13 +213,7 @@ def optimize_on_rigid(mr,
         # )
 
         best = False
-        def _get_momentums(name):
-            try:
-                return mr.to_analyse[0][name].detach().cpu()
-            except AttributeError:
-                return None
-            except KeyError:
-                return None
+
 
         current_loss = mr.data_loss
         if isinstance(current_loss, torch.Tensor):

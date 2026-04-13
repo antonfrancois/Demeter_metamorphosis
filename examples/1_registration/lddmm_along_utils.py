@@ -1,5 +1,7 @@
 import torch
 from matplotlib import pyplot as plt
+import subprocess
+from pathlib import Path
 
 import demeter.utils.torchbox as tb
 
@@ -356,19 +358,19 @@ def show_deforms(img, res, keys ):
     fig, ax = plt.subplots(2, 4, figsize=(10, 5), constrained_layout=True)
 
     for c, k in enumerate(keys):
-        img = res[k]["image"]
+        img_n = res[k]["image"]
         grid_t = res[k]["grid"]
         grid_inv = res[k]["deform"]
         H,W = img.shape[2:]
 
         # Row 1: transformed image
-        ax[0, c].imshow(img[0,0], cmap="gray")
+        ax[0, c].imshow(img_n[0,0], cmap="gray")
         ax[0, c].set_title(k)
         ax[0, c].axis("off")
 
         # Row 2: comparison with target (absolute difference)
-        diff = tb.imCmp(target, img, 'seg')
-        ax[1, c].imshow(diff[0], cmap="magma")
+        diff = tb.imCmp(img, img_n, 'segw')
+        ax[1, c].imshow(diff[0])
         ax[1, c].axis("off")
 
         # Row 3: deformation grid
@@ -390,3 +392,264 @@ def show_deforms(img, res, keys ):
     # ax[2, 0].set_ylabel("Deformation grid")
 
     plt.show()
+
+
+
+def frames_to_video_ffmpeg(frames_dir, stem, out_name=None, fps=12):
+  frames_dir = Path(frames_dir)
+  out_name = out_name or f"{stem}.mp4"
+  output = frames_dir / out_name
+
+  # expects files like: {stem}_000.png, {stem}_001.png, ...
+  input_pattern = str(frames_dir / f"{stem}_%03d.png")
+
+  cmd = [
+      "ffmpeg", "-y",
+      "-framerate", str(fps),
+      "-i", input_pattern,
+      "-c:v", "libx264",
+      "-pix_fmt", "yuv420p",
+      "-movflags", "+faststart",
+      str(output),
+  ]
+
+  subprocess.run(cmd, check=True)
+  return output
+
+def smooth(image, sigma):
+    if isinstance(sigma, int):
+        sigma = (sigma,sigma)
+    kernel = rk.GaussianRKHS(sigma).kernel
+
+    return rk.fft_filter(image,kernel,border_type='constant')
+
+def plot(self):
+    affine = self.mp.get_affine_deformator().cpu()
+    deform = self.mp.get_deformation().to(affine.device)
+    deform = self.mp.get_affine_deformation(deform).cpu()
+
+    img_rot = tb.imgDeform(self.mp.image.cpu(),affine,dx_convention='2square').cpu()
+    source_rt = tb.imgDeform(self.source.cpu(),affine,dx_convention='2square').cpu()
+    srt = tb.imCmp(source_rt,self.target,method = 'compose')
+    irt = tb.imCmp(img_rot,self.target,method = 'compose')
+    kwargs = {"origin": "upper", 'cmap': "gray"}
+
+    fig,ax = plt.subplots(3,3, constrained_layout=True)
+    ax[0,0].imshow(self.source.cpu()[0,0], **kwargs)
+    ax[0,0].set_title("source")
+
+    ax[0,1].imshow(self.target.cpu()[0,0], **kwargs)
+    ax[0,1].set_title("target")
+
+    tb.gridDef_plot_2d(self.mp.id_grid.cpu(), step = 40, ax = ax[0,2], color = None, alpha = .4)
+
+    tb.gridDef_plot_2d(deform.cpu(), step = 40, ax = ax[0,2])
+
+    ax[1,0].imshow(self.mp.image.to('cpu')[0,0], **kwargs)
+    ax[1,0].set_title("image deformed")
+
+    ax[1,1].imshow(img_rot[0,0], **kwargs)
+
+    ax[1,2].imshow(source_rt[0,0], **kwargs)
+    ax[1,2].set_title("source affine")
+
+    ax[2,1].imshow(irt[0], **kwargs)
+    ax[2,1].set_title("registered vs Target")
+    ax[2,2].imshow(srt[0], **kwargs)
+    ax[2,2].set_title("source affine vs Target")
+
+
+import numpy as np
+from skimage.transform import resize
+def open_fish(name, factor= None):
+    name_list = ["bass_1","bass_2","bluegill_1","catfish_1","catfish_2","crappie_1"]
+    if name not in name_list:
+        raise ValueError(f"Name {name} not in {name_list}")
+    path = ROOT_DIRECTORY
+    path += '/examples/im2Dbank/fish_' + name + '.png'
+    path_seg = ROOT_DIRECTORY +'/examples/im2Dbank/fish_' + name + '_seg.png'
+    I = plt.imread(path)
+    I_seg = plt.imread(path_seg)
+    H, W,_ = I.shape
+    min_pad = 50
+    if factor is not None:
+        H,W  = (int(H* factor), int(W* factor))
+        I = resize(I, (H,W))
+        I_seg = resize(I_seg, (H,W))
+    if W > H:
+        I     = np.pad(I, (((W-H)//2 + min_pad, (W-H)//2 + min_pad) ,(min_pad, min_pad), (0,0)))
+        I_seg = np.pad(I_seg, (((W-H)//2 + min_pad, (W-H)//2 + min_pad) ,(min_pad, min_pad), (0,0)))
+    I = torch.tensor(I[None,None])
+    I_seg = torch.tensor(tb.rgb2gray(I_seg)[None,None])
+    I_gray = torch.tensor(tb.rgb2gray(I))
+    return I, I_gray, I_seg
+
+import torch
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
+import demeter.utils.torchbox as tb
+
+
+def _apply_linear_matrix_to_grid(grid: torch.Tensor, A: torch.Tensor) -> torch.Tensor:
+    """
+    Apply a 2x2 linear matrix A to a batched 2D grid.
+
+    Parameters
+    ----------
+    grid : torch.Tensor
+        Tensor of shape [B,H,W,2] in grid convention.
+    A : torch.Tensor
+        Tensor of shape [2,2].
+
+    Returns
+    -------
+    torch.Tensor
+        Transformed grid of shape [B,H,W,2].
+    """
+    if grid.ndim != 4 or grid.shape[-1] != 2:
+        raise ValueError(f"Expected grid shape [B,H,W,2], got {tuple(grid.shape)}")
+    if A.shape != (2, 2):
+        raise ValueError(f"Expected A shape (2,2), got {tuple(A.shape)}")
+
+    A = A.to(device=grid.device, dtype=grid.dtype)
+    return torch.einsum("ij,bhwj->bhwi", A, grid)
+
+
+def _to_displayable_image(img: torch.Tensor):
+    """
+    Convert a tensor [1,C,H,W] to something matplotlib can display.
+    Supports C=1 or C=3.
+    """
+    if img.ndim != 4 or img.shape[0] != 1:
+        raise ValueError(f"Expected image shape [1,C,H,W], got {tuple(img.shape)}")
+
+    img_np = img.detach().cpu()
+
+    if img_np.shape[1] == 1:
+        return img_np[0, 0], "gray"
+    elif img_np.shape[1] == 3:
+        return img_np[0].permute(1, 2, 0), None
+    else:
+        raise ValueError(
+            f"Only C=1 or C=3 are supported for display, got C={img_np.shape[1]}"
+        )
+
+
+def affine_matrix_slider_figure(
+    image: torch.Tensor,
+    A_init: torch.Tensor,
+    slider_delta: float = 0.5,
+    mode: str = "bilinear",
+    clamp: bool = False,
+    figsize=(10, 5),
+):
+    """
+    Create an interactive matplotlib figure with 4 sliders controlling a 2x2 affine matrix.
+
+    Parameters
+    ----------
+    image : torch.Tensor
+        Input image of shape [B,C,H,W]. For display, B must be 1.
+    A_init : torch.Tensor
+        Initial affine matrix of shape [2,2].
+    slider_delta : float, optional
+        Each slider ranges from A_init[i,j] - slider_delta to A_init[i,j] + slider_delta.
+    mode : str, optional
+        Interpolation mode passed to tb.imgDeform.
+    clamp : bool, optional
+        Passed to tb.imgDeform.
+    figsize : tuple, optional
+        Matplotlib figure size.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+    axes : np.ndarray
+    sliders : dict[str, matplotlib.widgets.Slider]
+    """
+    if image.ndim != 4:
+        raise ValueError(f"Expected image shape [B,C,H,W], got {tuple(image.shape)}")
+    if image.shape[0] != 1:
+        raise ValueError(
+            f"For display, this helper expects B=1. Got image shape {tuple(image.shape)}"
+        )
+    if A_init.shape != (2, 2):
+        raise ValueError(f"Expected A_init shape (2,2), got {tuple(A_init.shape)}")
+
+    device = image.device
+    dtype = image.dtype
+    _, _, H, W = image.shape
+
+    A_init = A_init.to(device=device, dtype=dtype)
+
+    # Identity regular grid in 2square convention
+    id_grid = tb.make_regular_grid((1, H, W, 2), dx_convention="2square").to(device).to(dtype)
+
+    def warp_from_matrix(A: torch.Tensor) -> torch.Tensor:
+        aff_grid = _apply_linear_matrix_to_grid(id_grid, A)
+        return tb.imgDeform(image, aff_grid, dx_convention="2square", clamp=clamp, mode=mode)
+
+    warped_init = warp_from_matrix(A_init)
+
+    fig, axes = plt.subplots(1, 2, figsize=figsize)
+    plt.subplots_adjust(bottom=0.30)
+
+    img0, cmap0 = _to_displayable_image(image)
+    img1, cmap1 = _to_displayable_image(warped_init)
+
+    axes[0].set_title("Original")
+    if cmap0 is None:
+        im_left = axes[0].imshow(img0)
+    else:
+        im_left = axes[0].imshow(img0, cmap=cmap0)
+    axes[0].axis("off")
+
+    axes[1].set_title("Affine transformed")
+    if cmap1 is None:
+        im_right = axes[1].imshow(img1)
+    else:
+        im_right = axes[1].imshow(img1, cmap=cmap1)
+    axes[1].axis("off")
+
+    # Slider axes
+    ax_a11 = plt.axes([0.15, 0.20, 0.7, 0.03])
+    ax_a12 = plt.axes([0.15, 0.15, 0.7, 0.03])
+    ax_a21 = plt.axes([0.15, 0.10, 0.7, 0.03])
+    ax_a22 = plt.axes([0.15, 0.05, 0.7, 0.03])
+
+    sliders = {
+        "a11": Slider(ax_a11, "A[0,0]", float(A_init[0, 0] - slider_delta), float(A_init[0, 0] + slider_delta),
+                      valinit=float(A_init[0, 0])),
+        "a12": Slider(ax_a12, "A[0,1]", float(A_init[0, 1] - slider_delta), float(A_init[0, 1] + slider_delta),
+                      valinit=float(A_init[0, 1])),
+        "a21": Slider(ax_a21, "A[1,0]", float(A_init[1, 0] - slider_delta), float(A_init[1, 0] + slider_delta),
+                      valinit=float(A_init[1, 0])),
+        "a22": Slider(ax_a22, "A[1,1]", float(A_init[1, 1] - slider_delta), float(A_init[1, 1] + slider_delta),
+                      valinit=float(A_init[1, 1])),
+    }
+
+    def update(_):
+        A = torch.tensor(
+            [
+                [sliders["a11"].val, sliders["a12"].val],
+                [sliders["a21"].val, sliders["a22"].val],
+            ],
+            device=device,
+            dtype=dtype,
+        )
+
+        warped = warp_from_matrix(A)
+        img_disp, cmap = _to_displayable_image(warped)
+
+        im_right.set_data(img_disp)
+        axes[1].set_title(
+            "Affine transformed\n"
+            f"[[{A[0,0].item():.3f}, {A[0,1].item():.3f}], "
+            f"[{A[1,0].item():.3f}, {A[1,1].item():.3f}]]"
+        )
+        fig.canvas.draw_idle()
+
+    for s in sliders.values():
+        s.on_changed(update)
+
+    return fig, axes, sliders

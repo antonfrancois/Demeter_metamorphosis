@@ -1,10 +1,15 @@
 
 
 import __init__
+import sys, pathlib
+
+
+sys.path.insert(0, str(pathlib.Path("examples/1_registration").resolve()))
+
 import torch
 from math import cos,sin
 import matplotlib.pyplot as plt
-from docutils.nodes import target
+
 
 # from kornia.geometry.transform import resize
 
@@ -16,7 +21,8 @@ import demeter.utils.cost_functions as cf
 import demeter.utils.rigid_exploration as rg
 from demeter.constants import set_ticks_off, GRIDDEF_YELLOW,  ROOT_DIRECTORY
 from demeter.utils.cost_functions import SumSquaredDifference
-
+import demeter.utils.bspline as bs
+import lddmm_along_utils as lu
 
 #
 def smooth(image, sigma):
@@ -26,174 +32,38 @@ def smooth(image, sigma):
 
     return rk.fft_filter(image,kernel,border_type='constant')
 
-def plot(self):
-    affine = self.mp.get_affine_deformator()
-    deform = self.mp.get_deformation()
-    deform = self.mp.get_affine_deformation(deform)
 
-    img_rot = tb.imgDeform(self.mp.image.to('cpu'),affine,dx_convention='2square')
-    source_rt = tb.imgDeform(self.source.to('cpu'),affine,dx_convention='2square')
-    srt = tb.imCmp(source_rt,self.target,method = 'compose')
-    irt = tb.imCmp(img_rot,self.target,method = 'compose')
-    kwargs = {"origin": "lower", 'cmap': "gray"}
 
-    fig,ax = plt.subplots(3,3, constrained_layout=True)
-    ax[0,0].imshow(self.source[0,0], **kwargs)
-    ax[0,0].set_title("source")
 
-    ax[0,1].imshow(self.target[0,0], **kwargs)
-    ax[0,1].set_title("target")
-
-    tb.gridDef_plot_2d(self.id_grid, step = 40, ax = ax[0,2], color = None, alpha = .4)
-
-    tb.gridDef_plot_2d(deform, step = 40, ax = ax[0,2])
-
-    ax[1,0].imshow(self.mp.image.to('cpu')[0,0], **kwargs)
-    ax[1,0].set_title("image deformed")
-
-    ax[1,1].imshow(img_rot[0,0], **kwargs)
-
-    ax[1,2].imshow(source_rt[0,0], **kwargs)
-    ax[1,2].set_title("source affne")
-
-    ax[2,1].imshow(irt[0], **kwargs)
-    ax[2,1].set_title("registered vs Target")
-    ax[2,2].imshow(srt[0], **kwargs)
-    ax[2,2].set_title("source affine vs Target")
-
-def _norm(x):
-    return torch.linalg.norm(x.reshape(-1)).item()
-
-def install_momenta_grad_debug(momenta, every=10, max_print=60):
-    counters = {k: 0 for k in momenta.keys()}
-    handles = []
-
-    for key, tensor in momenta.items():
-        if not tensor.requires_grad:
-            continue
-
-        def _hook(grad, _k=key):
-            counters[_k] += 1
-            c = counters[_k]
-            if c <= max_print and (c == 1 or c % every == 0):
-                gnorm = _norm(grad.detach())
-                gmax = grad.detach().abs().max().item()
-                print(f"[grad:{_k}] call={c:03d} |g|={gnorm:.4e} |g|max={gmax:.4e}")
-
-        handles.append(tensor.register_hook(_hook))
-
-    return handles
-
-def print_momenta_delta(before, after):
-    print("\n[Momenta delta summary]")
-    for key in sorted(before.keys()):
-        if key not in after:
-            print(f"  - {key}: absent in final momenta")
-            continue
-        b = before[key].detach()
-        a = after[key].detach()
-        d = a - b
-        bn = _norm(b)
-        dn = _norm(d)
-        rel = dn / (bn + 1e-12)
-        print(f"  - {key}: |before|={bn:.4e} |delta|={dn:.4e} rel_delta={rel:.4e}")
-
-def summarize_registration_case(name, mr, target):
-    ssd_fn = cf.SumSquaredDifference(target)
-    grid_rt = mr.mp.get_affine_deformator()
-    rotated_image = tb.imgDeform(mr.mp.image, grid_rt, dx_convention='2square')
-    rotated_source = tb.imgDeform(mr.source, grid_rt, dx_convention='2square')
-
-    final_data_loss = float(mr.to_analyse[1]["data_loss"][-1])
-    ssd = float(ssd_fn(rotated_image))
-    ssd_rot = float(ssd_fn(rotated_source))
-
-    rot_mat = mr.mp.rot_mat.detach()
-    theta_deg = torch.atan2(rot_mat[1, 0], rot_mat[0, 0]).item() * 180.0 / torch.pi
-
-    t = mr.mp.translation.detach()
-    h, w = mr.source.shape[-2:]
-    tx_pix = t[0].item() * (w - 1) / 2.0
-    ty_pix = t[1].item() * (h - 1) / 2.0
-
-    print(f"\n[{name}]")
-    print(f"  - final_data_loss: {final_data_loss:.6f}")
-    print(f"  - ssd(image->target): {ssd:.6f}")
-    print(f"  - ssd(source_rigid->target): {ssd_rot:.6f}")
-    print(f"  - angle_deg: {theta_deg:.4f}")
-    print(f"  - translation_2square: [{t[0].item():.6f}, {t[1].item():.6f}]")
-    print(f"  - translation_pixels:  [{tx_pix:.3f}, {ty_pix:.3f}]")
-
-    if isinstance(mr.to_analyse[0], dict):
-        p = mr.to_analyse[0]
-        if "momentum_R" in p:
-            print(f"  - |momentum_R|: {_norm(p['momentum_R']):.6e}")
-        if "momentum_T" in p:
-            print(f"  - |momentum_T|: {_norm(p['momentum_T']):.6e}")
-        if "momentum_I" in p:
-            print(f"  - |momentum_I|: {_norm(p['momentum_I']):.6e}")
-
-    return {
-        "final_data_loss": final_data_loss,
-        "ssd": ssd,
-        "ssd_rot": ssd_rot,
-        "theta_deg": theta_deg,
-        "tx_pix": tx_pix,
-        "ty_pix": ty_pix,
-    }
-import numpy as np
-from skimage.transform import resize
-def open_fish(name, factor= None):
-    name_list = ["bass_1","bass_2","bluegill_1","catfish_1","catfish_2","crappie_1"]
-    if name not in name_list:
-        raise ValueError(f"Name {name} not in {name_list}")
-    path = ROOT_DIRECTORY
-    path += '/examples/im2Dbank/fish_' + name + '.png'
-    path_seg = ROOT_DIRECTORY +'/examples/im2Dbank/fish_' + name + '_seg.png'
-    I = plt.imread(path)
-    I_seg = plt.imread(path_seg)
-    H, W,_ = I.shape
-    min_pad = 50
-    if factor is not None:
-        H,W  = (int(H* factor), int(W* factor))
-        I = resize(I, (H,W))
-        I_seg = resize(I_seg, (H,W))
-    if W > H:
-        I     = np.pad(I, (((W-H)//2 + min_pad, (W-H)//2 + min_pad) ,(min_pad, min_pad), (0,0)))
-        I_seg = np.pad(I_seg, (((W-H)//2 + min_pad, (W-H)//2 + min_pad) ,(min_pad, min_pad), (0,0)))
-    I = torch.tensor(I[None,None])
-    I_seg = torch.tensor(tb.rgb2gray(I_seg)[None,None])
-    I_gray = torch.tensor(tb.rgb2gray(I))
-    return I, I_gray, I_seg
-
-# /home/turtlefox/Documents/11_metamorphoses/Demeter_metamorphosis/examples/im2Dbank/fish_bass_1.png
-source_rgb, source_g, source = open_fish("bass_1", factor=.3)
-target_rgb, target_g, target = open_fish("crappie_1", factor=.3)
-
-# from kornia.filters import bilateral_blur
-# source = bilateral_blur(source, 5, sigma_color=5, sigma_space=(5, 5))
-# target =  bilateral_blur(target, 5, sigma_color=5, sigma_space=(5, 5))
-
+#%% FISHIES
+# # /home/turtlefox/Documents/11_metamorphoses/Demeter_metamorphosis/examples/im2Dbank/fish_bass_1.png
+# source_rgb, source_g, source = lu.open_fish("bass_1", factor=.3)
+# target_rgb, target_g, target = lu.open_fish("crappie_1", factor=.3)
 #
-rot_mat = tb.create_rot_mat_2d(torch.tensor(3./torch.pi))
-# rot_mat = torch.eye(2)
-rot_mat[1,1] /= 1.5
-trans = torch.tensor([0.2, -0.2])
-id_grid = tb.make_regular_grid((1,)+source.shape[2:]+ (2,), dx_convention='2square')
-grid = tb.grid_from_rotation_translation(id_grid, rot_mat, trans)
-target = tb.imgDeform(target, grid)
-target_rgb = target_rgb[0,...,:-1].transpose(2, 3).transpose(1, 2)
-target_rgb_r = tb.imgDeform(target_rgb, grid).transpose(1, 2).transpose(2, 3)
-
-
-fig, ax = plt.subplots(1,3, constrained_layout=True)
-ax[0].imshow(source[0,0], cmap='gray')
-ax[1].imshow(target_rgb_r[0], cmap='gray')
-ax[2].imshow(tb.imCmp(source,target, 'seg')[0])
-plt.show()
+# # from kornia.filters import bilateral_blur
+# # source = bilateral_blur(source, 5, sigma_color=5, sigma_space=(5, 5))
+# # target =  bilateral_blur(target, 5, sigma_color=5, sigma_space=(5, 5))
+#
+# #
+# rot_mat = tb.create_rot_mat_2d(torch.tensor(3./torch.pi))
+# # rot_mat = torch.eye(2)
+# rot_mat[1,1] /= 1.5
+# trans = torch.tensor([0.2, -0.2])
+# id_grid = tb.make_regular_grid((1,)+source.shape[2:]+ (2,), dx_convention='2square')
+# grid = tb.grid_from_rotation_translation(id_grid, rot_mat, trans)
+# target = tb.imgDeform(target, grid)
+# target_rgb = target_rgb[0,...,:-1].transpose(2, 3).transpose(1, 2)
+# target_rgb_r = tb.imgDeform(target_rgb, grid).transpose(1, 2).transpose(2, 3)
+#
+#
+# fig, ax = plt.subplots(1,3, constrained_layout=True)
+# ax[0].imshow(source[0,0], cmap='gray')
+# ax[1].imshow(target_rgb_r[0], cmap='gray')
+# ax[2].imshow(tb.imCmp(source,target, 'seg')[0])
+# plt.show()
 # raise ValueError("kvnlk")
-#%%
 
+#%%
 path = "examples/results/rigid_meta/"
 device = "cuda:0"
 # ###########################################################
@@ -201,12 +71,12 @@ device = "cuda:0"
 size = (300, 300)
 # # source = tb.reg_open('rigid_s',size=size)
 # # target = tb.reg_open('rigid_t',size=size)
-# source = tb.reg_open('33',size=size)
-# target = tb.reg_open('fish',size=size)
+source = tb.reg_open('minifish',size=size)
+target_d = tb.reg_open('fish',size=size)
 # source = tb.reg_open('20',size=size)
 # target = tb.reg_open('17',size=size)
-source = tb.reg_open('34',size=size)
-target = tb.reg_open('35',size=size)
+# source = tb.reg_open('34',size=size)
+# target = tb.reg_open('35',size=size)
 
 
 source.to(device)
@@ -216,29 +86,117 @@ source.to(device)
 fig, ax = plt.subplots(1,3)
 ax[0].imshow(source[0,0],cmap='gray')
 ax[0].set_title("source")
-ax[1].imshow(target[0,0],cmap='gray')
+ax[1].imshow(target_d[0,0],cmap='gray')
 ax[1].set_title("target")
-ax[2].imshow(tb.imCmp(source,target, 'compose')[0])
+ax[2].imshow(tb.imCmp(source,target_d, 'compose')[0])
 plt.show()
+
+#%% toy example L all deforms
+#
+# size = (300, 300)
+# source = tb.reg_open('30',size=size)
+# # source[source>.5] = 1
+#
+# # cms = bs.getCMS_turn()
+# # cms = bs.getCMS_allcombinaision()
+# torch.manual_seed(3)
+# # print(torch.seed())
+# cms = torch.rand((2,9,9)) - 0.5
+# # cms = torch.tensor([[[0., 0., 0., 0., 0., 0., 0., 0., 0.],
+# #          [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+# #          [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+# #          [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+# #          [0., 0., 0., -0.05, -.2, 0., 0., 0., 0.],
+# #          [0., -0.1, -0.3, -0.4, -0.5, -0., 0., 0., 0.],
+# #          [0., 0., 0., 0., -0.2, 0., 0., 0., 0.],
+# #          [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+# #          [0., 0., 0., 0., 0., 0., 0., 0., 0.]],
+# #         [[0., 0., 0., 0., 0., 0., 0., 0., 0.],
+# #          [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+# #          [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+# #          [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+# #          [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+# #          [0., 0., 0., 0., 0., 0., .3, 0., 0.],
+# #          [0., 0., 0., 0., 0., 0., .2, 0., 0.],
+# #          [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+# #          [0., 0., 0., 0., 0., 0., 0., 0., 0.]]])
+#
+# field = bs.field2D_bspline(cms, n_pts=size, degree=(2,2), dim_stack=-1)
+# id_grid = tb.make_regular_grid((1,)+source.shape[2:]+ (2,), dx_convention='2square')
+# deform = id_grid + field /5
+# target_d = tb.imgDeform(source, deform)
+#
+#
+# origin = 'lower'
+# fig,ax = plt.subplots(2,2)
+# ax[0,0].imshow(source[0,0], cmap='gray',origin=origin)
+# ax[0,0].set_title('Source')
+# tb.gridDef_plot_2d(deform, ax = ax[1,0], step = 10, check_diffeo=False)
+# ax[1,0].set_title('Random spline deformation')
+# ax[0,1].imshow(target_d[0,0], cmap='gray', origin=origin)
+# ax[0,1].set_title('source deformed')
+# ax[1,1].imshow(tb.imCmp(source,target_d, "segw")[0], cmap='gray',origin=origin)
+# plt.show()
 #%%
+# A_full = torch.tensor([
+#     [.563, -0.791],
+#     [0.710,  0.117]
+# ], dtype=target_d.dtype, device=target_d.device)
+#
+# fig, axes, sliders = lu.affine_matrix_slider_figure(
+#     image=target_d,   # must be [1,C,H,W]
+#     A_init=A_full,
+#     slider_delta=1.5,
+#     mode="bilinear",
+#     clamp=False,
+# )
+#
+# plt.show()
+# raise TypeError("c'est toi le type")
+#%%
+theta = torch.tensor([0.35])              # radians
+translation = torch.tensor([[0.12, -0.13]]) # in 2square coords
+scale = torch.tensor([.8])
+
+A_full = torch.tensor([
+    [1.240, -0.032],
+    [0.449,  0.614]
+], dtype=target_d.dtype)
+
+res = lu.apply_registration_models(
+    target_d,
+    rotation=theta,
+    translation=translation,
+    scale=scale,
+    full_affine=A_full,
+)
+keys = ["full_affine","rotation_translation_scaling","rotation_translation","rotation_scaling"]
+lu.show_deforms(target_d, res, keys)
+
+target_name = keys[2]
+target = res[target_name]["image"]
+
+
+#%%
+
 # Align barycenters
 
-source_b, target_b, trans_s, trans_t = rg.align_barycentres(source, target, verbose=True)
-
-
-ssd  = SumSquaredDifference(target_b)
-print("ssd target_b - source_b :",ssd(source_b))
-
-fig, ax = plt.subplots(1,3, constrained_layout=True, figsize=(5.5,2))
-ax[0].imshow(source_b[0,0],cmap='gray')
-ax[0].set_title("Source")
-ax[1].imshow(target_b[0,0],cmap='gray')
-ax[1].set_title("Target")
-ax[2].imshow(tb.imCmp(source_b,target_b, 'seg')[0])
-ax[2].set_title("Source vs Target")
-set_ticks_off(ax)
-plt.show()
-# fig.savefig(path + "toyexample_sourcetarget.pdf")
+# source_b, target_b, trans_s, trans_t = rg.align_barycentres(source, target, verbose=True)
+#
+#
+# ssd  = SumSquaredDifference(target_b)
+# print("ssd target_b - source_b :",ssd(source_b))
+#
+# fig, ax = plt.subplots(1,3, constrained_layout=True, figsize=(5.5,2))
+# ax[0].imshow(source_b[0,0],cmap='gray')
+# ax[0].set_title("Source")
+# ax[1].imshow(target_b[0,0],cmap='gray')
+# ax[1].set_title("Target")
+# ax[2].imshow(tb.imCmp(source_b,target_b, 'seg')[0])
+# ax[2].set_title("Source vs Target")
+# set_ticks_off(ax)
+# plt.show()
+# # fig.savefig(path + "toyexample_sourcetarget.pdf")
 
 # %%
 print("")
@@ -250,13 +208,13 @@ integration_steps = 10
 
 kernelOperator = rk.DummyKernel()
 
-datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'),
+datacost = mt.Rotation_Ssd_Cost(target.to('cuda:0'),
                                 gamma=1, normalize_ssd=False,
                                 plot=False)
 # datacost = mt.Rotation_MutualInformation_Cost(target_b.to('cuda:0'), alpha=1)
 
 mr_rigid = mt.affine_along_metamorphosis(
-    source_b, target_b, momenta_ini=0,
+    source, target, momenta_ini=0,
     kernelOperator= kernelOperator,
     rho = 1,
     data_term=datacost ,
@@ -269,8 +227,8 @@ mr_rigid = mt.affine_along_metamorphosis(
     lbfgs_max_iter=20
 )
 
-top_params = rg.initial_exploration(mr_rigid, r_step = 20,
-                                    max_output = 4, verbose=True)
+top_params = rg.initial_exploration(mr_rigid, r_step = 50,
+                                    max_output =6, verbose=True)
 print("top_params : ",top_params)
 #
 # print("")
@@ -278,7 +236,7 @@ print("="*20)
 print("Optimize on best exploration ")
 best_loss, best_priors, best_rot = rg.optimize_on_rigid(
     mr_rigid, top_params,
-    n_iter=50, grad_coef = .001,
+    n_iter=150, grad_coef = .001,
     affine=True,
     # rotation=True, scaling=False, translation=True,
     verbose=True, plot = True,
@@ -301,33 +259,34 @@ id = 1
 print("")
 print("="*20)
 print("Check the rigid optimisation")
-# input("Press Enter to continue")
-
-print(f"best_momenta : {best_priors}")
-param = best_priors.copy()
-momenta = mt.prepare_momenta(
-    source_b.shape,
-    diffeo = False,
-    affine = True,
-    device = "cpu",
-    requires_grad = False,
-    **param
-)
-print(f"best_priors : {best_priors}")
-
-print(f"momenta : {momenta}")
-mr_rigid.mp.debug = False
-mr_rigid.mp.forward(source_b, momenta.copy(), save =  True)
-
-plot(mr_rigid)
-plt.show()
+#
+# # input("Press Enter to continue")
+#
+# print(f"best_momenta : {best_priors}")
+# param = best_priors.copy()
+# momenta = mt.prepare_momenta(
+#     source_b.shape,
+#     diffeo = False,
+#     affine = True,
+#     device = "cpu",
+#     requires_grad = False,
+#     **param
+# )
+# print(f"best_priors : {best_priors}")
+#
+# print(f"momenta : {momenta}")
+# mr_rigid.mp.debug = False
+# mr_rigid.mp.forward(source_b, momenta.copy(), save =  True)
+#
+# lu.plot(mr_rigid)
+# plt.show()
 
 
 
 #%%
 n_iter = 100
-sigmoid_a = 30
-sigmoid_b = 70
+sigmoid_a = 50
+sigmoid_b = 100
 sigmoid_c = -3
 
 iter = torch.linspace(0,n_iter, 100)
@@ -335,6 +294,9 @@ alpha = 2 * sigmoid_c /( sigmoid_b - sigmoid_a)
 beta = - (sigmoid_a + sigmoid_b) / 2
 g = alpha *( iter + beta)
 gamma = 1/(1 + torch.exp(-g))
+from math import exp
+print(f"iter : {sigmoid_a}, val : {1/(1 + exp(- alpha * (sigmoid_a + beta)))}")
+print(f"iter : {sigmoid_b}, val : {1/(1 + exp(- alpha * (sigmoid_b + beta)))}")
 
 plt.plot(iter, gamma)
 plt.show()
@@ -347,7 +309,7 @@ print("")
 print("="*20)
 print("Start real optimization")
 # input("Press Enter to continue")
-sigma= [  4, 15,]
+sigma= [ 5, 7, 15,]
 sigma = [(s,)*2 for s in sigma]
 alpha = .5
 rho = 1
@@ -355,7 +317,7 @@ cost_cst = 1
 cost_field_cst = 1
 cost_affine_cst = 1
 adam_dt_step_field=1e-6,
-adam_dt_step_affine=1e-3,
+adam_dt_step_affine=5e-2,
 
 verbose_datacost = False
 plot_datacost = True
@@ -370,9 +332,9 @@ saving_plots= (
 
 kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False, kernel_reach =6)
 datacost = mt.Rotation_Ssd_Cost(
-        target_b.to("cuda:0"),
-        gamma=alpha,
-        # sigmoid_a=sigmoid_a,sigmoid_b=sigmoid_b,sigmoid_c=sigmoid_c,
+        target.to("cuda:0"),
+        # gamma=alpha,
+        sigmoid_a=sigmoid_a,sigmoid_b=sigmoid_b,sigmoid_c=sigmoid_c,
         normalize_ssd=False,
         verbose=verbose_datacost,
         plot=plot_datacost,
@@ -385,7 +347,7 @@ datacost = mt.Rotation_Ssd_Cost(
 #     print(f"\n\noptimistion {i} on  {len(top_param_rot)}")
 print("\n" + "=" * 20)
 momenta = mt.prepare_momenta(
-    source_b.shape,
+    source.shape,
     diffeo=True,
     affine=True,
     device="cuda:0",
@@ -399,7 +361,7 @@ for k,v in momenta.items():
 
 
 mr = mt.affine_along_metamorphosis(
-  source_b, target_b, momenta_ini=momenta,
+  source, target, momenta_ini=momenta,
   kernelOperator= kernelOperator,
   rho = rho,
   data_term=datacost,
@@ -409,7 +371,7 @@ mr = mt.affine_along_metamorphosis(
   cost_affine_cst = cost_affine_cst,
   n_iter=n_iter,
     grad_coef=.1,
-    # optimizer_method='adadelta',
+    # optimizer_method='LBFGS_torch',
   # lbfgs_max_iter = 20,
   # lbfgs_history_size = 20,
   optimizer_method='Adam',
@@ -434,7 +396,7 @@ best = False
 fig_cost, _ = mr.plot_cost()
 fig_cost.savefig(saving_plots + "_cost.png")
 plt.show()
-plot(mr)
+lu.plot(mr)
 plt.show()
 # if mr.data_loss < best_loss or mr.data_loss == 0:
 #     print(param)
@@ -442,158 +404,160 @@ plt.show()
 
 mt.free_GPU_memory(mr)
 
-
-# file_save, path = mr.save(f"{paths["subject_dir"].name}_rigid_along_lddmm",
-#         light_save=True,
-#         save_path = os.path.join(result_folder, "rigid_along_lddmm")
-#         )
+#%%
+file_save, path = mr.save(f"fishes_method_affine_target_{target_name}",
+        light_save=True,
+        save_path = "/home/turtlefox/Documents/11_metamorphoses/data/rigid_along_lddmm"
+        )
 
 # best_mr.plot_cost()
 # plt.show()
 
 #%%
-deformator = mr.mp.get_deformator()
-deformation = mr.mp.get_deformation()
-
-
-source_rgb_t = source_rgb[0,...,:-1].transpose(2, 3).transpose(1, 2)
-source_rgb_deform = tb.imgDeform(source_rgb_t, deformator).transpose(1, 2).transpose(2, 3)
-
-affine = mr.mp.get_affine_deformator()
-# full = mr.mp.get_affine_deformator(affine)
-source_r = tb.imgDeform(source_b, affine)#.transpose(1, 2).transpose(2, 3)
-
-fig, ax = plt.subplots(2,2, constrained_layout=True)
-ax[0, 0].imshow(source_rgb[0,0])
-ax[0, 0].set_title("Source RGB")
-ax[0, 1].imshow(target_rgb[0])
-ax[0, 1].set_title("Target RGB")
-ax[1,0].imshow(source_rgb_deform[0])
-ax[1,0].set_title("Source RGB Deform")
-# ax[1, 1].imshow(source_r[0,0], cmap='gray')
-# ax[1,1].imshow(tb.imCmp(source_r,target_b, 'seg')[0])
-# ax[1,1].set_title("source vs target")
-tb.gridDef_plot_2d(deformation, ax = ax[1,1], step = 30)
-plt.show()
+# deformator = mr.mp.get_deformator()
+# deformation = mr.mp.get_deformation()
+#
+#
+# source_rgb_t = source_rgb[0,...,:-1].transpose(2, 3).transpose(1, 2)
+# source_rgb_deform = tb.imgDeform(source_rgb_t, deformator).transpose(1, 2).transpose(2, 3)
+#
+# affine = mr.mp.get_affine_deformator()
+# # full = mr.mp.get_affine_deformator(affine)
+# source_r = tb.imgDeform(source_b, affine)#.transpose(1, 2).transpose(2, 3)
+#
+# fig, ax = plt.subplots(2,2, constrained_layout=True)
+# ax[0, 0].imshow(source_rgb[0,0])
+# ax[0, 0].set_title("Source RGB")
+# ax[0, 1].imshow(target_rgb[0])
+# ax[0, 1].set_title("Target RGB")
+# ax[1,0].imshow(source_rgb_deform[0])
+# ax[1,0].set_title("Source RGB Deform")
+# # ax[1, 1].imshow(source_r[0,0], cmap='gray')
+# # ax[1,1].imshow(tb.imCmp(source_r,target_b, 'seg')[0])
+# # ax[1,1].set_title("source vs target")
+# tb.gridDef_plot_2d(deformation, ax = ax[1,1], step = 30)
+# plt.show()
 
 
 #%%
 
-n_figs = 5
-plot_id = (
-    torch.quantile(
-        torch.arange(mr.mp.image_stock.shape[0], dtype=torch.float),
-        torch.linspace(0, 1, n_figs),
-    )
-    .round()
-    .int()
-)
-
-kw_image_args = dict(
-    cmap="gray", extent=[-1, 1, -1, 1], vmin=0, vmax=1
-)
-# v_abs_max = (mr.mp.residuals_stock.abs().max()).max()
-# v_abs_max = torch.quantile(mr.mp.momenta.abs(), 0.99)
-momentum =  mr.mp.momenta['momentum_I']
-v_abs_max = torch.quantile(momentum.abs(), 0.99)
-kw_residuals_args = dict(
-    cmap="RdYlBu_r",
-    extent=[-1, 1, -1, 1],
-    origin="lower",
-    vmin=-v_abs_max,
-    vmax=v_abs_max,
-)
-color = "green"
-size_fig = 2
-# C = self.momentum_stock.shape[1]
-fig, ax = plt.subplots(
-    n_figs,
-    4,
-    constrained_layout=True,
-    figsize=(size_fig * 4, n_figs * size_fig),
-)
-for i, t in enumerate(plot_id):
-    deform = mr.mp.get_deformation(to_t = t + 1)
-
-    i_s = ax[i, 0].imshow(
-        mr.mp.image_stock[t, 0, :, :].detach().numpy(),
-        **kw_image_args,
-    )
-    ax[i, 0].set_ylabel("t = " + str((t / (mr.mp.n_step - 1)).item())[:3])
-    # fig.colorbar(i_s, ax=ax[i, 0], fraction=0.046, pad=0.04)
-
-    tb.gridDef_plot_2d(
-        deform,
-        add_grid=False,
-        ax=ax[i, 1],
-        step=int(min(mr.mp.field_stock.shape[2:-1]) / 25),
-        check_diffeo=False,
-        dx_convention=mr.mp.dx_convention,
-        # color = color
-    )
-
-    deform = mr.mp.get_affine_deformation(deform)
-    img = tb.imgDeform(
-        mr.mp.image_stock[t, :, :, :][None],
-        mr.mp.get_affine_deformator()
-    ).detach().numpy()[0,0]
-
-    ax[i, 2].imshow(img, **kw_image_args,)
-    # ax[i, 2].set_title("t = " + str((t / (mr.mp.n_step - 1)).item())[:3])
-    ax[i, 2].axis("off")
-
-    # ax[i, 3].imshow(torch.rand((10,10)), **kw_image_args,)
-    # ax[i, 3].set_title("t = " + str((t / (mr.mp.n_step - 1)).item())[:3])
-    # ax[i, 3].axis("off")
-    # # fig.colorbar(i_s, ax=ax[i, 0], fraction=0.046, pad=0.04)
-
-    #
-    tb.gridDef_plot_2d(
-        deform,
-        add_grid=False,
-        add_markers=True,
-        ax=ax[i, 3],
-        step=int(min(mr.mp.field_stock.shape[2:-1]) / 25),
-        check_diffeo=False,
-        dx_convention=mr.mp.dx_convention,
-    )
-
-
-set_ticks_off(ax)
-plt.show()
-raise TypeError("GARUGA")
+# n_figs = 5
+# plot_id = (
+#     torch.quantile(
+#         torch.arange(mr.mp.image_stock.shape[0], dtype=torch.float),
+#         torch.linspace(0, 1, n_figs),
+#     )
+#     .round()
+#     .int()
+# )
+#
+# kw_image_args = dict(
+#     cmap="gray", extent=[-1, 1, -1, 1], vmin=0, vmax=1
+# )
+# # v_abs_max = (mr.mp.residuals_stock.abs().max()).max()
+# # v_abs_max = torch.quantile(mr.mp.momenta.abs(), 0.99)
+# momentum =  mr.mp.momenta['momentum_I']
+# v_abs_max = torch.quantile(momentum.abs(), 0.99)
+# kw_residuals_args = dict(
+#     cmap="RdYlBu_r",
+#     extent=[-1, 1, -1, 1],
+#     origin="lower",
+#     vmin=-v_abs_max,
+#     vmax=v_abs_max,
+# )
+# color = "green"
+# size_fig = 2
+# # C = self.momentum_stock.shape[1]
+# fig, ax = plt.subplots(
+#     n_figs,
+#     4,
+#     constrained_layout=True,
+#     figsize=(size_fig * 4, n_figs * size_fig),
+# )
+# for i, t in enumerate(plot_id):
+#     deform = mr.mp.get_deformation(to_t = t + 1)
+#
+#     i_s = ax[i, 0].imshow(
+#         mr.mp.image_stock[t, 0, :, :].detach().numpy(),
+#         **kw_image_args,
+#     )
+#     ax[i, 0].set_ylabel("t = " + str((t / (mr.mp.n_step - 1)).item())[:3])
+#     # fig.colorbar(i_s, ax=ax[i, 0], fraction=0.046, pad=0.04)
+#
+#     tb.gridDef_plot_2d(
+#         deform,
+#         add_grid=False,
+#         ax=ax[i, 1],
+#         step=int(min(mr.mp.field_stock.shape[2:-1]) / 25),
+#         check_diffeo=False,
+#         dx_convention=mr.mp.dx_convention,
+#         # color = color
+#     )
+#
+#     deform = mr.mp.get_affine_deformation(deform)
+#     img = tb.imgDeform(
+#         mr.mp.image_stock[t, :, :, :][None],
+#         mr.mp.get_affine_deformator()
+#     ).detach().numpy()[0,0]
+#
+#     ax[i, 2].imshow(img, **kw_image_args,)
+#     # ax[i, 2].set_title("t = " + str((t / (mr.mp.n_step - 1)).item())[:3])
+#     ax[i, 2].axis("off")
+#
+#     # ax[i, 3].imshow(torch.rand((10,10)), **kw_image_args,)
+#     # ax[i, 3].set_title("t = " + str((t / (mr.mp.n_step - 1)).item())[:3])
+#     # ax[i, 3].axis("off")
+#     # # fig.colorbar(i_s, ax=ax[i, 0], fraction=0.046, pad=0.04)
+#
+#     #
+#     tb.gridDef_plot_2d(
+#         deform,
+#         add_grid=False,
+#         add_markers=True,
+#         ax=ax[i, 3],
+#         step=int(min(mr.mp.field_stock.shape[2:-1]) / 25),
+#         check_diffeo=False,
+#         dx_convention=mr.mp.dx_convention,
+#     )
+#
+#
+# set_ticks_off(ax)
+# plt.show()
+# raise TypeError("GARUGA")
 # fig.savefig(path + f"toyexample_star_{id}_integration.pdf")
 
 #%%
-def small_plot(self):
-    affine = self.mp.get_affine_deformator()
-    deform = self.mp.get_deformation()
-    deform = self.mp.get_affine_deformation(deform)
-
-    img_rot = tb.imgDeform(self.mp.image.to('cpu'),affine,dx_convention='2square')
-    source_rt = tb.imgDeform(self.source.to('cpu'),affine,dx_convention='2square')
-    srt = tb.imCmp(source_rt,target_b,method = 'seg')
-    irt = tb.imCmp(img_rot,target_b,method = 'seg')
-    kwargs = {'cmap': "gray"}
-
-    fig,ax = plt.subplots(2,2, constrained_layout=True, figsize = (5,5))
-
-    ax[0,0].imshow(img_rot[0,0], **kwargs)
-    ax[0,0].set_title("(a) Registered image")
-    ax[0,1].imshow(source_rt[0,0], **kwargs)
-    ax[0,1].set_title("(b) affine on source")
-
-    ax[1,0].imshow(irt[0], **kwargs)
-    ax[1,0].set_title("(c) registered vs Target")
-    ax[1,1].imshow(srt[0], **kwargs)
-    ax[1,1].set_title("(d) source affine vs Target")
-    set_ticks_off(ax)
-    return fig
-fig  = small_plot(mr)
-# fig.savefig(path + f"toyexample_star_{id}_summary.pdf")
-
-plt.show()
+# def small_plot(self):
+#     affine = self.mp.get_affine_deformator()
+#     deform = self.mp.get_deformation()
+#     deform = self.mp.get_affine_deformation(deform)
+#
+#     img_rot = tb.imgDeform(self.mp.image.to('cpu'),affine,dx_convention='2square')
+#     source_rt = tb.imgDeform(self.source.to('cpu'),affine,dx_convention='2square')
+#     srt = tb.imCmp(source_rt,target_b,method = 'seg')
+#     irt = tb.imCmp(img_rot,target_b,method = 'seg')
+#     kwargs = {'cmap': "gray"}
+#
+#     fig,ax = plt.subplots(2,2, constrained_layout=True, figsize = (5,5))
+#
+#     ax[0,0].imshow(img_rot[0,0], **kwargs)
+#     ax[0,0].set_title("(a) Registered image")
+#     ax[0,1].imshow(source_rt[0,0], **kwargs)
+#     ax[0,1].set_title("(b) affine on source")
+#
+#     ax[1,0].imshow(irt[0], **kwargs)
+#     ax[1,0].set_title("(c) registered vs Target")
+#     ax[1,1].imshow(srt[0], **kwargs)
+#     ax[1,1].set_title("(d) source affine vs Target")
+#     set_ticks_off(ax)
+#     return fig
+# fig  = small_plot(mr)
+# # fig.savefig(path + f"toyexample_star_{id}_summary.pdf")
+#
+# plt.show()
 #%%
+
+
 ###########################################################
 # Compare with pure LDDMM on a rigid output
 
@@ -602,39 +566,49 @@ integration_steps = 10
 
 kernelOperator = rk.DummyKernel()
 
-datacost = mt.Rotation_Ssd_Cost(source_b.to('cuda:0'), gamma=1)
+datacost = mt.Rotation_Ssd_Cost(target.to('cuda:0'), gamma=1)
 # datacost = mt.Rotation_MutualInformation_Cost(target_b.to('cuda:0'), alpha=1)
 
-mr_rigid_first = mt.rigid_along_metamorphosis(
-    target_b,source_b, momenta_ini=0,
+
+mr_rigid_first = mt.affine_along_metamorphosis(
+    source, target, momenta_ini=0,
     kernelOperator= kernelOperator,
     rho = 1,
     data_term=datacost ,
     integration_steps = integration_steps,
-    optimizer_method='LBFGS_torch',
+    # optimizer_method='LBFGS_torch',
+    optimizer_method="Adam",
+    adam_dt_step_affine= 1e-3,
     cost_cst=.1,
-    n_iter=0
+    n_iter=0,
+    lbfgs_max_iter=20
 )
 
-top_params = rg.initial_exploration(mr_rigid_first,r_step=10, max_output = 10, verbose=True)
+# top_params = rg.initial_exploration(mr_rigid_first,r_step=50, max_output = 50, verbose=True)
+top_params = None
 best_loss, best_momenta, best_rot = rg.optimize_on_rigid(
-    mr_rigid_first, top_params, n_iter=10,verbose=True, plot = True,
+    mr_rigid_first, top_params, n_iter=30,verbose=True, plot = True,affine=True,
 )
 id = 1
 momenta = mt.prepare_momenta(
-    source_b.shape,
-    diffeo = False,device = "cpu",requires_grad = False,
+    source.shape,
+    diffeo = False,device = "cuda:0",requires_grad = True,
+    affine = True,
     **best_momenta
 )
-
+# def _detach(p):
+#     return {k: v.detach() for k, v in p.items()}.copy()
 print(f"best_momenta : {best_momenta}")
-mr_rigid_first.mp.forward(target_b, momenta.copy(), save =  True)
-plot(mr_rigid_first)
+mr_rigid_first.forward(momenta, n_iter=1000)
+
+mr_rigid_first.plot_cost()
+plt.show()
+lu.plot(mr_rigid_first)
 plt.show()
 #%%
-source_lddmm = source_b.clone()
-target_lddmm = tb.imgDeform(target_b, mr_rigid_first.mp.get_affine_deformator())
-ref = "source"
+source_lddmm = tb.imgDeform(source.cpu(), mr_rigid_first.mp.get_affine_deformator().cpu(), dx_convention='2square')
+target_lddmm = target.clone()
+ref = "target"
 fig, ax = plt.subplots(1,3, constrained_layout=True)
 ax[0].imshow(source_lddmm[0,0],cmap='gray')
 ax[0].set_title("source")
@@ -643,16 +617,16 @@ ax[2].imshow(target_lddmm[0,0],cmap='gray')
 ax[2].set_title("target")
 plt.show()
 #%%%
-source_lddmm = tb.imgDeform(source_b, mr_rigid.mp.get_affine_deformator())
-target_lddmm = target_b.clone()
-ref = 'target'
-fig, ax = plt.subplots(1,3, constrained_layout=True)
-ax[0].imshow(source_lddmm[0,0],cmap='gray')
-ax[0].set_title("source")
-ax[1].imshow(tb.imCmp(source_lddmm,target_lddmm,'compose')[0])
-ax[1].set_title("target")
-ax[2].imshow(target_b[0,0],cmap='gray')
-plt.show()
+# source_lddmm = tb.imgDeform(source, mr_rigid_first.mp.get_affine_deformator().cpu())
+# target_lddmm = target.clone()
+# ref = 'target'
+# fig, ax = plt.subplots(1,3, constrained_layout=True)
+# ax[0].imshow(source_lddmm[0,0],cmap='gray')
+# ax[0].set_title("source")
+# ax[1].imshow(tb.imCmp(source_lddmm,target_lddmm,'compose')[0])
+# ax[1].set_title("target")
+# ax[2].imshow(target_b[0,0],cmap='gray')
+# plt.show()
 
 #%%
 sigma= [  7, 15]
@@ -667,7 +641,6 @@ mr_l = mt.lddmm(
     integration_steps=10,
     n_iter  = 75,
 )
-#%%
 mr_l.plot_cost()
 plt.show()
 #%%
@@ -722,6 +695,12 @@ tb.gridDef_plot_2d(
     )
 plt.show()
 fig.savefig(path+f"classic_lddmm_ref{ref}.pdf")
+#%%
+file_save, path = mr_l.save(f"fishes_method_affine-successive_target_{target_name}",
+        light_save=True,
+        save_path = "/home/turtlefox/Documents/11_metamorphoses/data/rigid_along_lddmm"
+        )
+
 #%%
 mr_l.mp.plot()
 plt.show()

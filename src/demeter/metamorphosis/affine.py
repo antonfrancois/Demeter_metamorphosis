@@ -446,13 +446,15 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
         """
         if grid is None:
             grid = self.id_grid
-        return tb.grid_from_rotation_translation(grid, self.rot_mat.T, - self.translation)
+        mat = torch.linalg.inv(self.rot_mat)
+        ic(self.rot_mat, mat, - self.translation)
+        return tb.grid_from_rotation_translation(grid, mat, - self.translation)
 
     def get_affine_deformation(self, grid=None):
         if grid is None:
             grid = self.id_grid
         return tb.grid_from_rotation_translation(
-            grid, self.rot_mat, self.translation)
+            grid, self.rot_mat.to(grid.device), self.translation.to(grid.device))
 
     def _save_step(self):
         if self.flag_field:
