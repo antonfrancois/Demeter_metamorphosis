@@ -14,6 +14,112 @@ from skimage.color import hsv2rgb
 import demeter.utils.torchbox as tb
 from icecream import ic
 
+# -------- Begin get_orthogonal_views_concatenated -----------------------------------
+
+def _to_tensor(img):
+    return torch.from_numpy(img) if isinstance(img, np.ndarray) else img
+
+def _ensure_hwc(t, num_channels):
+    """
+    Ensure slice is (H, W, C). If 2D and C>1, add channel axis.
+    """
+    if t.ndim == 2 and num_channels > 1:
+        t = t.unsqueeze(-1)
+    return t
+
+def _pad_to_hw(hwc, H, W):
+    """
+    Pad a (H, W) or (H, W, C) tensor on height then width.
+    Uses (C, H, W) to ensure we pad H and W (not the channel).
+    """
+    if hwc.ndim == 2:
+        chw = hwc.unsqueeze(0)  # (1, H, W)
+        C_axis = False
+    elif hwc.ndim == 3:
+        chw = hwc.permute(2, 0, 1)  # (C, H, W)
+        C_axis = True
+    else:
+        raise ValueError("Expected (H, W) or (H, W, C) slice.")
+
+    dH = max(0, H - chw.shape[1])
+    dW = max(0, W - chw.shape[2])
+    chw = torch.nn.functional.pad(chw, (0, dW, 0, dH), value=0)  # pad W then H
+
+    if C_axis:
+        return chw.permute(1, 2, 0)  # (H, W, C)
+    else:
+        return chw.squeeze(0)        # (H, W)
+
+def get_orthogonal_views_concatenated(image, coords):
+    """
+    Returns axial, sagittal, and coronal views at (z, y, x) concatenated horizontally.
+    Accepts [D, H, W] or [D, H, W, C] (C<=4). For color, keeps channels.
+    """
+    image = _to_tensor(image).detach().cpu()
+
+    # Normalize rank & channels
+    if image.ndim == 3:
+        # [D, H, W] -> treat as grayscale (C=1)
+        image_to_slice = image.unsqueeze(-1)  # [D, H, W, 1]
+        num_channels = 1
+    elif image.ndim == 4:
+        if image.shape[-1] <= 4:
+            # [D, H, W, C]
+            image_to_slice = image
+            num_channels = image.shape[-1]
+        else:
+            raise ValueError("Expected [D,H,W] or [D,H,W,C] with C<=4.")
+    else:
+        raise ValueError("Input must be 3D or 4D.")
+
+    D, H, W, C = image_to_slice.shape
+    z, y, x = coords
+    z = int(max(0, min(z, D - 1)))
+    y = int(max(0, min(y, H - 1)))
+    x = int(max(0, min(x, W - 1)))
+
+    # Extract slices
+    # Axial: [H, W, C]
+    axial = image_to_slice[z, :, :, :].detach().cpu()
+    axial = axial.squeeze(-1) if num_channels == 1 else axial
+    axial = _ensure_hwc(axial, num_channels)
+
+    # Sagittal: start [D, H, C] -> rotate 90° over (D,H) to get [H, D, C] ≡ (H, W_sag, C)
+    sagittal = image_to_slice[:, :, x, :].detach().cpu()
+    sagittal = sagittal.squeeze(-1) if num_channels == 1 else sagittal
+    if sagittal.ndim == 2:  # (D, H) for grayscale
+        sagittal = torch.rot90(sagittal, 1, [0, 1])              # -> (H, D)
+    else:                    # (D, H, C)
+        sagittal = torch.rot90(sagittal, 1, [0, 1])              # -> (H, D, C)
+    sagittal = _ensure_hwc(sagittal, num_channels)
+
+    # Coronal: [D, W, C] -> keep as (H_cor=W? nope) we keep height=D, width=W
+    coronal = image_to_slice[:, y, :, :].detach().cpu()
+    coronal = coronal.squeeze(-1) if num_channels == 1 else coronal
+    coronal = _ensure_hwc(coronal, num_channels)  # currently (D, W) or (D, W, C); treat D as height
+
+    # Target sizes
+    ha, wa = axial.shape[:2]
+    hs, ws = sagittal.shape[:2]
+    hc, wc = coronal.shape[:2]
+    Hmax = max(ha, hs, hc)
+    Wmax = max(wa, ws, wc)
+
+    # Pad to common (Hmax, Wmax)
+    axial_p     = _pad_to_hw(axial,    Hmax, Wmax)
+    sagittal_p  = _pad_to_hw(sagittal, Hmax, Wmax)
+    coronal_p   = _pad_to_hw(coronal,  Hmax, Wmax)
+
+    # Concat along width
+    if num_channels == 1:
+        # slices are (H, W) → stack into (H, 3*W)
+        concatenated = torch.cat((axial_p, sagittal_p, coronal_p), dim=1)
+    else:
+        # slices are (H, W, C) → concat along W
+        concatenated = torch.cat((axial_p, sagittal_p, coronal_p), dim=1)
+
+    return concatenated
+
 
 def grid_slice(grid, coord, dim):
     """return a line collection

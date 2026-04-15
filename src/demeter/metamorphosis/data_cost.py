@@ -414,6 +414,7 @@ class Longitudinal_DataCost(DataCost):
 
 
 import matplotlib.pyplot as plt
+from demeter.utils.image_3d_plotter import get_orthogonal_views_concatenated
 class Rotation_Ssd_Cost(DataCost):
     r"""
     Mixture of data costs
@@ -421,47 +422,120 @@ class Rotation_Ssd_Cost(DataCost):
     D(I,T) =  gamma *| S \cdot A.T  - T |^2 + (1 - gamma) * | I_1 \cdot A.T - T|^2
     """
     def __init__(self, target,
-                 gamma = None,
-                sigmoid_a = None,
-                 sigmoid_b = None,
-                 sigmoid_c = 4,
+                 gamma_mode = 'constant',
+                 gamma_kwargs : dict = {'gamma': .5},
+                 # gamma = None,
+                # sigmoid_a = None,
+                #  sigmoid_b = None,
+                #  sigmoid_c = 4,
+                 edges_computes = 1e-3,
                  normalize_ssd = False,
                  verbose = False,
                  plot = False,
                  save_plot=None,
+                 save_values= False,
                  **kwargs):
 
         super(Rotation_Ssd_Cost, self).__init__(target)
         self.ssd = cf.SumSquaredDifference(target)
-        if gamma is None and (sigmoid_a is None or sigmoid_b is None):
-            raise ValueError("Either gamma or parameters for the sigmoid must be provided.")
-        elif isinstance(gamma, (float, int)):
-            self.status = f"gamma = {gamma}"
-        else:
-            self.status = f"gamma sigmoid var"
-        self.gamma = gamma
-        self.sigmoid_a = sigmoid_a
-        self.sigmoid_b = sigmoid_b
-        self.sigmoid_c = sigmoid_c
+        self.save_values = save_values
+        self._init_compute_gamma_(gamma_mode, gamma_kwargs)
+
         self.verbose = verbose
         self.plot = plot
         self.save_plot = save_plot
         self.normalize_ssd = normalize_ssd
+        self.edges_computes = edges_computes
+
+        if self.save_values:
+            self.stock_ssd = torch.empty(200)
+            self.stock_ssd_rot = torch.empty(200)
+            self.stock_gamma = torch.empty(200)
 
     def __repr__(self):
-        return super().__repr__() + self.status
+        return super().__repr__() + self.gamma_mode # + self.gamma_kwargs
+
+    def _init_compute_gamma_(self, gamma_mode, gamma_kwargs):
+        self.gamma_mode = gamma_mode
+        if self.gamma_mode == 'constant':
+            self.gamma = gamma_kwargs["gamma"]
+        elif self.gamma_mode == 'sigmoid':
+            self.sigmoid_a = gamma_kwargs["sigmoid_a"]
+            self.sigmoid_b = gamma_kwargs["sigmoid_b"]
+            self.sigmoid_c = gamma_kwargs["sigmoid_c"]
+        elif "variationnal" == self.gamma_mode:
+            self.save_values = True
+            self.c = gamma_kwargs["c"] # Passe haut pour K
+            self.nu = gamma_kwargs["nu"] # Dampening gamma
+        else:
+            raise ValueError("gamma_mode must be among ['constant', 'sigmoid', 'variationnal']")
+
+    def _compute_ssd_rot_derivative(self):
+        _iter = self.optimizer._iter_
+        win = 6
+        if _iter > win:
+            diff = self.stock_ssd_rot[_iter - win +1:_iter] - self.stock_ssd_rot[_iter-win:_iter-1]
+        # elif _iter > 1:
+        #     diff = self.stock_ssd_rot[1:_iter] - self.stock_ssd_rot[:_iter-1]
+        else:
+            diff = torch.tensor(-self.c, dtype=torch.float)
+        return diff.mean()
+
 
     def _compute_gamma_(self, iter):
-        if "sigmoid" in self.status:
+        if self.gamma_mode == 'constant':
+            return self.gamma
+        elif "sigmoid" in self.gamma_mode:
             alpha = 2 * self.sigmoid_c /( self.sigmoid_b - self.sigmoid_a)
             beta = - (self.sigmoid_a + self.sigmoid_b) / 2
             g = alpha *( iter + beta)
             gamma = 1/(1 + exp(-g))
             return gamma
-        else:
-            return self.gamma
+        elif "variationnal" in self.gamma_mode:
+            # c = 10 # Passe bas pour K
+            # nu = .05 # Dampening gamma
+            if iter == 0:
+                return 1
+            d_r = self._compute_ssd_rot_derivative()
+            K = torch.min(torch.tensor(1), - d_r / self.c)
+            old_gamma = self.stock_gamma[iter - 1]
+            gamma = old_gamma + (K - old_gamma) * self.nu
+            ic(iter, d_r, K, old_gamma, (K - old_gamma) * self.nu,gamma)
+            return  torch.clip(gamma, 0,1)
 
-    def _plot_(self, rotated_image, rotated_source, gamma, ssd, ssd_rot):
+    def _plot_3d_(self, rotated_image, rotated_source, gamma, ssd, ssd_rot):
+        fig, ax = plt.subplots(3,2, constrained_layout=True)
+        B,_,D,H,W = rotated_image.shape
+        coord = (D//2, H//2, W//2+5)
+        cmp_im1 = tb.imCmp(rotated_image, self.target, "compose")[0]
+        cmp_im2 = tb.imCmp(rotated_source, self.target, "compose")[0]
+        im1 = get_orthogonal_views_concatenated(cmp_im1,coord)
+        im2 = get_orthogonal_views_concatenated(cmp_im2,coord)
+        rotated_img = get_orthogonal_views_concatenated(rotated_image[0,0], coord)
+        rotated_source = get_orthogonal_views_concatenated(rotated_source[0,0], coord)
+        target = get_orthogonal_views_concatenated(self.target[0,0], coord)
+        source = get_orthogonal_views_concatenated(self.optimizer.source[0,0], coord)
+        fig.suptitle(f" iter : {self.optimizer._iter_}: gamma = {gamma:.3f}; ssd = {ssd:.2f}, ssd_rot = {ssd_rot:.2f}")
+        ax[0,0].imshow(source, cmap='gray')
+        ax[0,0].set_title('source')
+        ax[0,1].imshow(target, cmap='gray')
+        ax[0,1].set_title('target')
+
+        ax[1,0].imshow(rotated_img, cmap='gray')
+        ax[1,0].set_title('rotated Image')
+        ax[1,1].imshow(rotated_source, cmap='gray')
+        ax[1,1].set_title('rotated Source')
+        ax[2,0].imshow(im1)
+        # ax[1,0].imshow(torch.abs(rotated_image - self.target)[0,0].detach().cpu().numpy())
+        ax[2,0].set_title('rot img vs target')
+        ax[2,1].imshow(im2)
+        # ax[1,1].imshow(torch.abs(rotated_source - self.target)[0,0].detach().cpu().numpy())
+        ax[2,1].set_title('rot source vs target')
+        if self.save_plot is not None:
+            fig.savefig(str(self.save_plot) + f"_{self.optimizer._iter_:03d}.png")
+        plt.show()
+
+    def _plot_2d_(self, rotated_image, rotated_source, gamma, ssd, ssd_rot):
         fig, ax = plt.subplots(2,3, constrained_layout=True)
 
         fig.suptitle(f" iter : {self.optimizer._iter_}: gamma = {gamma:.3f}; ssd = {ssd:.2f}, ssd_rot = {ssd_rot:.2f}")
@@ -493,12 +567,22 @@ class Rotation_Ssd_Cost(DataCost):
         grid_rt = self.optimizer.mp.get_affine_deformator()
         # grid_rt = self.optimizer.mp.get_affine_deformation()
 
+        if gamma > 1 - self.edges_computes:
+            # ic("Skip compute ssd", gamma)
+            rotated_image =  tb.imgDeform(self.optimizer.mp.image.detach(),grid_rt.detach(),dx_convention='2square')
+            ssd = torch.tensor(0)
+        else:
+            rotated_image =  tb.imgDeform(self.optimizer.mp.image,grid_rt,dx_convention='2square')
+            ssd = self.ssd(rotated_image)
 
-        rotated_image =  tb.imgDeform(self.optimizer.mp.image,grid_rt,dx_convention='2square')
-        rotated_source = tb.imgDeform(self.optimizer.source,grid_rt,dx_convention='2square')
+        if gamma < self.edges_computes:
+            rotated_source = tb.imgDeform(self.optimizer.source.detach(),grid_rt.detach(),dx_convention='2square')
+            ssd_rot = torch.tensor(0)
+            # ic("Skip compute ssd_rot", gamma)
+        else:
+            rotated_source = tb.imgDeform(self.optimizer.source,grid_rt,dx_convention='2square')
+            ssd_rot = self.ssd(rotated_source)
 
-        ssd = self.ssd(rotated_image)
-        ssd_rot = self.ssd(rotated_source)
         if self.normalize_ssd:
             ssd /=  prod(rotated_source.shape)
             ssd_rot /= prod(rotated_source.shape)
@@ -507,8 +591,15 @@ class Rotation_Ssd_Cost(DataCost):
             print(f"\t gamma = {gamma:.3f} : ssd = {ssd:.3f}, ssd_rot = {ssd_rot:.3f} => Loss = {gamma * ssd_rot + (1-gamma) * ssd:.3f} ")
         # if self.optimizer._iter_  % 5 == 0 and self.plot:
         if self.plot:
-            self._plot_(rotated_image, rotated_source, gamma, ssd, ssd_rot)
+            if len(rotated_source.shape) == 4:
+                self._plot_2d_(rotated_image, rotated_source, gamma, ssd, ssd_rot)
+            elif len(rotated_source.shape) == 5:
+                self._plot_3d_(rotated_image, rotated_source, gamma, ssd, ssd_rot)
 
+        if self.save_values:
+            self.stock_ssd[self.optimizer._iter_] = ssd.detach()
+            self.stock_ssd_rot[self.optimizer._iter_] = ssd_rot.detach()
+            self.stock_gamma[self.optimizer._iter_] = gamma
         return gamma * ssd_rot + (1-gamma) * ssd
 
 #

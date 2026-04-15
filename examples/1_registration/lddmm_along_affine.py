@@ -35,7 +35,7 @@ def smooth(image, sigma):
 
 
 
-#%% FISHIES
+# FISHIES
 # # /home/turtlefox/Documents/11_metamorphoses/Demeter_metamorphosis/examples/im2Dbank/fish_bass_1.png
 # source_rgb, source_g, source = lu.open_fish("bass_1", factor=.3)
 # target_rgb, target_g, target = lu.open_fish("crappie_1", factor=.3)
@@ -63,7 +63,7 @@ def smooth(image, sigma):
 # plt.show()
 # raise ValueError("kvnlk")
 
-#%%
+#
 path = "examples/results/rigid_meta/"
 device = "cuda:0"
 # ###########################################################
@@ -154,7 +154,7 @@ plt.show()
 # plt.show()
 # raise TypeError("c'est toi le type")
 #%%
-theta = torch.tensor([0.35])              # radians
+theta = torch.tensor([5*torch.pi/8])              # radians
 translation = torch.tensor([[0.12, -0.13]]) # in 2square coords
 scale = torch.tensor([.8])
 
@@ -286,7 +286,7 @@ print("Check the rigid optimisation")
 #%%
 n_iter = 100
 sigmoid_a = 50
-sigmoid_b = 100
+sigmoid_b = 70
 sigmoid_c = -3
 
 iter = torch.linspace(0,n_iter, 100)
@@ -329,22 +329,24 @@ saving_plots= (
         f"general_affine_lddmm"
 )
 
+# gamma_kwargs = {"sigmoid_a":sigmoid_a,"sigmoid_b":sigmoid_b,"sigmoid_c":sigmoid_c}
+gamma_kwargs = {'c': 10, 'nu':.05}
+n_iter = 150
 
 kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False, kernel_reach =6)
 datacost = mt.Rotation_Ssd_Cost(
         target.to("cuda:0"),
-        # gamma=alpha,
-        sigmoid_a=sigmoid_a,sigmoid_b=sigmoid_b,sigmoid_c=sigmoid_c,
+        gamma_mode = 'variationnal',
+        gamma_kwargs = gamma_kwargs,
         normalize_ssd=False,
         verbose=verbose_datacost,
         plot=plot_datacost,
-        save_plot=saving_plots
+        save_plot=saving_plots,
+        save_values=True
     )
 # datacost = mt.Ssd(target_b.to("cuda:0"))
 
-# best_loss = torch.inf
-# for i,param in enumerate(top_param_rot):
-#     print(f"\n\noptimistion {i} on  {len(top_param_rot)}")
+best_priors = {'rot_prior': torch.tensor(1.6029)}
 print("\n" + "=" * 20)
 momenta = mt.prepare_momenta(
     source.shape,
@@ -404,6 +406,25 @@ plt.show()
 
 mt.free_GPU_memory(mr)
 
+#%%
+fig, ax1 = plt.subplots()
+
+# Main axis
+ax1.plot(mr.data_term.stock_ssd[:n_iter], label="ssd (D(p))")
+ax1.plot(mr.data_term.stock_ssd_rot[:n_iter], label="ssd_rot (R(p))")
+ax1.set_ylabel("SSD terms")
+
+# Secondary axis
+ax2 = ax1.twinx()
+ax2.plot(mr.data_term.stock_gamma[:n_iter], label="gamma", color="green")
+ax2.set_ylabel("Gamma")
+
+# Combine legends
+lines_1, labels_1 = ax1.get_legend_handles_labels()
+lines_2, labels_2 = ax2.get_legend_handles_labels()
+ax1.legend(lines_1 + lines_2, labels_1 + labels_2)
+
+plt.show()
 #%%
 file_save, path = mr.save(f"fishes_method_affine_target_{target_name}",
         light_save=True,
