@@ -74,6 +74,41 @@ def test_create_rot_mat_2d_rotates_grid_with_expected_angle(angle, expected):
     assert torch.allclose(out[0, 0, 0], expected_vec, atol=1e-6)
 
 
+@pytest.mark.parametrize(
+    "axis,angle,grid_vec,expected",
+    [
+        ("gamma", math.pi / 4, (1.0, 0.0, 0.0), (math.sqrt(2) / 2, math.sqrt(2) / 2, 0.0)),
+        ("gamma", math.pi / 2, (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)),
+        ("beta", math.pi / 4, (1.0, 0.0, 0.0), (math.sqrt(2) / 2, 0.0, -math.sqrt(2) / 2)),
+        ("beta", -math.pi / 2, (1.0, 0.0, 0.0), (0.0, 0.0, 1.0)),
+        ("alpha", math.pi / 3, (0.0, 1.0, 0.0), (0.0, 0.5, math.sqrt(3) / 2)),
+        ("alpha", -math.pi / 2, (0.0, 1.0, 0.0), (0.0, 0.0, -1.0)),
+    ],
+)
+def test_create_rot_mat_3d_rotates_grid_with_expected_angle(axis, angle, grid_vec, expected):
+    gamma = torch.tensor(0.0, dtype=torch.float32)
+    beta = torch.tensor(0.0, dtype=torch.float32)
+    alpha = torch.tensor(0.0, dtype=torch.float32)
+    if axis == "gamma":
+        gamma = torch.tensor(angle, dtype=torch.float32)
+    elif axis == "beta":
+        beta = torch.tensor(angle, dtype=torch.float32)
+    elif axis == "alpha":
+        alpha = torch.tensor(angle, dtype=torch.float32)
+    else:
+        raise AssertionError(f"Unknown axis '{axis}'")
+
+    grid = torch.tensor([[[[[*grid_vec]]]]], dtype=torch.float32)
+    rot_mat = tb.create_rot_mat_3d(
+        (gamma, beta, alpha)
+    )
+
+    out = tb.matrix_time_grid(grid, rot_mat)
+    expected_vec = torch.tensor(expected, dtype=torch.float32)
+
+    assert torch.allclose(out[0, 0, 0, 0], expected_vec, atol=1e-6)
+
+
 def _apply_affine_homogeneous_2d(grid: torch.Tensor, affine_3x3: torch.Tensor) -> torch.Tensor:
     ones = torch.ones_like(grid[..., :1])
     grid_h = torch.cat((grid, ones), dim=-1)  # [B, H, W, 3]

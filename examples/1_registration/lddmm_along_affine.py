@@ -3,6 +3,7 @@
 import __init__
 import sys, pathlib
 
+from test.meta_abstract_parts import dx_convention
 
 sys.path.insert(0, str(pathlib.Path("examples/1_registration").resolve()))
 
@@ -73,6 +74,7 @@ size = (300, 300)
 # # target = tb.reg_open('rigid_t',size=size)
 source = tb.reg_open('minifish',size=size)
 target_d = tb.reg_open('fish',size=size)
+source_r = lu.open_rainbow_minifish()
 # source = tb.reg_open('20',size=size)
 # target = tb.reg_open('17',size=size)
 # source = tb.reg_open('34',size=size)
@@ -405,6 +407,38 @@ plt.show()
 #     best_mr = mr
 
 mt.free_GPU_memory(mr)
+
+#%%
+def to_plt(img):
+    return img.transpose(1,3).transpose(1,2)[0]
+
+affine_p = mr.mp.get_affine_deformator()
+source_r_affine = tb.imgDeform(source_r, affine_p, dx_convention= mr.dx_convention)
+
+
+fig, ax = plt.subplots(1,5)
+ax[0].imshow(to_plt(source_r))
+ax[1].imshow(to_plt(source_r_affine))
+defomator = mr.mp.get_deformator()
+# defomator = mr.mp.get_affine_deformator(defomator)
+source_r_deformed = tb.imgDeform(source_r, defomator, dx_convention= mr.dx_convention)
+
+ax[2].imshow(to_plt(source_r_deformed))
+ax[2].set_title("deformation only")
+# via the image
+source_r_deformed_affine = tb.imgDeform(source_r_deformed, affine_p, dx_convention= mr.dx_convention)
+ax[3].imshow(to_plt(source_r_deformed_affine))
+ax[3].set_title("deform then affine")
+
+
+# via the composition
+full_deformator = mr.mp.get_affine_deformator(defomator)
+source_r_composed = tb.imgDeform(source_r, full_deformator, dx_convention=mr.dx_convention)
+ax[4].imshow(to_plt(source_r_composed))
+ax[4].set_title("compose deformation")
+
+
+plt.show()
 
 #%%
 fig, ax1 = plt.subplots()
