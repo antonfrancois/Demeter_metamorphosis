@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 
 import demeter.utils.torchbox as tb
+from demeter import ROOT_DIRECTORY
 
 
 def _ensure_batched_param(x, B, length=None, device=None, dtype=None):
@@ -458,6 +459,21 @@ def plot(self):
     ax[2,2].imshow(srt[0], **kwargs)
     ax[2,2].set_title("source affine vs Target")
 
+def open_rainbow_minifish():
+    name = "minifish_r"
+    path = ROOT_DIRECTORY
+    path += '/examples/im2Dbank/reg_test_' + name + '.png'
+    img  = plt.imread(path)
+    img_t = torch.tensor(img,
+                     dtype=torch.float,
+                     requires_grad=False,
+                     device="cpu").transpose(0,2).transpose(1,2)
+
+    # fig, ax = plt.subplots(1,3)
+    # ax[0].imshow(img_t[0])
+    # plt.show()
+
+    return img_t[None]
 
 import numpy as np
 from skimage.transform import resize

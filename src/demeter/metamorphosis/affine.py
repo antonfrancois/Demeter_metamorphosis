@@ -794,8 +794,8 @@ class Affine_Metamorphosis_Optimizer(Optimize_geodesicShooting):
         self.target_segmentation = target_segmentation
 
         # print(f"diffeo dice : {diffeo_dice}")
-        rigidor = self.mp.get_affine_deformation()
-        self.source_seg_rotated = tb.imgDeform(source_segmentation, rigidor,
+        affine = self.mp.get_affine_deformator()
+        self.source_seg_rotated = tb.imgDeform(source_segmentation, affine,
                                                dx_convention='2square',
                                                mode="nearest"
                                                )
@@ -822,20 +822,25 @@ class Affine_Metamorphosis_Optimizer(Optimize_geodesicShooting):
         # )
 
         # Option 1 bis:
-        deformator = self.mp.get_deformator()
-        deformator = self.mp.get_affine_deformator(deformator)
-        self.source_seg_deformed = tb.imgDeform(
-            self.source_segmentation, deformator.to(device),
-            dx_convention=self.dx_convention,
-            mode='nearest'
-        )
-        # Option 2:
         # deformator = self.mp.get_deformator()
+        # deformator = self.mp.get_affine_deformator(deformator)
         # self.source_seg_deformed = tb.imgDeform(
-        #     self.source_seg_rotated, deformator.to(device),
+        #     self.source_segmentation, deformator.to(device),
         #     dx_convention=self.dx_convention,
-        #     mode = 'nearest'
+        #     mode='nearest'
         # )
+        # Option 2:
+        deformator = self.mp.get_deformator()
+        source_seg_def = tb.imgDeform(
+            source_segmentation, deformator.to(device),
+            dx_convention=self.dx_convention,
+            mode = 'nearest'
+        )
+        self.source_seg_deformed = tb.imgDeform(
+            source_seg_def, affine.to(device),
+            dx_convention=self.dx_convention,
+            mode = 'nearest'
+        )
 
         reg_dice = tb.average_dice(self.source_seg_deformed,
                                    target_segmentation,

@@ -1048,8 +1048,8 @@ def execute_flirt_lddmm(pp, subjects_numbers):
                 lbfgs_history_size=15,
               data_term=data_cost,
         )
-        source_seg_def= tb.imgDeform(target_seg, mr.get_deformator(), dx_convention=mr.dx_convention) # TODO: Probablement pas target_seg ici ....
-        dice_lddmm, _ = mr.compute_DICE(source_seg_def, target_seg)
+        # source_seg_def= tb.imgDeform(target_seg, mr.mp.get_deformator(), dx_convention=mr.dx_convention) # TODO: Probablement pas target_seg ici ....
+        dice_lddmm, _ = mr.compute_DICE(source_seg, target_seg)
         mr.save(f"{p["subject_dir"].name}_flirt_lddmm",
                 light_save=True,
                 save_path = os.path.join(result_folder, "flirt_lddmm")

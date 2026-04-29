@@ -12,6 +12,7 @@ from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 import demeter.metamorphosis as mt
 import demeter.utils.torchbox as tb
+from lddmm_along_utils import open_rainbow_minifish
 from demeter import ROOT_DIRECTORY
 
 ALLOWED_METHODS = {
@@ -233,21 +234,7 @@ def parse_many(file_names: list[str], *, validate: bool = True) -> list[ParsedRu
 ####################################
 # Plotting
 
-def open_rainbow():
-    name = "minifish_r"
-    path = ROOT_DIRECTORY
-    path += '/examples/im2Dbank/reg_test_' + name + '.png'
-    img  = plt.imread(path)
-    img_t = torch.tensor(img,
-                     dtype=torch.float,
-                     requires_grad=False,
-                     device="cpu").transpose(0,2).transpose(1,2)
 
-    # fig, ax = plt.subplots(1,3)
-    # ax[0].imshow(img_t[0])
-    # plt.show()
-
-    return img_t[None]
 
 def plot_one_affine(file_p, ax, rainbow_img, load_path, *, show_titles=True):
     #
@@ -513,7 +500,7 @@ if __name__ == '__main__':
     ]
 
     parsed = parse_many(files)
-    rainbow_img = open_rainbow()
+    rainbow_img = open_rainbow_minifish()
 
     # along_files = [p for p in parsed if p.mode == "along"]
     # fig_along = make_along_grid(along_files, rainbow_img, LOAD_PATH)
