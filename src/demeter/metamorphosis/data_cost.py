@@ -496,15 +496,19 @@ class Rotation_Ssd_Cost(DataCost):
             # nu = .05 # Dampening gamma
             if iter == 0:
                 return 1
+
+            old_gamma = self.stock_gamma[iter - 1]
+            if old_gamma == 0:
+              return 0
             d_r = self._compute_ssd_rot_derivative()
             K = torch.min(torch.tensor(1), - d_r / self.c)
-            old_gamma = self.stock_gamma[iter - 1]
             gamma = old_gamma + (K - old_gamma) * self.nu
             ic(iter, d_r, K, old_gamma, (K - old_gamma) * self.nu,gamma)
             return  torch.clip(gamma, 0,1)
 
+
     def _plot_3d_(self, rotated_image, rotated_source, gamma, ssd, ssd_rot):
-        fig, ax = plt.subplots(3,2, constrained_layout=True)
+        fig, ax = plt.subplots(3,2, figsize=(7,10), constrained_layout=True)
         B,_,D,H,W = rotated_image.shape
         coord = (D//2, H//2, W//2+5)
         cmp_im1 = tb.imCmp(rotated_image, self.target, "compose")[0]
