@@ -767,6 +767,9 @@ class Affine_Metamorphosis_Optimizer(Optimize_geodesicShooting):
         fig1.suptitle(
             f"cost_cst = {self.cost_cst:.2f}, affine_cst = {self.cost_affine_cst:.2f}, field_cst = {self.cost_field_cst:.2f}")
 
+        if "Rotation_Ssd_Cost" in self.data_term.__class__.__name__:
+            if self.data_term.gamma_mode == "variationnal":
+                self.data_term.plot_cost_data_term()
         return fig1, ax1
 
     def compute_DICE(

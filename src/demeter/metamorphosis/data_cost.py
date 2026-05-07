@@ -506,6 +506,30 @@ class Rotation_Ssd_Cost(DataCost):
             ic(iter, d_r, K, old_gamma, (K - old_gamma) * self.nu,gamma)
             return  torch.clip(gamma, 0,1)
 
+    def plot_cost_data_term(self):
+      fig, ax = plt.subplots(1,2, figsize=(10, 5))
+
+      # Main axis
+      ax[0].plot(self.stock_ssd, label="ssd (D(p))")
+      ax[0].plot(self.stock_ssd_rot, label="ssd_rot (R(p))")
+      ax[0].set_ylabel("SSD terms")
+
+      # Secondary axis
+      ax2 = ax[0].twinx()
+      ax2.plot(self.stock_gamma, label="gamma", color="green")
+      ax2.set_ylabel("Gamma")
+
+      # Combine legends
+      lines_1, labels_1 = ax[0].get_legend_handles_labels()
+      lines_2, labels_2 = ax2.get_legend_handles_labels()
+      ax[0].legend(lines_1 + lines_2, labels_1 + labels_2)
+
+      dict_loss = {
+          "ssd (D(p))": self.stock_ssd,
+          "ssd_rot (R(p))": self.stock_ssd_rot,
+          "Gamma": self.stock_gamma
+      }
+
 
     def _plot_3d_(self, rotated_image, rotated_source, gamma, ssd, ssd_rot):
         fig, ax = plt.subplots(3,2, figsize=(7,10), constrained_layout=True)
