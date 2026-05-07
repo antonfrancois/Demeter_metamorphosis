@@ -470,6 +470,9 @@ class DummyKernel:
     def init_kernel(self, image):
         pass
 
+    def get_all_arguments(self):
+        return {}
+
 class GaussianRKHS(torch.nn.Module):
     r""" Is equivalent to a gaussian blur. This function support 2d and 3d images in the
     PyTorch convention

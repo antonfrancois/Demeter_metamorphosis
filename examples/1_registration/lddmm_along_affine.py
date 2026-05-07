@@ -3,7 +3,6 @@
 import __init__
 import sys, pathlib
 
-from test.meta_abstract_parts import dx_convention
 
 sys.path.insert(0, str(pathlib.Path("examples/1_registration").resolve()))
 
@@ -639,10 +638,10 @@ mr_rigid_first = mt.affine_along_metamorphosis(
     lbfgs_max_iter=20
 )
 
-# top_params = rg.initial_exploration(mr_rigid_first,r_step=50, max_output = 50, verbose=True)
-top_params = None
+top_params = rg.initial_exploration(mr_rigid_first,r_step=50, max_output = 10, verbose=True)
+# top_params = None
 best_loss, best_momenta, best_rot = rg.optimize_on_rigid(
-    mr_rigid_first, top_params, n_iter=30,verbose=True, plot = True,affine=True,
+    mr_rigid_first, top_params, n_iter=50,verbose=True, plot = True,affine=True,
 )
 id = 1
 momenta = mt.prepare_momenta(
@@ -671,6 +670,14 @@ ax[1].imshow(tb.imCmp(source_lddmm,target_lddmm,'compose')[0])
 ax[2].imshow(target_lddmm[0,0],cmap='gray')
 ax[2].set_title("target")
 plt.show()
+
+#%%
+file_save, path = mr_rigid_first.save(f"fishes_method_affine-only_target_{target_name}",
+    light_save=True,
+    save_path = "/home/turtlefox/Documents/11_metamorphoses/data/rigid_along_lddmm"
+)
+
+
 #%%%
 # source_lddmm = tb.imgDeform(source, mr_rigid_first.mp.get_affine_deformator().cpu())
 # target_lddmm = target.clone()

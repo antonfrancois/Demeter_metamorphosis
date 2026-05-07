@@ -23,6 +23,7 @@ ALLOWED_METHODS = {
 }
 
 ALLOWED_MODES = {
+    "only",
     "along",
     "successive",
 }
@@ -163,6 +164,9 @@ def parse_experiment_filename(
     elif method_mode_block.endswith("-successive"):
         method = method_mode_block[: -len("-successive")]
         mode = "successive"
+    elif method_mode_block.endswith("-only"):
+        method = method_mode_block[: -len("-only")]
+        mode = "only"
     else:
         raise ValueError(
             "Could not parse mode from method block "
@@ -497,6 +501,8 @@ if __name__ == '__main__':
         "2D_20260413_fishes_method_rT_sT_tF-successive_target_rotation_scaling_turtlefox_000.pk1",
         "2D_20260413_fishes_method_rT_sT_tF-successive_target_rotation_translation_scaling_turtlefox_000.pk1",
         "2D_20260413_fishes_method_rT_sT_tF-successive_target_rotation_translation_turtlefox_000.pk1",
+        "2D_20260507_fishes_method_affine-only_target_rotation_translation_turtlefox_000.pk1",
+        "2D_20260507_fishes_method_affine-successive_target_rotation_translation_turtlefox_000.pk1"
     ]
 
     parsed = parse_many(files)
@@ -506,9 +512,9 @@ if __name__ == '__main__':
     # fig_along = make_along_grid(along_files, rainbow_img, LOAD_PATH)
 
     successive_files = [p for p in parsed if p.mode == "successive"]
-    # fig, ax = plt.subplots(2,3)
-    # plot_one_successive(successive_files[0],ax, rainbow_img, LOAD_PATH)
-    fig_successive = make_successive_grid(successive_files, rainbow_img, LOAD_PATH)
-
+    fig, ax = plt.subplots(2,3)
+    plot_one_successive(successive_files[0],ax, rainbow_img, LOAD_PATH)
+    # fig_successive = make_successive_grid(successive_files, rainbow_img, LOAD_PATH)
+    #
 
     plt.show()
