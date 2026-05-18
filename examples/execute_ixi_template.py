@@ -570,8 +570,8 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
         cst_field = 1
         cost_affine = 1
         cost_field = 1
-        adam_dt_step_field=1e-6,
-        adam_dt_step_affine=1e-2,
+        adam_dt_step_field=1e-6
+        adam_dt_step_affine=1e-2
         integration_steps = 10
 
         if FLAG_DECOUPLED:
@@ -731,6 +731,166 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
                   }
             )
 
+def execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers):
+
+    for paths, source, target, seg_source, seg_target in pp.get_subjects_aligned(
+        numbers=subjects_numbers, resize_factor=RESIZE_FACTOR, first_only=False, progress=True, tqdm_kwargs={"leave": True}
+    ):
+        sigma= [ 3,  7]
+        sigma = [(s,)*3 for s in sigma]
+        gamma = .5
+        rho = 1
+        cost_cst = 1e3
+        cst_field = 1
+        cost_affine = 1
+        cost_field = 1
+        adam_dt_step_field=1e-6
+        adam_dt_step_affine=1e-2
+        integration_steps = 10
+
+        if FLAG_DECOUPLED:
+            affine_optim = mt.affine_decoupled_along_metamorphosis
+            aff_kwargs = {"rotation": True, "scaling" : True, "translation": True}
+            rotation = True
+            scaling = True
+            translation = True
+            affine = False
+        else:
+            affine_optim = mt.affine_along_metamorphosis
+            aff_kwargs = {"affine":True}
+            rotation = False
+            scaling = False
+            translation = True
+            affine = True
+
+        print(f"\nPatient : {paths["subject_dir"].name}")
+
+
+        # 4) Apply LDDMM
+        # for cost_cst in [1e5, 5e5, 1e6]:
+        #     for cst_field in [1e-2, 5e-2, 1e-1 ]:
+        kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
+
+        # D(I,T) =  alpha *| S \cdot A.T  - T |^2 + (1 - alpha) * | I_1 \cdot A.T - T|^2
+        gamma_kwargs = {'c': 5, 'nu':5e-4}
+        datacost = mt.Rotation_Ssd_Cost(
+                target.to("cuda:0"),
+                gamma_mode="variationnal",
+                # gamma_mode="sigmoid",
+                gamma_kwargs=gamma_kwargs,
+                # sigmoid_a=sigmoid_a,sigmoid_b=sigmoid_b,sigmoid_c=sigmoid_c,
+                normalize_ssd=False,
+                verbose=True,
+                plot=False,
+                # save_plot=save_data_cost_plot,
+        )
+
+        momenta = mt.prepare_momenta(
+            source.shape,
+            diffeo=True,
+            device="cuda:0",
+            **aff_kwargs,
+            # **best_priors
+        )
+
+        mr_d = affine_optim(
+            source.to("cuda:0"), target.to("cuda:0"), momenta_ini=momenta,
+            kernelOperator= kernelOperator,
+            rho = rho,
+            data_term=datacost ,
+            integration_steps = integration_steps,
+            cost_cst=cost_cst,
+            cost_affine_cst = cost_affine,
+            cost_field_cst = cost_field,
+            n_iter=20,
+            save_gpu_memory=False,
+            optimizer_method='Adam',
+            adam_dt_step_field=adam_dt_step_field,
+            adam_dt_step_affine=adam_dt_step_affine,
+            # lbfgs_max_iter = 10,
+            # lbfgs_history_size = 30,
+            # hamiltonian_integration=True
+        )
+
+        name = 'affine_lddmm' if not FLAG_DECOUPLED else "decoupled_lddmm"
+        dices, _ =mr_d.compute_DICE(seg_source, seg_target, verbose=True)
+        mt.free_GPU_memory(mr_d)
+
+        deformator = mr_d.mp.get_affine_deformator()
+        source_2 = tb.imgDeform(
+            source, deformator,
+            dx_convention=mr_d.dx_convention,
+            # mode = 'nearest'
+        ).to(device)
+        source_seg_rotated = tb.imgDeform(
+            seg_source, deformator,
+            dx_convention=mr_d.dx_convention,
+            mode = 'nearest'
+        ).to(device)
+
+        print("\n>> Starting Part 2 - Classical LDDMM")
+        sigma = [(3,3,3), (7,7,7)]
+        kernel_op = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
+        # data_cost = mt.Mutual_Information(target)
+        data_cost = mt.Ssd(target)
+        mr2 = mt.lddmm(source_2, target, 0, kernel_op,
+                 cost_cst=.001,
+                grad_coef=1,
+                 integration_steps=7,
+                 n_iter= 4,
+                lbfgs_history_size=15,
+              data_term=data_cost,
+        )
+        dices2, _ =mr2.compute_DICE(source_seg_rotated.to("cpu"), seg_target, verbose=True)
+
+
+        file_save1, path = mr_d.save(f"{paths["subject_dir"].name}_{name}_part1",
+            light_save =False,
+            save_path = os.path.join(result_folder, name)
+        )
+        file_save2, path = mr2.save(f"{paths["subject_dir"].name}_{name}_part2",
+            light_save =False,
+            save_path = os.path.join(result_folder, name)
+        )
+
+
+        def _strf_(valbool):
+            return "T" if valbool else "F"
+        modifier_str = (
+                "_r"+_strf_(rotation)+
+                "_s"+_strf_(scaling)+
+                "_t"+_strf_(translation)
+                        ) if not affine else "aT"
+        modifier_str += "-lddmm2"
+
+        dice = dices[0] | dices2
+        now = datetime.datetime.now()
+        log_metrics(
+            db_path,
+            patient_id=paths["subject_dir"].name,
+            method= name + modifier_str ,
+            metrics={name + ' '+ k: v for k,v in dice.items()},
+            run_id= str(now) + ' at ' + location,
+            step=0,
+            meta={
+                "gpu":torch.cuda.get_device_name(),
+                "gamma" : gamma,
+                "rho" : rho,
+                "cost_cst" : cost_cst,
+                "cst_field" : cst_field,
+                "sigma" : sigma,
+                "integration_steps" : integration_steps,
+                "diffeo":True,
+                "rotation":rotation,
+                "scaling" : scaling,
+                "translation" : translation,
+                "affine" : affine,
+                "prelim_search": "no",
+                "adam_dt_step_field" : adam_dt_step_field,
+                "adam_dt_step_affine" : adam_dt_step_affine,
+                "file": [os.path.join(path, file_save1), os.path.join(path, file_save2)]
+                  }
+            )
 
 def execute_subcmd(cmd):
     print(">>> executing command:")
@@ -1230,7 +1390,7 @@ if __name__ == '__main__':
     # 55,56,57,58,59,60,61,62, Done
     #     # subjects_numbers = [63,64,65,66,67,68,69]
     # subjects_numbers = None
-    # subjects_numbers = [2, 40]#, 26, 50,2, 12]
+    subjects_numbers = [2, 40]#, 26, 50,2, 12]
     RECOMPUTE = False
     RESIZE_FACTOR = .5 if location == 'local' else 1
     FLAG_DECOUPLED = False
@@ -1249,8 +1409,9 @@ if __name__ == '__main__':
     # execute_control(pp,subjects_numbers)
     # if location == 'meso':
     #     execute_uniGradIcon(pp, subjects_numbers)
-    execute_flirt_lddmm(pp, subjects_numbers)
+    # execute_flirt_lddmm(pp, subjects_numbers)
     # elif location == 'local':
-    execute_rigid_along_metamorphosis(pp, subjects_numbers)
+    # execute_rigid_along_metamorphosis(pp, subjects_numbers)
+    execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers)
 
 

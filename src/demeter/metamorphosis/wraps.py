@@ -574,7 +574,6 @@ def affine_along_metamorphosis(
                         " - 'momentum_T' for the translation"
                                  )
 
-    ic(type(momenta_ini), momenta_ini)
     if not isinstance(momenta_ini, int):
         if "momentum_R" in momenta_ini.keys():
             raise ValueError(f"In affine_along_metamorphosis momenta_ini must not contain 'momentum_R',"

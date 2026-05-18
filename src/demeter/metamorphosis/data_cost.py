@@ -503,7 +503,7 @@ class Rotation_Ssd_Cost(DataCost):
             d_r = self._compute_ssd_rot_derivative()
             K = torch.min(torch.tensor(1), - d_r / self.c)
             gamma = old_gamma + (K - old_gamma) * self.nu
-            ic(iter, d_r, K, old_gamma, (K - old_gamma) * self.nu,gamma)
+            # ic(iter, d_r, K, old_gamma, (K - old_gamma) * self.nu,gamma)
             return  torch.clip(gamma, 0,1)
 
     def plot_cost_data_term(self):

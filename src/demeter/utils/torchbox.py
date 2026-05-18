@@ -417,10 +417,13 @@ def dice(img_1, img_2):
 
 def average_dice(segs_1, segs_2, message = '', verbose = False):
     # print(type(segs_1))
+    if segs_1.device != segs_2.device:
+        raise ValueError(f"segs_1 and segs_2 must be the same device, got seg_1.device = {segs_1.device} and seg_2.device = {segs_2.device}")
     uni_1 = torch.unique(segs_1)
     uni_2 = torch.unique(segs_2)
 
-    # print(uni_1, uni_2)
+    print(uni_1, uni_2)
+
     assert torch.equal(uni_1, uni_2), f"segs_1 and segs_2 are not equal, got  {uni_1} and {uni_2}"
 
     mask_1 = torch.zeros_like(segs_1)
