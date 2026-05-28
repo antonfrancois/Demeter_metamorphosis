@@ -159,9 +159,13 @@ theta = torch.tensor([5*torch.pi/8])              # radians
 translation = torch.tensor([[0.12, -0.13]]) # in 2square coords
 scale = torch.tensor([.8])
 
+# A_full = torch.tensor([
+#     [1.240, -0.032],
+#     [0.449,  0.614]
+# ], dtype=target_d.dtype)
 A_full = torch.tensor([
-    [1.240, -0.032],
-    [0.449,  0.614]
+    [0.417, -1.3],
+    [0.873,  -0.393]
 ], dtype=target_d.dtype)
 
 res = lu.apply_registration_models(
@@ -174,8 +178,9 @@ res = lu.apply_registration_models(
 keys = ["full_affine","rotation_translation_scaling","rotation_translation","rotation_scaling"]
 lu.show_deforms(target_d, res, keys)
 
-target_name = keys[2]
+target_name = keys[3]
 target = res[target_name]["image"]
+print(f"target unsed : {target_name}")
 
 
 #%%
@@ -285,22 +290,22 @@ print("Check the rigid optimisation")
 
 
 #%%
-n_iter = 100
-sigmoid_a = 50
-sigmoid_b = 70
-sigmoid_c = -3
-
-iter = torch.linspace(0,n_iter, 100)
-alpha = 2 * sigmoid_c /( sigmoid_b - sigmoid_a)
-beta = - (sigmoid_a + sigmoid_b) / 2
-g = alpha *( iter + beta)
-gamma = 1/(1 + torch.exp(-g))
-from math import exp
-print(f"iter : {sigmoid_a}, val : {1/(1 + exp(- alpha * (sigmoid_a + beta)))}")
-print(f"iter : {sigmoid_b}, val : {1/(1 + exp(- alpha * (sigmoid_b + beta)))}")
-
-plt.plot(iter, gamma)
-plt.show()
+# n_iter = 100
+# sigmoid_a = 50
+# sigmoid_b = 70
+# sigmoid_c = -3
+#
+# iter = torch.linspace(0,n_iter, 100)
+# alpha = 2 * sigmoid_c /( sigmoid_b - sigmoid_a)
+# beta = - (sigmoid_a + sigmoid_b) / 2
+# g = alpha *( iter + beta)
+# gamma = 1/(1 + torch.exp(-g))
+# from math import exp
+# print(f"iter : {sigmoid_a}, val : {1/(1 + exp(- alpha * (sigmoid_a + beta)))}")
+# print(f"iter : {sigmoid_b}, val : {1/(1 + exp(- alpha * (sigmoid_b + beta)))}")
+#
+# plt.plot(iter, gamma)
+# plt.show()
 #%% lddmm along rigid
 #########################################################
 # perfom lddmm along rigid
@@ -641,7 +646,7 @@ mr_rigid_first = mt.affine_along_metamorphosis(
 top_params = rg.initial_exploration(mr_rigid_first,r_step=50, max_output = 10, verbose=True)
 # top_params = None
 best_loss, best_momenta, best_rot = rg.optimize_on_rigid(
-    mr_rigid_first, top_params, n_iter=50,verbose=True, plot = True,affine=True,
+    mr_rigid_first, top_params, n_iter=150,verbose=True, plot = True,affine=True,
 )
 id = 1
 momenta = mt.prepare_momenta(
@@ -672,7 +677,7 @@ ax[2].set_title("target")
 plt.show()
 
 #%%
-file_save, path = mr_rigid_first.save(f"fishes_method_affine-only_target_{target_name}",
+file_save, path = mr_rigid_first.save(f"fishes_method_affine-successive-part1_target_{target_name}",
     light_save=True,
     save_path = "/home/turtlefox/Documents/11_metamorphoses/data/rigid_along_lddmm"
 )
@@ -758,7 +763,7 @@ tb.gridDef_plot_2d(
 plt.show()
 fig.savefig(path+f"classic_lddmm_ref{ref}.pdf")
 #%%
-file_save, path = mr_l.save(f"fishes_method_affine-successive_target_{target_name}",
+file_save, path = mr_l.save(f"fishes_method_affine-successive-part2_target_{target_name}",
         light_save=True,
         save_path = "/home/turtlefox/Documents/11_metamorphoses/data/rigid_along_lddmm"
         )

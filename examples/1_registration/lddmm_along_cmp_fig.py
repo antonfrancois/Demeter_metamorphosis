@@ -12,6 +12,8 @@ from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 import demeter.metamorphosis as mt
 import demeter.utils.torchbox as tb
+import sys
+sys.path.insert(0, str(Path("examples/1_registration").resolve()))
 from lddmm_along_utils import open_rainbow_minifish
 from demeter import ROOT_DIRECTORY
 
@@ -87,6 +89,8 @@ class ParsedRunFile:
         Optional date string, e.g. '20260410'.
     sample_id : Optional[str]
         Optional trailing sample id, e.g. 'turtlefox_000'.
+    part : Optional[str]
+        For two-part successive registrations: 'part1' or 'part2'. None otherwise.
     extension : Optional[str]
         File extension without the leading dot, e.g. 'pk1'.
     """
@@ -98,6 +102,7 @@ class ParsedRunFile:
     dimension: Optional[str] = None
     date: Optional[str] = None
     sample_id: Optional[str] = None
+    part: Optional[str] = None
     extension: Optional[str] = None
 
 
@@ -157,16 +162,23 @@ def parse_experiment_filename(
     date = prefix_parts[1]
     toy_example = "_".join(prefix_parts[2:])
 
-    # ---- method+mode: e.g. "affine-along" or "rT_sT_tT-successive"
+    # ---- method+mode: e.g. "affine-along", "rT_sT_tT-successive", "affine-successive-part1"
+    # Check the longer suffixes before the shorter ones to avoid misparsing.
     if method_mode_block.endswith("-along"):
         method = method_mode_block[: -len("-along")]
-        mode = "along"
+        mode, part = "along", None
+    elif method_mode_block.endswith("-successive-part1"):
+        method = method_mode_block[: -len("-successive-part1")]
+        mode, part = "successive", "part1"
+    elif method_mode_block.endswith("-successive-part2"):
+        method = method_mode_block[: -len("-successive-part2")]
+        mode, part = "successive", "part2"
     elif method_mode_block.endswith("-successive"):
         method = method_mode_block[: -len("-successive")]
-        mode = "successive"
+        mode, part = "successive", None
     elif method_mode_block.endswith("-only"):
         method = method_mode_block[: -len("-only")]
-        mode = "only"
+        mode, part = "only", None
     else:
         raise ValueError(
             "Could not parse mode from method block "
@@ -214,6 +226,7 @@ def parse_experiment_filename(
         dimension=dimension,
         date=date,
         sample_id=sample_id,
+        part=part,
         extension=extension,
     )
 
@@ -308,6 +321,51 @@ def plot_one_successive(file_p, ax, rainbow_img, load_path, *, show_titles=True)
     rainbow_d =  rainbow_d.transpose(1,3).transpose(1,2)[0]
     srt = tb.imCmp(source,mr.target,method = 'seg')
     irt = tb.imCmp(img,mr.target,method = 'seg')
+    kwargs = {"origin": "upper", 'cmap': "gray"}
+    ax[0,0].imshow(img[0,0], **kwargs)
+    ax[0,1].imshow(source[0,0], **kwargs)
+    # ax[0,2].imshow(mr.mp.image[0,0].detach(), **kwargs)
+    tb.gridDef_plot_2d(deform.cpu(), step = 30, ax = ax[0,2], origin="upper")
+
+    ax[1,1].imshow(srt[0], **kwargs)
+    ax[1,0].imshow(irt[0], **kwargs)
+    ax[1,2].imshow(rainbow_d, **kwargs)
+    # tb.gridDef_plot_2d(affine, step = 40, ax = ax[1,2], color = None, alpha = .4)
+
+    for axi in ax.flat:
+        axi.set_xticks([])
+        axi.set_yticks([])
+        axi.set_xlabel("")
+        axi.set_ylabel("")
+
+def plot_one_successive_v2(file_affine, file_diffeo, ax, rainbow_img, load_path, *, show_titles=True):
+    #
+    mr_a = mt.load_optimize_geodesicShooting(
+        file_affine.file_name,
+        path=load_path
+    )
+    mr_d = mt.load_optimize_geodesicShooting(
+        file_diffeo.file_name,
+        path=load_path
+    )
+    ic(file_affine.file_name, file_diffeo.file_name)
+
+    deform = mr_d.mp.get_deformation()
+    affine = mr_a.mp.get_affine_deformator().detach().cpu()
+    # deform = mr_d.mp.get_affine_deformation(deform).detach().cpu()
+    deformator = mr_d.mp.get_deformator()
+    img = mr_d.mp.image.detach().cpu()
+    source = mr_d.source.detach().cpu()
+    ic(deformator.shape)
+    ic(deformator.min(), deformator.max())
+
+    rainbow_d = tb.imgDeform(rainbow_img, affine,dx_convention='2square').cpu()
+    ic(rainbow_d.shape)
+    rainbow_d = tb.imgDeform(rainbow_d, deformator,dx_convention='pixel').cpu()
+    rainbow_d =  rainbow_d.transpose(1,3).transpose(1,2)[0]
+    ic(rainbow_d.shape)
+    srt = tb.imCmp(source,mr_d.target,method = 'seg')
+    irt = tb.imCmp(img,mr_d.target,method = 'seg')
     kwargs = {"origin": "upper", 'cmap': "gray"}
     ax[0,0].imshow(img[0,0], **kwargs)
     ax[0,1].imshow(source[0,0], **kwargs)
@@ -466,55 +524,141 @@ def make_successive_grid(
         suptitle="Successive-Mode Registration: Method-by-Target Comparison",
     )
 
+def deduplicate_keep_latest(parsed: list[ParsedRunFile]) -> list[ParsedRunFile]:
+    """Keep the most recent file per (method, mode, target, part) combination."""
+    best: dict[tuple[str, str, str, Optional[str]], ParsedRunFile] = {}
+    for p in parsed:
+        key = (p.method, p.mode, p.target, p.part)
+        prev = best.get(key)
+        if prev is None or (p.date or "") >= (prev.date or ""):
+            best[key] = p
+    return list(best.values())
+
+
+def warn_missing(
+    parsed: list[ParsedRunFile],
+    *,
+    flag_successive_have_two_parts: bool = False,
+) -> list[tuple[ParsedRunFile, ParsedRunFile]] | None:
+    """Warn about missing (method, target) combinations for each mode present in parsed.
+    Calls pair_successive_parts() internally and returns the resulting pairs when
+    flag_successive_have_two_parts=True, so the caller does not need to call it again.
+
+    For successive mode:
+    - flag_successive_have_two_parts=False: checks only old-style files (part is None).
+    - flag_successive_have_two_parts=True: builds pairs via pair_successive_parts()
+      (which warns about orphans/date mismatches), then checks 16-combo completeness.
+    """
+    successive_pairs = None
+    for mode in sorted({p.mode for p in parsed}):
+        if mode == "successive":
+            if flag_successive_have_two_parts:
+                successive_pairs = pair_successive_parts(parsed)
+                present = {(p1.method, p1.target) for p1, _ in successive_pairs}
+            else:
+                present = {(p.method, p.target) for p in parsed
+                           if p.mode == "successive" and p.part is None}
+        else:
+            present = {(p.method, p.target) for p in parsed if p.mode == mode}
+
+        missing = [
+            (method, target)
+            for method in METHOD_ORDER
+            for target in TARGET_ORDER
+            if (method, target) not in present
+        ]
+        if missing:
+            lines = ", ".join(f"({m}, {t})" for m, t in missing)
+            label = "Successive-parts" if (mode == "successive" and flag_successive_have_two_parts) else f"Mode '{mode}'"
+            print(
+                f"WARNING — {label}: {len(missing)}/16 combinations missing — {lines}",
+                file=sys.stderr,
+            )
+    return successive_pairs
+
+
+def load_parsed_files_from_path(load_path: str) -> list[ParsedRunFile]:
+    """
+    Scan *load_path* for files, attempt to parse each name, and return
+    the successfully parsed ones.  Files whose names do not match the
+    expected convention are silently skipped.
+    """
+    parsed = []
+    for p in sorted(Path(load_path).iterdir()):
+        if not p.is_file():
+            continue
+        try:
+            parsed.append(parse_experiment_filename(p.name))
+        except ValueError:
+            pass
+    return parsed
+
+
+def pair_successive_parts(
+    parsed: list[ParsedRunFile],
+) -> list[tuple[ParsedRunFile, ParsedRunFile]]:
+    """
+    From successive files with parts, form (part1, part2) pairs by (method, target).
+    Both parts must share the same date. Warns about:
+      - orphaned files (only one part present for a given method/target)
+      - date mismatches between part1 and part2
+    Returns only complete, same-date pairs.
+    Missing-combination warnings are handled by warn_missing().
+    """
+    part_files = [p for p in parsed if p.mode == "successive" and p.part is not None]
+    by_key: dict[tuple[str, str], dict[str, ParsedRunFile]] = {}
+    for p in part_files:
+        by_key.setdefault((p.method, p.target), {})[p.part] = p
+
+    pairs = []
+    for (method, target), parts in by_key.items():
+        has1, has2 = "part1" in parts, "part2" in parts
+        if not (has1 and has2):
+            missing_part = "part2" if has1 else "part1"
+            print(
+                f"WARNING — Successive-parts: method={method}, target={target} — "
+                f"missing {missing_part}, skipping.",
+                file=sys.stderr,
+            )
+            continue
+        p1, p2 = parts["part1"], parts["part2"]
+        if (p1.date or "") != (p2.date or ""):
+            print(
+                f"WARNING — Successive-parts: method={method}, target={target} — "
+                f"date mismatch (part1={p1.date}, part2={p2.date}), skipping.",
+                file=sys.stderr,
+            )
+            continue
+        pairs.append((p1, p2))
+
+    return pairs
+
+
 if __name__ == '__main__':
     LOAD_PATH = "/home/turtlefox/Documents/11_metamorphoses/data/rigid_along_lddmm/"
-    files = [
-        "2D_20260409_fishes_method_affine-along_target_full_affine_turtlefox_000.pk1",
-        "2D_20260409_fishes_method_affine-along_target_rotation_translation_scaling_turtlefox_000.pk1",
-        "2D_20260409_fishes_method_affine-along_target_rotation_translation_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_affine-along_target_rotation_scaling_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_affine-successive_target_full_affine_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_affine-successive_target_rotation_scaling_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_affine-successive_target_rotation_translation_scaling_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_affine-successive_target_rotation_translation_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_rT_sF_tT-along_target_full_affine_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_rT_sF_tT-along_target_rotation_translation_scaling_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_rT_sF_tT-along_target_rotation_translation_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_rT_sF_tT-successive_target_full_affine_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_rT_sF_tT-successive_target_rotation_translation_scaling_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_rT_sF_tT-successive_target_rotation_translation_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_rT_sT_tT-along_target_full_affine_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_rT_sT_tT-along_target_rotation_scaling_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_rT_sT_tT-along_target_rotation_translation_scaling_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_rT_sT_tT-along_target_rotation_translation_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_rT_sT_tT-successive_target_full_affine_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_rT_sT_tT-successive_target_rotation_scaling_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_rT_sT_tT-successive_target_rotation_translation_scaling_turtlefox_000.pk1",
-        "2D_20260410_fishes_method_rT_sT_tT-successive_target_rotation_translation_turtlefox_000.pk1",
-        "2D_20260413_fishes_method_rT_sF_tT-along_target_rotation_scaling_turtlefox_000.pk1",
-        "2D_20260413_fishes_method_rT_sF_tT-successive_target_rotation_scaling_turtlefox_000.pk1",
-        "2D_20260413_fishes_method_rT_sT_tF-along_target_full_affine_turtlefox_000.pk1",
-        "2D_20260413_fishes_method_rT_sT_tF-along_target_rotation_scaling_turtlefox_000.pk1",
-        "2D_20260413_fishes_method_rT_sT_tF-along_target_rotation_translation_scaling_turtlefox_000.pk1",
-        "2D_20260413_fishes_method_rT_sT_tF-along_target_rotation_translation_turtlefox_000.pk1",
-        "2D_20260413_fishes_method_rT_sT_tF-successive_target_full_affine_turtlefox_000.pk1",
-        "2D_20260413_fishes_method_rT_sT_tF-successive_target_rotation_scaling_turtlefox_000.pk1",
-        "2D_20260413_fishes_method_rT_sT_tF-successive_target_rotation_translation_scaling_turtlefox_000.pk1",
-        "2D_20260413_fishes_method_rT_sT_tF-successive_target_rotation_translation_turtlefox_000.pk1",
-        "2D_20260507_fishes_method_affine-only_target_rotation_translation_turtlefox_000.pk1",
-        "2D_20260507_fishes_method_affine-successive_target_rotation_translation_turtlefox_000.pk1"
-    ]
+    flag_successive_have_two_parts = True
+    parsed = load_parsed_files_from_path(LOAD_PATH)
+    parsed = deduplicate_keep_latest(parsed)
 
-    parsed = parse_many(files)
+    successive_pairs = warn_missing(parsed, flag_successive_have_two_parts=flag_successive_have_two_parts)
+
     rainbow_img = open_rainbow_minifish()
 
     # along_files = [p for p in parsed if p.mode == "along"]
+    # fig, ax = plt.subplots(2, 3)
+    # plot_one_affine(along_files[0], ax, rainbow_img, LOAD_PATH)
+    # plt.show()
     # fig_along = make_along_grid(along_files, rainbow_img, LOAD_PATH)
-
-    successive_files = [p for p in parsed if p.mode == "successive"]
-    fig, ax = plt.subplots(2,3)
-    plot_one_successive(successive_files[0],ax, rainbow_img, LOAD_PATH)
-    # fig_successive = make_successive_grid(successive_files, rainbow_img, LOAD_PATH)
+    #
+    # if flag_successive_have_two_parts:
+    #     fig, ax = plt.subplots(2, 3)
+    #     plot_one_successive_v2(successive_pairs[0][0], successive_pairs[0][1], ax, rainbow_img, LOAD_PATH)
+    #     # fig_successive = make_successive_grid(successive_pairs, rainbow_img, LOAD_PATH)
+    # else:
+    #     successive_files = [p for p in parsed if p.mode == "successive" and p.part is None]
+    #     fig, ax = plt.subplots(2, 3)
+    #     plot_one_successive(successive_files[0], ax, rainbow_img, LOAD_PATH)
+    #     # fig_successive = make_successive_grid(successive_files, rainbow_img, LOAD_PATH)
     #
 
     plt.show()
