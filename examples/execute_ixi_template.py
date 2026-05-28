@@ -33,9 +33,10 @@ def to_torch(arr: np.ndarray) -> torch.Tensor:
 
 def normalize(img):
     quant = np.quantile(img, 0.99)
-    img = np.clip(img, 0,quant)
+    img = np.clip(img, 0, quant)
     img /= img.max()
     return img
+
 
 def simplify_segs(seg):
     # Create new label map (e.g. 0-5)
@@ -57,6 +58,7 @@ def simplify_segs(seg):
     new_seg[np.isin(seg, BRAINSTEM)] = 5
 
     return new_seg
+
 
 def load_canonical(img_path: str) -> nib.spatialimages.SpatialImage:
     """Load image and convert to RAS+ canonical orientation (safer for affine math)."""
@@ -90,6 +92,7 @@ def save_like(target_img: nib.spatialimages.SpatialImage, new_data: np.ndarray, 
 def _ixi_number_from_folder(folder_name: str) -> Optional[int]:
     m = re.match(r"^IXI(\d+)-", folder_name)
     return int(m.group(1)) if m else None
+
 
 def find_ixi_folder(base_path: str, number: Optional[int] = None) -> Iterator[str]:
     """
@@ -127,6 +130,7 @@ def find_ixi_folder(base_path: str, number: Optional[int] = None) -> Iterator[st
         if os.path.isdir(os.path.join(base_path, folder)) and pattern.match(folder):
             yield folder
 
+
 def ensure_nifti(path: str | Path) -> Path:
     """
     Ensure the file is in NIfTI (.nii.gz) format.
@@ -156,7 +160,7 @@ def ensure_nifti(path: str | Path) -> Path:
         # print(os.listdir(path.parent))
         # print(path.with_suffix('.nii.gz'))
         # print(">> ",path.with_suffix('.nii.gz').name in  os.listdir(path.parent))
-        if path.with_suffix('.nii.gz').name in  os.listdir(path.parent):
+        if path.with_suffix('.nii.gz').name in os.listdir(path.parent):
             print("><", path.with_suffix('.nii.gz'))
             return path.with_suffix('.nii.gz')
 
@@ -169,7 +173,8 @@ def ensure_nifti(path: str | Path) -> Path:
 
     raise ValueError(f"Unsupported file extension: {path.suffixes or path.suffix} in {path.name}")
 
-def _affine_to_sitk(aff: np.ndarray) -> tuple[tuple[float,...], tuple[float,...], tuple[float,...]]:
+
+def _affine_to_sitk(aff: np.ndarray) -> tuple[tuple[float, ...], tuple[float, ...], tuple[float, ...]]:
     """Convert a 4x4 RAS affine to (spacing, origin, direction) for SimpleITK."""
     # Extract spacing as norm of columns 0..2
     R = aff[:3, :3]
@@ -181,6 +186,7 @@ def _affine_to_sitk(aff: np.ndarray) -> tuple[tuple[float,...], tuple[float,...]
     direction = tuple(Rn.flatten(order="F"))  # column-major to match ITK’s convention
     origin = tuple(aff[:3, 3])
     return tuple(spacing.tolist()), origin, direction
+
 
 def ensure_nrrd(in_path: str | Path, out_dir: str | Path | None = None) -> Path:
     """
@@ -215,8 +221,8 @@ def ensure_nrrd(in_path: str | Path, out_dir: str | Path | None = None) -> Path:
     # SimpleITK expects (Z,Y,X) numpy when using GetImageFromArray (unless we set geometry after)
     # We’ll set geometry explicitly, so the array axis order is fine; sitk will map from geometry.
     sitk_img = sitk.GetImageFromArray(np.asarray(img_can.get_fdata(dtype=np.float32)))
-    sitk_img.SetSpacing(spacing[::-1])   # spacing per axis order of the array (Z,Y,X) vs (X,Y,Z)
-    sitk_img.SetOrigin(origin)           # origin is in physical space (X,Y,Z)
+    sitk_img.SetSpacing(spacing[::-1])  # spacing per axis order of the array (Z,Y,X) vs (X,Y,Z)
+    sitk_img.SetOrigin(origin)  # origin is in physical space (X,Y,Z)
     # Direction needs to match the array axis order; flip to Z,Y,X:
     # We formed direction in (X,Y,Z); for a quick and robust route, let’s just rely on spacing+origin,
     # and leave direction as identity if needed. If you want strict orientation, uncomment below:
@@ -226,8 +232,8 @@ def ensure_nrrd(in_path: str | Path, out_dir: str | Path | None = None) -> Path:
     return out_path
 
 
-
 NumberArg = Optional[Union[int, List[int]]]
+
 
 class IXIToTemplatePreprocessor:
     """
@@ -270,23 +276,23 @@ class IXIToTemplatePreprocessor:
     """
 
     def __init__(
-        self,
-        ixi_root: str | Path,
-        template_root: str | Path,
-        *,
-        template_name: str = "mni_icbm152_t1_tal_nlin_asym_09c.nii",
-        template_mask_name: str = "mni_icbm152_t1_tal_nlin_asym_09c_mask.nii",
-        template_segs_name: str = "mni_icbm152.auto_noCCseg.mgz",
-        template_seg_path: str = "fastsurfer_seg/mri/",
+            self,
+            ixi_root: str | Path,
+            template_root: str | Path,
+            *,
+            template_name: str = "mni_icbm152_t1_tal_nlin_asym_09c.nii",
+            template_mask_name: str = "mni_icbm152_t1_tal_nlin_asym_09c_mask.nii",
+            template_segs_name: str = "mni_icbm152.auto_noCCseg.mgz",
+            template_seg_path: str = "fastsurfer_seg/mri/",
 
-        # IXI filenames inside each subject directory (or its /mri subdir)
-        ixi_image_name: str = "orig_nu.mgz",
-        ixi_segs_name: str = "aseg.auto_noCCseg.mgz",
-        ixi_mask_name: str = "mask.mgz",
-        ixi_mri_subdir: str = "mri",  # if present, files are under <subject>/mri/
+            # IXI filenames inside each subject directory (or its /mri subdir)
+            ixi_image_name: str = "orig_nu.mgz",
+            ixi_segs_name: str = "aseg.auto_noCCseg.mgz",
+            ixi_mask_name: str = "mask.mgz",
+            ixi_mri_subdir: str = "mri",  # if present, files are under <subject>/mri/
 
-        simplify_segs_fn: Callable[[np.ndarray], np.ndarray] = simplify_segs,
-        do_plot: bool = False,
+            simplify_segs_fn: Callable[[np.ndarray], np.ndarray] = simplify_segs,
+            do_plot: bool = False,
     ):
         self.ixi_root = Path(ixi_root)
         self.template_root = Path(template_root)
@@ -337,10 +343,10 @@ class IXIToTemplatePreprocessor:
         return {"root": self.template_root, "image": tpl_img, "mask": tpl_mask, "aseg": tpl_segs}
 
     def get_subjects_paths(
-        self,
-        numbers: NumberArg = None,
-        *,
-        require_all: bool = True,
+            self,
+            numbers: NumberArg = None,
+            *,
+            require_all: bool = True,
     ) -> Iterator[Dict[str, Path]]:
         """
         Iterate over subjects and yield dicts of paths:
@@ -377,8 +383,8 @@ class IXIToTemplatePreprocessor:
             mri_dir = mri_dir if mri_dir.exists() else subj_dir
 
             image = mri_dir / self.ixi_image_name
-            mask  = mri_dir / self.ixi_mask_name
-            aseg  = mri_dir / self.ixi_segs_name
+            mask = mri_dir / self.ixi_mask_name
+            aseg = mri_dir / self.ixi_segs_name
 
             if require_all and not (image.exists() and mask.exists() and aseg.exists()):
                 continue
@@ -393,13 +399,13 @@ class IXIToTemplatePreprocessor:
 
     # ---------------------- alignment API ----------------------
     def get_subjects_aligned(
-        self,
-        numbers: NumberArg = None,
-        *,
-        resize_factor: float = 1.0,
-        first_only: bool = True,
-        progress: bool = False,
-        tqdm_kwargs: Optional[dict] = None,
+            self,
+            numbers: NumberArg = None,
+            *,
+            resize_factor: float = 1.0,
+            first_only: bool = True,
+            progress: bool = False,
+            tqdm_kwargs: Optional[dict] = None,
     ) -> Union[
         Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor],
         Iterator[Tuple[Dict[str, Path], torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
@@ -446,24 +452,24 @@ class IXIToTemplatePreprocessor:
 
     # ---------------------- internal: one subject ----------------------
     def _process_one(
-        self,
-        paths: Dict[str, Path],
-        *,
-        resize_factor: float = 1.0,
+            self,
+            paths: Dict[str, Path],
+            *,
+            resize_factor: float = 1.0,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         # Load IXI
-        ixi_img  = load_canonical(paths["image"])
+        ixi_img = load_canonical(paths["image"])
         ixi_mask = load_canonical(paths["mask"])
-        ixi_seg  = load_canonical(paths["aseg"])
+        ixi_seg = load_canonical(paths["aseg"])
 
         # Mask intensities in native space
-        x  = ixi_img.get_fdata().astype(np.float32)
-        m  = (ixi_mask.get_fdata() > 0.5)
+        x = ixi_img.get_fdata().astype(np.float32)
+        m = (ixi_mask.get_fdata() > 0.5)
         xM = np.where(m, x, 0.0).astype(np.float32)
 
         # Resample all to template grid
         x_img = resample_from_to(ixi_img.__class__(xM, ixi_img.affine, ixi_img.header), self._target_spec, order=3)
-        s_lab = resample_from_to(ixi_seg,  self._target_spec, order=0)
+        s_lab = resample_from_to(ixi_seg, self._target_spec, order=0)
         m_lab = resample_from_to(ixi_mask, self._target_spec, order=0)
 
         # Simplify labels
@@ -475,17 +481,17 @@ class IXIToTemplatePreprocessor:
         x_tpl = np.where(m_tpl, x_img.get_fdata().astype(np.float32), 0.0).astype(np.float32)
 
         # To torch
-        source     = normalize(to_torch(x_tpl))
-        target     = normalize(to_torch(self._tpl_data_masked))
+        source = normalize(to_torch(x_tpl))
+        target = normalize(to_torch(self._tpl_data_masked))
         seg_source = to_torch(src_segs_np.astype(np.float32))
         seg_target = to_torch(tpl_segs_np.astype(np.float32))
 
         # Resize if needed
         if resize_factor != 1.0:
-            source     = tb.resize_image(source,     resize_factor)
-            target     = tb.resize_image(target,     resize_factor)
-            seg_source = tb.resize_image(seg_source, resize_factor, mode = "nearest")
-            seg_target = tb.resize_image(seg_target, resize_factor, mode = "nearest")
+            source = tb.resize_image(source, resize_factor)
+            target = tb.resize_image(target, resize_factor)
+            seg_source = tb.resize_image(seg_source, resize_factor, mode="nearest")
+            seg_target = tb.resize_image(seg_target, resize_factor, mode="nearest")
 
         # quick sanity plot
         if self.do_plot:
@@ -496,58 +502,57 @@ class IXIToTemplatePreprocessor:
     # ---------------------- quick figure ----------------------
 
     def _quick_plot(self, source, target, seg_source, seg_target, name=None):
-        w = source.shape[-1]//2
-        fig, ax = plt.subplots(2,2)
+        w = source.shape[-1] // 2
+        fig, ax = plt.subplots(2, 2)
         fig.suptitle(name)
-        ax[0,0].imshow(source[0,0,..., w], cmap="gray")
-        ax[0,0].set_title("Source")
+        ax[0, 0].imshow(source[0, 0, ..., w], cmap="gray")
+        ax[0, 0].set_title("Source")
 
-        ax[0,1].imshow(target[0,0,..., w], cmap="gray")
-        ax[0,1].set_title("Target")
+        ax[0, 1].imshow(target[0, 0, ..., w], cmap="gray")
+        ax[0, 1].set_title("Target")
 
-        ax[1,0].imshow(seg_source[0,0,..., w], cmap="tab10", vmin= seg_source.min(), vmax= seg_source.max())
-        ax[1,0].set_title("Segment source")
-        ax[1,1].imshow(seg_target[0,0,..., w], cmap="tab10", vmin= seg_source.min(), vmax= seg_source.max())
-        ax[1,1].set_title("Segment target")
-
+        ax[1, 0].imshow(seg_source[0, 0, ..., w], cmap="tab10", vmin=seg_source.min(), vmax=seg_source.max())
+        ax[1, 0].set_title("Segment source")
+        ax[1, 1].imshow(seg_target[0, 0, ..., w], cmap="tab10", vmin=seg_source.min(), vmax=seg_source.max())
+        ax[1, 1].set_title("Segment target")
 
         plt.show()
 
     def _debug_plot(
-        self,
-        ixi_native: np.ndarray,
-        tpl_masked: np.ndarray,
-        ixi_on_tpl: np.ndarray,
-        ixi_segs_on_tpl: np.ndarray,
-        tpl_segs: np.ndarray,
-        name: Optional[str] = None
+            self,
+            ixi_native: np.ndarray,
+            tpl_masked: np.ndarray,
+            ixi_on_tpl: np.ndarray,
+            ixi_segs_on_tpl: np.ndarray,
+            tpl_segs: np.ndarray,
+            name: Optional[str] = None
     ):
         z = ixi_native.shape[-1] // 2
         fig, ax = plt.subplots(2, 3, figsize=(10, 7))
         fig.suptitle(name or "IXI→Template sanity", fontsize=12)
 
-        ax[0,0].imshow(ixi_native[..., z], cmap="gray")
-        ax[0,0].set_title("IXI native (masked)")
+        ax[0, 0].imshow(ixi_native[..., z], cmap="gray")
+        ax[0, 0].set_title("IXI native (masked)")
 
-        ax[0,1].imshow(tpl_masked[..., z], cmap="gray")
-        ax[0,1].set_title("Template (masked)")
+        ax[0, 1].imshow(tpl_masked[..., z], cmap="gray")
+        ax[0, 1].set_title("Template (masked)")
 
-        ax[0,2].imshow(tpl_segs[..., z], cmap="tab20",
-                       vmin=np.min(tpl_segs), vmax=np.max(tpl_segs))
-        ax[0,2].set_title("Template segs")
+        ax[0, 2].imshow(tpl_segs[..., z], cmap="tab20",
+                        vmin=np.min(tpl_segs), vmax=np.max(tpl_segs))
+        ax[0, 2].set_title("Template segs")
 
-        ax[1,0].imshow(ixi_on_tpl[..., z], cmap="gray")
-        ax[1,0].set_title("IXI on template")
+        ax[1, 0].imshow(ixi_on_tpl[..., z], cmap="gray")
+        ax[1, 0].set_title("IXI on template")
 
         # Simple composite: average
         comp = 0.5 * (ixi_on_tpl[..., z] / (ixi_on_tpl.max() + 1e-8)) + \
                0.5 * (tpl_masked[..., z] / (tpl_masked.max() + 1e-8))
-        ax[1,1].imshow(comp, cmap="gray")
-        ax[1,1].set_title("Composite (IXI on tpl vs tpl)")
+        ax[1, 1].imshow(comp, cmap="gray")
+        ax[1, 1].set_title("Composite (IXI on tpl vs tpl)")
 
-        ax[1,2].imshow(ixi_segs_on_tpl[..., z], cmap="tab20",
-                       vmin=np.min(ixi_segs_on_tpl), vmax=np.max(ixi_segs_on_tpl))
-        ax[1,2].set_title("IXI segs on template")
+        ax[1, 2].imshow(ixi_segs_on_tpl[..., z], cmap="tab20",
+                        vmin=np.min(ixi_segs_on_tpl), vmax=np.max(ixi_segs_on_tpl))
+        ax[1, 2].set_title("IXI segs on template")
 
         for a in ax.ravel(): a.axis("off")
         plt.tight_layout()
@@ -558,32 +563,32 @@ class IXIToTemplatePreprocessor:
 # Start of the executing function:
 
 def execute_rigid_along_metamorphosis(pp, subjects_numbers):
-
     for paths, source, target, seg_source, seg_target in pp.get_subjects_aligned(
-        numbers=subjects_numbers, resize_factor=RESIZE_FACTOR, first_only=False, progress=True, tqdm_kwargs={"leave": True}
+            numbers=subjects_numbers, resize_factor=RESIZE_FACTOR, first_only=False, progress=True,
+            tqdm_kwargs={"leave": True}
     ):
-        sigma= [1, 3,  7]
-        sigma = [(s,)*3 for s in sigma]
+        sigma = [1, 3, 7]
+        sigma = [(s,) * 3 for s in sigma]
         gamma = .5
         rho = 1
         cost_cst = 1e3
         cst_field = 1
         cost_affine = 1
         cost_field = 1
-        adam_dt_step_field=1e-6
-        adam_dt_step_affine=1e-2
+        adam_dt_step_field = 1e-6
+        adam_dt_step_affine = 1e-2
         integration_steps = 10
 
         if FLAG_DECOUPLED:
             affine_optim = mt.affine_decoupled_along_metamorphosis
-            aff_kwargs = {"rotation": True, "scaling" : True, "translation": True}
+            aff_kwargs = {"rotation": True, "scaling": True, "translation": True}
             rotation = True
             scaling = True
             translation = True
             affine = False
         else:
             affine_optim = mt.affine_along_metamorphosis
-            aff_kwargs = {"affine":True}
+            aff_kwargs = {"affine": True}
             rotation = False
             scaling = False
             translation = True
@@ -593,7 +598,7 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
         # 2) Rigid search
         # 2.a  Align barycenters
         source_b, target_b, trans_s, trans_t = rg.align_barycentres(source, target, verbose=True)
-        id_grid = tb.make_regular_grid(source_b.shape[2:],dx_convention="2square")
+        id_grid = tb.make_regular_grid(source_b.shape[2:], dx_convention="2square")
         seg_target_b = tb.imgDeform(seg_target, (id_grid + trans_t), mode="nearest")
         seg_source_b = tb.imgDeform(seg_source, (id_grid + trans_s), mode="nearest")
 
@@ -603,22 +608,21 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
         datacost = mt.Rotation_Ssd_Cost(target_b.to('cuda:0'), alpha=1)
         datacost = mt.Rotation_MutualInformation_Cost(target_b.to('cuda:0'), alpha=1)
 
-
         mr = mt.rigid_along_metamorphosis(
             source_b, target_b, momenta_ini=0,
-            kernelOperator= kernelOperator,
-            rho = 1,
-            data_term=datacost ,
-            integration_steps = integration_steps,
+            kernelOperator=kernelOperator,
+            rho=1,
+            data_term=datacost,
+            integration_steps=integration_steps,
             cost_cst=.1,
         )
-        top_params = rg.initial_exploration(mr,r_step=10, max_output = 15, verbose=True)
+        top_params = rg.initial_exploration(mr, r_step=10, max_output=15, verbose=True)
         print(top_params)
 
         # 2.c Optimize on best finds
-        best_loss, best_momenta, best_rot = rg.optimize_on_rigid(mr, top_params, n_iter=5,verbose=False)
+        best_loss, best_momenta, best_rot = rg.optimize_on_rigid(mr, top_params, n_iter=5, verbose=False)
         print(f"\nPatient : {paths["subject_dir"].name}")
-        print("best_momenta = ",best_momenta)
+        print("best_momenta = ", best_momenta)
         search = True
 
         # 3) [Optionnal] Check rigid search
@@ -664,16 +668,15 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
             # **best_priors
         )
 
-
         mr = affine_optim(
             source_b.to("cuda:0"), target_b.to("cuda:0"), momenta_ini=momenta,
-            kernelOperator= kernelOperator,
-            rho = rho,
-            data_term=datacost ,
-            integration_steps = integration_steps,
+            kernelOperator=kernelOperator,
+            rho=rho,
+            data_term=datacost,
+            integration_steps=integration_steps,
             cost_cst=cost_cst,
-            cost_affine_cst = cost_affine,
-            cost_field_cst = cost_field,
+            cost_affine_cst=cost_affine,
+            cost_field_cst=cost_field,
             n_iter=100,
             save_gpu_memory=False,
             optimizer_method='Adam',
@@ -685,86 +688,86 @@ def execute_rigid_along_metamorphosis(pp, subjects_numbers):
         )
 
         name = 'affine_lddmm' if not FLAG_DECOUPLED else "decoupled_lddmm"
-        dices, _ =mr.compute_DICE(seg_source_b, seg_target_b, verbose=True)
+        dices, _ = mr.compute_DICE(seg_source_b, seg_target_b, verbose=True)
         file_save, path = mr.save(f"{paths["subject_dir"].name}_{name}",
-                light_save=False,
-                save_path = os.path.join(result_folder, name)
-                )
+                                  light_save=False,
+                                  save_path=os.path.join(result_folder, name)
+                                  )
         mt.free_GPU_memory(mr)
-
-
 
         def _strf_(valbool):
             return "T" if valbool else "F"
+
         modifier_str = (
-                "_r"+_strf_(rotation)+
-                "_s"+_strf_(scaling)+
-                "_t"+_strf_(translation)
-                        ) if not affine else "aT"
+                "_r" + _strf_(rotation) +
+                "_s" + _strf_(scaling) +
+                "_t" + _strf_(translation)
+        ) if not affine else "aT"
 
         dice = dices[0] | dices[1]
         now = datetime.datetime.now()
         log_metrics(
             db_path,
             patient_id=paths["subject_dir"].name,
-            method= name + modifier_str ,
-            metrics={name + ' '+ k: v for k,v in dice.items()},
-            run_id= str(now) + ' at ' + location,
+            method=name + modifier_str,
+            metrics={name + ' ' + k: v for k, v in dice.items()},
+            run_id=str(now) + ' at ' + location,
             step=0,
             meta={
-                "gpu":torch.cuda.get_device_name(),
-                "gamma" : gamma,
-                "rho" : rho,
-                "cost_cst" : cost_cst,
-                "cst_field" : cst_field,
-                "sigma" : sigma,
-                "integration_steps" : integration_steps,
-                "diffeo":True,
-                "rotation":rotation,
-                "scaling" : scaling,
-                "translation" : translation,
-                "affine" : affine,
+                "gpu": torch.cuda.get_device_name(),
+                "gamma": gamma,
+                "rho": rho,
+                "cost_cst": cost_cst,
+                "cst_field": cst_field,
+                "sigma": sigma,
+                "integration_steps": integration_steps,
+                "diffeo": True,
+                "rotation": rotation,
+                "scaling": scaling,
+                "translation": translation,
+                "affine": affine,
                 "prelim_search": search,
-                "adam_dt_step_field" : adam_dt_step_field,
-                "adam_dt_step_affine" : adam_dt_step_affine,
+                "adam_dt_step_field": adam_dt_step_field,
+                "adam_dt_step_affine": adam_dt_step_affine,
                 "file": os.path.join(path, file_save)
-                  }
-            )
+            }
+        )
+
 
 def execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers):
-
     for paths, source, target, seg_source, seg_target in pp.get_subjects_aligned(
-        numbers=subjects_numbers, resize_factor=RESIZE_FACTOR, first_only=False, progress=True, tqdm_kwargs={"leave": True}
+            numbers=subjects_numbers, resize_factor=RESIZE_FACTOR, first_only=False, progress=True,
+            tqdm_kwargs={"leave": True}
     ):
-        sigma= [ 3,  7]
-        sigma = [(s,)*3 for s in sigma]
+        sigma = [3, 7]
+        sigma = [(s,) * 3 for s in sigma]
         gamma = .5
         rho = 1
         cost_cst = 1e3
         cst_field = 1
         cost_affine = 1
         cost_field = 1
-        adam_dt_step_field=1e-6
-        adam_dt_step_affine=1e-2
+        adam_dt_step_field = 1e-6
+        adam_dt_step_affine = 1e-2
         integration_steps = 10
 
         if FLAG_DECOUPLED:
             affine_optim = mt.affine_decoupled_along_metamorphosis
-            aff_kwargs = {"rotation": True, "scaling" : True, "translation": True}
+            aff_kwargs = {"rotation": True, "scaling": True, "translation": True}
             rotation = True
             scaling = True
             translation = True
             affine = False
         else:
             affine_optim = mt.affine_along_metamorphosis
-            aff_kwargs = {"affine":True}
+            aff_kwargs = {"affine": True}
             rotation = False
             scaling = False
             translation = True
             affine = True
 
         print(f"\nPatient : {paths["subject_dir"].name}")
-
+        method_name = 'affine_lddmm' if not FLAG_DECOUPLED else "decoupled_lddmm"
 
         # 4) Apply LDDMM
         # for cost_cst in [1e5, 5e5, 1e6]:
@@ -772,18 +775,19 @@ def execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers):
         kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
 
         # D(I,T) =  alpha *| S \cdot A.T  - T |^2 + (1 - alpha) * | I_1 \cdot A.T - T|^2
-        gamma_kwargs = {'c': 5, 'nu':5e-4}
+        gamma_kwargs = {'c': 5, 'nu': 1e-3}
         datacost = mt.Rotation_Ssd_Cost(
-                target.to("cuda:0"),
-                gamma_mode="variationnal",
-                # gamma_mode="sigmoid",
-                gamma_kwargs=gamma_kwargs,
-                # sigmoid_a=sigmoid_a,sigmoid_b=sigmoid_b,sigmoid_c=sigmoid_c,
-                normalize_ssd=False,
-                verbose=True,
-                plot=False,
-                # save_plot=save_data_cost_plot,
+            target.to("cuda:0"),
+            gamma_mode="variationnal",
+            # gamma_mode="sigmoid",
+            gamma_kwargs=gamma_kwargs,
+            # sigmoid_a=sigmoid_a,sigmoid_b=sigmoid_b,sigmoid_c=sigmoid_c,
+            normalize_ssd=False,
+            verbose=True,
+            plot=True,
+            save_plot=os.path.join(result_folder, method_name, paths["subject_dir"].name ),
         )
+
 
         momenta = mt.prepare_momenta(
             source.shape,
@@ -795,14 +799,14 @@ def execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers):
 
         mr_d = affine_optim(
             source.to("cuda:0"), target.to("cuda:0"), momenta_ini=momenta,
-            kernelOperator= kernelOperator,
-            rho = rho,
-            data_term=datacost ,
-            integration_steps = integration_steps,
+            kernelOperator=kernelOperator,
+            rho=rho,
+            data_term=datacost,
+            integration_steps=integration_steps,
             cost_cst=cost_cst,
-            cost_affine_cst = cost_affine,
-            cost_field_cst = cost_field,
-            n_iter=20,
+            cost_affine_cst=cost_affine,
+            cost_field_cst=cost_field,
+            n_iter=200 if location != "local" else 20,
             save_gpu_memory=False,
             optimizer_method='Adam',
             adam_dt_step_field=adam_dt_step_field,
@@ -811,9 +815,10 @@ def execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers):
             # lbfgs_history_size = 30,
             # hamiltonian_integration=True
         )
+        fig, ax = mr_d.data_term.plot_cost_data_term()
 
-        name = 'affine_lddmm' if not FLAG_DECOUPLED else "decoupled_lddmm"
-        dices, _ =mr_d.compute_DICE(seg_source, seg_target, verbose=True)
+
+        dices, _ = mr_d.compute_DICE(seg_source, seg_target, verbose=True)
         mt.free_GPU_memory(mr_d)
 
         deformator = mr_d.mp.get_affine_deformator()
@@ -825,72 +830,80 @@ def execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers):
         source_seg_rotated = tb.imgDeform(
             seg_source, deformator,
             dx_convention=mr_d.dx_convention,
-            mode = 'nearest'
+            mode='nearest'
         ).to(device)
+        # tb.average_dice(source_seg_rotated.cpu(),seg_target,message="(affine p only)",verbose=True)
 
         print("\n>> Starting Part 2 - Classical LDDMM")
-        sigma = [(3,3,3), (7,7,7)]
+        sigma = [(3, 3, 3), (7, 7, 7)]
         kernel_op = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
         # data_cost = mt.Mutual_Information(target)
         data_cost = mt.Ssd(target)
         mr2 = mt.lddmm(source_2, target, 0, kernel_op,
-                 cost_cst=.001,
-                grad_coef=1,
-                 integration_steps=7,
-                 n_iter= 4,
-                lbfgs_history_size=15,
-              data_term=data_cost,
-        )
-        dices2, _ =mr2.compute_DICE(source_seg_rotated.to("cpu"), seg_target, verbose=True)
+                       cost_cst=.001,
+                       grad_coef=1,
+                       integration_steps=7,
+                       n_iter=40 if location != "local" else 2,
+                       lbfgs_history_size=15,
+                       data_term=data_cost,
+                       )
+        dices2, _ = mr2.compute_DICE(source_seg_rotated.to("cpu"), seg_target, verbose=True)
 
 
-        file_save1, path = mr_d.save(f"{paths["subject_dir"].name}_{name}_part1",
-            light_save =False,
-            save_path = os.path.join(result_folder, name)
-        )
-        file_save2, path = mr2.save(f"{paths["subject_dir"].name}_{name}_part2",
-            light_save =False,
-            save_path = os.path.join(result_folder, name)
-        )
-
+        file_save1, path = mr_d.save(f"{paths["subject_dir"].name}_{method_name}_part1",
+                                     light_save=False,
+                                     save_path=os.path.join(result_folder, method_name)
+                                     )
+        ic(file_save1, path,path +"/"+ file_save1[:-4] + "_gamma_cost.png")
+        ax.set_title(file_save1)
+        fig.savefig(path +"/" +file_save1[:-4] + "_gamma_cost.png")
+        if location != "local":
+            plt.show()
+        file_save2, path = mr2.save(f"{paths["subject_dir"].name}_{method_name}_part2",
+                                    light_save=False,
+                                    save_path=os.path.join(result_folder, method_name)
+                                    )
 
         def _strf_(valbool):
             return "T" if valbool else "F"
-        modifier_str = (
-                "_r"+_strf_(rotation)+
-                "_s"+_strf_(scaling)+
-                "_t"+_strf_(translation)
-                        ) if not affine else "aT"
-        modifier_str += "-lddmm2"
 
+        modifier_str = (
+                "_r" + _strf_(rotation) +
+                "_s" + _strf_(scaling) +
+                "_t" + _strf_(translation)
+        ) if not affine else "aT"
+        modifier_str += "-lddmm2"
+        ic(dices, dices2)
         dice = dices[0] | dices2
+        ic(dice)
         now = datetime.datetime.now()
         log_metrics(
             db_path,
             patient_id=paths["subject_dir"].name,
-            method= name + modifier_str ,
-            metrics={name + ' '+ k: v for k,v in dice.items()},
-            run_id= str(now) + ' at ' + location,
+            method=method_name + modifier_str,
+            metrics={method_name + ' ' + k: v for k, v in dice.items()},
+            run_id=str(now) + ' at ' + location,
             step=0,
             meta={
-                "gpu":torch.cuda.get_device_name(),
-                "gamma" : gamma,
-                "rho" : rho,
-                "cost_cst" : cost_cst,
-                "cst_field" : cst_field,
-                "sigma" : sigma,
-                "integration_steps" : integration_steps,
-                "diffeo":True,
-                "rotation":rotation,
-                "scaling" : scaling,
-                "translation" : translation,
-                "affine" : affine,
+                "gpu": torch.cuda.get_device_name(),
+                "gamma": gamma,
+                "rho": rho,
+                "cost_cst": cost_cst,
+                "cst_field": cst_field,
+                "sigma": sigma,
+                "integration_steps": integration_steps,
+                "diffeo": True,
+                "rotation": rotation,
+                "scaling": scaling,
+                "translation": translation,
+                "affine": affine,
                 "prelim_search": "no",
-                "adam_dt_step_field" : adam_dt_step_field,
-                "adam_dt_step_affine" : adam_dt_step_affine,
+                "adam_dt_step_field": adam_dt_step_field,
+                "adam_dt_step_affine": adam_dt_step_affine,
                 "file": [os.path.join(path, file_save1), os.path.join(path, file_save2)]
-                  }
-            )
+            }
+        )
+
 
 def execute_subcmd(cmd):
     print(">>> executing command:")
@@ -899,9 +912,9 @@ def execute_subcmd(cmd):
     try:
         result = subprocess.run(
             cmd,
-            check=True,          # raises CalledProcessError if command fails
-            capture_output=True, # capture stdout & stderr
-            text=True            # decode as str instead of bytes
+            check=True,  # raises CalledProcessError if command fails
+            capture_output=True,  # capture stdout & stderr
+            text=True  # decode as str instead of bytes
         )
         print("STDOUT:\n", result.stdout)
         print("STDERR:\n", result.stderr)
@@ -913,9 +926,10 @@ def execute_subcmd(cmd):
         print("STDERR:\n", e.stderr)
         # return e
 
+
 # ====================================================
 #     Begin unigradicon
-def itk_to_torch(image: "itk.Image[itk.F,3]", seg = False) -> torch.Tensor:
+def itk_to_torch(image: "itk.Image[itk.F,3]", seg=False) -> torch.Tensor:
     """
     Convert an itk.ImageF3 (3D float image) to a PyTorch tensor.
 
@@ -938,10 +952,18 @@ def itk_to_torch(image: "itk.Image[itk.F,3]", seg = False) -> torch.Tensor:
     tensor = torch.from_numpy(np_array.astype("float32"))
     return tensor
 
-def _evalutate_unigradicon(transform_file, fixed_seg, moving_seg, fixed_img, moving_img, plot):
+
+def _evaluate_unigradicon(transform_file, fixed_seg, moving_seg, fixed_img, moving_img, plot):
     fixed_seg = itk.imread(ensure_nrrd(fixed_seg))
     moving_seg = itk.imread(ensure_nrrd(moving_seg))
     transform = itk.transformread(transform_file)[0]
+
+    import numpy as np
+    min_max_filter = itk.MinimumMaximumImageCalculator.New(fixed_seg)
+    min_max_filter.Compute()
+    ic("Min:", min_max_filter.GetMinimum())
+    ic("Max:", min_max_filter.GetMaximum())
+    ic(np.unique(itk.array_from_image(fixed_seg)))
 
     dispfield_filter = itk.TransformToDisplacementFieldFilter[itk.Image[itk.Vector[itk.F, 3], 3], itk.D].New()
 
@@ -955,7 +977,6 @@ def _evalutate_unigradicon(transform_file, fixed_seg, moving_seg, fixed_img, mov
     displacement_field = dispfield_filter.GetOutput()
 
     displacement_field.GetLargestPossibleRegion().GetSize()
-
 
     interpolator = itk.NearestNeighborInterpolateImageFunction[
         type(moving_seg), itk.D
@@ -971,10 +992,10 @@ def _evalutate_unigradicon(transform_file, fixed_seg, moving_seg, fixed_img, mov
     )
 
     dice = tb.average_dice(
-            itk_to_torch(fixed_seg, seg = True),
-            itk_to_torch(warped_moving_seg, seg = True),
-            verbose = True
-        )
+        itk_to_torch(fixed_seg, seg=True),
+        itk_to_torch(warped_moving_seg, seg=True),
+        verbose=True
+    )
 
     if plot:
         moving_image = itk.imread(moving_img)
@@ -985,59 +1006,61 @@ def _evalutate_unigradicon(transform_file, fixed_seg, moving_seg, fixed_img, mov
             output_spacing=fixed_image.GetSpacing(),
             displacement_field=displacement_field)
 
-        fig, ax = plt.subplots(2,4)
-        ax[0,0].imshow(fixed_image[50], cmap='gray')
-        ax[0,0].set_title("fixed image")
-        ax[0,1].imshow(warped_moving_image[50], cmap='gray')
-        ax[0,1].set_title("warped moving image")
-        ax[0,2].imshow(moving_image[50], cmap='gray')
-        ax[0,2].set_title("moving image")
-        ax[0,3].imshow(itk.checker_board_image_filter(fixed_image, warped_moving_image)[50], cmap='gray')
-        ax[1,0].imshow(fixed_seg[50], cmap='tab10')
-        ax[1,0].set_title("fixed image")
-        ax[1,1].imshow(warped_moving_seg[50], cmap='tab10')
-        ax[1,1].set_title("warped moving image")
-        ax[1,2].imshow(moving_seg[50], cmap='tab10')
-        ax[1,2].set_title("moving image")
-        ax[1,3].imshow(itk.checker_board_image_filter(fixed_seg, warped_moving_seg)[50], cmap= 'tab10')
+        fig, ax = plt.subplots(2, 4)
+        ax[0, 0].imshow(fixed_image[50], cmap='gray')
+        ax[0, 0].set_title("fixed image")
+        ax[0, 1].imshow(warped_moving_image[50], cmap='gray')
+        ax[0, 1].set_title("warped moving image")
+        ax[0, 2].imshow(moving_image[50], cmap='gray')
+        ax[0, 2].set_title("moving image")
+        ax[0, 3].imshow(itk.checker_board_image_filter(fixed_image, warped_moving_image)[50], cmap='gray')
+        ax[1, 0].imshow(fixed_seg[50], cmap='tab10')
+        ax[1, 0].set_title("fixed image")
+        ax[1, 1].imshow(warped_moving_seg[50], cmap='tab10')
+        ax[1, 1].set_title("warped moving image")
+        ax[1, 2].imshow(moving_seg[50], cmap='tab10')
+        ax[1, 2].set_title("moving image")
+        ax[1, 3].imshow(itk.checker_board_image_filter(fixed_seg, warped_moving_seg)[50], cmap='tab10')
         plt.show()
 
     return dice
 
 
 def execute_uniGradIcon(pp, subjects_numbers):
-    temp_paths  = pp.get_template_paths()
+    temp_paths = pp.get_template_paths()
     ic(temp_paths)
     print(temp_paths["image"])
 
     output_folder = os.path.join(result_folder, "unigradicon")
     if subjects_numbers is None:
-        lsn =  len(list(pp.get_subjects_paths(subjects_numbers, require_all=True)))
+        lsn = len(list(pp.get_subjects_paths(subjects_numbers, require_all=True)))
     else:
         lsn = len(subjects_numbers)
-    for i,p in enumerate(pp.get_subjects_paths(numbers=subjects_numbers)):
-        print(f"\n[uniGradIcon on Subject {i+1} on {lsn}]:")
+    for i, p in enumerate(pp.get_subjects_paths(numbers=subjects_numbers)):
+        print(f"\n[uniGradIcon on Subject {i + 1} on {lsn}]:")
         output_name = f"uGI_{os.path.basename(p["subject_dir"])}_to_template"
         print("output_name :", output_name)
 
         fixed = ensure_nrrd(temp_paths["image"])
         moving = ensure_nrrd(p["image"])
         transform_out = os.path.join(output_folder, output_name + '.hdf5')
-        if not RECOMPUTE and  not os.path.exists(transform_out):
+        if not RECOMPUTE and not os.path.exists(transform_out):
 
             cmd = [
                 "unigradicon-register",
-                f"--fixed={fixed}" ,
+                f"--fixed={fixed}",
                 f"--fixed_modality=mri",
                 f"--fixed_segmentation={ensure_nrrd(temp_paths["mask"])}",
-                f"--moving={moving}" ,
+                f"--moving={moving}",
                 f"--moving_modality=mri",
                 f"--moving_segmentation={ensure_nrrd(p["mask"])}",
                 f"--transform_out={transform_out}",
-                f"--warped_moving_out={os.path.join(output_folder, output_name + '.nii.gz' )}",
+                f"--warped_moving_out={os.path.join(output_folder, output_name + '.nii.gz')}",
                 # f"--io_iterations None",
             ]
+            print(cmd)
             execute_subcmd(cmd)
+
         else:
             print(f"File exists, computation skipped : {transform_out}")
 
@@ -1052,24 +1075,152 @@ def execute_uniGradIcon(pp, subjects_numbers):
         # ]
         # execute_subcmd
 
-        dice  = _evalutate_unigradicon(transform_out,
-                               fixed_seg =  ensure_nrrd(temp_paths["aseg"]),
-                               moving_seg= ensure_nrrd(p["aseg"]),
-                               fixed_img=fixed,
-                               moving_img=moving,
-                               plot= False
-            )
+        dice = _evaluate_unigradicon(transform_out,
+                                     fixed_seg=ensure_nrrd(temp_paths["aseg"]),
+                                     moving_seg=ensure_nrrd(p["aseg"]),
+                                     fixed_img=fixed,
+                                     moving_img=moving,
+                                     plot=True
+                                     )
         now = datetime.datetime.now()
+        # Example per patient/method
+        # log_metrics(
+        #     db_path,
+        #     patient_id=p["subject_dir"].name,
+        #     method="unigradicon",
+        #     metrics={'unigradicon ' + k: v for k,v in dice.items()},
+        #     run_id= str(now) + ' at ' + location,
+        #     step=0,
+        #     meta={"gpu":torch.cuda.get_device_name()}
+        # )
+
+
+def execute_uniCarl(pp, subjects_numbers):
+    temp_paths = pp.get_template_paths()
+    ic(temp_paths)
+    print(temp_paths["image"])
+
+    output_folder = os.path.join(result_folder, "unicarl")
+    if subjects_numbers is None:
+        lsn = len(list(pp.get_subjects_paths(subjects_numbers, require_all=True)))
+    else:
+        lsn = len(subjects_numbers)
+    for i, p in enumerate(pp.get_subjects_paths(numbers=subjects_numbers)):
+        print(f"\n[uniCarl on Subject {i + 1} on {lsn}]:")
+        output_name = f"unicarl_{os.path.basename(p["subject_dir"])}_to_template"
+        print("output_name :", output_name)
+
+        fixed = ensure_nrrd(temp_paths["image"])
+        moving = ensure_nrrd(p["image"])
+        transform_out = os.path.join(output_folder, output_name + '.hdf5')
+        if not RECOMPUTE and not os.path.exists(transform_out):
+            cmd = [
+                "unicarl-register",
+                f"--fixed={fixed}",
+                # f"--fixed_modality=mri",
+                # f"--fixed_segmentation={ensure_nrrd(temp_paths["mask"])}",
+                f"--moving={moving}",
+                # f"--moving_modality=mri",
+                # f"--moving_segmentation={ensure_nrrd(p["mask"])}",
+                f"--transform_out={transform_out}",
+                f"--warped_moving_out={os.path.join(output_folder, output_name + '.nii.gz')}",
+                # f"--io_iterations None",
+            ]
+            print(cmd)
+            execute_subcmd(cmd)
+
+        else:
+            print(f"File exists, computation skipped : {transform_out}")
+
+        # aseg_out = os.path.join(output_folder, output_name + '_aseg.nii.gz' )
+        # cmd_wrap = [
+        #     "unigradicon-warp",
+        #     f"--fixed {fixed}",
+        #     f"--moving {ensure_nrrd(p["aseg"])}",
+        #     f"--transform {transform_out}",
+        #     f"--warped_moving_out {aseg_out}",
+        #     "--nearest_neighbor"
+        # ]
+        # execute_subcmd
+
+        dice = _evaluate_unicarl(transform_out,
+                                 fixed_seg=ensure_nrrd(temp_paths["aseg"]),
+                                 moving_seg=ensure_nrrd(p["aseg"]),
+                                 fixed_img=fixed,
+                                 moving_img=moving,
+                                 plot=False
+                                 )
+        now = datetime.datetime.now()
+        print(dice)
         # Example per patient/method
         log_metrics(
             db_path,
             patient_id=p["subject_dir"].name,
-            method="unigradicon",
-            metrics={'unigradicon ' + k: v for k,v in dice.items()},
+            method="unicarl",
+            metrics={'unicarl ' + k: v for k,v in dice.items()},
             run_id= str(now) + ' at ' + location,
             step=0,
             meta={"gpu":torch.cuda.get_device_name()}
         )
+
+def apply_transform(moving, fixed, transform, use_nearest_neighbor=True):
+    """
+    moving : itk image to warp
+    fixed  : itk image that defines the output grid (size, spacing, origin, direction)
+    """
+    interpolator = itk.NearestNeighborInterpolateImageFunction.New(moving) \
+                   if use_nearest_neighbor \
+                   else itk.LinearInterpolateImageFunction.New(moving)
+
+    resampler = itk.ResampleImageFilter.New(
+        Input=moving,
+        Transform=transform,
+        Interpolator=interpolator,
+        UseReferenceImage=True,
+        ReferenceImage=fixed,    # output grid = fixed image grid
+        DefaultPixelValue=0,
+    )
+    resampler.Update()
+    return resampler.GetOutput()
+
+
+def _evaluate_unicarl(transform_out,
+                      fixed_seg,
+                      moving_seg,
+                      fixed_img,
+                      moving_img,
+                      plot=False
+                      ):
+    fixed_seg = itk.imread(ensure_nrrd(fixed_seg))
+    moving_seg = itk.imread(ensure_nrrd(moving_seg))
+    transform = itk.transformread(transform_out)[0]
+
+    # ── Build affine-only composite ──────────────────────────────────────────────
+    affine_transform = itk.CompositeTransform[itk.D, 3].New()
+    affine_transform.PrependTransform(transform.GetNthTransform(3))
+    affine_transform.PrependTransform(transform.GetNthTransform(1))
+    affine_transform.PrependTransform(transform.GetNthTransform(0))
+
+
+    # ── Apply affine-only transform ───────────────────────────────────────────────
+    moving_seg_affine = apply_transform(moving_seg, fixed_seg, affine_transform)
+
+    # ── Apply full composite transform (affine + displacement field) ──────────────
+    moving_seg_full = apply_transform(moving_seg, fixed_seg, transform)
+
+    dice_a = tb.average_dice(
+                itk_to_torch(fixed_seg, seg = True),
+                itk_to_torch(moving_seg_affine, seg = True),
+                message = "(affine only)",
+                verbose = True
+            )
+    dice_d = tb.average_dice(
+            itk_to_torch(fixed_seg, seg = True),
+            itk_to_torch(moving_seg_full, seg = True),
+            verbose = True
+            )
+
+    return dice_a | dice_d
 
 
 # end unigradicon
@@ -1107,7 +1258,8 @@ def compute_flirt(moving, fixed, output, interp="trilinear"):
     execute_subcmd(cmd)
     return output_mat
 
-def apply_affine_mat_fsl(input_nii, reference_nii, transform_mat, output_nii, interp='nearestneighbour' ):
+
+def apply_affine_mat_fsl(input_nii, reference_nii, transform_mat, output_nii, interp='nearestneighbour'):
     """
     Applies an affine transformation to a NIfTI image using FSL's flirt.
 
@@ -1122,7 +1274,6 @@ def apply_affine_mat_fsl(input_nii, reference_nii, transform_mat, output_nii, in
         bool: True if successful, False otherwise.
     """
 
-
     cmd = [
         "flirt",
         "-in", ensure_nifti(input_nii),
@@ -1134,21 +1285,23 @@ def apply_affine_mat_fsl(input_nii, reference_nii, transform_mat, output_nii, in
     ]
     execute_subcmd(cmd)
 
+
 def mask_mri(im_dict):
-        output_mask = im_dict["image"].with_name(im_dict["image"].stem +'_masked' + '.nii.gz')
-        print(f"Applying masks to produce : {output_mask}")
+    output_mask = im_dict["image"].with_name(im_dict["image"].stem + '_masked' + '.nii.gz')
+    print(f"Applying masks to produce : {output_mask}")
 
-        cmd_mask_ixi = [
-            "fslmaths",
-            ensure_nifti(im_dict["image"]),
-            "-mas",
-            ensure_nifti(im_dict["mask"]),
-            output_mask
-        ]
-        execute_subcmd(cmd_mask_ixi)
-        return output_mask
+    cmd_mask_ixi = [
+        "fslmaths",
+        ensure_nifti(im_dict["image"]),
+        "-mas",
+        ensure_nifti(im_dict["mask"]),
+        output_mask
+    ]
+    execute_subcmd(cmd_mask_ixi)
+    return output_mask
 
-def open_nib_to_torch(image, seg : bool, resize_factor):
+
+def open_nib_to_torch(image, seg: bool, resize_factor):
     img = load_canonical(image).get_fdata()
 
     if seg:
@@ -1162,19 +1315,20 @@ def open_nib_to_torch(image, seg : bool, resize_factor):
         img = tb.resize_image(img, resize_factor, mode=mode)
     return img
 
+
 def execute_flirt_lddmm(pp, subjects_numbers):
     if subjects_numbers is None:
         lsn = len(list(pp.get_subjects_paths(subjects_numbers, require_all=True)))
     else:
         lsn = len(subjects_numbers)
-    for i,p in enumerate(pp.get_subjects_paths(numbers=subjects_numbers)):
-        print(f"\n[flirt + lddmm on Subject {p["subject_dir"].name} : {i+1} on {lsn}]:")
+    for i, p in enumerate(pp.get_subjects_paths(numbers=subjects_numbers)):
+        print(f"\n[flirt + lddmm on Subject {p["subject_dir"].name} : {i + 1} on {lsn}]:")
 
         temp_paths = pp.get_template_paths()
         rigid_ixi = p["image"].with_name(f"flirt_img_to_template.nii.gz")
         rigid_seg = p["aseg"].with_name(f"flirt_aseg_to_template.nii.gz")
 
-        if not RECOMPUTE and  not os.path.exists(rigid_ixi):
+        if not RECOMPUTE and not os.path.exists(rigid_ixi):
             ixi_masked = mask_mri(p)
             temp_masked = mask_mri(temp_paths)
 
@@ -1182,37 +1336,36 @@ def execute_flirt_lddmm(pp, subjects_numbers):
             apply_affine_mat_fsl(p["aseg"], temp_masked, output_mat, rigid_seg)
         else:
             print(f"Rigid registration found, skipping computation : {rigid_ixi}")
-            temp_masked = temp_paths["image"].with_name(temp_paths["image"].stem +'_masked' + '.nii.gz')
+            temp_masked = temp_paths["image"].with_name(temp_paths["image"].stem + '_masked' + '.nii.gz')
 
         # # load images
-        source = open_nib_to_torch(rigid_ixi, seg = False, resize_factor = RESIZE_FACTOR)
-        target = open_nib_to_torch(temp_masked, seg = False, resize_factor = RESIZE_FACTOR)
-        source_seg = open_nib_to_torch(rigid_seg, seg = True,resize_factor = RESIZE_FACTOR)
-        target_seg = open_nib_to_torch(temp_paths["aseg"], seg = True, resize_factor = RESIZE_FACTOR)
+        source = open_nib_to_torch(rigid_ixi, seg=False, resize_factor=RESIZE_FACTOR)
+        target = open_nib_to_torch(temp_masked, seg=False, resize_factor=RESIZE_FACTOR)
+        source_seg = open_nib_to_torch(rigid_seg, seg=True, resize_factor=RESIZE_FACTOR)
+        target_seg = open_nib_to_torch(temp_paths["aseg"], seg=True, resize_factor=RESIZE_FACTOR)
         print("image shape : ", source.shape)
         source = source.to(device)
-        target =target.to(device)
+        target = target.to(device)
 
+        dice_flirt = tb.average_dice(source_seg, target_seg, "(rigid only)", verbose=True)
 
-        dice_flirt = tb.average_dice(source_seg, target_seg, "(rigid only)", verbose = True)
-
-        sigma = [(3,3,3), (7,7,7)]
+        sigma = [(3, 3, 3), (7, 7, 7)]
         kernel_op = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
         # data_cost = mt.Mutual_Information(target)
         data_cost = mt.Ssd(target)
         mr = mt.lddmm(source, target, 0, kernel_op,
-                 cost_cst=.001,
-                grad_coef=1,
-                 integration_steps=7,
-                 n_iter= 20,
-                lbfgs_history_size=15,
-              data_term=data_cost,
-        )
+                      cost_cst=.001,
+                      grad_coef=1,
+                      integration_steps=7,
+                      n_iter=20,
+                      lbfgs_history_size=15,
+                      data_term=data_cost,
+                      )
         # source_seg_def= tb.imgDeform(target_seg, mr.mp.get_deformator(), dx_convention=mr.dx_convention) # TODO: Probablement pas target_seg ici ....
         dice_lddmm, _ = mr.compute_DICE(source_seg, target_seg)
         mr.save(f"{p["subject_dir"].name}_flirt_lddmm",
                 light_save=True,
-                save_path = os.path.join(result_folder, "flirt_lddmm")
+                save_path=os.path.join(result_folder, "flirt_lddmm")
                 )
         dice = dice_flirt | dice_lddmm
         mt.free_GPU_memory(mr)
@@ -1222,26 +1375,26 @@ def execute_flirt_lddmm(pp, subjects_numbers):
             db_path,
             patient_id=p["subject_dir"].name,
             method=f"flirt_lddmm R{RESIZE_FACTOR}",
-            metrics={f'flirt_lddmm ' + k: v for k,v in dice.items()},
-            run_id= str(now) + ' at ' + location,
+            metrics={f'flirt_lddmm ' + k: v for k, v in dice.items()},
+            run_id=str(now) + ' at ' + location,
             step=0,
-            meta={"gpu":torch.cuda.get_device_name(),
+            meta={"gpu": torch.cuda.get_device_name(),
                   "data_cost": mr.data_term.__class__.__name__,
-                  "sigma":sigma,
+                  "sigma": sigma,
                   "RESIZE FACTOR": RESIZE_FACTOR,
                   }
         )
+
 
 #                   end flirt + lddmm
 # ====================================================
 
 def execute_control(pp, subjects_numbers):
-
     for paths, source, target, seg_source, seg_target in pp.get_subjects_aligned(
-        numbers=subjects_numbers, resize_factor=1, first_only=False, progress=True, tqdm_kwargs={"leave": True}
+            numbers=subjects_numbers, resize_factor=1, first_only=False, progress=True, tqdm_kwargs={"leave": True}
     ):
         print(paths["subject_dir"].name)
-        dice = tb.average_dice(seg_source, seg_target, "before reg", verbose = True)
+        dice = tb.average_dice(seg_source, seg_target, "before reg", verbose=True)
 
         now = datetime.datetime.now()
         log_metrics(
@@ -1249,43 +1402,45 @@ def execute_control(pp, subjects_numbers):
             patient_id=paths["subject_dir"].name,
             method="before reg",
             metrics=dice,
-            run_id= str(now) + ' at ' + location,
+            run_id=str(now) + ' at ' + location,
             step=0,
-            meta={"gpu":torch.cuda.get_device_name()}
+            meta={"gpu": torch.cuda.get_device_name()}
         )
 
-#%%
+
+# %%
 def execute_dummy(pp, subjects_numbers):
     import random, string
     if subjects_numbers is None:
         lsn = paths_list = list(pp.get_subjects_paths(subjects_numbers, require_all=True))
     else:
         lsn = len(subjects_numbers)
-    for i,p in enumerate(pp.get_subjects_paths(numbers=subjects_numbers)):
-        print(f"\n[uniGradIcon on Subject {i+1} on {lsn}]:")
+    for i, p in enumerate(pp.get_subjects_paths(numbers=subjects_numbers)):
+        print(f"\n[uniGradIcon on Subject {i + 1} on {lsn}]:")
         now = datetime.datetime.now()
-        dice = {''.join(random.choices(string.ascii_uppercase, k=4)) : random.random() for _ in range(7) }
+        dice = {''.join(random.choices(string.ascii_uppercase, k=4)): random.random() for _ in range(7)}
         # Example per patient/method
-        print("Execute dummy on ",p["subject_dir"].name)
-        run_id =  str(now) + ' at ' + location
-        print("\t",run_id)
-        metric = {'dummy ' + k: v for k,v in dice.items()}
+        print("Execute dummy on ", p["subject_dir"].name)
+        run_id = str(now) + ' at ' + location
+        print("\t", run_id)
+        metric = {'dummy ' + k: v for k, v in dice.items()}
         print("\tmetrics :", metric)
         log_metrics(
             db_path,
             patient_id=p["subject_dir"].name,
             method="dummy",
             metrics=metric,
-            run_id= run_id,
+            run_id=run_id,
             step=0,
-            meta={"gpu":torch.cuda.get_device_name()}
+            meta={"gpu": torch.cuda.get_device_name()}
         )
+
 
 @contextmanager
 def get_conn(db_path):
     conn = sqlite3.connect(db_path, timeout=30, isolation_level=None)  # autocommit
-    conn.execute("PRAGMA journal_mode=WAL;")       # better concurrency & durability
-    conn.execute("PRAGMA synchronous=NORMAL;")     # good balance safety/speed
+    conn.execute("PRAGMA journal_mode=WAL;")  # better concurrency & durability
+    conn.execute("PRAGMA synchronous=NORMAL;")  # good balance safety/speed
     conn.execute("""
     CREATE TABLE IF NOT EXISTS results (
         patient_id TEXT NOT NULL,
@@ -1306,14 +1461,14 @@ def get_conn(db_path):
     finally:
         conn.close()
 
+
 def clean_method(db_name, method_name):
     with sqlite3.connect(db_name) as conn:
         conn.execute("DELETE FROM results WHERE method = ?", (method_name,))
         conn.commit()
 
 
-
-def log_metrics(db_path, patient_id, method, metrics: dict, run_id, step=0, meta: dict=None):
+def log_metrics(db_path, patient_id, method, metrics: dict, run_id, step=0, meta: dict = None):
     """
     metrics: {"dice": 0.91, "hausdorff95": 3.2, ...}
     meta:    {"gpu_mem": 3.1, "seed": 42, "shape": [160,192,160]}  (optional)
@@ -1334,9 +1489,11 @@ def log_metrics(db_path, patient_id, method, metrics: dict, run_id, step=0, meta
             for k, v in metrics.items()
         ])
 
+
 if __name__ == '__main__':
-    #%%
+    # %%
     import subprocess
+
     cwd = subprocess.check_output("pwd", text=True).strip()
     if "content" in cwd:
         template_folder = "/content/drive/MyDrive/demeter_data/ixi-T1/"
@@ -1351,14 +1508,20 @@ if __name__ == '__main__':
         result_folder = "/gpfs/workdir/francoisa/data/IXI_results/"
         location = 'meso'
         # OPTIM_SAVE_DIR = "/gpfs/workdir/francoisa/saved_optim/"
+    elif "afrancois" in cwd:
+        template_folder = "/home/afrancois/data/templates/mni_icbm152_nlin_asym_09c_nifti/mni_icbm152_nlin_asym_09c"
+        ixi_folder = "/home/afrancois/data/IXI-T1_fastsurfer"
+        template_seg_path = "fastsurfer_seg/mri/"
+        result_folder = "/home/afrancois/data/IXI_results/"
+        location = 'spark'
     else:
-        template_folder ="/home/turtlefox/Documents/11_metamorphoses/data/templates/mni_icbm152_nlin_asym_09c_nifti/mni_icbm152_nlin_asym_09c"
+        template_folder = "/home/turtlefox/Documents/11_metamorphoses/data/templates/mni_icbm152_nlin_asym_09c_nifti/mni_icbm152_nlin_asym_09c"
         ixi_folder = "/home/turtlefox/Documents/11_metamorphoses/data/IXI-T1_fastsurfer"
         template_seg_path = "fastsurfer_seg/mri/"
         result_folder = "/home/turtlefox/Documents/11_metamorphoses/data/IXI_results/"
         location = 'local'
     device = "cuda:0"
-    #%%
+    # %%
     pp = IXIToTemplatePreprocessor(
         ixi_root=ixi_folder,
         template_root=template_folder,
@@ -1366,40 +1529,38 @@ if __name__ == '__main__':
         do_plot=False,
     )
 
-
-    # subjects_numbers = [2,12,13,14,15,16,17,19] # 1
+    subjects_numbers = [2,12,13,14,15,16,17,19] # 1
     # subjects_numbers = [20,21,22,23,24,25,26,27,28,29] # 2
     # subjects_numbers = [30,31,33,34,35,36,37,38,39] # 3
     # subjects_numbers = [40,41,42,43,44,45,46,48,49] # 4
     # subjects_numbers = [50,51,52,53,54,55,56,57,58,59] # 5
-    subjects_numbers = [60,61,62,63,64,65,66,67,68,69] # 6
+    # subjects_numbers = [60,61,62,63,64,65,66,67,68,69] # 6
     # subjects_numbers = [35, 37, 61, 66, 34, 49]
 
     # all
-    # subjects_numbers = [2,12,13,14,15,16,17,19, # 1
-    #  20,21,22,23,24,25,26,27,28,29, # 2
-    #  30,31,33,34,35,36,37,38,39, # 3
-    #  40,41,42,43,44,45,46,48,49, # 4
-    #  50,51,52,53,54,55,56,57,58,59, # 5
-    #  60,61,62,63,64,65,66,67,68,69] # 6
+    # subjects_numbers = [2, 12, 13, 14, 15, 16, 17, 19,  # 1
+    #                     20, 21, 22, 23, 24, 25, 26, 27, 28, 29,  # 2
+    #                     30, 31, 33, 34, 35, 36, 37, 38, 39,  # 3
+    #                     40, 41, 42, 43, 44, 45, 46, 48, 49,  # 4
+    #                     50, 51, 52, 53, 54, 55, 56, 57, 58, 59,  # 5
+    #                     60, 61, 62, 63, 64, 65, 66, 67, 68, 69]  # 6
     # subjects_numbers = [35, 37, 61, 66, 34, 49]
-
 
     # = [35,36,37,38,39,41,42,43] Done
     # [44,45,46,48,49,50,51,52,53,54, Done
     # 55,56,57,58,59,60,61,62, Done
     #     # subjects_numbers = [63,64,65,66,67,68,69]
     # subjects_numbers = None
-    subjects_numbers = [2, 40]#, 26, 50,2, 12]
+    # subjects_numbers = [2, 40]#, 26, 50,2, 12]
     RECOMPUTE = False
     RESIZE_FACTOR = .5 if location == 'local' else 1
     FLAG_DECOUPLED = False
 
     # init_csv(result_folder)
 
-    if location == "meso": # don't touch this line
+    if location == "meso":  # don't touch this line
         file_db = "ixi_results_2026.db"
-    else: # here you can sandbox what you need to do.
+    else:  # here you can sandbox what you need to do.
         file_db = f"ixi_results_{location}.db"
         # file_db = "ixi_results_meso_20250917.db"
     db_path = os.path.join(result_folder, file_db)
@@ -1408,10 +1569,9 @@ if __name__ == '__main__':
     # execute_dummy(pp, subjects_numbers)
     # execute_control(pp,subjects_numbers)
     # if location == 'meso':
-    #     execute_uniGradIcon(pp, subjects_numbers)
+    # execute_uniGradIcon(pp, subjects_numbers)
+    # execute_uniCarl(pp, subjects_numbers)
     # execute_flirt_lddmm(pp, subjects_numbers)
     # elif location == 'local':
     # execute_rigid_along_metamorphosis(pp, subjects_numbers)
     execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers)
-
-
