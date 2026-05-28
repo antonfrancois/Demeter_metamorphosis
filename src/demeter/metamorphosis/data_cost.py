@@ -5,6 +5,7 @@ the abstract class `DataCost`. The module contains the following classes:
 `Ssd`, `Ssd_normalized`, `Cfm`, `SimiliSegs`, `Mutlimodal_ssd_cfm`, `Longitudinal_DataCost`.
 """
 from mailbox import Error
+from pathlib import Path
 
 import torch
 from abc import ABC, abstractmethod
@@ -72,6 +73,9 @@ class DataCost(ABC, torch.nn.Module):
 
     def to_device(self, device):
         self.target = self.target.to(device)
+
+    def _get_all_parameters_(self):
+        return {"name":self.__class__.__name__}
 
     @abstractmethod
     def __call__(self, at_step=None, **kwargs):
@@ -443,14 +447,36 @@ class Rotation_Ssd_Cost(DataCost):
 
         self.verbose = verbose
         self.plot = plot
-        self.save_plot = save_plot
+        self.save_plot = Path(save_plot)
         self.normalize_ssd = normalize_ssd
         self.edges_computes = edges_computes
 
         if self.save_values:
-            self.stock_ssd = torch.empty(200)
-            self.stock_ssd_rot = torch.empty(200)
-            self.stock_gamma = torch.empty(200)
+            self.stock_ssd = []
+            self.stock_ssd_rot = []
+            self.stock_gamma = []
+
+    def _get_all_parameters_(self):
+        base = super()._get_all_parameters_()
+        if self.gamma_mode == 'constant':
+            gamma_kwargs = {"gamma": self.gamma}
+        elif self.gamma_mode == 'sigmoid':
+            gamma_kwargs = {"sigmoid_a": self.sigmoid_a,
+                            "sigmoid_b": self.sigmoid_b,
+                            "sigmoid_c": self.sigmoid_c}
+        elif "variationnal" == self.gamma_mode:
+            gamma_kwargs = {"c": self.c,  # Passe haut pour K
+                            "nu": self.nu,
+                            "stock_ssd": self.stock_ssd,
+                            "stock_ssd_rot": self.stock_ssd_rot,
+                            "stock_gamma": self.stock_gamma ,
+                            } # Dampening gamma
+        else:
+            raise ValueError("gamma mode not supported for saving")
+
+        spe = {
+            "gamma_mode": self.gamma_mode,
+        } | gamma_kwargs
 
     def __repr__(self):
         return super().__repr__() + self.gamma_mode # + self.gamma_kwargs
@@ -470,11 +496,14 @@ class Rotation_Ssd_Cost(DataCost):
         else:
             raise ValueError("gamma_mode must be among ['constant', 'sigmoid', 'variationnal']")
 
+
+
     def _compute_ssd_rot_derivative(self):
         _iter = self.optimizer._iter_
         win = 6
         if _iter > win:
-            diff = self.stock_ssd_rot[_iter - win +1:_iter] - self.stock_ssd_rot[_iter-win:_iter-1]
+            diff = torch.tensor(self.stock_ssd_rot[_iter - win + 1:_iter]) \
+                    - torch.tensor(self.stock_ssd_rot[_iter - win:_iter - 1])
         # elif _iter > 1:
         #     diff = self.stock_ssd_rot[1:_iter] - self.stock_ssd_rot[:_iter-1]
         else:
@@ -507,32 +536,33 @@ class Rotation_Ssd_Cost(DataCost):
             return  torch.clip(gamma, 0,1)
 
     def plot_cost_data_term(self):
-      fig, ax = plt.subplots(1,2, figsize=(10, 5))
+        fig, ax = plt.subplots(1,1, figsize=(5, 5))
 
-      # Main axis
-      ax[0].plot(self.stock_ssd, label="ssd (D(p))")
-      ax[0].plot(self.stock_ssd_rot, label="ssd_rot (R(p))")
-      ax[0].set_ylabel("SSD terms")
+        # Main axis
+        ax.plot(self.stock_ssd, label="ssd (D(p))")
+        ax.plot(self.stock_ssd_rot, label="ssd_rot (R(p))")
+        ax.set_ylabel("SSD terms")
 
-      # Secondary axis
-      ax2 = ax[0].twinx()
-      ax2.plot(self.stock_gamma, label="gamma", color="green")
-      ax2.set_ylabel("Gamma")
+        # Secondary axis
+        ax2 = ax.twinx()
+        ax2.plot(self.stock_gamma, label="gamma", color="green")
+        ax2.set_ylabel("Gamma")
 
-      # Combine legends
-      lines_1, labels_1 = ax[0].get_legend_handles_labels()
-      lines_2, labels_2 = ax2.get_legend_handles_labels()
-      ax[0].legend(lines_1 + lines_2, labels_1 + labels_2)
+        # Combine legends
+        lines_1, labels_1 = ax.get_legend_handles_labels()
+        lines_2, labels_2 = ax2.get_legend_handles_labels()
+        ax.legend(lines_1 + lines_2, labels_1 + labels_2)
 
-      dict_loss = {
-          "ssd (D(p))": self.stock_ssd,
-          "ssd_rot (R(p))": self.stock_ssd_rot,
-          "Gamma": self.stock_gamma
-      }
+        # dict_loss = {
+        #   "ssd (D(p))": self.stock_ssd,
+        #   "ssd_rot (R(p))": self.stock_ssd_rot,
+        #   "Gamma": self.stock_gamma
+        # }
+        return fig, ax
 
 
     def _plot_3d_(self, rotated_image, rotated_source, gamma, ssd, ssd_rot):
-        fig, ax = plt.subplots(3,2, figsize=(7,10), constrained_layout=True)
+        fig, ax = plt.subplots(3,2, figsize=(10,7), constrained_layout=True)
         B,_,D,H,W = rotated_image.shape
         coord = (D//2, H//2, W//2+5)
         cmp_im1 = tb.imCmp(rotated_image, self.target, "compose")[0]
@@ -560,7 +590,8 @@ class Rotation_Ssd_Cost(DataCost):
         # ax[1,1].imshow(torch.abs(rotated_source - self.target)[0,0].detach().cpu().numpy())
         ax[2,1].set_title('rot source vs target')
         if self.save_plot is not None:
-            fig.savefig(str(self.save_plot) + f"_{self.optimizer._iter_:03d}.png")
+            self.save_plot.mkdir(parents=True, exist_ok=True)
+            fig.savefig(self.save_plot / f"_{self.optimizer._iter_:03d}.png")
         plt.show()
 
     def _plot_2d_(self, rotated_image, rotated_source, gamma, ssd, ssd_rot):
@@ -625,9 +656,9 @@ class Rotation_Ssd_Cost(DataCost):
                 self._plot_3d_(rotated_image, rotated_source, gamma, ssd, ssd_rot)
 
         if self.save_values:
-            self.stock_ssd[self.optimizer._iter_] = ssd.detach()
-            self.stock_ssd_rot[self.optimizer._iter_] = ssd_rot.detach()
-            self.stock_gamma[self.optimizer._iter_] = gamma
+            self.stock_ssd.append(ssd.detach().item())
+            self.stock_ssd_rot.append(ssd_rot.detach().item())
+            self.stock_gamma.append(gamma)
         return gamma * ssd_rot + (1-gamma) * ssd
 
 #
