@@ -804,7 +804,7 @@ class Affine_Metamorphosis_Optimizer(Optimize_geodesicShooting):
                                                )
         rotation_dice = tb.average_dice(self.source_seg_rotated,
                                         target_segmentation,
-                                        message="(rotation only)",
+                                        message="(affine only)",
                                         verbose=verbose)
         print(f"Rigid dice : {rotation_dice}")
 
