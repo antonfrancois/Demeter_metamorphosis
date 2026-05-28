@@ -150,6 +150,7 @@ mr_rigid = mt.affine_decoupled_along_metamorphosis(
 top_params = rg.initial_exploration(mr_rigid, r_step = 100,
                                     max_output =10, verbose=True)
 # top_params = None
+top_params = top_params[8:]
 print("top_params : ",top_params)
 
 print("")
@@ -168,8 +169,8 @@ print(f"best_priors : {best_priors}")
 id = 1
 plt.show()
 
-lu.plot(mr_rigid)
-plt.show()
+# lu.plot(mr_rigid)
+# plt.show()
 #%%
 # #####################################################
 # # Choose a specific rigid optimisation changes the optimisation
@@ -261,7 +262,7 @@ saving_plots= pathlib.Path(
 )
 
 gamma_kwargs = {'c': 10, 'nu':.05}
-n_iter = 150
+n_iter = 500
 
 kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False, kernel_reach =6)
 datacost = mt.Rotation_Ssd_Cost(
@@ -291,31 +292,37 @@ momenta = mt.prepare_momenta(
 
 
 mr = mt.affine_decoupled_along_metamorphosis(
-  source, target, momenta_ini=momenta,
-  kernelOperator= kernelOperator,
-  rho = rho,
-  data_term=datacost,
-  integration_steps = integration_steps,
-  cost_cst=cost_cst,
-  cost_field_cst = cost_field_cst,
-  cost_affine_cst = cost_affine_cst,
-  n_iter=n_iter,
+    source, target, momenta_ini=momenta,
+    kernelOperator= kernelOperator,
+    rho = rho,
+    data_term=datacost,
+    integration_steps = integration_steps,
+    cost_cst=cost_cst,
+    cost_field_cst = cost_field_cst,
+    cost_affine_cst = cost_affine_cst,
+    n_iter=n_iter,
+    convergence_tol=2e-3,
+    convergence_patience=3,
     grad_coef=.1,
     # optimizer_method='adadelta',
-  # lbfgs_max_iter = 20,
-  # lbfgs_history_size = 20,
-  optimizer_method='Adam',
-  adam_dt_step_field=adam_dt_step_field,
-  adam_dt_step_affine=adam_dt_step_affine,
-  save_gpu_memory=False,
+    # lbfgs_max_iter = 20,
+    # lbfgs_history_size = 20,
+    optimizer_method='Adam',
+    adam_dt_step_field=adam_dt_step_field,
+    adam_dt_step_affine=adam_dt_step_affine,
+    adam_scheduler="reduce_on_plateau",
+    # adam_scheduler="exponential",
+    save_gpu_memory=False,
     safe_mode=True,
     debug=False,
 )
-
+mr.compute_dice(source,target)
 
 best = False
 fig_cost, _ = mr.plot_cost()
 fig_cost.savefig(str(saving_plots) + "_cost.png")
+plt.show()
+mr.data_term.plot_cost_data_term()
 plt.show()
 lu.plot(mr)
 plt.show()
@@ -325,6 +332,7 @@ plt.show()
 
 mt.free_GPU_memory(mr)
 
+raise ValueError("pin pin est pau pau")
 #%%
 lu.frames_to_video_ffmpeg(
   frames_dir=saving_plots.parent,
@@ -564,6 +572,8 @@ mr_l = mt.lddmm(
     grad_coef=.1,
     integration_steps=10,
     n_iter  = 75,
+    convergence_tol= 1e-3,
+    adam_scheduler="convergence_on_plateau",
 )
 mr_l.plot_cost()
 plt.show()

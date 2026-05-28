@@ -447,7 +447,7 @@ class Rotation_Ssd_Cost(DataCost):
 
         self.verbose = verbose
         self.plot = plot
-        self.save_plot = Path(save_plot)
+        self.save_plot = Path(save_plot) if save_plot else None
         self.normalize_ssd = normalize_ssd
         self.edges_computes = edges_computes
 

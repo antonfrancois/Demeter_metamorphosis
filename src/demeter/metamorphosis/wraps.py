@@ -24,13 +24,16 @@ def _commun_before(momentum_ini, source):
     return momentum_ini
 
 
-def _commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef):
+def _commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef,
+                  convergence_tol=None, convergence_patience=3):
     if n_iter == 0:
         return mr
     if not safe_mode:
-        mr.forward(momentum_ini, n_iter=n_iter, grad_coef=grad_coef)
+        mr.forward(momentum_ini, n_iter=n_iter, grad_coef=grad_coef,
+                   convergence_tol=convergence_tol, convergence_patience=convergence_patience)
     else:
-        mr.forward_safe_mode(momentum_ini, n_iter=n_iter, grad_coef=grad_coef)
+        mr.forward_safe_mode(momentum_ini, n_iter=n_iter, grad_coef=grad_coef,
+                             convergence_tol=convergence_tol, convergence_patience=convergence_patience)
     return mr
 
 
@@ -51,9 +54,13 @@ def lddmm(
     dx_convention="pixel",
     optimizer_method="LBFGS_torch",
     hamiltonian_integration=False,
-    save_gpu_memory =False,
+    save_gpu_memory=False,
     lbfgs_max_iter: int = 20,
     lbfgs_history_size: int = 100,
+    convergence_tol=None,
+    convergence_patience=3,
+    adam_scheduler="convergence_on_plateau",
+    adam_grad_clip=None,
 ):
     """
     Run LDDMM registration from ``source`` to ``target``.
@@ -96,6 +103,18 @@ def lddmm(
         Maximum number of internal iterations for LBFGS steps.
     lbfgs_history_size : int, optional
         History size used by LBFGS.
+    convergence_tol : float or None, optional
+        Early-stopping relative tolerance on the data loss. See
+        ``Optimize_geodesicShooting.forward`` for details. Default ``None`` (disabled).
+    convergence_patience : int, optional
+        Number of consecutive plateau steps before stopping. Default 3.
+    adam_scheduler : str or None, optional
+        LR scheduler for Adam. ``None`` (default) disables scheduling.
+        Choices: ``'reduce_on_plateau'``, ``'cosine'``, ``'exponential'``.
+        Ignored for non-Adam optimizers.
+    adam_grad_clip : float or None, optional
+        If set, gradient norm is clipped to this value before each Adam step.
+        ``None`` (default) disables clipping. Ignored for non-Adam optimizers.
 
     Returns
     -------
@@ -120,15 +139,17 @@ def lddmm(
         target,
         mp,
         cost_cst=cost_cst,
-        # optimizer_method='LBFGS_torch',
         optimizer_method=optimizer_method,
         data_term=data_term,
         lbfgs_max_iter=lbfgs_max_iter,
         lbfgs_history_size=lbfgs_history_size,
         hamiltonian_integration=hamiltonian_integration,
+        adam_scheduler=adam_scheduler,
+        adam_grad_clip=adam_grad_clip,
     )
 
-    mr = _commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef)
+    mr = _commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef,
+                      convergence_tol=convergence_tol, convergence_patience=convergence_patience)
 
     return mr
 
@@ -153,7 +174,11 @@ def metamorphosis(
     hamiltonian_integration=False,
     lbfgs_max_iter: int = 20,
     lbfgs_history_size: int = 100,
-    save_gpu_memory = False,
+    save_gpu_memory=False,
+    convergence_tol=None,
+    convergence_patience=3,
+    adam_scheduler="convergence_on_plateau",
+    adam_grad_clip=None,
 ):
     """
     Run metamorphosis registration from ``source`` to ``target``.
@@ -201,6 +226,18 @@ def metamorphosis(
         History size used by LBFGS.
     save_gpu_memory : bool, optional
         Enable memory-saving mode in the geodesic integrator.
+    convergence_tol : float or None, optional
+        Early-stopping relative tolerance on the data loss. See
+        ``Optimize_geodesicShooting.forward`` for details. Default ``None`` (disabled).
+    convergence_patience : int, optional
+        Number of consecutive plateau steps before stopping. Default 3.
+    adam_scheduler : str or None, optional
+        LR scheduler for Adam. ``None`` (default) disables scheduling.
+        Choices: ``'reduce_on_plateau'``, ``'cosine'``, ``'exponential'``.
+        Ignored for non-Adam optimizers.
+    adam_grad_clip : float or None, optional
+        If set, gradient norm is clipped to this value before each Adam step.
+        ``None`` (default) disables clipping. Ignored for non-Adam optimizers.
 
     Returns
     -------
@@ -226,14 +263,16 @@ def metamorphosis(
         mp,
         cost_cst=cost_cst,
         data_term=data_term,
-        # optimizer_method='LBFGS_torch')
         optimizer_method=optimizer_method,
         lbfgs_max_iter=lbfgs_max_iter,
         lbfgs_history_size=lbfgs_history_size,
         hamiltonian_integration=hamiltonian_integration,
+        adam_scheduler=adam_scheduler,
+        adam_grad_clip=adam_grad_clip,
     )
 
-    mr = _commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef)
+    mr = _commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef,
+                      convergence_tol=convergence_tol, convergence_patience=convergence_patience)
     return mr
 
 
@@ -256,6 +295,10 @@ def weighted_metamorphosis(
     safe_mode=True,
     optimizer_method="adadelta",
     dx_convention="pixel",
+    convergence_tol=None,
+    convergence_patience=3,
+    adam_scheduler="convergence_on_plateau",
+    adam_grad_clip=None,
 ):
     print("plop")
     device = source.device
@@ -274,9 +317,12 @@ def weighted_metamorphosis(
         cost_cst=cost_cst,
         optimizer_method=optimizer_method,
         data_term=data_term,
+        adam_scheduler=adam_scheduler,
+        adam_grad_clip=adam_grad_clip,
     )
 
-    mr_weighted = _commun_after(mr_weighted, momentum_ini, safe_mode, n_iter, grad_coef)
+    mr_weighted = _commun_after(mr_weighted, momentum_ini, safe_mode, n_iter, grad_coef,
+                               convergence_tol=convergence_tol, convergence_patience=convergence_patience)
     return mr_weighted
 
 
@@ -294,6 +340,10 @@ def oriented_metamorphosis(
     dx_convention="pixel",
     hamiltonian_integration=False,
     safe_mode=True,
+    convergence_tol=None,
+    convergence_patience=3,
+    adam_scheduler="convergence_on_plateau",
+    adam_grad_clip=None,
 ):
     if hamiltonian_integration:
         raise NotImplementedError("Hamiltonian integration is not implemented yet for this function.")
@@ -313,9 +363,12 @@ def oriented_metamorphosis(
     )
     mr_orient = cn.ConstrainedMetamorphosis_Shooting(
         source, target, mp_orient, cost_cst=cost_cst, optimizer_method="LBFGS_torch",
-                hamiltonian_integration=hamiltonian_integration,
+        hamiltonian_integration=hamiltonian_integration,
+        adam_scheduler=adam_scheduler,
+        adam_grad_clip=adam_grad_clip,
     )
-    mr_orient = _commun_after(mr_orient, momentum_ini, safe_mode, n_iter, grad_coef)
+    mr_orient = _commun_after(mr_orient, momentum_ini, safe_mode, n_iter, grad_coef,
+                             convergence_tol=convergence_tol, convergence_patience=convergence_patience)
     return mr_orient
 
 
@@ -334,9 +387,13 @@ def constrained_metamorphosis(
     sharp=False,
     dx_convention="pixel",
     optimizer_method='LBFGS_torch',
-   safe_mode=True,
+    safe_mode=True,
     hamiltonian_integration=False,
-    save_gpu_memory = False
+    save_gpu_memory=False,
+    convergence_tol=None,
+    convergence_patience=3,
+    adam_scheduler="convergence_on_plateau",
+    adam_grad_clip=None,
 ):
     if hamiltonian_integration:
         raise NotImplementedError("Hamiltonian integration is not implemented yet for this function.")
@@ -351,15 +408,18 @@ def constrained_metamorphosis(
         kernelOperator=kernelOperator,
         sharp=sharp,
         dx_convention=dx_convention,
-        save_gpu_memory = save_gpu_memory,
+        save_gpu_memory=save_gpu_memory,
         # n_step=20 # n_step is defined from mask.shape[0]
     )
     mr_constr = cn.ConstrainedMetamorphosis_Shooting(
         source, target, mp_constr, cost_cst=cost_cst, optimizer_method="LBFGS_torch",
-                hamiltonian_integration=hamiltonian_integration,
+        hamiltonian_integration=hamiltonian_integration,
+        adam_scheduler=adam_scheduler,
+        adam_grad_clip=adam_grad_clip,
     )
     # optimizer_method='adadelta')
-    mr_constr = _commun_after(mr_constr, momentum_ini, safe_mode, n_iter, grad_coef)
+    mr_constr = _commun_after(mr_constr, momentum_ini, safe_mode, n_iter, grad_coef,
+                             convergence_tol=convergence_tol, convergence_patience=convergence_patience)
     return mr_constr
 
 
@@ -381,7 +441,11 @@ def joined_metamorphosis(
     plot=False,
     safe_mode=False,
     debug=False,
-    save_gpu_memory = False,
+    save_gpu_memory=False,
+    convergence_tol=None,
+    convergence_patience=3,
+    adam_scheduler="convergence_on_plateau",
+    adam_grad_clip=None,
 ):
     # source = torch.stack([source_image,source_mask],dim=1)
     # target = torch.stack([target_image,target_mask],dim=1)
@@ -408,12 +472,16 @@ def joined_metamorphosis(
         mp,
         cost_cst=cost_cst,
         data_term=data_term,
-        optimizer_method=optimizer_method
+        optimizer_method=optimizer_method,
+        adam_scheduler=adam_scheduler,
+        adam_grad_clip=adam_grad_clip,
     )
     if safe_mode:
-        mr.forward_safe_mode(momentum_ini, n_iter, grad_coef, plot)
+        mr.forward_safe_mode(momentum_ini, n_iter, grad_coef, plot,
+                             convergence_tol=convergence_tol, convergence_patience=convergence_patience)
     else:
-        mr.forward(momentum_ini, n_iter=n_iter, grad_coef=grad_coef, plot=plot,debug=debug)
+        mr.forward(momentum_ini, n_iter=n_iter, grad_coef=grad_coef, plot=plot, debug=debug,
+                   convergence_tol=convergence_tol, convergence_patience=convergence_patience)
     return mr
 
 
@@ -432,9 +500,13 @@ def simplex_metamorphosis(
     plot=False,
     safe_mode=False,
     ham=False,
-   save_gpu_memory = False,
+    save_gpu_memory=False,
     lbfgs_max_iter: int = 20,
     lbfgs_history_size: int = 100,
+    convergence_tol=None,
+    convergence_patience=3,
+    adam_scheduler="convergence_on_plateau",
+    adam_grad_clip=None,
 ):
 
     if type(momentum_ini) in [int, float]:
@@ -448,7 +520,7 @@ def simplex_metamorphosis(
         kernelOperator=kernelOperator,
         n_step=integration_steps,
         dx_convention=dx_convention,
-        save_gpu_memory = save_gpu_memory
+        save_gpu_memory=save_gpu_memory,
         # debug=True
     )
     mr = sp.Simplex_sqrt_Shooting(
@@ -458,15 +530,18 @@ def simplex_metamorphosis(
         cost_cst=cost_cst,
         data_term=data_term,
         optimizer_method="LBFGS_torch",
-        # optimizer_method='adadelta'
         hamiltonian_integration=ham,
         lbfgs_history_size=lbfgs_history_size,
-        lbfgs_max_iter=lbfgs_max_iter
+        lbfgs_max_iter=lbfgs_max_iter,
+        adam_scheduler=adam_scheduler,
+        adam_grad_clip=adam_grad_clip,
     )
     if safe_mode:
-        mr.forward_safe_mode(momentum_ini, n_iter, grad_coef, plot)
+        mr.forward_safe_mode(momentum_ini, n_iter, grad_coef, plot,
+                             convergence_tol=convergence_tol, convergence_patience=convergence_patience)
     else:
-        mr.forward(momentum_ini, n_iter=n_iter, grad_coef=grad_coef, plot=plot)
+        mr.forward(momentum_ini, n_iter=n_iter, grad_coef=grad_coef, plot=plot,
+                   convergence_tol=convergence_tol, convergence_patience=convergence_patience)
     return mr
 
 @monitor_gpu
@@ -482,19 +557,23 @@ def affine_along_metamorphosis(
         n_iter=0,
         grad_coef=2,
         cost_cst=0.001,
-        cost_field_cst = .5,
-        cost_affine_cst = 1,
+        cost_field_cst=.5,
+        cost_affine_cst=1,
         plot=False,
         safe_mode=False,
-        constraints = True,
+        constraints=True,
         optimizer_method="LBFGS_torch",
         hamiltonian_integration=False,
-       save_gpu_memory = False,
-        lbfgs_max_iter = 20,
-        lbfgs_history_size = 100,
+        save_gpu_memory=False,
+        lbfgs_max_iter=20,
+        lbfgs_history_size=100,
         adam_dt_step_field=1e-3,
         adam_dt_step_affine=5e-2,
-        debug=False
+        debug=False,
+        convergence_tol=None,
+        convergence_patience=3,
+        adam_scheduler="convergence_on_plateau",
+        adam_grad_clip=None,
     ):
     """
     Run metamorphosis with an affine component (full affine or decoupled rigid-like).
@@ -553,6 +632,11 @@ def affine_along_metamorphosis(
         Learning rate for affine variables with Adam-like optimizers.
     debug : bool, optional
         Enable debug mode in integrator/optimizer.
+    convergence_tol : float or None, optional
+        Early-stopping relative tolerance on the data loss. See
+        ``Optimize_geodesicShooting.forward`` for details. Default ``None`` (disabled).
+    convergence_patience : int, optional
+        Number of consecutive plateau steps before stopping. Default 3.
 
     Returns
     -------
@@ -591,25 +675,25 @@ def affine_along_metamorphosis(
     )
 
     mr = aff.Affine_Metamorphosis_Optimizer(
-        source= source.clone(),
-        target= target.clone(),
-        geodesic = mp,
+        source=source.clone(),
+        target=target.clone(),
+        geodesic=mp,
         cost_cst=cost_cst,
         cost_field_cst=cost_field_cst,
         cost_affine_cst=cost_affine_cst,
         data_term=data_term,
         hamiltonian_integration=hamiltonian_integration,
         optimizer_method=optimizer_method,
-        debug = debug,
-        lbfgs_max_iter = lbfgs_max_iter,
-        lbfgs_history_size = lbfgs_history_size,
+        debug=debug,
+        lbfgs_max_iter=lbfgs_max_iter,
+        lbfgs_history_size=lbfgs_history_size,
         adam_dt_step_field=adam_dt_step_field,
         adam_dt_step_affine=adam_dt_step_affine,
+        adam_scheduler=adam_scheduler,
+        adam_grad_clip=adam_grad_clip,
     )
-    # state_dict = mr.state_dict()
-    # for i, (name, tensor) in enumerate(state_dict.items()):
-    #     print(f"{i}: {name} → shape={tensor.shape}, dtype={tensor.dtype}")
-    mr = _commun_after(mr, momenta_ini, safe_mode, n_iter, grad_coef)
+    mr = _commun_after(mr, momenta_ini, safe_mode, n_iter, grad_coef,
+                      convergence_tol=convergence_tol, convergence_patience=convergence_patience)
 
     return mr
 
@@ -627,19 +711,23 @@ def affine_decoupled_along_metamorphosis(
         n_iter=0,
         grad_coef=2,
         cost_cst=0.001,
-        cost_field_cst = .5,
-        cost_affine_cst = 1,
+        cost_field_cst=.5,
+        cost_affine_cst=1,
         plot=False,
         safe_mode=False,
-        constraints = True,
+        constraints=True,
         optimizer_method="LBFGS_torch",
         hamiltonian_integration=False,
-       save_gpu_memory = False,
-        lbfgs_max_iter = 20,
-        lbfgs_history_size = 100,
+        save_gpu_memory=False,
+        lbfgs_max_iter=20,
+        lbfgs_history_size=100,
         adam_dt_step_field=1e-3,
         adam_dt_step_affine=5e-2,
-        debug=False
+        debug=False,
+        convergence_tol=None,
+        convergence_patience=3,
+        adam_scheduler="convergence_on_plateau",
+        adam_grad_clip=None,
     ):
     """
     Run metamorphosis with an affine component (full affine or decoupled rigid-like).
@@ -698,6 +786,11 @@ def affine_decoupled_along_metamorphosis(
         Learning rate for affine variables with Adam-like optimizers.
     debug : bool, optional
         Enable debug mode in integrator/optimizer.
+    convergence_tol : float or None, optional
+        Early-stopping relative tolerance on the data loss. See
+        ``Optimize_geodesicShooting.forward`` for details. Default ``None`` (disabled).
+    convergence_patience : int, optional
+        Number of consecutive plateau steps before stopping. Default 3.
 
     Returns
     -------
@@ -739,24 +832,24 @@ def affine_decoupled_along_metamorphosis(
     )
 
     mr = ad.Affine_Decoupled_Metamorphosis_Optimizer(
-        source= source.clone(),
-        target= target.clone(),
-        geodesic = mp,
+        source=source.clone(),
+        target=target.clone(),
+        geodesic=mp,
         cost_cst=cost_cst,
         cost_field_cst=cost_field_cst,
         cost_affine_cst=cost_affine_cst,
         data_term=data_term,
         hamiltonian_integration=hamiltonian_integration,
         optimizer_method=optimizer_method,
-        debug = debug,
-        lbfgs_max_iter = lbfgs_max_iter,
-        lbfgs_history_size = lbfgs_history_size,
+        debug=debug,
+        lbfgs_max_iter=lbfgs_max_iter,
+        lbfgs_history_size=lbfgs_history_size,
         adam_dt_step_field=adam_dt_step_field,
         adam_dt_step_affine=adam_dt_step_affine,
+        adam_scheduler=adam_scheduler,
+        adam_grad_clip=adam_grad_clip,
     )
-    # state_dict = mr.state_dict()
-    # for i, (name, tensor) in enumerate(state_dict.items()):
-    #     print(f"{i}: {name} → shape={tensor.shape}, dtype={tensor.dtype}")
-    mr = _commun_after(mr, momenta_ini, safe_mode, n_iter, grad_coef)
+    mr = _commun_after(mr, momenta_ini, safe_mode, n_iter, grad_coef,
+                      convergence_tol=convergence_tol, convergence_patience=convergence_patience)
 
     return mr

@@ -1076,6 +1076,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.lbfgs_max_iter = lbfgs_max_iter
         self.lbfgs_history_size = lbfgs_history_size
         self.debug = debug
+        # Adam extras (harmless for other optimizers)
+        self._adam_scheduler_type = kwargs.pop('adam_scheduler', None)
+        self._adam_grad_clip = kwargs.pop('adam_grad_clip', None)
         if self.debug:
             self.mp.debug = self.debug
 
@@ -1109,7 +1112,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             self._initialize_optimizer_ = self._initialize_adadelta_
             self._step_optimizer_ = self._step_adadelta_
         elif optimizer_method == "Adam":
-            self._initialize_optimizer_ = self._initialize_Adam_
+            self._initialize_optimizer_ = self._initialize_Adam_with_scheduler_
             self._step_optimizer_ = self._step_Adam_
         else:
             raise ValueError(
@@ -1258,14 +1261,73 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             weight_decay=0        # default
         )
 
+    def _initialize_Adam_with_scheduler_(self, dt_step):
+        """Dispatch wrapper: calls _initialize_Adam_ (possibly overridden in children)
+        then attaches the optional LR scheduler. Using a wrapper avoids touching
+        subclass overrides of _initialize_Adam_."""
+        self._initialize_Adam_(dt_step)
+        self._setup_adam_scheduler_(dt_step)
+
+    def _setup_adam_scheduler_(self, base_lr):
+        """Create and attach an LR scheduler to self.optimizer after Adam is set up.
+
+        Controlled by ``self._adam_scheduler_type``:
+        - ``None``                 — no scheduler (default).
+        - ``'reduce_on_plateau'``  — halves LR after 10 stagnant outer steps.
+          Best for oscillating losses: reacts to the actual loss curve.
+        - ``'cosine'``             — cosine annealing over ``n_iter`` steps down to
+          1 % of initial LR.  Smooth, predictable decay.
+        - ``'exponential'``        — multiplies LR by 0.99 each outer step.
+          Gentle continuous decay.
+        """
+        self._lr_scheduler = None
+        if self._adam_scheduler_type is None:
+            return
+        t = self._adam_scheduler_type
+        if t in ('reduce_on_plateau', 'rop'):
+            self._lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                self.optimizer,
+                mode='min',
+                factor=0.5,
+                patience=10,
+                min_lr=base_lr * 1e-3,
+            )
+        elif t == 'cosine':
+            self._lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                self.optimizer,
+                T_max=self.n_iter,
+                eta_min=base_lr * 1e-2,
+            )
+        elif t == 'exponential':
+            self._lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
+                self.optimizer,
+                gamma=0.99,
+            )
+        else:
+            raise ValueError(
+                f"Unknown adam_scheduler={t!r}. "
+                "Choose from: 'reduce_on_plateau', 'cosine', 'exponential'."
+            )
+
     def _step_Adam_(self):
         """
-        Perform one optimization step with Adam.
+        Perform one optimization step with Adam, with optional gradient clipping
+        and LR scheduling.
         """
         self.optimizer.zero_grad()
         L = self.cost(self.parameter)
         L.backward(retain_graph=False)
+        if self._adam_grad_clip is not None:
+            all_params = [p for group in self.optimizer.param_groups
+                          for p in group['params']]
+            torch.nn.utils.clip_grad_norm_(all_params, self._adam_grad_clip)
         self.optimizer.step()
+        if getattr(self, '_lr_scheduler', None) is not None:
+            if isinstance(self._lr_scheduler,
+                          torch.optim.lr_scheduler.ReduceLROnPlateau):
+                self._lr_scheduler.step(L.detach())
+            else:
+                self._lr_scheduler.step()
         return L
 
     def _initialize_adadelta_(self, dt_step, max_iter=None):
@@ -1335,7 +1397,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                 grad_coef=1e-3,
                 verbose=True,
                 plot=False,
-                sharp=None
+                sharp=None,
+                convergence_tol=None,
+                convergence_patience=3,
                 ):
         r""" The function is and perform the optimisation with the desired method.
         The result is stored in the tuple self.to_analyse with two elements. First element is the optimized
@@ -1347,6 +1411,14 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         `require_grad` must be set to True.
         :param n_iter: (int) number of optimizer iterations
         :param verbose: (bool) display advancement
+        :param convergence_tol: (float or None) If set, the optimisation stops early when the
+        relative change in data loss between two consecutive outer iterations falls below this
+        threshold for `convergence_patience` consecutive steps.
+        Relative change is defined as ``|L_i - L_{i-1}| / (|L_{i-1}| + 1e-12)``.
+        Set to ``None`` (default) to disable early stopping and always run ``n_iter`` iterations.
+        :param convergence_patience: (int) Number of consecutive iterations whose relative loss
+        change is below ``convergence_tol`` before the optimisation is declared converged and
+        stopped. Default is 3.
 
         """
         def _detach(p):
@@ -1366,8 +1438,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.parameter = momenta_ini#.copy()  # optimized variable
 
         # self.parameter = self._build_parameter_dict_(momenta_ini)
+        self.n_iter = n_iter  # must precede _initialize_optimizer_ (scheduler may read it)
         self._initialize_optimizer_(grad_coef)
-        self.n_iter = n_iter
 
         self.id_grid = tb.make_regular_grid(self.source.shape[2:],
                                             dx_convention=self.dx_convention,
@@ -1384,12 +1456,13 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         loss_stock = self._cost_saving_(n_iter, None)  # initialisation
         loss_stock = self._cost_saving_(0, loss_stock)
 
+        # convergence tracking
+        _prev_loss = float(self.data_loss.detach())
+        _patience_count = 0
+        _last_iter = 0  # tracks the last completed iteration index
+
         for i in range(1, n_iter):
             self._iter_ = i
-            # print()
-            # print("//////" * 20)
-            # print(f"      {self._iter_}/{n_iter}")
-            # print("//////" * 20)
             self._step_optimizer_()
             loss_stock = self._cost_saving_(i, loss_stock)
 
@@ -1404,6 +1477,38 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                 )
             if plot and i in [n_iter // 4, n_iter // 2, 3 * n_iter // 4]:
                 self._plot_forward_()
+
+            # --- early stopping on convergence ---
+            if convergence_tol is not None:
+                _curr_loss = float(self.data_loss.detach())
+                rel_change = abs(_curr_loss - _prev_loss) / (abs(_prev_loss) + 1e-12)
+                _prev_loss = _curr_loss
+                if rel_change < convergence_tol:
+                    _patience_count += 1
+                else:
+                    _patience_count = 0
+                ic(i,_curr_loss, rel_change, convergence_tol,_patience_count, )
+                if _patience_count >= convergence_patience:
+                    _last_iter = i
+                    if verbose:
+                        print(
+                            f"\nConverged at iteration {i}/{n_iter} "
+                            f"(rel_change={rel_change:.2e} < tol={convergence_tol:.2e} "
+                            f"for {convergence_patience} consecutive steps)"
+                        )
+                    break
+            # -------------------------------------
+
+            _last_iter = i
+
+        # trim loss_stock to the iterations actually performed so that
+        # plot_cost() does not show a spurious flat tail of zeros
+        if convergence_tol is not None and _last_iter < n_iter - 1:
+            actual = _last_iter + 1
+            if isinstance(loss_stock, dict):
+                loss_stock = {k: v[:actual] for k, v in loss_stock.items()}
+            else:
+                loss_stock = loss_stock[:actual]
 
         # detached_param = _detach(self.parameter)
         # for future plots compute shooting with save = True
@@ -1440,7 +1545,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                           n_iter=10,
                           grad_coef=1e-3,
                           verbose=True,
-                          mode=None
+                          mode=None,
+                          convergence_tol=None,
+                          convergence_patience=3,
                           ):
         """ Same as Optimize_geodesicShooting.forward(...) but
         does not stop the program when the integration diverges.
@@ -1454,17 +1561,23 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         :param mode:
             `'grad_coef'` this mode will decrease the grad_coef by
             dividing it by 10.
+        :param convergence_tol: passed to ``forward`` — see its docstring.
+        :param convergence_patience: passed to ``forward`` — see its docstring.
         :return:
         """
         try:
-            self.forward(z_0, n_iter, grad_coef, verbose=verbose)
+            self.forward(z_0, n_iter, grad_coef, verbose=verbose,
+                         convergence_tol=convergence_tol,
+                         convergence_patience=convergence_patience)
         except OverflowError:
             if mode is None:
                 print("Integration diverged : Stop.\n\n")
                 self.to_analyse = "Integration diverged"
             elif mode == "grad_coef":
                 print(f"Integration diverged :" f" set grad_coef to {grad_coef*0.1}")
-                self.forward_safe_mode(z_0, n_iter, grad_coef * 0.1, verbose, mode=mode)
+                self.forward_safe_mode(z_0, n_iter, grad_coef * 0.1, verbose, mode=mode,
+                                       convergence_tol=convergence_tol,
+                                       convergence_patience=convergence_patience)
 
     def compute_landmark_dist(
         self,

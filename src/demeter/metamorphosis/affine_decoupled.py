@@ -326,7 +326,6 @@ class Affine_Decoupled_Metamorphosis_integrator(Geodesic_integrator):
         """
         if grid is None:
             grid = self.id_grid
-        ic(self.rot_mat, self.rot_mat.T, self.rot_mat.T @ self.rot_mat)
         return tb.grid_from_rotation_translation_scaling(
             grid, self.rot_mat.T, - self.translation, 1 / self.scale
         )
