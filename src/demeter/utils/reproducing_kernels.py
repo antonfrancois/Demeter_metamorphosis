@@ -464,6 +464,10 @@ def dx_convention_handler(dx_convention, dim):
 
 
 class DummyKernel:
+
+    def __init__(self,*args):
+        pass
+
     def __call__(self, x):
         return x  # Identité pour test simple
 
@@ -471,7 +475,9 @@ class DummyKernel:
         pass
 
     def get_all_arguments(self):
-        return {}
+        return {
+            "name": self.__class__.__name__
+        }
 
 class GaussianRKHS(torch.nn.Module):
     r""" Is equivalent to a gaussian blur. This function support 2d and 3d images in the
