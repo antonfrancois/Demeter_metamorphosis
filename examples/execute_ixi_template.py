@@ -767,7 +767,7 @@ def execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers):
             affine = True
 
         print(f"\nPatient : {paths["subject_dir"].name}")
-        method_name = 'affine_lddmm' if not FLAG_DECOUPLED else "decoupled_lddmm"
+        method_name = 'affine_lddmm_succ' if not FLAG_DECOUPLED else "decoupled_lddmm_succ"
 
         # 4) Apply LDDMM
         # for cost_cst in [1e5, 5e5, 1e6]:
@@ -775,7 +775,13 @@ def execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers):
         kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
 
         # D(I,T) =  alpha *| S \cdot A.T  - T |^2 + (1 - alpha) * | I_1 \cdot A.T - T|^2
-        gamma_kwargs = {'c': 5, 'nu': 1e-3}
+        gamma_kwargs = {'c': 1.0, 'nu': 1e-2} # 1
+        gamma_kwargs = {'c': 1.0, 'nu': 1e-3} # 2
+        gamma_kwargs = {'c': 1.0, 'nu': 1e-1} # 3
+        gamma_kwargs = {'c': 2.0, 'nu': 1e-1} # 4
+        gamma_kwargs = {'c': 2.0, 'nu': 1e-2} # 5
+        gamma_kwargs = {'c': 2.0, 'nu': 1e-3} # 6
+
         datacost = mt.Rotation_Ssd_Cost(
             target.to("cuda:0"),
             gamma_mode="variationnal",
@@ -785,7 +791,7 @@ def execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers):
             normalize_ssd=False,
             verbose=True,
             plot=True,
-            save_plot=os.path.join(result_folder, method_name, paths["subject_dir"].name ),
+            save_plot=os.path.join(result_folder, method_name, paths["subject_dir"].name + str(gamma_kwargs)),
         )
 
 
@@ -806,11 +812,14 @@ def execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers):
             cost_cst=cost_cst,
             cost_affine_cst=cost_affine,
             cost_field_cst=cost_field,
-            n_iter=200 if location != "local" else 20,
+            n_iter=500 if location != "local" else 20,
+            convergence_tol=1e-4,
+            convergence_patience=3,
             save_gpu_memory=False,
             optimizer_method='Adam',
             adam_dt_step_field=adam_dt_step_field,
             adam_dt_step_affine=adam_dt_step_affine,
+            adam_scheduler="reduce_on_plateau",
             # lbfgs_max_iter = 10,
             # lbfgs_history_size = 30,
             # hamiltonian_integration=True
@@ -842,9 +851,11 @@ def execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers):
         mr2 = mt.lddmm(source_2, target, 0, kernel_op,
                        cost_cst=.001,
                        grad_coef=1,
-                       integration_steps=7,
-                       n_iter=40 if location != "local" else 2,
+                       integration_steps=integration_steps,  # avant c'était 7
+                       n_iter=60 if location != "local" else 2,
                        lbfgs_history_size=15,
+                       convergence_tol=1e-3,
+                        convergence_patience=3,
                        data_term=data_cost,
                        )
         dices2, _ = mr2.compute_DICE(source_seg_rotated.to("cpu"), seg_target, verbose=True)
@@ -852,10 +863,11 @@ def execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers):
 
         file_save1, path = mr_d.save(f"{paths["subject_dir"].name}_{method_name}_part1",
                                      light_save=False,
+                                     # save_path=os.path.join(result_folder, method_name, paths["subject_dir"].name),
                                      save_path=os.path.join(result_folder, method_name)
                                      )
-        ic(file_save1, path,path +"/"+ file_save1[:-4] + "_gamma_cost.png")
-        ax.set_title(file_save1)
+        # ic(file_save1, path,path +"/"+ file_save1[:-4] + "_gamma_cost.png")
+        ax.set_title(file_save1 +"\n"+ str(gamma_kwargs))
         fig.savefig(path +"/" +file_save1[:-4] + "_gamma_cost.png")
         if location != "local":
             plt.show()
@@ -872,10 +884,9 @@ def execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers):
                 "_s" + _strf_(scaling) +
                 "_t" + _strf_(translation)
         ) if not affine else "aT"
-        modifier_str += "-lddmm2"
-        ic(dices, dices2)
-        dice = dices[0] | dices2
-        ic(dice)
+        modifier_str += "-lddmm2-tol"
+        dice = dices[0] | dices[1] | { '(succ) ' + k:v for k,v in dices2.items()}
+        ic(dice,dices, dices2)
         now = datetime.datetime.now()
         log_metrics(
             db_path,
@@ -886,7 +897,7 @@ def execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers):
             step=0,
             meta={
                 "gpu": torch.cuda.get_device_name(),
-                "gamma": gamma,
+                "gamma": gamma_kwargs,
                 "rho": rho,
                 "cost_cst": cost_cst,
                 "cst_field": cst_field,
@@ -1363,10 +1374,10 @@ def execute_flirt_lddmm(pp, subjects_numbers):
                       )
         # source_seg_def= tb.imgDeform(target_seg, mr.mp.get_deformator(), dx_convention=mr.dx_convention) # TODO: Probablement pas target_seg ici ....
         dice_lddmm, _ = mr.compute_DICE(source_seg, target_seg)
-        mr.save(f"{p["subject_dir"].name}_flirt_lddmm",
-                light_save=True,
-                save_path=os.path.join(result_folder, "flirt_lddmm")
-                )
+        # mr.save(f"{p["subject_dir"].name}_flirt_lddmm",
+        #         light_save=True,
+        #         save_path=os.path.join(result_folder, "flirt_lddmm")
+        #         )
         dice = dice_flirt | dice_lddmm
         mt.free_GPU_memory(mr)
 
@@ -1374,7 +1385,7 @@ def execute_flirt_lddmm(pp, subjects_numbers):
         log_metrics(
             db_path,
             patient_id=p["subject_dir"].name,
-            method=f"flirt_lddmm R{RESIZE_FACTOR}",
+            method=f"flirt_lddmm",
             metrics={f'flirt_lddmm ' + k: v for k, v in dice.items()},
             run_id=str(now) + ' at ' + location,
             step=0,
@@ -1521,14 +1532,21 @@ if __name__ == '__main__':
         result_folder = "/home/turtlefox/Documents/11_metamorphoses/data/IXI_results/"
         location = 'local'
     device = "cuda:0"
-    # %%
+
     pp = IXIToTemplatePreprocessor(
         ixi_root=ixi_folder,
         template_root=template_folder,
         template_seg_path=template_seg_path,
         do_plot=False,
     )
+    # jgnrz = list(pp.get_subjects_paths(None, require_all=True))
+    # print(len(jgnrz))
+    # for i in range(29):
+    #     sublist = [_ixi_number_from_folder(str(jgnrz[j]['subject_dir'].name)) for j in range(i*20, i*20 + 20)]
+    #     print(sublist)
+    #     # print(_ixi_number_from_folder(str(j['subject_dir'].name)),',')
 
+    #%%
     subjects_numbers = [2,12,13,14,15,16,17,19] # 1
     # subjects_numbers = [20,21,22,23,24,25,26,27,28,29] # 2
     # subjects_numbers = [30,31,33,34,35,36,37,38,39] # 3
@@ -1538,20 +1556,63 @@ if __name__ == '__main__':
     # subjects_numbers = [35, 37, 61, 66, 34, 49]
 
     # all
-    # subjects_numbers = [2, 12, 13, 14, 15, 16, 17, 19,  # 1
-    #                     20, 21, 22, 23, 24, 25, 26, 27, 28, 29,  # 2
-    #                     30, 31, 33, 34, 35, 36, 37, 38, 39,  # 3
-    #                     40, 41, 42, 43, 44, 45, 46, 48, 49,  # 4
-    #                     50, 51, 52, 53, 54, 55, 56, 57, 58, 59,  # 5
-    #                     60, 61, 62, 63, 64, 65, 66, 67, 68, 69]  # 6
-    # subjects_numbers = [35, 37, 61, 66, 34, 49]
+    #1
+    # subjects_numbers = [2, 12, 13, 15, 16, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 33,
+	# 	34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 48, 49, 50, 51, 52, 53, 54,
+	# 	55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74,
+	# 	75, 76, 77, 78, 79, 80, 81, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95]
+
+    # 2
+#     subjects_numbers = [96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106,107, 108, 109, 110, 111, 112, 113, 114, 115,
+# 		116, 117, 118, 119, 120, 121, 122, 123, 126, 127, 128, 129, 130, 131, 132, 134, 135, 136, 137, 138,
+# 		139, 140, 141, 142, 143, 144, 145, 146, 148, 150, 151, 153, 154, 156, 157, 158, 159, 160, 161, 162,
+# 		163, 164, 165, 166, 167, 168, 169, 170, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183,
+# 		184, 185, 186, 188, 189, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 204, 205, 206]
+#
+#     #3
+#     subjects_numbers = [207, 208, 209, 210, 211, 212, 213, 214, 216, 217, 218, 219, 221, 222, 223, 224, 225, 226, 227, 228,
+# 229, 230, 231, 232, 233, 234, 236, 237, 238, 239, 240, 241, 242, 244, 246, 247, 248, 249, 250, 251,
+# 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 274,
+# 275, 276, 277, 278, 279, 280, 282, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296,
+# 297, 298, 299, 300, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317]
+# #
+# #     #4
+#     subjects_numbers = [318, 319, 320, 321, 322, 324, 325, 326, 327, 328, 329, 330, 331, 332, 333, 334, 335, 336, 337, 338,
+# 340, 341, 342, 344, 345, 347, 348, 350, 351, 353, 354, 356, 357, 358, 359, 360, 361, 362, 363, 364,
+# 365, 367, 368, 369, 370, 371, 372, 373, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386,
+# 387, 388, 389, 390, 391, 392, 393, 394, 395, 396, 397, 398, 399, 400, 401, 402, 403, 404, 405, 406]
+# #
+# #     #5
+#     subjects_numbers = [407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 419, 420, 422, 423, 424, 425, 426, 427,
+# 428, 429, 430, 431, 432, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447,
+# 448, 449, 450, 451, 452, 453, 454, 455, 456, 457, 458, 459, 460, 461, 462, 463, 464, 465, 467, 468,
+# 469, 470, 473, 474, 475, 476, 477, 478, 479, 480, 481, 482, 483, 484, 485, 486, 487, 488, 489, 490,
+# 491, 492, 493, 494, 495, 496, 497, 498, 499, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511]
+# #
+# #     #6
+#     subjects_numbers = [512, 515, 516, 517, 518, 519, 521, 522, 523, 524, 525, 526, 527, 528, 531, 532, 533, 534, 535, 536,
+# 537, 538, 539, 541, 542, 543, 544, 546, 547, 548, 549, 550, 551, 552, 553, 554, 555, 556, 558, 559,
+# 560, 561, 562, 563, 565, 566, 567, 568, 569, 571, 572, 573, 574, 575, 576, 577, 578, 579, 582, 584,
+# 585, 586, 587, 588, 589, 591, 592, 593, 594, 595, 596, 597, 598, 599, 600, 601, 603, 605, 606, 607,
+# 608, 609, 610, 611, 612, 613, 614, 616, 617, 618, 619, 621, 622, 623, 625, 626, 627, 629, 630, 631,
+# 632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642, 643, 644, 646, 648, 651, 652, 653, 661, 662]
+
+    # subjects_numbers =[560, 561, 562, 563, 565, 566, 567, 568, 569, 571,
+    #                     572, 573, 574, 575, 576, 577, 578, 579, 582, 584,
+    #                     585, 586, 587, 588, 589, 591, 592, 593, 594, 595,
+    #                     596, 597, 598, 599, 600, 601, 603, 605, 606, 607,
+    #                     608, 609, 610, 611, 612, 613, 614, 616, 617, 618,
+    #                     619, 621, 622, 623, 625, 626, 627, 629, 630, 631,
+    #                     632, 633, 634, 635, 636, 637, 638, 639, 640, 641,
+    #                     642, 643, 644, 646, 648, 651, 652, 653, 661, 662]
+
 
     # = [35,36,37,38,39,41,42,43] Done
     # [44,45,46,48,49,50,51,52,53,54, Done
     # 55,56,57,58,59,60,61,62, Done
     #     # subjects_numbers = [63,64,65,66,67,68,69]
     # subjects_numbers = None
-    # subjects_numbers = [2, 40]#, 26, 50,2, 12]
+    subjects_numbers = [2]#, 26, 50,2, 12]
     RECOMPUTE = False
     RESIZE_FACTOR = .5 if location == 'local' else 1
     FLAG_DECOUPLED = False
@@ -1559,12 +1620,12 @@ if __name__ == '__main__':
     # init_csv(result_folder)
 
     if location == "meso":  # don't touch this line
-        file_db = "ixi_results_2026.db"
+        file_db = "ixi_results_full_2026.db"
     else:  # here you can sandbox what you need to do.
         file_db = f"ixi_results_{location}.db"
         # file_db = "ixi_results_meso_20250917.db"
     db_path = os.path.join(result_folder, file_db)
-    # clean_method(db_path, "flirt_lddmm R1")
+    # clean_method(db_path, "affine_lddmm_succ")
 
     # execute_dummy(pp, subjects_numbers)
     # execute_control(pp,subjects_numbers)
@@ -1575,3 +1636,4 @@ if __name__ == '__main__':
     # elif location == 'local':
     # execute_rigid_along_metamorphosis(pp, subjects_numbers)
     execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers)
+#
