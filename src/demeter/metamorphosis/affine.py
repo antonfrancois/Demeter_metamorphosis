@@ -329,8 +329,6 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
 
         momentum_A -= inv_A_matT @ (integral_1 - integral_2)
 
-
-
         # --- Always output the same things ---
         return (
             momentum_I,
