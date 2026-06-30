@@ -362,6 +362,9 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
 
         self.flag_field = True if "momentum_I" in momenta.keys() else False
 
+        self.affine_stock = torch.zeros((self.n_step,self._dim,self._dim), device='cpu')
+        self.translation_stock = torch.zeros((self.n_step, self._dim), device='cpu')
+
         super()._forward_initialize_integration(image, momenta, device, save, sharp, hamiltonian_integration, plot)
 
     def _forward_direct_step(self):
@@ -435,7 +438,7 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
         self.rot_mat = rot_mat
         self.translation = translation
 
-    def get_affine_deformator(self, grid=None):
+    def get_affine_deformator(self, grid=None, to_t= -1):
         """
         return a grid ready to apply the rotation and translation estimated
 
@@ -446,18 +449,33 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
         """
         if grid is None:
             grid = self.id_grid
-        mat = torch.linalg.inv(self.rot_mat)
-        return tb.grid_from_rotation_translation(grid, mat, - self.translation)
+        if to_t == -1:
+            mat = torch.linalg.inv(self.rot_mat)
+            return tb.grid_from_rotation_translation(grid, mat, - self.translation)
+        else:
+            mat = torch.linalg.inv(self.affine_stock[to_t])
+            return tb.grid_from_rotation_translation(grid, mat, - self.translation_stock[to_t])
 
-    def get_affine_deformation(self, grid=None):
+
+    def get_affine_deformation(self, grid=None, to_t = -1):
         if grid is None:
             grid = self.id_grid
-        return tb.grid_from_rotation_translation(
+        if to_t == -1:
+            return tb.grid_from_rotation_translation(
             grid, self.rot_mat.to(grid.device), self.translation.to(grid.device))
+        else:
+            return tb.grid_from_rotation_translation(
+            grid, self.affine_stock[to_t].to(grid.device),
+                self.translation_stock[to_t].to(grid.device))
+
 
     def _save_step(self):
+        i = self._i
+        self.affine_stock[i] = self.rot_mat.detach().cpu()
+        self.translation_stock[i] = self.translation.detach().cpu()
         if self.flag_field:
             super()._save_step()
+
 
     def plot(self, n_figs=5):
         if n_figs == -1:
