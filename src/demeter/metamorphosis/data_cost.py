@@ -455,6 +455,7 @@ class Rotation_Ssd_Cost(DataCost):
             self.stock_ssd = []
             self.stock_ssd_rot = []
             self.stock_gamma = []
+            self.stock_d_r = []
 
     def _get_all_parameters_(self):
         base = super()._get_all_parameters_()
@@ -465,18 +466,20 @@ class Rotation_Ssd_Cost(DataCost):
                             "sigmoid_b": self.sigmoid_b,
                             "sigmoid_c": self.sigmoid_c}
         elif "variationnal" == self.gamma_mode:
-            gamma_kwargs = {"c": self.c,  # Passe haut pour K
+            gamma_kwargs = {"c": self.c,
                             "nu": self.nu,
                             "stock_ssd": self.stock_ssd,
                             "stock_ssd_rot": self.stock_ssd_rot,
-                            "stock_gamma": self.stock_gamma ,
-                            } # Dampening gamma
+                            "stock_gamma": self.stock_gamma,
+                            "stock_d_r": self.stock_d_r,
+                            }
         else:
             raise ValueError("gamma mode not supported for saving")
 
         spe = {
             "gamma_mode": self.gamma_mode,
         } | gamma_kwargs
+        return base | spe
 
     def __repr__(self):
         return super().__repr__() + self.gamma_mode # + self.gamma_kwargs
@@ -491,8 +494,8 @@ class Rotation_Ssd_Cost(DataCost):
             self.sigmoid_c = gamma_kwargs["sigmoid_c"]
         elif "variationnal" == self.gamma_mode:
             self.save_values = True
-            self.c = gamma_kwargs["c"] # Passe haut pour K
-            self.nu = gamma_kwargs["nu"] # Dampening gamma
+            self.c = gamma_kwargs.get("c", 1.0)  # multiplier on the adaptive mean threshold
+            self.nu = gamma_kwargs["nu"]
         else:
             raise ValueError("gamma_mode must be among ['constant', 'sigmoid', 'variationnal']")
 
@@ -502,13 +505,19 @@ class Rotation_Ssd_Cost(DataCost):
         _iter = self.optimizer._iter_
         win = 6
         if _iter > win:
-            diff = torch.tensor(self.stock_ssd_rot[_iter - win + 1:_iter]) \
-                    - torch.tensor(self.stock_ssd_rot[_iter - win:_iter - 1])
+            A_k = torch.tensor(self.stock_ssd_rot[_iter - win + 1:_iter])
+            A_km = torch.tensor(self.stock_ssd_rot[_iter - win:_iter - 1])
+            diff =  A_k - A_km
+            print(f"data_cost.py:508 in _compute_ssd_rot_derivative()\n"
+                  f"\t _iter: {_iter}\n"
+                  f"\t diff: {diff}"
+            )
+            # diff /= (A_k + torch.ones_like(A_k)*1e-3)
         # elif _iter > 1:
         #     diff = self.stock_ssd_rot[1:_iter] - self.stock_ssd_rot[:_iter-1]
         else:
             diff = torch.tensor(-self.c, dtype=torch.float)
-        return diff.mean()
+        return diff.mean() / prod(self.target.shape)
 
 
     def _compute_gamma_(self, iter):
@@ -521,44 +530,72 @@ class Rotation_Ssd_Cost(DataCost):
             gamma = 1/(1 + exp(-g))
             return gamma
         elif "variationnal" in self.gamma_mode:
-            # c = 10 # Passe bas pour K
-            # nu = .05 # Dampening gamma
             if iter == 0:
                 return 1
 
             old_gamma = self.stock_gamma[iter - 1]
             if old_gamma == 0:
-              return 0
+                return 0
+
+            # Not enough history to compute derivative yet
+            if self.optimizer._iter_ <= 6:
+                return old_gamma
+
             d_r = self._compute_ssd_rot_derivative()
-            K = torch.min(torch.tensor(1), - d_r / self.c)
+            abs_dr = abs(float(d_r))
+
+            # Adaptive c: running mean of |d_r| seen so far.
+            # During settling d_r is large → mean stays large → K ≈ 1.
+            # On plateau d_r is small but mean is dominated by settling history → K → 0.
+            self.stock_d_r.append(abs_dr)
+            c = self.c * sum(self.stock_d_r) / len(self.stock_d_r)
+
+            K = torch.min(torch.tensor(1.0), torch.abs(d_r) / c) if c > 0 else torch.tensor(0.0)
             gamma = old_gamma + (K - old_gamma) * self.nu
-            # ic(iter, d_r, K, old_gamma, (K - old_gamma) * self.nu,gamma)
-            return  torch.clip(gamma, 0,1)
+            print(f"data_cost.py in _compute_gamma_"
+                  f"\n\titer: {iter}\n"
+                  f"\td_r: {d_r:.3e}\n"
+                  f"\tc (adaptive): {c:.3e}\n"
+                  f"\tK: {K:.4f}\n"
+                  f"\told_gamma: {old_gamma:.4f}\n"
+                  f"\tgamma: {float(gamma):.4f}\n"
+                  )
+
+            return torch.clip(gamma, 0, 1)
 
     def plot_cost_data_term(self):
-        fig, ax = plt.subplots(1,1, figsize=(5, 5))
+        has_dr = hasattr(self, "stock_d_r") and len(self.stock_d_r) > 0
+        n_rows = 2 if has_dr else 1
+        fig, axes = plt.subplots(n_rows, 1, figsize=(5, 4 * n_rows), sharex=True)
+        if n_rows == 1:
+            axes = [axes]
 
-        # Main axis
+        # Top panel: |d_r| on log scale
+        if has_dr:
+            ax_dr = axes[0]
+            iters_dr = list(range(7, 7 + len(self.stock_d_r)))
+            ax_dr.plot(iters_dr, self.stock_d_r, color="C3", lw=0.8)
+            ax_dr.set_yscale("log")
+            ax_dr.set_ylabel("|d_r| (log scale)")
+            ax_dr.set_title("|d_r| — SSD-rot derivative / n_voxels")
+
+        # Bottom panel: SSD terms + gamma
+        ax = axes[-1]
         ax.plot(self.stock_ssd, label="ssd (D(p))")
-        ax.plot(self.stock_ssd_rot, label="ssd_rot (R(p))")
+        ax.plot(self.stock_ssd_rot, label="ssd affine (A(p))")
         ax.set_ylabel("SSD terms")
 
-        # Secondary axis
         ax2 = ax.twinx()
         ax2.plot(self.stock_gamma, label="gamma", color="green")
         ax2.set_ylabel("Gamma")
 
-        # Combine legends
         lines_1, labels_1 = ax.get_legend_handles_labels()
         lines_2, labels_2 = ax2.get_legend_handles_labels()
         ax.legend(lines_1 + lines_2, labels_1 + labels_2)
+        ax.set_xlabel("iterations")
 
-        # dict_loss = {
-        #   "ssd (D(p))": self.stock_ssd,
-        #   "ssd_rot (R(p))": self.stock_ssd_rot,
-        #   "Gamma": self.stock_gamma
-        # }
-        return fig, ax
+        fig.tight_layout()
+        return fig, axes[0]
 
 
     def _plot_3d_(self, rotated_image, rotated_source, gamma, ssd, ssd_rot):
@@ -597,16 +634,16 @@ class Rotation_Ssd_Cost(DataCost):
     def _plot_2d_(self, rotated_image, rotated_source, gamma, ssd, ssd_rot):
         fig, ax = plt.subplots(2,3, constrained_layout=True)
 
-        fig.suptitle(f" iter : {self.optimizer._iter_}: gamma = {gamma:.3f}; ssd = {ssd:.2f}, ssd_rot = {ssd_rot:.2f}")
+        fig.suptitle(f" iter : {self.optimizer._iter_}: gamma = {gamma:.3f}; ssd = {ssd:.2f}, ssd_affine = {ssd_rot:.2f}")
         ax[0,0].imshow(rotated_image[0,0].detach().cpu().numpy(), cmap='gray')
         ax[0,0].set_title('rotated Image')
         ax[0,1].imshow(rotated_source[0,0].detach().cpu().numpy(), cmap='gray')
         ax[0,1].set_title('rotated Source')
-        im1 = tb.imCmp(rotated_image.detach().cpu(), self.target.detach().cpu(), "compose")
+        im1 = tb.imCmp(self.target.detach().cpu(), rotated_image.detach().cpu() , "compose")
         ax[1,0].imshow(im1[0])
         # ax[1,0].imshow(torch.abs(rotated_image - self.target)[0,0].detach().cpu().numpy())
         ax[1,0].set_title('rot img vs target')
-        im2 = tb.imCmp(rotated_source.detach().cpu(), self.target.detach().cpu(), "compose")
+        im2 = tb.imCmp(self.target.detach().cpu(),rotated_source.detach().cpu(), "compose")
         ax[1,1].imshow(im2[0])
         # ax[1,1].imshow(torch.abs(rotated_source - self.target)[0,0].detach().cpu().numpy())
         ax[1,1].set_title('rot source vs target')
