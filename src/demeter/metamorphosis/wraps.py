@@ -59,7 +59,7 @@ def lddmm(
     lbfgs_history_size: int = 100,
     convergence_tol=None,
     convergence_patience=3,
-    adam_scheduler="convergence_on_plateau",
+    adam_scheduler="reduce_on_plateau",
     adam_grad_clip=None,
 ):
     """
@@ -177,7 +177,7 @@ def metamorphosis(
     save_gpu_memory=False,
     convergence_tol=None,
     convergence_patience=3,
-    adam_scheduler="convergence_on_plateau",
+    adam_scheduler="reduce_on_plateau",
     adam_grad_clip=None,
 ):
     """
@@ -297,7 +297,7 @@ def weighted_metamorphosis(
     dx_convention="pixel",
     convergence_tol=None,
     convergence_patience=3,
-    adam_scheduler="convergence_on_plateau",
+    adam_scheduler="reduce_on_plateau",
     adam_grad_clip=None,
 ):
     print("plop")
@@ -342,7 +342,7 @@ def oriented_metamorphosis(
     safe_mode=True,
     convergence_tol=None,
     convergence_patience=3,
-    adam_scheduler="convergence_on_plateau",
+    adam_scheduler="reduce_on_plateau",
     adam_grad_clip=None,
 ):
     if hamiltonian_integration:
@@ -392,7 +392,7 @@ def constrained_metamorphosis(
     save_gpu_memory=False,
     convergence_tol=None,
     convergence_patience=3,
-    adam_scheduler="convergence_on_plateau",
+    adam_scheduler="reduce_on_plateau",
     adam_grad_clip=None,
 ):
     if hamiltonian_integration:
@@ -444,7 +444,7 @@ def joined_metamorphosis(
     save_gpu_memory=False,
     convergence_tol=None,
     convergence_patience=3,
-    adam_scheduler="convergence_on_plateau",
+    adam_scheduler="reduce_on_plateau",
     adam_grad_clip=None,
 ):
     # source = torch.stack([source_image,source_mask],dim=1)
@@ -505,7 +505,7 @@ def simplex_metamorphosis(
     lbfgs_history_size: int = 100,
     convergence_tol=None,
     convergence_patience=3,
-    adam_scheduler="convergence_on_plateau",
+    adam_scheduler="reduce_on_plateau",
     adam_grad_clip=None,
 ):
 
@@ -572,7 +572,7 @@ def affine_along_metamorphosis(
         debug=False,
         convergence_tol=None,
         convergence_patience=3,
-        adam_scheduler="convergence_on_plateau",
+        adam_scheduler="reduce_on_plateau",
         adam_grad_clip=None,
     ):
     """
@@ -726,7 +726,7 @@ def affine_decoupled_along_metamorphosis(
         debug=False,
         convergence_tol=None,
         convergence_patience=3,
-        adam_scheduler="convergence_on_plateau",
+        adam_scheduler="reduce_on_plateau",
         adam_grad_clip=None,
     ):
     """
