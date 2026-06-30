@@ -701,7 +701,7 @@ class Affine_Decoupled_Metamorphosis_Optimizer(Optimize_geodesicShooting):
                                                )
         rotation_dice = tb.average_dice(self.source_seg_rotated,
                                         target_segmentation,
-                                        message="(rotation only)",
+                                        message="(affine only)",
                                         verbose=verbose)
         print(f"Rigid dice : {rotation_dice}")
 
@@ -723,7 +723,7 @@ class Affine_Decoupled_Metamorphosis_Optimizer(Optimize_geodesicShooting):
 
         # Option 1 bis:
         deformator = self.mp.get_deformator()
-        deformator = self.mp.get_rigidor(deformator)
+        deformator = self.mp.get_affine_deformator(deformator)
         self.source_seg_deformed = tb.imgDeform(
             self.source_segmentation, deformator.to(device),
             dx_convention=self.dx_convention,
@@ -742,8 +742,8 @@ class Affine_Decoupled_Metamorphosis_Optimizer(Optimize_geodesicShooting):
                                    message="(all)",
                                    verbose=verbose)
         self.dice = (rotation_dice, reg_dice)
-        T, C, D, H, W = source_segmentation.shape
         if plot:
+            T, C, D, H, W = source_segmentation.shape
             fig, ax = plt.subplots(2, 4)
             ax[0, 0].imshow(source_segmentation[0, 0, D // 2].detach().cpu(), cmap=DLT_SEG_CMAP)
             ax[0, 0].set_title('Source')
