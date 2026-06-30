@@ -424,7 +424,7 @@ def smooth(image, sigma):
 
     return rk.fft_filter(image,kernel,border_type='constant')
 
-def plot(self):
+def plot(self, title=''):
     affine = self.mp.get_affine_deformator().cpu()
     deform = self.mp.get_deformation().to(affine.device)
     deform = self.mp.get_affine_deformation(deform).cpu()
@@ -458,9 +458,10 @@ def plot(self):
     ax[2,1].set_title("registered vs Target")
     ax[2,2].imshow(srt[0], **kwargs)
     ax[2,2].set_title("source affine vs Target")
+    fig.suptitle(title)
 
 def open_rainbow_minifish():
-    name = "minifish_r"
+    name = "minifish_lfi_c"
     path = ROOT_DIRECTORY
     path += '/examples/im2Dbank/reg_test_' + name + '.png'
     img  = plt.imread(path)

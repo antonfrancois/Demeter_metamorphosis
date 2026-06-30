@@ -270,8 +270,8 @@ def plot_one_affine(file_p, ax, rainbow_img, load_path, *, show_titles=True):
 
     rainbow_d = tb.imgDeform(rainbow_img, deformator,dx_convention='2square').cpu()
     rainbow_d =  rainbow_d.transpose(1,3).transpose(1,2)[0]
-    srt = tb.imCmp(source_rt,mr.target,method = 'seg')
-    irt = tb.imCmp(img_rot,mr.target,method = 'seg')
+    srt = tb.imCmp(mr.target, source_rt,method = 'seg')
+    irt = tb.imCmp(mr.target, img_rot,method = 'seg')
     kwargs = {"origin": "upper", 'cmap': "gray"}
     ax[0,0].imshow(img_rot[0,0], **kwargs)
     if show_titles:
@@ -348,7 +348,6 @@ def plot_one_successive_v2(file_affine, file_diffeo, ax, rainbow_img, load_path,
         file_diffeo.file_name,
         path=load_path
     )
-    ic(file_affine.file_name, file_diffeo.file_name)
 
     deform = mr_d.mp.get_deformation()
     affine = mr_a.mp.get_affine_deformator().detach().cpu()
@@ -356,16 +355,19 @@ def plot_one_successive_v2(file_affine, file_diffeo, ax, rainbow_img, load_path,
     deformator = mr_d.mp.get_deformator()
     img = mr_d.mp.image.detach().cpu()
     source = mr_d.source.detach().cpu()
-    ic(deformator.shape)
-    ic(deformator.min(), deformator.max())
+    # ic(deformator.shape)
+    # ic(deformator.min(), deformator.max())
 
+
+    ic(file_affine.file_name, file_diffeo.file_name,
+       mr_a.dx_convention, mr_d.dx_convention)
     rainbow_d = tb.imgDeform(rainbow_img, affine,dx_convention='2square').cpu()
-    ic(rainbow_d.shape)
+    # ic(rainbow_d.shape)
     rainbow_d = tb.imgDeform(rainbow_d, deformator,dx_convention='pixel').cpu()
     rainbow_d =  rainbow_d.transpose(1,3).transpose(1,2)[0]
-    ic(rainbow_d.shape)
-    srt = tb.imCmp(source,mr_d.target,method = 'seg')
-    irt = tb.imCmp(img,mr_d.target,method = 'seg')
+    # ic(rainbow_d.shape)
+    srt = tb.imCmp(mr_d.target,source,method = 'seg')
+    irt = tb.imCmp(mr_d.target,img,method = 'seg')
     kwargs = {"origin": "upper", 'cmap': "gray"}
     ax[0,0].imshow(img[0,0], **kwargs)
     ax[0,1].imshow(source[0,0], **kwargs)
@@ -389,13 +391,17 @@ def _make_mode_grid(
     load_path: str,
     plot_func: Callable,
     suptitle: str,
+    prebuilt_lookup: dict | None = None,
 ):
-    mode_lookup: dict[tuple[str, str], ParsedRunFile] = {}
-    for p in mode_files:
-        key = (p.method, p.target)
-        prev = mode_lookup.get(key)
-        if prev is None or (p.date or "") >= (prev.date or ""):
-            mode_lookup[key] = p
+    if prebuilt_lookup is not None:
+        mode_lookup = prebuilt_lookup
+    else:
+        mode_lookup: dict[tuple[str, str], ParsedRunFile] = {}
+        for p in mode_files:
+            key = (p.method, p.target)
+            prev = mode_lookup.get(key)
+            if prev is None or (p.date or "") >= (prev.date or ""):
+                mode_lookup[key] = p
 
     # Keep each 2x3 block close to a 3:2 aspect so inner images stay square.
     fig = plt.figure(figsize=(24, 16), constrained_layout=False)
@@ -524,6 +530,26 @@ def make_successive_grid(
         suptitle="Successive-Mode Registration: Method-by-Target Comparison",
     )
 
+
+def make_successive_grid_v2(
+    successive_pairs: list[tuple[ParsedRunFile, ParsedRunFile]],
+    rainbow_img: torch.Tensor,
+    load_path: str,
+):
+    pairs_lookup = {(p1.method, p1.target): (p1, p2) for p1, p2 in successive_pairs}
+
+    def _plot_pair(pair, ax_block, img, lp, *, show_titles=False):
+        plot_one_successive_v2(*pair, ax_block, img, lp, show_titles=show_titles)
+
+    return _make_mode_grid(
+        mode_files=[],
+        rainbow_img=rainbow_img,
+        load_path=load_path,
+        plot_func=_plot_pair,
+        suptitle="Successive-Mode (Two-Part) Registration: Method-by-Target Comparison",
+        prebuilt_lookup=pairs_lookup,
+    )
+
 def deduplicate_keep_latest(parsed: list[ParsedRunFile]) -> list[ParsedRunFile]:
     """Keep the most recent file per (method, mode, target, part) combination."""
     best: dict[tuple[str, str, str, Optional[str]], ParsedRunFile] = {}
@@ -644,21 +670,26 @@ if __name__ == '__main__':
 
     rainbow_img = open_rainbow_minifish()
 
-    # along_files = [p for p in parsed if p.mode == "along"]
+    along_files = [p for p in parsed if p.mode == "along"]
+    #%%
     # fig, ax = plt.subplots(2, 3)
     # plot_one_affine(along_files[0], ax, rainbow_img, LOAD_PATH)
     # plt.show()
-    # fig_along = make_along_grid(along_files, rainbow_img, LOAD_PATH)
+    fig_along = make_along_grid(along_files, rainbow_img, LOAD_PATH)
     #
-    # if flag_successive_have_two_parts:
-    #     fig, ax = plt.subplots(2, 3)
-    #     plot_one_successive_v2(successive_pairs[0][0], successive_pairs[0][1], ax, rainbow_img, LOAD_PATH)
-    #     # fig_successive = make_successive_grid(successive_pairs, rainbow_img, LOAD_PATH)
-    # else:
-    #     successive_files = [p for p in parsed if p.mode == "successive" and p.part is None]
-    #     fig, ax = plt.subplots(2, 3)
-    #     plot_one_successive(successive_files[0], ax, rainbow_img, LOAD_PATH)
-    #     # fig_successive = make_successive_grid(successive_files, rainbow_img, LOAD_PATH)
-    #
+#     for i, (sp1, sp2) in enumerate(successive_pairs):
+#         ic(i, sp1.file_name, sp2.file_name)
+#     # raise ValueError("foknf,z")
+#     if flag_successive_have_two_parts:
+#         # fig, ax = plt.subplots(2, 3)
+#         # i = 14
+#         # plot_one_successive_v2(successive_pairs[i][0], successive_pairs[i][1], ax, rainbow_img, LOAD_PATH)
+#         fig_successive = make_successive_grid_v2(successive_pairs, rainbow_img, LOAD_PATH)
+#     else:
+#         successive_files = [p for p in parsed if p.mode == "successive" and p.part is None]
+# #         fig, ax = plt.subplots(2, 3)
+# #         plot_one_successive(successive_files[0], ax, rainbow_img, LOAD_PATH)
+#         # fig_successive = make_successive_grid(successive_files, rainbow_img, LOAD_PATH)
+
 
     plt.show()

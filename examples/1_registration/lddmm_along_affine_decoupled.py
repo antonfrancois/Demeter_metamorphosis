@@ -3,6 +3,8 @@ import torch
 from math import cos,sin
 import sys, pathlib
 
+from joblib.testing import param
+from sympy.printing.pytorch import torch
 
 sys.path.insert(0, str(pathlib.Path("examples/1_registration").resolve()))
 import lddmm_along_utils as lu
@@ -17,7 +19,6 @@ import demeter.utils.cost_functions as cf
 import demeter.utils.rigid_exploration as rg
 # from build.lib.demeter import ROOT_DIRECTORY
 from demeter.constants import set_ticks_off, GRIDDEF_YELLOW, ROOT_DIRECTORY
-from demeter.utils.cost_functions import SumSquaredDifference
 
 
 def _norm(x):
@@ -70,12 +71,12 @@ res = lu.apply_registration_models(
 keys = ["full_affine","rotation_translation_scaling","rotation_translation","rotation_scaling"]
 lu.show_deforms(target, res, keys)
 
-target_name = keys[1]
+target_name = keys[3]
 target = res[target_name]["image"]
 
 rotation=True
-scaling=False
-translation=True
+scaling=True
+translation=False
 def _strf_(valbool):
     return "T" if valbool else "F"
 modifier_str = (
@@ -83,8 +84,14 @@ modifier_str = (
         "_s"+_strf_(scaling)+
         "_t"+_strf_(translation)
                 )
+
+print(f"target : {target_name}, modifier : {modifier_str}")
 #%%
 
+bin_source = torch.zeros_like(source)
+bin_source[source > .9] = 1
+bin_target = torch.zeros_like(target)
+bin_target[target > .9] = 1
 
 source.to(device)
 # source = smooth(source, 20)
@@ -126,8 +133,6 @@ def init_explo():
     pass
 integration_steps = 10
 
-
-
 kernelOperator = rk.DummyKernel()
 
 datacost = mt.Rotation_Ssd_Cost(target.to('cuda:0'),
@@ -150,7 +155,7 @@ mr_rigid = mt.affine_decoupled_along_metamorphosis(
 top_params = rg.initial_exploration(mr_rigid, r_step = 100,
                                     max_output =10, verbose=True)
 # top_params = None
-top_params = top_params[8:]
+top_params = top_params[8:10]
 print("top_params : ",top_params)
 
 print("")
@@ -158,7 +163,7 @@ print("="*20)
 print("Optimize on best exploration ")
 best_loss, best_priors, best_rot = rg.optimize_on_rigid(
     mr_rigid, top_params,
-    n_iter=50, grad_coef = .1,
+    n_iter=20, grad_coef = .1,
     # affine=True,
     rotation=rotation, scaling=scaling, translation=translation,
     verbose=True, plot = True,
@@ -168,7 +173,7 @@ print(f"best_rot : {best_rot}")
 print(f"best_priors : {best_priors}")
 id = 1
 plt.show()
-
+#%%
 # lu.plot(mr_rigid)
 # plt.show()
 #%%
@@ -247,7 +252,7 @@ cost_cst = 1
 cost_field_cst = 1
 cost_affine_cst = 1
 adam_dt_step_field=1e-6,
-adam_dt_step_affine=1e-1,
+adam_dt_step_affine=3e-1,
 
 verbose_datacost = False
 plot_datacost = True
@@ -261,9 +266,10 @@ saving_plots= pathlib.Path(
         f"decoupled_rigid_{modifier_str}_lddmm"
 )
 
-gamma_kwargs = {'c': 10, 'nu':.05}
-n_iter = 500
+gamma_kwargs = {'c': 10, 'nu':1e-2}
+n_iter = 300
 
+r_list = torch.linspace(-torch.pi, torch.pi  , 8)
 kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False, kernel_reach =6)
 datacost = mt.Rotation_Ssd_Cost(
         target.to("cuda:0"),
@@ -279,52 +285,66 @@ datacost = mt.Rotation_Ssd_Cost(
 # for i,param in enumerate(top_param_rot):
 #     print(f"\n\noptimistion {i} on  {len(top_param_rot)}")
 
-print("\n" + "=" * 20)
-momenta = mt.prepare_momenta(
-    source.shape,
-    diffeo=True,
-    rotation=rotation,
-    scaling=scaling,
-    translation=translation,
-    device="cuda:0",
-    **best_priors
-)
+stock_results = []
+r_list = [r_list[1]]
+for i,params_r in  enumerate(r_list):
+# params_r = torch.tensor(1.6029)
+    print(f"\ni: {i}" + "=" * 20)
+    momenta = mt.prepare_momenta(
+        source.shape,
+        diffeo=True,
+        rotation=rotation,
+        scaling=scaling,
+        translation=translation,
+        device="cuda:0",
+        rot_prior=params_r,
+        # **best_priors
+    )
 
 
-mr = mt.affine_decoupled_along_metamorphosis(
-    source, target, momenta_ini=momenta,
-    kernelOperator= kernelOperator,
-    rho = rho,
-    data_term=datacost,
-    integration_steps = integration_steps,
-    cost_cst=cost_cst,
-    cost_field_cst = cost_field_cst,
-    cost_affine_cst = cost_affine_cst,
-    n_iter=n_iter,
-    convergence_tol=2e-3,
-    convergence_patience=3,
-    grad_coef=.1,
-    # optimizer_method='adadelta',
-    # lbfgs_max_iter = 20,
-    # lbfgs_history_size = 20,
-    optimizer_method='Adam',
-    adam_dt_step_field=adam_dt_step_field,
-    adam_dt_step_affine=adam_dt_step_affine,
-    adam_scheduler="reduce_on_plateau",
-    # adam_scheduler="exponential",
-    save_gpu_memory=False,
-    safe_mode=True,
-    debug=False,
-)
-mr.compute_dice(source,target)
+    mr = mt.affine_decoupled_along_metamorphosis(
+        source, target, momenta_ini=momenta,
+        kernelOperator= kernelOperator,
+        rho = rho,
+        data_term=datacost,
+        integration_steps = integration_steps,
+        cost_cst=cost_cst,
+        cost_field_cst = cost_field_cst,
+        cost_affine_cst = cost_affine_cst,
+        n_iter=n_iter,
+        convergence_tol=1e-5,
+        convergence_patience=3,
+        grad_coef=.1,
+        # optimizer_method='adadelta',
+        # lbfgs_max_iter = 20,
+        # lbfgs_history_size = 20,
+        optimizer_method='Adam',
+        adam_dt_step_field=adam_dt_step_field,
+        adam_dt_step_affine=adam_dt_step_affine,
+        adam_scheduler="reduce_on_plateau",
+        # adam_scheduler="exponential",
+        save_gpu_memory=False,
+        safe_mode=True,
+        debug=False,
+    )
+
+    mr.data_term.plot_cost_data_term()
+    plt.show()
+    print(i)
+    dice =  mr.compute_DICE(bin_source,bin_target)
+    stock_results.append(
+        {'i': i,
+         'param_r': params_r,
+         'data_loss':mr.data_loss.item(),
+         'dice': dice[0]}
+    )
 
 best = False
 fig_cost, _ = mr.plot_cost()
 fig_cost.savefig(str(saving_plots) + "_cost.png")
 plt.show()
-mr.data_term.plot_cost_data_term()
-plt.show()
-lu.plot(mr)
+
+lu.plot(mr, title=f"i:{i}, param_r :{params_r:.3f}, data_loss:{mr.data_loss.item():.3f}")
 plt.show()
 # if mr.data_loss < best_loss or mr.data_loss == 0:
 #     print(param)
@@ -332,7 +352,7 @@ plt.show()
 
 mt.free_GPU_memory(mr)
 
-raise ValueError("pin pin est pau pau")
+# raise ValueError("plouf")
 #%%
 lu.frames_to_video_ffmpeg(
   frames_dir=saving_plots.parent,
@@ -533,6 +553,7 @@ mr_rigid_first.mp.forward(source, momenta.copy(), save =  True)
 
 lu.plot(mr_rigid_first)
 plt.show()
+
 #%%
 # source_lddmm = source.clone()
 # target_lddmm = tb.imgDeform(target, mr_rigid_first.mp.get_affine_deformator())
@@ -546,6 +567,8 @@ plt.show()
 # plt.show()
 #%%%
 source_lddmm = tb.imgDeform(source, mr_rigid_first.mp.get_affine_deformator())
+bin_source_lddmm = torch.zeros_like(source_lddmm)
+bin_source_lddmm[source_lddmm > 0.9] = 1
 target_lddmm = target.clone()
 ref = 'target'
 fig, ax = plt.subplots(1,3, constrained_layout=True)
@@ -557,7 +580,7 @@ ax[2].imshow(target[0,0],cmap='gray')
 plt.show()
 #%%
 file_save, path = mr_rigid_first.save(f"fishes_method_{modifier_str}-successive-part1_target_{target_name}",
-    light_save=True,
+    light_save=False,
     save_path = "/home/turtlefox/Documents/11_metamorphoses/data/rigid_along_lddmm"
 )
 #%%
@@ -578,6 +601,8 @@ mr_l = mt.lddmm(
 mr_l.plot_cost()
 plt.show()
 
+mr_l.compute_DICE(bin_source_lddmm, bin_target)
+#%%
 fig, ax = plt.subplots(2, 3, figsize=(18, 12), constrained_layout=True)
 image_kw = dict(cmap="gray", origin="lower", vmin=0, vmax=1)
 set_ticks_off(ax)
@@ -631,9 +656,10 @@ plt.show()
 fig.savefig(path+f"classic_lddmm_ref{ref}.pdf")
 mr_l.mp.plot()
 plt.show()
+
 #%%
 file_save, path = mr_l.save(f"fishes_method_{modifier_str}-successive-part2_target_{target_name}",
-        light_save=True,
+        light_save=False,
         save_path = "/home/turtlefox/Documents/11_metamorphoses/data/rigid_along_lddmm"
         )
 #%%
