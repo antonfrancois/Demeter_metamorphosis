@@ -409,8 +409,15 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
     def _forward_initialize_integration(self, image, momenta, device, save, sharp, hamiltonian_integration, plot):
         self._init_sharp_(sharp)
-        self.source = image.detach().to(device)
-        self.image = image.clone().to(device)
+        # Infer the computation dtype from momenta so image stays consistent
+        # (e.g. avoid float64 source mixing with float32 momenta / kernels)
+        if isinstance(momenta, dict):
+            _param_dtypes = [v.dtype for v in momenta.values() if isinstance(v, torch.Tensor)]
+        else:
+            _param_dtypes = [momenta.dtype] if isinstance(momenta, torch.Tensor) else []
+        _target_dtype = _param_dtypes[0] if _param_dtypes else image.dtype
+        self.source = image.detach().to(device=device, dtype=_target_dtype)
+        self.image = image.clone().to(device=device, dtype=_target_dtype)
         self.momenta = momenta
         self.flag_hamiltonian_integration = hamiltonian_integration
         self.save = True if self._force_save else save
@@ -1487,7 +1494,12 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                     _patience_count += 1
                 else:
                     _patience_count = 0
-                ic(i,_curr_loss, rel_change, convergence_tol,_patience_count, )
+                # print(f"abstract.py:1490 in forward()\n"
+                #       f"\t_curr_loss:{_curr_loss}\n"
+                #       f"\t_rel_change:{rel_change}\n"
+                #       f"\tconvergence_tol:{convergence_tol}\n"
+                #       f"\t_patience_count:{_patience_count}")
+                # ic(i,_curr_loss, rel_change, convergence_tol,_patience_count, )
                 if _patience_count >= convergence_patience:
                     _last_iter = i
                     if verbose:
