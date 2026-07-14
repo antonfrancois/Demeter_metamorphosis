@@ -575,6 +575,10 @@ class Affine_Metamorphosis_Optimizer(Optimize_geodesicShooting):
             cost_affine_cst=1,
             adam_dt_step_field=None,
             adam_dt_step_affine=None,
+            freeze_affine_at_handoff=False,
+            reset_diffeo_state_at_handoff=False,
+            reset_diffeo_values_at_handoff=False,
+            log_affine_drift=True,
             **kwargs,
     ):
         super().__init__(**kwargs)
@@ -583,6 +587,15 @@ class Affine_Metamorphosis_Optimizer(Optimize_geodesicShooting):
         self.cost_affine_cst = cost_affine_cst
         self.adam_dt_step_field = adam_dt_step_field
         self.adam_dt_step_affine = adam_dt_step_affine
+        self.freeze_affine_at_handoff = freeze_affine_at_handoff
+        self.reset_diffeo_state_at_handoff = reset_diffeo_state_at_handoff
+        self.reset_diffeo_values_at_handoff = reset_diffeo_values_at_handoff
+        self.log_affine_drift = log_affine_drift
+        # Handoff state — reset in _initialize_Adam_ at each forward() call
+        self._handoff_applied = False
+        self._A_tau = None
+        self._T_tau = None
+        self.affine_drift_log = []
 
     def _get_rho_(self):
         return float(self.mp.rho)
@@ -595,6 +608,9 @@ class Affine_Metamorphosis_Optimizer(Optimize_geodesicShooting):
             'cost_affine_cst': self.cost_affine_cst,
             'adam_dt_step_field': self.adam_dt_step_field,
             'adam_dt_step_affine': self.adam_dt_step_affine,
+            'freeze_affine_at_handoff': self.freeze_affine_at_handoff,
+            'reset_diffeo_state_at_handoff': self.reset_diffeo_state_at_handoff,
+            'reset_diffeo_values_at_handoff': self.reset_diffeo_values_at_handoff,
         }
         return {**params_all, **params_spe}
 
@@ -655,6 +671,85 @@ class Affine_Metamorphosis_Optimizer(Optimize_geodesicShooting):
             eps=1e-8,
             weight_decay=0,
         )
+
+        # Reset handoff state at each new optimization run
+        self._handoff_applied = False
+        self._A_tau = None
+        self._T_tau = None
+        self.affine_drift_log = []
+
+    # ------------------------------------------------------------------
+    # Ablation arms — handoff freeze / reset / drift logging
+    # ------------------------------------------------------------------
+
+    def _step_Adam_(self):
+        result = super()._step_Adam_()
+        self._check_handoff_and_log_()
+        return result
+
+    def _check_handoff_and_log_(self):
+        """Detect tau, apply arm interventions, and log affine drift."""
+        if not self._handoff_applied and self._is_at_handoff_():
+            self._A_tau = self.mp.rot_mat.detach().clone()
+            self._T_tau = self.mp.translation.detach().clone()
+            self._tau_iter = self._iter_
+            print(f"\n[handoff] tau detected at iter {self._tau_iter} "
+                  f"(gamma={float(self.data_term.stock_gamma[-1]):.4f})")
+            self._apply_handoff_interventions_()
+            self._handoff_applied = True
+
+        if self.log_affine_drift and self._handoff_applied and self._A_tau is not None:
+            A_k = self.mp.rot_mat.detach()
+            drift = (A_k - self._A_tau.to(A_k.device)).norm().item()
+            self.affine_drift_log.append((self._iter_, drift))
+
+    def _is_at_handoff_(self):
+        """True on the first optimizer iteration where gamma ≤ edges_computes."""
+        if not hasattr(self.data_term, 'stock_gamma'):
+            return False
+        if len(self.data_term.stock_gamma) == 0:
+            return False
+        edges = float(getattr(self.data_term, 'edges_computes', 0.01))
+        return float(self.data_term.stock_gamma[-1]) <= edges
+
+    def _apply_handoff_interventions_(self):
+        """
+        Apply the freeze/reset interventions that differentiate arms 2–4:
+
+        Arm 2: freeze_affine_at_handoff=True
+        Arm 3: freeze_affine_at_handoff=True, reset_diffeo_state_at_handoff=True
+        Arm 4: freeze_affine_at_handoff=True, reset_diffeo_state_at_handoff=True,
+                reset_diffeo_values_at_handoff=True
+        """
+        _AFFINE_KEYS = {"momentum_A", "momentum_T", "momentum_R", "momentum_S"}
+        _DIFFEO_KEYS = {"momentum_I"}
+
+        affine_params = [p for k, p in self.parameter.items() if k in _AFFINE_KEYS]
+        diffeo_params = [p for k, p in self.parameter.items() if k in _DIFFEO_KEYS]
+
+        if self.freeze_affine_at_handoff:
+            for p in affine_params:
+                p.requires_grad_(False)
+                p.grad = None
+                self.optimizer.state.pop(p, None)
+            # Zero lr for the affine param group (belt-and-suspenders)
+            affine_ids = {id(p) for p in affine_params}
+            for group in self.optimizer.param_groups:
+                if any(id(p) in affine_ids for p in group['params']):
+                    group['lr'] = 0.0
+            print(f"[handoff] Affine parameters frozen (arm 2+)")
+
+        if self.reset_diffeo_state_at_handoff:
+            for p in diffeo_params:
+                self.optimizer.state.pop(p, None)
+            print(f"[handoff] Diffeo Adam state reset (arm 3+)")
+
+        if self.reset_diffeo_values_at_handoff:
+            for p in diffeo_params:
+                p.data.zero_()
+            print(f"[handoff] Diffeo values zeroed to identity (arm 4)")
+
+    # ------------------------------------------------------------------
 
     def cost(self, momenta, **kwargs):
 

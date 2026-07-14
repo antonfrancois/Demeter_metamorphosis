@@ -916,6 +916,354 @@ def execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers):
         )
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  FA-LDDMM 5-arm freeze ablation — brain (IXI)
+# ─────────────────────────────────────────────────────────────────────────────
+#  Arms:
+#    1  joint FA-LDDMM, no intervention              (baseline)
+#    2  + freeze affine at variational γ hand-off τ
+#    3  + freeze affine, reset diffeo Adam state at τ
+#    4  + freeze affine, reset diffeo Adam state + zero diffeo values at τ
+#    5  two-stage: affine-only → fresh LDDMM         (reference)
+#
+#  Arms 1–4 share identical hyperparams; only the freeze/reset flags differ.
+#  Use execute_all_ablation_arms() to run the full ablation; it extracts τ from
+#  arm 1 and caps arm 5's LDDMM stage at max(100, N_ITER − τ) iterations.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _ablation_hyperparams():
+    """Shared hyperparameter dict for the 5-arm brain ablation."""
+    sigma = [(s,) * 3 for s in [3, 7]]
+    return dict(
+        sigma                 = sigma,
+        gamma_kwargs          = {"c": 1.0, "nu": 100},
+        rho                   = 1,
+        cost_cst              = 1e3,
+        cost_affine_cst       = 1,
+        cost_field_cst        = 1,
+        adam_dt_step_field    = 1e-6,
+        adam_dt_step_affine   = 1e-2,
+        integration_steps     = 10,
+        n_iter                = 500,
+        convergence_tol       = 1e-4,
+        convergence_patience  = 3,
+    )
+
+
+def _run_joint_arm_subject(
+    source, target, seg_source, seg_target, paths,
+    freeze_affine=False,
+    reset_diffeo_state=False,
+    reset_diffeo_values=False,
+    method_name="fa_arm1_baseline",
+):
+    """Run one subject for arms 1–4; save + log metrics; return τ."""
+    hp = _ablation_hyperparams()
+    n_iter = hp["n_iter"] if location != "local" else 20
+
+    kernelOperator = rk.Multi_scale_GaussianRKHS(hp["sigma"], normalized=False)
+    datacost = mt.Rotation_Ssd_Cost(
+        target.to("cuda:0"),
+        gamma_mode="variationnal",
+        gamma_kwargs=hp["gamma_kwargs"],
+        normalize_ssd=False,
+        verbose=False,
+        save_values=True,
+        edges_computes=1e-2,
+    )
+    momenta = mt.prepare_momenta(
+        source.shape, diffeo=True, device="cuda:0", affine=True,
+    )
+
+    mr = mt.affine_along_metamorphosis(
+        source.to("cuda:0"), target.to("cuda:0"),
+        momenta_ini=momenta,
+        kernelOperator=kernelOperator,
+        rho=hp["rho"],
+        data_term=datacost,
+        integration_steps=hp["integration_steps"],
+        cost_cst=hp["cost_cst"],
+        cost_affine_cst=hp["cost_affine_cst"],
+        cost_field_cst=hp["cost_field_cst"],
+        n_iter=n_iter,
+        convergence_tol=hp["convergence_tol"],
+        convergence_patience=hp["convergence_patience"],
+        save_gpu_memory=False,
+        optimizer_method="Adam",
+        adam_dt_step_field=hp["adam_dt_step_field"],
+        adam_dt_step_affine=hp["adam_dt_step_affine"],
+        adam_scheduler="reduce_on_plateau",
+        freeze_affine_at_handoff=freeze_affine,
+        reset_diffeo_state_at_handoff=reset_diffeo_state,
+        reset_diffeo_values_at_handoff=reset_diffeo_values,
+        log_affine_drift=True,
+    )
+
+    tau = getattr(mr, "_tau_iter", None)
+    dices, _ = mr.compute_DICE(seg_source, seg_target, verbose=True)
+    file_save, path = mr.save(
+        f"{paths['subject_dir'].name}_{method_name}",
+        light_save=False,
+        save_path=os.path.join(result_folder, method_name),
+    )
+
+    dice = dices[0] | dices[1]
+    now = datetime.datetime.now()
+    log_metrics(
+        db_path,
+        patient_id=paths["subject_dir"].name,
+        method=method_name,
+        metrics={method_name + " " + k: v for k, v in dice.items()},
+        run_id=str(now) + " at " + location,
+        step=0,
+        meta={
+            "gpu": torch.cuda.get_device_name(),
+            "gamma_kwargs": hp["gamma_kwargs"],
+            "rho": hp["rho"],
+            "cost_cst": hp["cost_cst"],
+            "sigma": hp["sigma"],
+            "integration_steps": hp["integration_steps"],
+            "freeze_affine_at_handoff": freeze_affine,
+            "reset_diffeo_state_at_handoff": reset_diffeo_state,
+            "reset_diffeo_values_at_handoff": reset_diffeo_values,
+            "tau": tau,
+            "adam_dt_step_field": hp["adam_dt_step_field"],
+            "adam_dt_step_affine": hp["adam_dt_step_affine"],
+            "file": os.path.join(path, file_save),
+        },
+    )
+    mt.free_GPU_memory(mr)
+    return tau
+
+
+def execute_arm1_joint_baseline(pp, subjects_numbers):
+    """Arm 1 — joint FA-LDDMM, no intervention (baseline)."""
+    for paths, source, target, seg_source, seg_target in pp.get_subjects_aligned(
+        numbers=subjects_numbers, resize_factor=RESIZE_FACTOR,
+        first_only=False, progress=True, tqdm_kwargs={"leave": True},
+    ):
+        print(f"\nPatient : {paths['subject_dir'].name}")
+        _run_joint_arm_subject(
+            source, target, seg_source, seg_target, paths,
+            freeze_affine=False,
+            reset_diffeo_state=False,
+            reset_diffeo_values=False,
+            method_name="fa_arm1_baseline",
+        )
+
+
+def execute_arm2_freeze_affine(pp, subjects_numbers):
+    """Arm 2 — joint FA-LDDMM, freeze affine at τ."""
+    for paths, source, target, seg_source, seg_target in pp.get_subjects_aligned(
+        numbers=subjects_numbers, resize_factor=RESIZE_FACTOR,
+        first_only=False, progress=True, tqdm_kwargs={"leave": True},
+    ):
+        print(f"\nPatient : {paths['subject_dir'].name}")
+        _run_joint_arm_subject(
+            source, target, seg_source, seg_target, paths,
+            freeze_affine=True,
+            reset_diffeo_state=False,
+            reset_diffeo_values=False,
+            method_name="fa_arm2_freeze",
+        )
+
+
+def execute_arm3_freeze_reset_state(pp, subjects_numbers):
+    """Arm 3 — joint FA-LDDMM, freeze affine + reset diffeo Adam state at τ."""
+    for paths, source, target, seg_source, seg_target in pp.get_subjects_aligned(
+        numbers=subjects_numbers, resize_factor=RESIZE_FACTOR,
+        first_only=False, progress=True, tqdm_kwargs={"leave": True},
+    ):
+        print(f"\nPatient : {paths['subject_dir'].name}")
+        _run_joint_arm_subject(
+            source, target, seg_source, seg_target, paths,
+            freeze_affine=True,
+            reset_diffeo_state=True,
+            reset_diffeo_values=False,
+            method_name="fa_arm3_freeze_reset_state",
+        )
+
+
+def execute_arm4_freeze_reset_all(pp, subjects_numbers):
+    """Arm 4 — joint FA-LDDMM, freeze affine + reset diffeo Adam state + zero diffeo values at τ."""
+    for paths, source, target, seg_source, seg_target in pp.get_subjects_aligned(
+        numbers=subjects_numbers, resize_factor=RESIZE_FACTOR,
+        first_only=False, progress=True, tqdm_kwargs={"leave": True},
+    ):
+        print(f"\nPatient : {paths['subject_dir'].name}")
+        _run_joint_arm_subject(
+            source, target, seg_source, seg_target, paths,
+            freeze_affine=True,
+            reset_diffeo_state=True,
+            reset_diffeo_values=True,
+            method_name="fa_arm4_freeze_reset_all",
+        )
+
+
+def execute_arm5_two_stage(pp, subjects_numbers, lddmm_n_iter=None):
+    """
+    Arm 5 — two-stage reference: affine-only FA → fresh LDDMM.
+
+    lddmm_n_iter: LDDMM stage iteration cap.
+                  Pass max(100, N_ITER - tau) from arm 1 for a fair comparison.
+                  Defaults to hp["n_iter"] if None.
+    """
+    hp = _ablation_hyperparams()
+    n_iter_affine = hp["n_iter"] if location != "local" else 20
+    n_iter_lddmm  = lddmm_n_iter if lddmm_n_iter is not None else n_iter_affine
+
+    for paths, source, target, seg_source, seg_target in pp.get_subjects_aligned(
+        numbers=subjects_numbers, resize_factor=RESIZE_FACTOR,
+        first_only=False, progress=True, tqdm_kwargs={"leave": True},
+    ):
+        print(f"\nPatient : {paths['subject_dir'].name}")
+        method_name = "fa_arm5_two_stage"
+
+        # Stage 1: affine-only with variational γ (DummyKernel → no diffeo)
+        print(f"  [arm5] stage 1: affine-only  (n_iter={n_iter_affine})")
+        datacost_affine = mt.Rotation_Ssd_Cost(
+            target.to("cuda:0"),
+            gamma_mode="variationnal",
+            gamma_kwargs=hp["gamma_kwargs"],
+            normalize_ssd=False,
+            verbose=False,
+            save_values=True,
+            edges_computes=1e-2,
+        )
+        momenta_affine = mt.prepare_momenta(
+            source.shape, diffeo=False, device="cuda:0", affine=True,
+        )
+        mr_affine = mt.affine_along_metamorphosis(
+            source.to("cuda:0"), target.to("cuda:0"),
+            momenta_ini=momenta_affine,
+            kernelOperator=rk.DummyKernel(),
+            rho=hp["rho"],
+            data_term=datacost_affine,
+            integration_steps=hp["integration_steps"],
+            cost_cst=hp["cost_cst"],
+            cost_affine_cst=hp["cost_affine_cst"],
+            n_iter=n_iter_affine,
+            convergence_tol=hp["convergence_tol"],
+            convergence_patience=hp["convergence_patience"],
+            save_gpu_memory=False,
+            optimizer_method="Adam",
+            adam_dt_step_affine=hp["adam_dt_step_affine"],
+            adam_scheduler="reduce_on_plateau",
+        )
+        dices_affine, _ = mr_affine.compute_DICE(seg_source, seg_target, verbose=True)
+
+        # Warp source and segmentation by the learned affine
+        affine_grid = mr_affine.mp.get_affine_deformator().cpu()
+        source_warped = tb.imgDeform(
+            source.cpu(), affine_grid, dx_convention="2square",
+        ).to("cuda:0")
+        seg_source_warped = tb.imgDeform(
+            seg_source.cpu(), affine_grid, dx_convention="2square", mode="nearest",
+        )
+
+        # Stage 2: pure LDDMM on affine-warped source
+        print(f"  [arm5] stage 2: pure LDDMM  (n_iter={n_iter_lddmm})")
+        kernelOperator_lddmm = rk.Multi_scale_GaussianRKHS(hp["sigma"], normalized=False)
+        data_cost_lddmm = mt.Ssd(target.to("cuda:0"))
+        mr_lddmm = mt.lddmm(
+            source_warped, target.to("cuda:0"),
+            0,
+            kernelOperator_lddmm,
+            cost_cst=hp["cost_cst"],
+            grad_coef=hp["adam_dt_step_field"],
+            integration_steps=hp["integration_steps"],
+            n_iter=n_iter_lddmm,
+            convergence_tol=hp["convergence_tol"],
+            convergence_patience=hp["convergence_patience"],
+            optimizer_method="Adam",
+            adam_scheduler="reduce_on_plateau",
+            dx_convention="2square",
+            safe_mode=True,
+        )
+        dices_lddmm, _ = mr_lddmm.compute_DICE(seg_source_warped, seg_target, verbose=True)
+
+        file_save1, path = mr_affine.save(
+            f"{paths['subject_dir'].name}_{method_name}_stage1",
+            light_save=False,
+            save_path=os.path.join(result_folder, method_name),
+        )
+        file_save2, _ = mr_lddmm.save(
+            f"{paths['subject_dir'].name}_{method_name}_stage2",
+            light_save=False,
+            save_path=os.path.join(result_folder, method_name),
+        )
+
+        dice = (dices_affine[0] | dices_affine[1]
+                | {"lddmm " + k: v for k, v in (dices_lddmm[0] | dices_lddmm[1]).items()})
+        now = datetime.datetime.now()
+        log_metrics(
+            db_path,
+            patient_id=paths["subject_dir"].name,
+            method=method_name,
+            metrics={method_name + " " + k: v for k, v in dice.items()},
+            run_id=str(now) + " at " + location,
+            step=0,
+            meta={
+                "gpu": torch.cuda.get_device_name(),
+                "gamma_kwargs": hp["gamma_kwargs"],
+                "rho": hp["rho"],
+                "cost_cst": hp["cost_cst"],
+                "sigma": hp["sigma"],
+                "integration_steps": hp["integration_steps"],
+                "lddmm_n_iter": n_iter_lddmm,
+                "adam_dt_step_field": hp["adam_dt_step_field"],
+                "adam_dt_step_affine": hp["adam_dt_step_affine"],
+                "file": [os.path.join(path, file_save1), os.path.join(path, file_save2)],
+            },
+        )
+        mt.free_GPU_memory(mr_affine)
+        mt.free_GPU_memory(mr_lddmm)
+
+
+def execute_all_ablation_arms(pp, subjects_numbers):
+    """
+    Run the full 5-arm FA-LDDMM freeze ablation on brain data (arms 1 → 5).
+
+    Arm 1's mean τ across subjects is used to cap arm 5's LDDMM stage at
+    max(100, N_ITER − τ) iterations for a fair comparison.
+    """
+    hp = _ablation_hyperparams()
+    n_iter = hp["n_iter"] if location != "local" else 20
+
+    # Arm 1 — collect τ per subject for arm-5 capping
+    tau_per_subject: dict = {}
+    print("\n" + "=" * 60 + "\nArm 1 — joint baseline\n" + "=" * 60)
+    for paths, source, target, seg_source, seg_target in pp.get_subjects_aligned(
+        numbers=subjects_numbers, resize_factor=RESIZE_FACTOR,
+        first_only=False, progress=True, tqdm_kwargs={"leave": True},
+    ):
+        print(f"\nPatient : {paths['subject_dir'].name}")
+        tau = _run_joint_arm_subject(
+            source, target, seg_source, seg_target, paths,
+            freeze_affine=False, reset_diffeo_state=False, reset_diffeo_values=False,
+            method_name="fa_arm1_baseline",
+        )
+        tau_per_subject[paths["subject_dir"].name] = tau
+
+    print("\n" + "=" * 60 + "\nArm 2 — freeze affine at τ\n" + "=" * 60)
+    execute_arm2_freeze_affine(pp, subjects_numbers)
+
+    print("\n" + "=" * 60 + "\nArm 3 — freeze affine + reset diffeo state\n" + "=" * 60)
+    execute_arm3_freeze_reset_state(pp, subjects_numbers)
+
+    print("\n" + "=" * 60 + "\nArm 4 — freeze affine + reset diffeo state + zero values\n" + "=" * 60)
+    execute_arm4_freeze_reset_all(pp, subjects_numbers)
+
+    # Derive lddmm_n_iter from the mean τ observed in arm 1
+    tau_values = [t for t in tau_per_subject.values() if t is not None]
+    tau_ref = int(round(sum(tau_values) / len(tau_values))) if tau_values else None
+    lddmm_n_iter = max(100, n_iter - tau_ref) if tau_ref is not None else n_iter
+    print(f"\n[arm5] mean τ from arm1 = {tau_ref}  →  LDDMM n_iter = {lddmm_n_iter}")
+
+    print("\n" + "=" * 60 + f"\nArm 5 — two-stage reference  (LDDMM n_iter={lddmm_n_iter})\n" + "=" * 60)
+    execute_arm5_two_stage(pp, subjects_numbers, lddmm_n_iter=lddmm_n_iter)
+
+
 def execute_subcmd(cmd):
     print(">>> executing command:")
     for arg in cmd:
@@ -1612,7 +1960,7 @@ if __name__ == '__main__':
     # 55,56,57,58,59,60,61,62, Done
     #     # subjects_numbers = [63,64,65,66,67,68,69]
     # subjects_numbers = None
-    subjects_numbers = [2]#, 26, 50,2, 12]
+    # subjects_numbers = [2]#, 26, 50,2, 12]
     RECOMPUTE = False
     RESIZE_FACTOR = .5 if location == 'local' else 1
     FLAG_DECOUPLED = False
@@ -1620,9 +1968,10 @@ if __name__ == '__main__':
     # init_csv(result_folder)
 
     if location == "meso":  # don't touch this line
-        file_db = "ixi_results_full_2026.db"
+        file_db = "ixi_results_arms_2026.db"
     else:  # here you can sandbox what you need to do.
-        file_db = f"ixi_results_{location}.db"
+        # file_db = f"ixi_results_{location}.db"
+        file_db = f"ixi_results_arms_{location}.db"
         # file_db = "ixi_results_meso_20250917.db"
     db_path = os.path.join(result_folder, file_db)
     # clean_method(db_path, "affine_lddmm_succ")
@@ -1635,5 +1984,13 @@ if __name__ == '__main__':
     # execute_flirt_lddmm(pp, subjects_numbers)
     # elif location == 'local':
     # execute_rigid_along_metamorphosis(pp, subjects_numbers)
-    execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers)
+    # execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers)
+
+    # ── 5-arm freeze ablation (Phase C) ──────────────────────────────────────
+    execute_all_ablation_arms(pp, subjects_numbers)   # full ablation 1→5
+    # execute_arm1_joint_baseline(pp, subjects_numbers)
+    # execute_arm2_freeze_affine(pp, subjects_numbers)
+    # execute_arm3_freeze_reset_state(pp, subjects_numbers)
+    # execute_arm4_freeze_reset_all(pp, subjects_numbers)
+    # execute_arm5_two_stage(pp, subjects_numbers)
 #

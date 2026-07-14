@@ -504,6 +504,9 @@ class Rotation_Ssd_Cost(DataCost):
     def _compute_ssd_rot_derivative(self):
         _iter = self.optimizer._iter_
         win = 6
+        # ic(self.stock_ssd_rot[-1])
+        if self.stock_ssd_rot[-1] ==0:
+            return torch.tensor(0)
         if _iter > win:
             A_k = torch.tensor(self.stock_ssd_rot[_iter - win + 1:_iter])
             A_km = torch.tensor(self.stock_ssd_rot[_iter - win:_iter - 1])
@@ -517,7 +520,7 @@ class Rotation_Ssd_Cost(DataCost):
         #     diff = self.stock_ssd_rot[1:_iter] - self.stock_ssd_rot[:_iter-1]
         else:
             diff = torch.tensor(-self.c, dtype=torch.float)
-        return diff.mean() / prod(self.target.shape)
+        return diff.mean() #/ prod(self.target.shape)
 
 
     def _compute_gamma_(self, iter):
@@ -551,7 +554,12 @@ class Rotation_Ssd_Cost(DataCost):
             c = self.c * sum(self.stock_d_r) / len(self.stock_d_r)
 
             K = torch.min(torch.tensor(1.0), torch.abs(d_r) / c) if c > 0 else torch.tensor(0.0)
-            gamma = old_gamma + (K - old_gamma) * self.nu
+            # gamma = old_gamma + (K - old_gamma) * self.nu
+            alpha = .5
+            gamma = old_gamma + 2/self.nu * (
+                K * (1 - old_gamma) ** alpha
+                - (1 -K) * old_gamma ** alpha
+            )
             print(f"data_cost.py in _compute_gamma_"
                   f"\n\titer: {iter}\n"
                   f"\td_r: {d_r:.3e}\n"
@@ -695,7 +703,12 @@ class Rotation_Ssd_Cost(DataCost):
         if self.save_values:
             self.stock_ssd.append(ssd.detach().item())
             self.stock_ssd_rot.append(ssd_rot.detach().item())
-            self.stock_gamma.append(gamma)
+            try:
+                self.stock_gamma.append(gamma.item())
+            except AttributeError:
+                self.stock_gamma.append(gamma)
+
+        # ic(ssd, ssd_rot, gamma, gamma * ssd_rot + (1-gamma) * ssd)
         return gamma * ssd_rot + (1-gamma) * ssd
 
 #

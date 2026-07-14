@@ -574,6 +574,10 @@ def affine_along_metamorphosis(
         convergence_patience=3,
         adam_scheduler="reduce_on_plateau",
         adam_grad_clip=None,
+        freeze_affine_at_handoff=False,
+        reset_diffeo_state_at_handoff=False,
+        reset_diffeo_values_at_handoff=False,
+        log_affine_drift=True,
     ):
     """
     Run metamorphosis with an affine component (full affine or decoupled rigid-like).
@@ -691,6 +695,10 @@ def affine_along_metamorphosis(
         adam_dt_step_affine=adam_dt_step_affine,
         adam_scheduler=adam_scheduler,
         adam_grad_clip=adam_grad_clip,
+        freeze_affine_at_handoff=freeze_affine_at_handoff,
+        reset_diffeo_state_at_handoff=reset_diffeo_state_at_handoff,
+        reset_diffeo_values_at_handoff=reset_diffeo_values_at_handoff,
+        log_affine_drift=log_affine_drift,
     )
     mr = _commun_after(mr, momenta_ini, safe_mode, n_iter, grad_coef,
                       convergence_tol=convergence_tol, convergence_patience=convergence_patience)

@@ -353,7 +353,6 @@ plt.show()
 
 mt.free_GPU_memory(mr)
 
-raise ValueError("ON est dans le train !!")
 #%%
 lu.frames_to_video_ffmpeg(
   frames_dir=saving_plots.parent,
