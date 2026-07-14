@@ -4,7 +4,7 @@ from demeter.metamorphosis import prepare_momenta
 from demeter.utils.decorators import time_it
 import demeter.utils.torchbox as tb
 import demeter.utils.cost_functions as cf
-import  demeter.metamorphosis.rotate as mtrt
+import  demeter.metamorphosis.affine as mtrt
 
 def compute_img_barycentre(img, id_grid = None, dx_convention= '2square'):
     if id_grid is None:
@@ -98,7 +98,7 @@ def initial_exploration(rigid_meta_optim,
         print(momenta)
         rigid_meta_optim.mp.forward(rigid_meta_optim.source, momenta, save=False)
 
-        rot_def =   tb.grid_from_rotation(rigid_meta_optim.mp.id_grid, rigid_meta_optim. mp.rot_mat.T)
+        rot_def =   tb.matrix_time_grid(rigid_meta_optim.mp.id_grid, rigid_meta_optim. mp.rot_mat.T)
         img_rot = tb.imgDeform(rigid_meta_optim.source, rot_def.to('cpu'), dx_convention='2square')
         # img_rot = torch.clip(img_rot, 0, 1)
         loss_val = cf.SumSquaredDifference(rigid_meta_optim.target)(img_rot)
@@ -125,9 +125,9 @@ def initial_exploration(rigid_meta_optim,
 
 
 import matplotlib.pyplot as plt
-#%% rigid optimisation
+# rigid optimisation
 def optimize_on_rigid(mr,
-                      top_params,
+                      top_params = None,
                       rotation=True,
                       translation=True,
                       scaling= True,
@@ -140,6 +140,33 @@ def optimize_on_rigid(mr,
     best_loss = torch.inf
     best_momenta = None
     best_rot = None
+
+    def _get_momentums(name):
+        try:
+            optim_momenta = mr.optimized_momenta.detach()
+            return getattr(optim_momenta, name)
+        except KeyError:
+            return None
+
+    if top_params is None:
+        momenta = mtrt.prepare_momenta(
+            mr.source.shape,
+            diffeo=False,
+            rotation=rotation,
+            translation=translation,
+            scaling= scaling,
+            affine=affine,
+        )
+        mr.forward(momenta, n_iter = n_iter, grad_coef= grad_coef)
+
+        priors = dict(
+                affine_prior = _get_momentums("momentum_A"),
+                 rot_prior= _get_momentums("momentum_R"),
+                trans_prior=_get_momentums("momentum_T"),
+                scale_prior=_get_momentums("momentum_S")
+            )
+        return mr.data_loss, priors, mr.mp.rot_mat
+
     for i,(val,params_r) in  enumerate(top_params):
         if verbose:
             print(">"*10)
@@ -147,12 +174,24 @@ def optimize_on_rigid(mr,
 
         momenta = mtrt.prepare_momenta(
             mr.source.shape,
-            diffeo=False,rotation=rotation,translation=translation,scaling= scaling,affine=affine,
+            diffeo=False,
+            rotation=rotation,
+            translation=translation,
+            scaling= scaling,
+            affine=affine,
             **params_r
         )
+        priors =  dict(
+                affine_prior = _get_momentums("momentum_A"),
+                 rot_prior= _get_momentums("momentum_R"),
+                trans_prior=_get_momentums("momentum_T"),
+                scale_prior=_get_momentums("momentum_S")
+            )
+        converged = True
         try:
             mr.forward(momenta, n_iter = n_iter, grad_coef= grad_coef)
         except OverflowError:
+            converged = False
             print("xxxxxx Optimization diverged xxxxxx")
         # mr = rigid_along_metamorphosis(
         #     source,target,momenta, kernelOperator,
@@ -166,23 +205,33 @@ def optimize_on_rigid(mr,
         # )
 
         best = False
-        if mr.data_loss < best_loss or mr.data_loss == 0:
+
+        current_loss = mr.data_loss
+        if isinstance(current_loss, torch.Tensor):
+            if not torch.isfinite(current_loss).item():
+                if verbose:
+                    print("Skipping iteration: non-finite data loss.")
+                continue
+            current_loss = current_loss.detach().cpu()
+
+        if current_loss < best_loss or mr.data_loss == 0:
             best_loss = mr.data_loss
-            if mr.optimized_momenta is not None:
-                best_momenta = dict(
-                    affine_prior = mr.optimized_momenta.detach().momentum_A,
-                     rot_prior= mr.optimized_momenta.detach().momentum_R,
-                    trans_prior=mr.optimized_momenta.detach().momentum_T,
-                    scale_prior=mr.optimized_momenta.detach().momentum_S
-                )
-                best_rot = mr.mp.rot_mat
+            best_momenta = dict(
+                affine_prior = _get_momentums("momentum_A"),
+                 rot_prior= _get_momentums("momentum_R"),
+                trans_prior=_get_momentums("momentum_T"),
+                scale_prior=_get_momentums("momentum_S")
+            )
             best = True
+            best_rot = mr.mp.rot_mat
 
         # mr.plot_cost(
         # )
         # plt.show()
         if plot:
-            rot_def = mr.mp.get_rigidor()
+            mr.plot_cost()
+            plt.show()
+            rot_def = mr.mp.get_affine_deformator()
             rotated_source = tb.imgDeform(mr.source,rot_def,dx_convention='2square')
             if len(mr.source.shape) == 5:
                 img = rotated_source[0,0,..., mr.source.shape[-1]//2].detach().cpu()
@@ -194,12 +243,12 @@ def optimize_on_rigid(mr,
                 img_source = tb.imCmp(rotated_source.detach().cpu(), mr.source.detach().cpu(), "compose")[0]
 
             fig,ax = plt.subplots(1,3)
-            fig.suptitle(f"i = {i}, best = {best}, loss = {mr.data_loss:.4f}"
+            fig.suptitle(f"i = {i}, best = {best}, loss = {float(current_loss):.4f}"
                          f"\n {params_r}"
                          f"\n {dict(
-                rot_prior= mr.optimized_momenta.detach().momentum_R,
-                trans_prior=mr.optimized_momenta.detach().momentum_T,
-                scale_prior=mr.optimized_momenta.detach().momentum_S,
+                rot_prior= _get_momentums("momentum_R"),
+                trans_prior=_get_momentums("momentum_T"),
+                scale_prior=_get_momentums("momentum_S")
             )}")
             ax[0].imshow(img, cmap="gray")
             ax[0].set_title("Final image")
@@ -212,18 +261,21 @@ def optimize_on_rigid(mr,
             print(f"best = {best}")
             print("translation = ",mr.mp.translation)
             print("rotation matrix = ",mr.mp.rot_mat)
-            print("scaling = ", mr.mp.scale)
+            try:
+                print("scaling = ", mr.mp.scale)
+            except AttributeError:
+                pass
             # print("best mom",best_momentum)
             # print("anti best mom", (best_momentum - best_momentum.T)/2)
             # print("best loss",mr.data_loss)
             print("<"*10)
-        if best_loss < 1:
-            print("rigid_optim stop.")
-            break
+        # if best_loss < 1:
+        #     print("rigid_optim stop.")
+        #     break
     if verbose:
         print("Best find : ")
         print("loss :",best_loss)
         print(f"best_momenta : {best_momenta}")
 
-        print("best_rotation =", mr.mp.rot_mat)
+        print("best_rotation =", best_rot)
     return best_loss, best_momenta, best_rot

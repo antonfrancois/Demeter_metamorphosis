@@ -1671,7 +1671,7 @@ class Visualize_GeodesicOptim_plt:
         t_img =self.geodesicOptim.mp.image_stock
         if t_img.shape[1] == 1:
             if self.flag_rigid:
-                grid = self.geodesicOptim.mp.get_rigidor()
+                grid = self.geodesicOptim.mp.get_affine_deformator()
                 t_img = tb.imgDeform(t_img, grid)
             return torch.clip(t_img,0,1)
         else:
@@ -1696,7 +1696,7 @@ class Visualize_GeodesicOptim_plt:
         else:
             img = self.geodesicOptim.source
             if self.flag_rigid:
-                grid = self.geodesicOptim.mp.get_rigidor()
+                grid = self.geodesicOptim.mp.get_affine_deformator()
                 img = tb.imgDeform(img, grid)
 
             return img
@@ -1707,7 +1707,7 @@ class Visualize_GeodesicOptim_plt:
         else:
             img = self.geodesicOptim.mp.residuals_stock.cumsum(0)
             if self.flag_rigid:
-                grid = self.geodesicOptim.mp.get_rigidor()
+                grid = self.geodesicOptim.mp.get_affine_deformator()
                 img = tb.imgDeform(img, grid)
 
             return img

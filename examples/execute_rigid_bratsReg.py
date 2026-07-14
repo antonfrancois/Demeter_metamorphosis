@@ -5,7 +5,7 @@ import os
 
 import demeter.utils.torchbox as tb
 from demeter.constants import *
-import demeter.metamorphosis.rotate as mtrt
+import demeter.metamorphosis.affine as mtrt
 import demeter.metamorphosis as mt
 import demeter.utils.reproducing_kernels as rk
 import demeter.utils.axes3dsliders_plt as a3s

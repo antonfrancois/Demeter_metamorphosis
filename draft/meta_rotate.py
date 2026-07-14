@@ -4,7 +4,7 @@ from math import cos,sin
 import matplotlib.pyplot as plt
 
 import demeter.utils.torchbox as tb
-import demeter.metamorphosis.rotate as mtrt
+import demeter.metamorphosis.affine as mtrt
 import demeter.utils.reproducing_kernels as rk
 import demeter.metamorphosis as mt
 import demeter.utils.cost_functions as cf
@@ -49,7 +49,7 @@ tau = torch.tensor([.1,.2])
 ## %%
 theta = -torch.pi/3
 rot = create_rot_mat(theta)
-rot_grid = tb.grid_from_rotation(id_grid, rot)
+rot_grid = tb.matrix_time_grid(id_grid, rot)
 rot_grid += tau
 newimg_r = tb.imgDeform(new_img,rot_grid,dx_convention='2square')
 
@@ -130,7 +130,7 @@ momenta = {'momentum_I':momentum_I,
 # momenta = {k: v.to('cuda:0') for k, v in momenta.items()}
 
 n_steps =  10
-mp = mtrt.RigidMetamorphosis_integrator(
+mp = mtrt.Affine_Metamorphosis_integrator(
     rho=rho,
     n_step=n_steps,
     kernelOperator=kernelOperator,
@@ -147,7 +147,7 @@ mp = mtrt.RigidMetamorphosis_integrator(
 # img =  img.to('cuda:0')
 # newimg_r = newimg_r.to('cuda:0')
 #
-mr = mtrt.RigidMetamorphosis_Optimizer(
+mr = mtrt.Affine_Decoupled_Metamorphosis_Optimizer(
     source= img,
     target= newimg_r,
     geodesic = mp,
@@ -175,7 +175,7 @@ plt.show()
 
 #%%
 
-rot_def =   tb.grid_from_rotation(mr.mp.id_grid, mr.mp.rot_mat.T)
+rot_def =   tb.matrix_time_grid(mr.mp.id_grid, mr.mp.rot_mat.T)
 img_rot = tb.imgDeform(mr.mp.image.to('cpu'),rot_def,dx_convention='2square')
 st = tb.imCmp(img_rot,newimg_r,method = 'compose')
 kwargs = {"origin": "lower", 'cmap': "gray"}
@@ -210,7 +210,7 @@ fig, ax = plt.subplots(1,2)
 shape =  mr.source.shape[2:]
 id_grid = tb.make_regular_grid(shape, dx_convention = "2square")
 rot = mr.mp.rot_mat.T
-rot_grid_end = tb.grid_from_rotation(id_grid, rot)
+rot_grid_end = tb.matrix_time_grid(id_grid, rot)
 ax[0].imshow(mr.mp.image[0,0], cmap='gray', origin="lower")
 tb.gridDef_plot_2d(rot_grid_end,
                    ax=ax[0],

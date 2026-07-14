@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 
 import demeter.utils.torchbox as tb
-import demeter.metamorphosis.rotate as mtrt
+import demeter.metamorphosis.affine as mtrt
 import demeter.metamorphosis as mt
 import demeter.utils.reproducing_kernels as rk
 
@@ -42,7 +42,7 @@ mr = mt.rigid_along_metamorphosis(
 # mr.plot_cost()
 # plt.show()
 #%%
-grid = mr.mp.get_rigidor()
+grid = mr.mp.get_affine_deformator()
 rot_source = tb.imgDeform(source, grid.detach().cpu())
 
 fig, ax = plt.subplots(1,5)

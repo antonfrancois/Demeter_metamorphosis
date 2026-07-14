@@ -17,11 +17,12 @@ from .joined import (
     Weighted_joinedMask_Metamorphosis_Shooting,
 )
 from .simplex import Simplex_sqrt_Metamorphosis_integrator, Simplex_sqrt_Shooting
-from .rotate import RigidMetamorphosis_integrator, RigidMetamorphosis_Optimizer
+from .affine import Affine_Metamorphosis_integrator, Affine_Metamorphosis_Optimizer
+from .affine_decoupled import Affine_Decoupled_Metamorphosis_integrator, Affine_Decoupled_Metamorphosis_Optimizer
 from ..utils.reproducing_kernels import (
     GaussianRKHS,
     VolNormalizedGaussianRKHS,
-    Multi_scale_GaussianRKHS,
+    Multi_scale_GaussianRKHS, DummyKernel,
 )
 
 
@@ -39,8 +40,10 @@ def _find_meta_optimiser_from_repr_(repr_str):
         )
     if "Simplex_sqrt_Shooting" in repr_str:
         return Simplex_sqrt_Metamorphosis_integrator, Simplex_sqrt_Shooting
-    if "RigidMetamorphosis_Optimizer" in repr_str:
-        return RigidMetamorphosis_integrator, RigidMetamorphosis_Optimizer
+    if "RigidMetamorphosis_Optimizer" in repr_str or "Affine_Decoupled_Metamorphosis_Optimizer" in repr_str:
+        return Affine_Decoupled_Metamorphosis_integrator, Affine_Decoupled_Metamorphosis_Optimizer
+    if "Affine_Metamorphosis_Optimizer" in repr_str:
+        return Affine_Metamorphosis_integrator, Affine_Metamorphosis_Optimizer
     else:
         raise ValueError(f"No class found for the given repr_str : {repr_str}")
 
@@ -52,6 +55,8 @@ def _find_kernelOp_from_repr_(repr_str):
         return Multi_scale_GaussianRKHS
     if "GaussianRKHS" in repr_str:
         return GaussianRKHS
+    if "DummyKernel" in repr_str:
+        return DummyKernel
     else:
         raise ValueError("no existing kernelOperator was found for the given repr_str")
 
@@ -170,7 +175,10 @@ def  _load_light_optim(opti_dict, verbose):
     )
     ic(_find_kernelOp_from_repr_(opti_dict["args"]["kernelOperator"]["name"]))
     ic(opti_dict["args"]["kernelOperator"])
-    kernelOp = kernelOp(**opti_dict["args"]["kernelOperator"])
+    if opti_dict["args"]["kernelOperator"]["name"] == "DummyKernel":
+        kernelOp = kernelOp()
+    else:
+        kernelOp = kernelOp(**opti_dict["args"]["kernelOperator"])
 
     # and inject it in the args
     opti_dict["args"]["kernelOperator"] = kernelOp
