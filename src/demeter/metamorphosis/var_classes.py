@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from logging import warning
 from typing import Optional, Sequence, Tuple
 
@@ -79,6 +79,11 @@ class Momenta:
             if not (isinstance(tensor, Tensor) or tensor is None):
                 raise TypeError(f"Momentum.{name} must be a tensor, got {type(tensor)} at initialization")
 
+    def __iter__(self):
+        for field in fields(self):
+            val = getattr(self, field.name)
+            if val is not None:
+                yield (field.name, val)
 
     def as_dict(self) -> dict:
         """Return a dict that matches the previous API (skips None entries)."""
