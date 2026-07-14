@@ -298,7 +298,7 @@ momenta = mt.prepare_momenta(
 # momenta["momentum_A"].requires_grad = False
 # momenta["momentum_T"].requires_grad = False
 
-for k,v in momenta.items():
+for k,v in momenta:
     print(k, v.requires_grad)
 
 
@@ -415,7 +415,7 @@ kw_image_args = dict(
 )
 # v_abs_max = (mr.mp.residuals_stock.abs().max()).max()
 # v_abs_max = torch.quantile(mr.mp.momenta.abs(), 0.99)
-momentum =  mr.mp.momenta['momentum_I']
+momentum =  mr.mp.momenta.momentum_I
 v_abs_max = torch.quantile(momentum.abs(), 0.99)
 kw_residuals_args = dict(
     cmap="RdYlBu_r",

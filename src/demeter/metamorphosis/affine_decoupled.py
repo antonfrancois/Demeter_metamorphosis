@@ -14,6 +14,7 @@ from math import prod, sqrt
 
 from demeter.utils.decorators import time_it
 from demeter.metamorphosis import Geodesic_integrator, Optimize_geodesicShooting
+from .var_classes import Momenta
 
 from demeter.constants import *
 import demeter.utils.torchbox as tb
@@ -169,9 +170,7 @@ class Affine_Decoupled_Metamorphosis_integrator(Geodesic_integrator):
                         momentum_T, translation,
                         momentum_S, scale
                     )
-        grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
-        field, norm_V = self._compute_vectorField_(momentum_I, grad_image)
-        field = self._update_field_(momentum_I, image)
+        field = self._update_field_(Momenta(momentum_I=momentum_I), image)
 
         # --- Image update ---
         residuals = (1 - self.rho) * momentum_I
@@ -182,7 +181,7 @@ class Affine_Decoupled_Metamorphosis_integrator(Geodesic_integrator):
         # --- Momentum update ---
         momentum_I = self._compute_div_momentum_semiLagrangian_(
             deformation,
-            momentum_I,
+            Momenta(momentum_I=momentum_I),
             cst=-sqrt(self.rho),
             field=sqrt(self.rho) * field
         )
@@ -213,16 +212,10 @@ class Affine_Decoupled_Metamorphosis_integrator(Geodesic_integrator):
 
         self._dim = 2 if len(image.shape) == 4 else 3
         self.rot_mat = torch.eye(self._dim)
-        # r = momenta['r']
-        #  = torch.tensor(
-        #     [[0,r],
-        #     [-r,0]],
-        #     dtype=torch.float32)
-        # self.flag_field = True if "momentum_I" in momenta.keys() else False
-        if "momentum_R" in momenta.keys():
-            momentum_R = momenta['momentum_R'].clone()
-            momenta['momentum_R'] = (momentum_R - momentum_R.T) / 2
-            device = momenta['momentum_R'].device
+        if momenta.momentum_R is not None:
+            momentum_R = momenta.momentum_R.clone()
+            momenta.momentum_R = (momentum_R - momentum_R.T) / 2
+            device = momenta.momentum_R.device
         else:
             raise ValueError("No momentum_R detected in momenta")
         self.to_device(device)
@@ -230,21 +223,21 @@ class Affine_Decoupled_Metamorphosis_integrator(Geodesic_integrator):
         self.translation = torch.zeros((self._dim,), device=device)
         self.scale = torch.ones((self._dim,), device=device)
 
-        self.flag_field = True if "momentum_I" in momenta.keys() else False
+        self.flag_field = momenta.momentum_I is not None
 
         super()._forward_initialize_integration(image, momenta, device, save, sharp, hamiltonian_integration, plot)
 
     def _forward_direct_step(self):
         # print("_forward_direct_step in rotate")
 
-        if "momentum_R" in self.momenta.keys():
-            momentum_R = self.momenta["momentum_R"]
-            if "momentum_T" in self.momenta.keys():
-                momentum_T = self.momenta["momentum_T"]
+        if self.momenta.momentum_R is not None:
+            momentum_R = self.momenta.momentum_R
+            if self.momenta.momentum_T is not None:
+                momentum_T = self.momenta.momentum_T
             else:
                 momentum_T = torch.zeros((momentum_R.shape[-1],), device=momentum_R.device)
-            if "momentum_S" in self.momenta.keys():
-                momentum_S = self.momenta["momentum_S"]
+            if self.momenta.momentum_S is not None:
+                momentum_S = self.momenta.momentum_S
             else:
                 momentum_S = torch.zeros((momentum_R.shape[-1],), device=momentum_R.device)
         else:
@@ -252,7 +245,7 @@ class Affine_Decoupled_Metamorphosis_integrator(Geodesic_integrator):
 
         if self.flag_field:
 
-            momentum_I = self.momenta["momentum_I"]
+            momentum_I = self.momenta.momentum_I
             momentum_I, momentum_R, momentum_T, momentum_S, self.image, self.field, self.residuals, self.rot_mat, self.translation, self.scale \
                 = self.step(
                 self.image,
@@ -264,12 +257,12 @@ class Affine_Decoupled_Metamorphosis_integrator(Geodesic_integrator):
                 self.translation,
                 self.scale
             )
-            self.momenta["momentum_I"] = momentum_I
-            self.momenta["momentum_R"] = momentum_R
+            self.momenta.momentum_I = momentum_I
+            self.momenta.momentum_R = momentum_R
             if momentum_T is not None:
-                self.momenta["momentum_T"] = momentum_T
+                self.momenta.momentum_T = momentum_T
             if momentum_S is not None:
-                self.momenta["momentum_S"] = momentum_S
+                self.momenta.momentum_S = momentum_S
         else:
             momentum_R, momentum_T, momentum_S, self.rot_mat, self.translation, self.scale, _, _, _ = \
                 self._compute_step_rotation_translation(
@@ -278,13 +271,13 @@ class Affine_Decoupled_Metamorphosis_integrator(Geodesic_integrator):
                     momentum_S, self.scale
                 )
 
-            self.momenta["momentum_R"] = momentum_R
-            self.momenta["momentum_T"] = momentum_T
-            self.momenta["momentum_S"] = momentum_S
+            self.momenta.momentum_R = momentum_R
+            self.momenta.momentum_T = momentum_T
+            self.momenta.momentum_S = momentum_S
 
     def _forward_checkpointed_step(self):
         # print("_forward_checkpointed_step, rotate")
-        if not "momentum_I" in self.momenta.keys():
+        if self.momenta.momentum_I is None:
             # print("go to direct step")
             self._forward_direct_step()
 
@@ -293,9 +286,9 @@ class Affine_Decoupled_Metamorphosis_integrator(Geodesic_integrator):
         momentum_I, momentum_R, momentum_T, image, field, residuals, rot_mat, translation = torch.utils.checkpoint.checkpoint(
             self.step,
             self.image,
-            self.momenta["momentum_I"],
-            self.momenta["momentum_R"],
-            self.momenta.get("momentum_T", torch.zeros_like(self.momenta["momentum_R"])),
+            self.momenta.momentum_I,
+            self.momenta.momentum_R,
+            self.momenta.momentum_T if self.momenta.momentum_T is not None else torch.zeros_like(self.momenta.momentum_R),
             self.rot_mat,
             self.translation,
             use_reentrant=False,
@@ -309,9 +302,9 @@ class Affine_Decoupled_Metamorphosis_integrator(Geodesic_integrator):
         self.image = image
         self.field = field
         self.residuals = residuals
-        self.momenta["momentum_I"] = momentum_I
-        self.momenta["momentum_R"] = momentum_R
-        self.momenta["momentum_T"] = momentum_T
+        self.momenta.momentum_I = momentum_I
+        self.momenta.momentum_R = momentum_R
+        self.momenta.momentum_T = momentum_T
         self.rot_mat = rot_mat
         self.translation = translation
 
@@ -357,7 +350,7 @@ class Affine_Decoupled_Metamorphosis_integrator(Geodesic_integrator):
         )
         # v_abs_max = (self.residuals_stock.abs().max()).max()
         # v_abs_max = torch.quantile(self.momenta.abs(), 0.99)
-        momentum = self.momenta['momentum_I']
+        momentum = self.momenta.momentum_I
         v_abs_max = torch.quantile(momentum.abs(), 0.99)
         kw_residuals_args = dict(
             cmap="RdYlBu_r",
@@ -479,7 +472,7 @@ class Affine_Decoupled_Metamorphosis_Optimizer(Optimize_geodesicShooting):
                 f"{name} must be a scalar float-like value, got {type(value)}: {value}"
             )
 
-        if not isinstance(self.parameter, dict):
+        if not isinstance(self.parameter, Momenta):
             return super()._initialize_Adam_(dt_step)
 
         base_lr = _as_float_lr(dt_step, "dt_step")
@@ -496,7 +489,7 @@ class Affine_Decoupled_Metamorphosis_Optimizer(Optimize_geodesicShooting):
 
         field_params = []
         affine_params = []
-        for k, p in self.parameter.items():
+        for k, p in self.parameter.as_dict().items():
             if not isinstance(p, torch.Tensor):
                 continue
             if k == "momentum_I":
@@ -523,12 +516,12 @@ class Affine_Decoupled_Metamorphosis_Optimizer(Optimize_geodesicShooting):
     def cost(self, momenta, **kwargs):
 
         rho = self._get_rho_()
-        try:
-            device = momenta['momentum_R'].device
+        if momenta.momentum_R is not None:
+            device = momenta.momentum_R.device
             self.flag_decoupled = True
             self.flag_affine = False
-        except KeyError:
-            device = momenta['momentum_A'].device
+        else:
+            device = momenta.momentum_A.device
             self.flag_decoupled = False
             self.flag_affine = True
         self.to_device(device)
@@ -546,11 +539,11 @@ class Affine_Decoupled_Metamorphosis_Optimizer(Optimize_geodesicShooting):
         else:
             if self.mp.flag_field:
                 # Norm V
-                self.norm_v_2 = .5 * rho * self._compute_V_norm_(momenta['momentum_I'], self.source)
+                self.norm_v_2 = .5 * rho * self._compute_V_norm_(momenta, self.source)
 
                 # Norm L2 on z
                 volDelta = prod(self.dx)
-                z = sqrt(1 - rho) * (momenta['momentum_I'] / volDelta)
+                z = sqrt(1 - rho) * (momenta.momentum_I / volDelta)
                 self.norm_l2_on_z = .5 * (z ** 2).sum() * volDelta
 
             else:
@@ -560,7 +553,7 @@ class Affine_Decoupled_Metamorphosis_Optimizer(Optimize_geodesicShooting):
             if self.flag_decoupled:
                 # if self.mp.flag_field:
                     # Norm V
-                    # self.norm_v_2 = .5 * rho * self._compute_V_norm_(momenta['momentum_I'], self.source)
+                    # self.norm_v_2 = .5 * rho * self._compute_V_norm_(momenta, self.source)
 
                 # Norm L2 on R
                 self.norm_l2_on_R = .5 * torch.trace(self.mp._rot_inf_ini.T @ self.mp._rot_inf_ini)
@@ -570,10 +563,10 @@ class Affine_Decoupled_Metamorphosis_Optimizer(Optimize_geodesicShooting):
                     self.norm_S_2 = torch.tensor([0], device=self.data_loss.device)
 
             if self.flag_affine:
-                # torch.trace(momenta["momentum_A"] @ A_mat.T + momenta["momentum_T"] @ translation.T)
-                self.norm_A  = .5 * torch.trace(momenta["momentum_A"])
+                # torch.trace(momenta.momentum_A @ A_mat.T + momenta.momentum_T @ translation.T)
+                self.norm_A  = .5 * torch.trace(momenta.momentum_A)
                 # Stable L2 norm: avoid undefined gradient at exactly zero.
-                self.norm_T = .5 * torch.sqrt((momenta["momentum_T"] ** 2).sum() + 1e-12)
+                self.norm_T = .5 * torch.sqrt((momenta.momentum_T ** 2).sum() + 1e-12)
 
                 # if self.mp.flag_field:
                 #     # Norm V

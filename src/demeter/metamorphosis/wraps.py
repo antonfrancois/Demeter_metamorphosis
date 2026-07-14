@@ -668,7 +668,7 @@ def affine_along_metamorphosis(
                                  )
 
     if not isinstance(momenta_ini, int):
-        if "momentum_R" in momenta_ini.keys():
+        if getattr(momenta_ini, "momentum_R", None) is not None:
             raise ValueError(f"In affine_along_metamorphosis momenta_ini must not contain 'momentum_R',"
                              f" if you wand to estimate a rotation individually,"
                              f" please use `affine_decoupled_along_metamorphosis` instead.")
@@ -826,13 +826,10 @@ def affine_decoupled_along_metamorphosis(
                         "- 'momentum_S' for the scaling"
                                  )
 
-    try:
-        if "momentum_A" in momenta_ini.keys():
-            raise ValueError(f"In affine_along_metamorphosis momenta_ini must not contain 'momentum_A',"
-                             f" if you wand to estimate a general affine deformation,"
-                             f" please use `affine_along_metamorphosis` instead.")
-    except AttributeError:
-        pass
+    if getattr(momenta_ini, "momentum_A", None) is not None:
+        raise ValueError(f"In affine_along_metamorphosis momenta_ini must not contain 'momentum_A',"
+                         f" if you wand to estimate a general affine deformation,"
+                         f" please use `affine_along_metamorphosis` instead.")
 
     mp = ad.Affine_Decoupled_Metamorphosis_integrator(
         rho=rho,

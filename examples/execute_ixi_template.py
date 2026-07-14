@@ -1001,12 +1001,15 @@ def _run_joint_arm_subject(
 
     tau = getattr(mr, "_tau_iter", None)
     dices, _ = mr.compute_DICE(seg_source, seg_target, verbose=True)
+    _save_path = os.path.join(result_folder, method_name)
+    os.makedirs(_save_path, exist_ok=True)
     file_save, path = mr.save(
         f"{paths['subject_dir'].name}_{method_name}",
         light_save=False,
-        save_path=os.path.join(result_folder, method_name),
+        save_path=_save_path,
     )
 
+    print(">> Logging metrics")
     dice = dices[0] | dices[1]
     now = datetime.datetime.now()
     log_metrics(
@@ -1033,6 +1036,7 @@ def _run_joint_arm_subject(
         },
     )
     mt.free_GPU_memory(mr)
+    print("\tDone.")
     return tau
 
 
@@ -1182,15 +1186,17 @@ def execute_arm5_two_stage(pp, subjects_numbers, lddmm_n_iter=None):
         )
         dices_lddmm, _ = mr_lddmm.compute_DICE(seg_source_warped, seg_target, verbose=True)
 
+        _save_path = os.path.join(result_folder, method_name)
+        os.makedirs(_save_path, exist_ok=True)
         file_save1, path = mr_affine.save(
             f"{paths['subject_dir'].name}_{method_name}_stage1",
             light_save=False,
-            save_path=os.path.join(result_folder, method_name),
+            save_path=_save_path,
         )
         file_save2, _ = mr_lddmm.save(
             f"{paths['subject_dir'].name}_{method_name}_stage2",
             light_save=False,
-            save_path=os.path.join(result_folder, method_name),
+            save_path=_save_path,
         )
 
         dice = (dices_affine[0] | dices_affine[1]
