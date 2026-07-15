@@ -16,16 +16,16 @@ class SobolevFluidOperator(torch.nn.Module):
     spacing and frequencies :math:`\theta_j = 2\pi k_j/N_j`, define
 
     .. math::
-        c_j = 2\cos(\theta_j)-2 \approx -\xi_j^2,
+        q_j = 4\sin^2(\theta_j/2) = 2-2\cos(\theta_j) \approx \xi_j^2,
         \qquad s_j = \sin(\theta_j) \approx \xi_j.
 
-    With :math:`\lambda=\gamma-\alpha(c_x+c_y)`, the exact discrete symbol is
+    With :math:`\lambda=\gamma+\alpha(q_x+q_y)`, the exact discrete symbol is
 
     .. math::
         \widehat L =
         \begin{pmatrix}
-        \lambda-\beta c_x & \beta s_xs_y \\
-        \beta s_xs_y & \lambda-\beta c_y
+        \lambda+\beta q_x & \beta s_xs_y \\
+        \beta s_xs_y & \lambda+\beta q_y
         \end{pmatrix}
         \approx (\gamma+\alpha|\xi|^2)I + \beta\xi\xi^T.
 
@@ -58,16 +58,22 @@ class SobolevFluidOperator(torch.nn.Module):
         theta_x = 2 * math.pi * torch.fft.rfftfreq(
             width, device=field.device, dtype=field.dtype
         )[None, :]
-        cos_y = 2 * torch.cos(theta_y) - 2
-        cos_x = 2 * torch.cos(theta_x) - 2
+        laplace_y = 4 * torch.sin(theta_y / 2).square()
+        laplace_x = 4 * torch.sin(theta_x / 2).square()
         sin_y = torch.sin(theta_y)
         sin_x = torch.sin(theta_x)
+        sin_y[0] = 0
+        sin_x[:, 0] = 0
+        if height % 2 == 0:
+            sin_y[height // 2] = 0
+        if width % 2 == 0:
+            sin_x[:, -1] = 0
 
-        diagonal = self.gamma - self.alpha * (cos_x + cos_y)
+        diagonal = self.gamma + self.alpha * (laplace_x + laplace_y)
         symbol = (
-            diagonal - self.beta * cos_x,
+            diagonal + self.beta * laplace_x,
             self.beta * sin_x * sin_y,
-            diagonal - self.beta * cos_y,
+            diagonal + self.beta * laplace_y,
         )
         self._symbol_cache = key, symbol
         return symbol
