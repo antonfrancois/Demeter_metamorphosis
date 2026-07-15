@@ -23,8 +23,10 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from draft.playground.field_playground_core import (
     AnalysisResult,
@@ -43,8 +45,6 @@ from draft.playground.field_playground_core import (
     resize_field,
 )
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 IMAGE_BANK = PROJECT_ROOT / "examples" / "im2Dbank"
 VECTOR_DISPLAY_RELATIVE_THRESHOLD = 0.03
 MAX_DISPLAY_ARROWS = 2500
@@ -244,7 +244,7 @@ class FieldPlayground:
         self.clear_button = Button(self.fig.add_axes([0.902, 0.12, 0.078, 0.043]), "Clear")
         self.status_text = self.fig.text(0.815, 0.055, "", fontsize=8.5, color="#26343c", wrap=True)
         self.norm_text = self.fig.text(
-            0.41, 0.105, "", fontsize=11, color="#26343c", ha="center", va="bottom"
+            0.41, 0.025, "", fontsize=11, color="#26343c", ha="center", va="bottom"
         )
         self.fig.text(
             0.02,
@@ -631,6 +631,11 @@ class FieldPlayground:
                 "relative_roundtrip": self.analysis.relative_roundtrip,
                 "squared_norm": self.analysis.squared_norm,
             }
+            if self.analysis.solver_iterations is not None:
+                payload["diagnostics"].update(
+                    solver_iterations=self.analysis.solver_iterations,
+                    solver_time=self.analysis.solver_time,
+                )
             payload["counterpart"] = self.analysis.counterpart
             payload["roundtrip"] = self.analysis.roundtrip
             if self.analysis.kernel_response is not None:
@@ -724,7 +729,10 @@ class FieldPlayground:
                 if self.kind == "u"
                 else r"\frac{\Vert A_Iu-a\Vert_2}{\Vert a\Vert_2}"
             )
-            self._add_metric(self.output_ax, formula, self.analysis.relative_roundtrip)
+            if self.kind == "a":
+                self._add_solver_metrics(self.output_ax)
+            else:
+                self._add_metric(self.output_ax, formula, self.analysis.relative_roundtrip)
             self._set_norm(
                 r"\Vert u\Vert_{A_I}^2=\langle u,A_Iu\rangle",
                 self.analysis.squared_norm,
@@ -752,6 +760,27 @@ class FieldPlayground:
             0.5,
             -0.075,
             rf"${formula}={self._latex_number(value)}$",
+            transform=axis.transAxes,
+            ha="center",
+            va="top",
+            fontsize=10.5,
+            color="#26343c",
+            clip_on=False,
+        )
+
+    def _add_solver_metrics(self, axis) -> None:
+        elapsed = self.analysis.solver_time
+        time_text = f"{elapsed * 1e3:.3g} ms" if elapsed < 1 else f"{elapsed:.3g} s"
+        axis.text(
+            0.5,
+            -0.075,
+            "\n".join(
+                (
+                    rf"$\mathrm{{iterations}}={self.analysis.solver_iterations}$",
+                    rf"$\mathrm{{time}}={time_text}$",
+                    rf"$\mathrm{{error}}={self._latex_number(self.analysis.relative_roundtrip)}$",
+                )
+            ),
             transform=axis.transAxes,
             ha="center",
             va="top",
