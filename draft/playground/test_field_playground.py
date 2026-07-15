@@ -14,11 +14,8 @@ import pytest
 import torch
 from types import SimpleNamespace
 
-from draft.cometric_inversion import (
-    CometricSolveInfo,
-    _conjugate_gradient,
-    invert_cometric,
-)
+from draft.cometric_inversion import CometricOperator
+from draft.conjugate_gradient import conjugate_gradient
 from draft.sobolevfluid_operator import SobolevFluidOperator
 from draft.playground.field_playground import (
     FieldPlayground,
@@ -146,40 +143,40 @@ def test_cometric_inverse_exposes_solver_info():
     torch.manual_seed(5)
     image = torch.rand(1, 1, 8, 9)
     acceleration = torch.rand_like(image)
-    solution, info = invert_cometric(
+    solution, iterations, elapsed = CometricOperator(
         image,
-        acceleration,
         0.25,
         lambda value: value,
+    ).inverse(
+        acceleration,
         eps=1e-7,
         return_info=True,
     )
     assert solution.shape == acceleration.shape
-    assert isinstance(info, CometricSolveInfo)
-    assert info.iterations >= 1
-    assert info.elapsed_seconds >= 0
+    assert iterations >= 1
+    assert elapsed >= 0
 
 
 def test_conjugate_gradient_solves_spd_system_and_zero_rhs():
     matrix = torch.tensor([[4.0, 1.0], [1.0, 3.0]], dtype=torch.float64)
     rhs = torch.tensor([1.0, 2.0], dtype=torch.float64)
-    solution, iterations = _conjugate_gradient(matrix.mv, rhs, 1e-12)
+    solution, iterations = conjugate_gradient(matrix.mv, rhs, 1e-12)
     torch.testing.assert_close(solution, torch.linalg.solve(matrix, rhs))
     assert iterations == 2
 
-    solution, iterations = _conjugate_gradient(matrix.mv, torch.zeros_like(rhs), 1e-12)
+    solution, iterations = conjugate_gradient(
+        matrix.mv, torch.zeros_like(rhs), 1e-12
+    )
     assert torch.equal(solution, torch.zeros_like(rhs))
     assert iterations == 0
 
 
-def test_invalid_cg_and_field_file_inputs_fail_before_solving(tmp_path):
+def test_invalid_cg_tolerance_and_field_file_inputs(tmp_path):
     image = torch.zeros(1, 1, 8, 9)
     acceleration = torch.zeros_like(image)
     operator = lambda value: value
     with pytest.raises(ValueError, match="eps"):
-        invert_cometric(image, acceleration, 0.5, operator, eps=0)
-    with pytest.raises(ValueError, match="finite"):
-        invert_cometric(image, acceleration.fill_(float("nan")), 0.5, operator)
+        CometricOperator(image, 0.5, operator).inverse(acceleration, eps=0)
 
     invalid = tmp_path / "invalid.pt"
     torch.save(

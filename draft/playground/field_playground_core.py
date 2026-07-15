@@ -314,15 +314,19 @@ def analyze_field(
 
         if field.shape[1] != 1:
             raise ValueError(f"{kind} requires a scalar field")
-        from demeter.utils import torchbox as tb
 
-        from ..cometric_inversion import apply_cometric, invert_cometric
+        from ..cometric_inversion import CometricOperator
 
+        cometric = CometricOperator(
+            image, rho, operator, dx_convention="pixel"
+        )
+        gradient = cometric.image_gradient
+        solver_iterations = solver_time = None
         if kind == "u":
             covector = field
-            acceleration = apply_cometric(image, covector, rho, operator)
+            acceleration = cometric(covector)
             if solve_inverse and acceleration.norm() != 0:
-                roundtrip = invert_cometric(image, acceleration, rho, operator, eps=cg_eps)
+                roundtrip = cometric.inverse(acceleration, eps=cg_eps)
             else:
                 roundtrip = covector.clone()
             counterpart = acceleration
@@ -331,19 +335,15 @@ def analyze_field(
             acceleration = field
             if not solve_inverse:
                 raise ValueError("acceleration input requires a cometric inverse solve")
-            covector, solve_info = invert_cometric(
-                image,
+            covector, solver_iterations, solver_time = cometric.inverse(
                 acceleration,
-                rho,
-                operator,
                 eps=cg_eps,
                 return_info=True,
             )
             counterpart = covector
-            roundtrip = apply_cometric(image, covector, rho, operator)
+            roundtrip = cometric(covector)
             expected = acceleration
 
-        gradient = tb.spatialGradient(image, dx_convention="pixel")
         vector_momentum = (covector.unsqueeze(2) * gradient).sum(dim=1)
         kernel_response = operator.apply_inverse(vector_momentum)
         return AnalysisResult(
@@ -352,6 +352,6 @@ def analyze_field(
             kernel_response.cpu(),
             _relative_error(roundtrip, expected),
             float((covector * acceleration).sum()),
-            solve_info.iterations if kind == "a" else None,
-            solve_info.elapsed_seconds if kind == "a" else None,
+            solver_iterations,
+            solver_time,
         )
