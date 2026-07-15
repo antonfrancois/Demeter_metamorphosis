@@ -17,6 +17,7 @@ if "MPLBACKEND" not in os.environ:
 
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 from matplotlib.patches import FancyArrowPatch
 from matplotlib.widgets import Button, RadioButtons, Slider
 import numpy as np
@@ -134,6 +135,7 @@ class FieldPlayground:
         self.history = {"vector": deque(maxlen=UNDO_LIMIT), "scalar": deque(maxlen=UNDO_LIMIT)}
         self.kind = "vector_momentum"
         self.analysis: AnalysisResult | None = None
+        self.error_colorbar = None
         self.drag: Drag | None = None
         self._syncing_widgets = False
 
@@ -156,7 +158,7 @@ class FieldPlayground:
 
         self.fig = plt.figure(figsize=(16, 8.5), facecolor="#edf1f3")
         grid = self.fig.add_gridspec(
-            1, 3, left=0.035, right=0.79, bottom=0.15, top=0.81, wspace=0.16
+            1, 3, left=0.035, right=0.76, bottom=0.15, top=0.81, wspace=0.16
         )
         self.axes = [self.fig.add_subplot(grid[0, index]) for index in range(3)]
         self.input_ax, self.output_ax, self.detail_ax = self.axes
@@ -665,6 +667,9 @@ class FieldPlayground:
 
     def _render(self, *, immediate: bool = False) -> None:
         self._cancel_drag()
+        if self.error_colorbar is not None:
+            self.error_colorbar.remove()
+            self.error_colorbar = None
         image = self.image[0, 0].numpy()
         self.norm_text.set_text("")
         for axis in self.axes:
@@ -698,14 +703,25 @@ class FieldPlayground:
             )
             self._plot_vector(self.output_ax, self.analysis.counterpart, output_title, "#ef8354")
             error = (self.analysis.roundtrip - current).square().sum(dim=1, keepdim=True).sqrt()
+            precision_floor = float(
+                torch.finfo(current.dtype).eps * current.norm() / np.sqrt(error.numel())
+            )
             if self.kind == "velocity":
-                title = r"$\left|K(Lv)-v\right|_2$ (auto-scaled)"
+                title = r"$\left\Vert K(Lv)-v\right\Vert_2$ (log scale)"
                 formula = r"\frac{\Vert K(Lv)-v\Vert_2}{\Vert v\Vert_2}"
             else:
-                title = r"$\left|L(Km)-m\right|_2$ (auto-scaled)"
+                title = r"$\left\Vert L(Km)-m\right\Vert_2$ (log scale)"
                 formula = r"\frac{\Vert L(Km)-m\Vert_2}{\Vert m\Vert_2}"
-            self._plot_scalar(self.detail_ax, error, title, signed=False)
-            self._add_metric(self.detail_ax, formula, self.analysis.relative_roundtrip)
+            self._plot_scalar(
+                self.detail_ax,
+                error,
+                title,
+                signed=False,
+                log_scale=True,
+                log_floor=precision_floor,
+                show_base=False,
+            )
+            self._add_error_metrics(self.detail_ax, formula, error)
             self._set_norm(
                 r"\Vert v\Vert_V^2=\Vert m\Vert_{V^*}^2"
                 r"=\langle v,Lv\rangle=\langle m,Km\rangle",
@@ -764,6 +780,25 @@ class FieldPlayground:
             ha="center",
             va="top",
             fontsize=10.5,
+            color="#26343c",
+            clip_on=False,
+        )
+
+    def _add_error_metrics(self, axis, formula: str, error: torch.Tensor) -> None:
+        axis.text(
+            0.5,
+            -0.075,
+            "\n".join(
+                (
+                    rf"${formula}={self._latex_number(self.analysis.relative_roundtrip)}$",
+                    rf"$q_{{99}}(|e|)={self._latex_number(float(torch.quantile(error, 0.99)))}$",
+                    rf"$\max |e|={self._latex_number(float(error.max()))}$",
+                )
+            ),
+            transform=axis.transAxes,
+            ha="center",
+            va="top",
+            fontsize=9.5,
             color="#26343c",
             clip_on=False,
         )
@@ -862,20 +897,48 @@ class FieldPlayground:
         suffix = "" if abs(factor - 1) < 0.02 else rf"  [display $\times {factor:.2g}$]"
         axis.set_title(title + suffix, fontsize=11, color="#24333b", pad=8)
 
-    def _plot_scalar(self, axis, field: torch.Tensor, title: str, *, signed: bool = True) -> None:
-        self._plot_base_image(axis)
+    def _plot_scalar(
+        self,
+        axis,
+        field: torch.Tensor,
+        title: str,
+        *,
+        signed: bool = True,
+        log_scale: bool = False,
+        log_floor: float = 0,
+        show_base: bool = True,
+    ) -> None:
+        if show_base:
+            self._plot_base_image(axis)
         values = field[0, 0].detach().cpu()
         if torch.count_nonzero(values):
-            limit = max(float(torch.quantile(values.abs().flatten(), 0.99)), 1e-8)
-            display = np.ma.masked_where(values.abs().numpy() < 0.001 * limit, values.numpy())
-            axis.imshow(
-                display,
-                cmap="coolwarm" if signed else "magma",
-                origin="lower",
-                vmin=-limit if signed else 0,
-                vmax=limit,
-                alpha=0.68 if signed else 0.78,
-            )
+            if log_scale:
+                visible = values > log_floor
+                if torch.any(visible):
+                    maximum = float(values[visible].max())
+                    minimum = log_floor or float(values[visible].min())
+                    if minimum == maximum:
+                        minimum /= 10
+                    display = values.clamp_min(minimum).numpy()
+                    heatmap = axis.imshow(
+                        display,
+                        cmap="magma",
+                        origin="lower",
+                        norm=LogNorm(vmin=minimum, vmax=maximum),
+                    )
+                    colorbar_axis = axis.inset_axes([1.02, 0, 0.035, 1])
+                    self.error_colorbar = self.fig.colorbar(heatmap, cax=colorbar_axis)
+            else:
+                limit = max(float(torch.quantile(values.abs().flatten(), 0.99)), 1e-8)
+                display = np.ma.masked_where(values.abs().numpy() < 0.001 * limit, values.numpy())
+                axis.imshow(
+                    display,
+                    cmap="coolwarm" if signed else "magma",
+                    origin="lower",
+                    vmin=-limit if signed else 0,
+                    vmax=limit,
+                    alpha=0.68 if signed else 0.78,
+                )
         axis.set_title(title, fontsize=11, color="#24333b", pad=8)
 
     def _plot_message(self, axis, message: str) -> None:

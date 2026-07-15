@@ -7,6 +7,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 from matplotlib.quiver import Quiver
 import numpy as np
 import pytest
@@ -18,6 +19,7 @@ from draft.cometric_inversion import (
     _conjugate_gradient,
     invert_cometric,
 )
+from draft.sobolevfluid_operator import SobolevFluidOperator
 from draft.playground.field_playground import (
     FieldPlayground,
     LoadedField,
@@ -78,6 +80,30 @@ def test_vector_analysis_round_trips():
     assert result.roundtrip.shape == velocity.shape
     assert result.relative_roundtrip < 2e-5
     assert result.squared_norm > 0
+
+
+def test_sobolev_operator_round_trips_and_has_exact_nyquist_symbol():
+    torch.manual_seed(3)
+    for dtype, tolerance in ((torch.float32, 2e-4), (torch.float64, 1e-11)):
+        field = torch.randn(1, 2, 32, 34, dtype=dtype)
+        operator = SobolevFluidOperator(alpha=0.2, beta=0.2, gamma=0.001)
+        sharp_flat = operator.apply_operator(operator.apply_inverse(field))
+        flat_sharp = operator.apply_inverse(operator.apply_operator(field))
+        assert (sharp_flat - field).norm() / field.norm() < tolerance
+        assert (flat_sharp - field).norm() / field.norm() < tolerance
+
+        other = torch.randn_like(field)
+        torch.testing.assert_close(
+            (operator.apply_operator(field) * other).sum(),
+            (field * operator.apply_operator(other)).sum(),
+        )
+        assert (field * operator.apply_operator(field)).sum() > 0
+
+        _, mixed_symbol, _ = operator._symbol(field)
+        assert torch.count_nonzero(mixed_symbol[0]) == 0
+        assert torch.count_nonzero(mixed_symbol[:, 0]) == 0
+        assert torch.count_nonzero(mixed_symbol[16]) == 0
+        assert torch.count_nonzero(mixed_symbol[:, -1]) == 0
 
 
 def test_scalar_forward_and_inverse_round_trip():
@@ -245,8 +271,32 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     assert app.output_ax.get_title().startswith(r"Output: velocity $v=Km$")
     assert any(r"q_{95}" in text.get_text() for text in app.output_ax.texts)
     assert r"K(m)" not in app.norm_text.get_text()
+    assert isinstance(app.error_colorbar.mappable.norm, LogNorm)
+    assert app.error_colorbar.ax.get_ylabel() == ""
+    error = (app.analysis.roundtrip - app.fields["vector"]).square().sum(1).sqrt()
+    precision_floor = float(
+        torch.finfo(error.dtype).eps
+        * app.fields["vector"].norm()
+        / np.sqrt(error.numel())
+    )
+    assert app.error_colorbar.mappable.norm.vmin == pytest.approx(precision_floor)
+    heatmap = app.error_colorbar.mappable.get_array()
+    assert not np.ma.getmaskarray(heatmap).any()
+    assert float(heatmap.min()) == pytest.approx(precision_floor)
+    assert r"\left\Vert L(Km)-m\right\Vert_2" in app.detail_ax.get_title()
+    error_legend = app.detail_ax.texts[-1].get_text()
+    assert r"q_{99}" in error_legend
+    assert r"\max |e|" in error_legend
+    axes_with_colorbar = len(app.fig.axes)
+    app.refresh()
+    assert len(app.fig.axes) == axes_with_colorbar
+    app.kind_radio.set_active(0)
+    app.run()
+    assert r"\left\Vert K(Lv)-v\right\Vert_2" in app.detail_ax.get_title()
+    assert app.error_colorbar.ax.get_ylabel() == ""
 
     app.mode_radio.set_active(1)
+    assert app.error_colorbar is None
     app.fields["scalar"].fill_(0.1)
     app.kind_radio.set_active(0)
     app.run()
