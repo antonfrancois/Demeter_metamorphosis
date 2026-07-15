@@ -33,6 +33,8 @@ class AnalysisResult:
     kernel_response: torch.Tensor | None
     relative_roundtrip: float
     squared_norm: float
+    solver_iterations: int | None = None
+    solver_time: float | None = None
 
 
 def mode_for_kind(kind: str) -> str:
@@ -329,10 +331,13 @@ def analyze_field(
             acceleration = field
             if not solve_inverse:
                 raise ValueError("acceleration input requires a cometric inverse solve")
-            covector = (
-                torch.zeros_like(acceleration)
-                if acceleration.norm() == 0
-                else invert_cometric(image, acceleration, rho, operator, eps=cg_eps)
+            covector, solve_info = invert_cometric(
+                image,
+                acceleration,
+                rho,
+                operator,
+                eps=cg_eps,
+                return_info=True,
             )
             counterpart = covector
             roundtrip = apply_cometric(image, covector, rho, operator)
@@ -347,4 +352,6 @@ def analyze_field(
             kernel_response.cpu(),
             _relative_error(roundtrip, expected),
             float((covector * acceleration).sum()),
+            solve_info.iterations if kind == "a" else None,
+            solve_info.elapsed_seconds if kind == "a" else None,
         )

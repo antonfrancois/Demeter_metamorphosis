@@ -13,7 +13,11 @@ import pytest
 import torch
 from types import SimpleNamespace
 
-from draft.cometric_inversion import invert_cometric
+from draft.cometric_inversion import (
+    CometricSolveInfo,
+    _conjugate_gradient,
+    invert_cometric,
+)
 from draft.playground.field_playground import (
     FieldPlayground,
     LoadedField,
@@ -108,6 +112,38 @@ def test_scalar_forward_and_inverse_round_trip():
     )
     assert inverse.relative_roundtrip < 1e-4
     assert torch.allclose(inverse.counterpart, covector, atol=2e-5, rtol=2e-4)
+    assert inverse.solver_iterations >= 1
+    assert inverse.solver_time >= 0
+
+
+def test_cometric_inverse_exposes_solver_info():
+    torch.manual_seed(5)
+    image = torch.rand(1, 1, 8, 9)
+    acceleration = torch.rand_like(image)
+    solution, info = invert_cometric(
+        image,
+        acceleration,
+        0.25,
+        lambda value: value,
+        eps=1e-7,
+        return_info=True,
+    )
+    assert solution.shape == acceleration.shape
+    assert isinstance(info, CometricSolveInfo)
+    assert info.iterations >= 1
+    assert info.elapsed_seconds >= 0
+
+
+def test_conjugate_gradient_solves_spd_system_and_zero_rhs():
+    matrix = torch.tensor([[4.0, 1.0], [1.0, 3.0]], dtype=torch.float64)
+    rhs = torch.tensor([1.0, 2.0], dtype=torch.float64)
+    solution, iterations = _conjugate_gradient(matrix.mv, rhs, 1e-12)
+    torch.testing.assert_close(solution, torch.linalg.solve(matrix, rhs))
+    assert iterations == 2
+
+    solution, iterations = _conjugate_gradient(matrix.mv, torch.zeros_like(rhs), 1e-12)
+    assert torch.equal(solution, torch.zeros_like(rhs))
+    assert iterations == 0
 
 
 def test_invalid_cg_and_field_file_inputs_fail_before_solving(tmp_path):
@@ -209,6 +245,18 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     assert app.output_ax.get_title().startswith(r"Output: velocity $v=Km$")
     assert any(r"q_{95}" in text.get_text() for text in app.output_ax.texts)
     assert r"K(m)" not in app.norm_text.get_text()
+
+    app.mode_radio.set_active(1)
+    app.fields["scalar"].fill_(0.1)
+    app.kind_radio.set_active(0)
+    app.run()
+    solver_legend = app.output_ax.texts[-1].get_text()
+    assert solver_legend.count("\n") == 2
+    assert "iterations" in solver_legend
+    assert "time" in solver_legend
+    assert "error" in solver_legend
+    app.mode_radio.set_active(0)
+    app.kind_radio.set_active(1)
 
     output = app.save(tmp_path / "field.pt")
     app.fig.savefig(tmp_path / "playground.png")
