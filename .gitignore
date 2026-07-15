@@ -8,3 +8,7 @@
 __pycache__/
 
 examples/results/
+
+Papers/
+
+.venv/

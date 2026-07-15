@@ -13,7 +13,7 @@ from typing import Any
 import matplotlib
 
 if "MPLBACKEND" not in os.environ:
-    matplotlib.use("Qt5Agg")
+    matplotlib.use("QtAgg")
 
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
