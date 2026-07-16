@@ -55,6 +55,7 @@ class AnalysisResult:
     kernel_response: torch.Tensor | None
     relative_roundtrip: float
     squared_norm: float
+    deformation_energy_contribution: float | None = None
     operator_time: float | None = None
     solver_iterations: int | None = None
     solver_time: float | None = None
@@ -475,12 +476,16 @@ def analyze_field(
         kernel_response = operator.apply_inverse(vector_momentum)
         relative_error = _relative_error(roundtrip, expected)
         squared_norm = float((covector * acceleration).sum())
+        deformation_energy_contribution = float(
+            cometric.rho * (vector_momentum * kernel_response).sum()
+        )
         return AnalysisResult(
             counterpart.cpu(),
             roundtrip.cpu(),
             kernel_response.cpu(),
             relative_error,
             squared_norm,
+            deformation_energy_contribution=deformation_energy_contribution,
             operator_time=operator_time,
             solver_iterations=solver_iterations,
             solver_time=solver_time,

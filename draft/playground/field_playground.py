@@ -50,6 +50,7 @@ IMAGE_BANK = PROJECT_ROOT / "examples" / "im2Dbank"
 VECTOR_DISPLAY_RELATIVE_THRESHOLD = 0.03
 MAX_DISPLAY_ARROWS = 2500
 UNDO_LIMIT = 12
+PANEL_FONT_SIZE = 11
 PRIMAL_COLOR = "#ffd166"
 DUAL_COLOR = "#ef8354"
 PRIMAL_KINDS = frozenset((VECTOR_KINDS[0], SCALAR_KINDS[0]))
@@ -118,19 +119,6 @@ class Drag:
         return self.mode == "vector" and not self.erase and self.button == 1
 
 
-@dataclass
-class VectorDisplay:
-    source: torch.Tensor
-    version: int
-    auto_scale: bool
-    field: torch.Tensor
-    magnitude: torch.Tensor
-    visible: torch.Tensor
-    pooled: torch.Tensor | None
-    visible_count: int
-    factor: float
-
-
 class FieldPlayground:
     """Single-window editor. Numerical and file operations live in the core module."""
 
@@ -161,7 +149,7 @@ class FieldPlayground:
         self.analysis: AnalysisResult | None = None
         self.error_colorbar = None
         self.drag: Drag | None = None
-        self._vector_display_cache: dict[Any, VectorDisplay] = {}
+        self.scalar_detail = "error"
         self._syncing_widgets = False
 
         self._build_figure(parameters)
@@ -280,6 +268,29 @@ class FieldPlayground:
         self.save_button = Button(self.fig.add_axes([0.902, 0.175, 0.078, 0.043]), "Save")
         self.undo_button = Button(self.fig.add_axes([0.815, 0.12, 0.078, 0.043]), "Undo")
         self.clear_button = Button(self.fig.add_axes([0.902, 0.12, 0.078, 0.043]), "Clear")
+        detail_position = self.detail_ax.get_position()
+        detail_center = (detail_position.x0 + detail_position.x1) / 2
+        button_gap = 0.008
+        error_width, kernel_width = 0.075, 0.125
+        button_left = detail_center - (error_width + button_gap + kernel_width) / 2
+        button_y = detail_position.y1 + 0.07
+        self.scalar_error_button = Button(
+            self.fig.add_axes([button_left, button_y, error_width, 0.036]),
+            "Error",
+        )
+        self.scalar_kernel_button = Button(
+            self.fig.add_axes(
+                [button_left + error_width + button_gap, button_y, kernel_width, 0.036]
+            ),
+            "Kernel response",
+        )
+        self.scalar_detail_buttons = {
+            "error": self.scalar_error_button,
+            "kernel": self.scalar_kernel_button,
+        }
+        for button in self.scalar_detail_buttons.values():
+            button.ax.set_visible(False)
+            button.label.set_fontsize(PANEL_FONT_SIZE)
         self.status_text = self.fig.text(0.815, 0.055, "", fontsize=8.5, color="#26343c", wrap=True)
         self.norm_text = None
         self.fig.text(
@@ -304,6 +315,12 @@ class FieldPlayground:
         self.save_button.on_clicked(lambda _event: self.save_dialog())
         self.undo_button.on_clicked(lambda _event: self.undo())
         self.clear_button.on_clicked(lambda _event: self.clear())
+        self.scalar_error_button.on_clicked(
+            lambda _event: self._set_scalar_detail("error")
+        )
+        self.scalar_kernel_button.on_clicked(
+            lambda _event: self._set_scalar_detail("kernel")
+        )
         self.spacing_slider.on_changed(self._on_spacing_change)
         for widget in (self.rho_slider, self.alpha_slider, self.beta_slider):
             widget.on_changed(self._on_parameter_change)
@@ -410,13 +427,31 @@ class FieldPlayground:
                 self._clear_axis_dynamic(self.output_ax)
                 self._plot_vector_output()
                 self._set_energy(
-                    r"\Vert v\Vert_V^2=\Vert m\Vert_{V^*}^2",
+                    r"\Vert v\Vert_V^2 = \Vert m\Vert_{V^*}^2",
                     self.analysis.squared_norm,
                 )
-        elif self.analysis is not None:
+        elif self.analysis is not None and self.scalar_detail == "kernel":
             self._clear_axis_dynamic(self.detail_ax)
             self._plot_scalar_kernel_response()
         self.fig.canvas.draw_idle()
+
+    def _set_scalar_detail(self, detail: str) -> None:
+        if detail == self.scalar_detail:
+            return
+        self.scalar_detail = detail
+        if self.mode == "scalar":
+            self._render()
+
+    def _sync_scalar_detail_buttons(self) -> None:
+        visible = self.mode == "scalar"
+        for detail, button in self.scalar_detail_buttons.items():
+            active = detail == self.scalar_detail
+            color = "#168a8a" if active else "#f8fafb"
+            button.color = color
+            button.hovercolor = "#20a3a3" if active else "#e4ecef"
+            button.ax.set_facecolor(color)
+            button.label.set_color("white" if active else "#26343c")
+            button.ax.set_visible(visible)
 
     def _sync_radios(self) -> None:
         self._syncing_widgets = True
@@ -448,6 +483,8 @@ class FieldPlayground:
         if new_kind == self.kind:
             return
         self.kind = new_kind
+        if self.mode == "scalar":
+            self.scalar_detail = "error"
         self._sync_radios()
         self._invalidate("Mode changed. Press Run.")
 
@@ -732,6 +769,10 @@ class FieldPlayground:
                 )
             if self.analysis.operator_time is not None:
                 payload["diagnostics"]["operator_time"] = self.analysis.operator_time
+            if self.analysis.deformation_energy_contribution is not None:
+                payload["diagnostics"]["deformation_energy_contribution"] = (
+                    self.analysis.deformation_energy_contribution
+                )
             payload["counterpart"] = self.analysis.counterpart
             payload["roundtrip"] = self.analysis.roundtrip
             if self.analysis.kernel_response is not None:
@@ -789,13 +830,14 @@ class FieldPlayground:
             transform=self.input_ax.transAxes,
             ha="center",
             va="top",
-            fontsize=9.5,
+            fontsize=PANEL_FONT_SIZE,
             color="#26343c",
             clip_on=False,
         )
 
     def _render(self, *, immediate: bool = False) -> None:
         self._cancel_drag()
+        self._sync_scalar_detail_buttons()
         self._clear_dynamic_artists()
         self._create_energy_text()
 
@@ -804,15 +846,6 @@ class FieldPlayground:
             self._render_vector_mode(current)
         else:
             self._render_scalar_mode(current)
-        active_vector_axes = set()
-        if self.mode == "vector":
-            active_vector_axes.add(self.input_ax)
-            if self.analysis is not None:
-                active_vector_axes.add(self.output_ax)
-        elif self.analysis is not None:
-            active_vector_axes.add(self.detail_ax)
-        for axis in self._vector_display_cache.keys() - active_vector_axes:
-            del self._vector_display_cache[axis]
         self.fig.canvas.draw() if immediate else self.fig.canvas.draw_idle()
 
     def _render_vector_mode(self, current: torch.Tensor) -> None:
@@ -828,30 +861,22 @@ class FieldPlayground:
             self._plot_message(self.detail_ax, "No derived field yet")
             return
 
-        velocity_input = self.kind == "velocity"
         self._plot_vector_output()
         error = (self.analysis.roundtrip - current).square().sum(1, keepdim=True).sqrt()
         reference = current.square().sum(1, keepdim=True).sqrt()
-        precision_floor = float(
-            torch.finfo(current.dtype).eps * current.norm() / np.sqrt(error.numel())
-        )
-        title = (
-            r"$\left\Vert K(Lv)-v\right\Vert_2$ (log scale)"
-            if velocity_input
-            else r"$\left\Vert L(Km)-m\right\Vert_2$ (log scale)"
-        )
+        relative_error = self._relative_l2_error(error, reference)
         self._plot_scalar(
             self.detail_ax,
-            error,
-            title,
+            relative_error,
+            self._roundtrip_error_title(self.kind),
             signed=False,
             log_scale=True,
-            log_floor=precision_floor,
+            log_floor=torch.finfo(current.dtype).eps,
             show_base=False,
         )
         self._add_error_metrics(self.detail_ax, error, reference)
         self._set_energy(
-            r"\Vert v\Vert_V^2=\Vert m\Vert_{V^*}^2",
+            r"\Vert v\Vert_V^2 = \Vert m\Vert_{V^*}^2",
             self.analysis.squared_norm,
         )
 
@@ -869,7 +894,7 @@ class FieldPlayground:
             self.analysis.counterpart,
             output_title,
             _counterpart_color(self.kind),
-            footer=rf"${operator_name}$ time={self._format_time(self.analysis.operator_time)}",
+            footer=rf"${operator_name}$ time = {self._format_time(self.analysis.operator_time)}",
         )
 
     def _render_scalar_mode(self, current: torch.Tensor) -> None:
@@ -888,15 +913,28 @@ class FieldPlayground:
             else r"Output: acceleration $a=A_Iu$"
         )
         self._plot_scalar(self.output_ax, self.analysis.counterpart, output_title)
-        self._plot_scalar_kernel_response()
         error = (self.analysis.roundtrip - current).abs()
         reference = current.abs()
-        if acceleration_input:
-            self._add_solver_metrics(self.output_ax, error, reference)
+        if self.scalar_detail == "error":
+            relative_error = self._relative_l2_error(error, reference)
+            self._plot_scalar(
+                self.detail_ax,
+                relative_error,
+                self._roundtrip_error_title(self.kind),
+                signed=False,
+                log_scale=True,
+                log_floor=torch.finfo(current.dtype).eps,
+                show_base=False,
+            )
+            self._add_error_metrics(self.detail_ax, error, reference)
         else:
-            self._add_cometric_metrics(self.output_ax, error, reference)
+            self._plot_scalar_kernel_response()
+        if acceleration_input:
+            self._add_solver_metrics(self.output_ax)
+        else:
+            self._add_cometric_metrics(self.output_ax)
         self._set_energy(
-            r"\Vert a\Vert_{A_I^{-1}}^2=\Vert u\Vert_{A_I}^2",
+            r"\Vert a\Vert_{A_I^{-1}}^2 = \Vert u\Vert_{A_I}^2",
             self.analysis.squared_norm,
         )
 
@@ -907,6 +945,10 @@ class FieldPlayground:
             self.analysis.kernel_response,
             r"Kernel response $K(u\nabla I)$",
             PRIMAL_COLOR,
+            footer=(
+                r"$\rho\,\Vert K(u\nabla I)\Vert_V^2 = "
+                rf"{self._latex_number(self.analysis.deformation_energy_contribution)}$"
+            ),
         )
 
     @staticmethod
@@ -917,6 +959,16 @@ class FieldPlayground:
             "u": r"scalar covector $u$",
             "a": r"acceleration $a$",
         }[kind]
+
+    @staticmethod
+    def _roundtrip_error_title(kind: str) -> str:
+        numerator, reference = {
+            "velocity": (r"\Vert K(Lv)-v\Vert_2", r"\Vert v\Vert_2"),
+            "vector_momentum": (r"\Vert L(Km)-m\Vert_2", r"\Vert m\Vert_2"),
+            "u": (r"\left|A_I^{-1}(A_Iu)-u\right|", r"\left|u\right|"),
+            "a": (r"\left|A_I(A_I^{-1}a)-a\right|", r"\left|a\right|"),
+        }[kind]
+        return rf"${numerator}/\mathrm{{RMS}}({reference})$ (log scale)"
 
     @staticmethod
     def _latex_number(value: float) -> str:
@@ -934,18 +986,24 @@ class FieldPlayground:
         return f"{elapsed * 1e3:.3g} ms" if elapsed < 1 else f"{elapsed:.3g} s"
 
     @staticmethod
-    def _relative_l2_metrics(
+    def _relative_l2_error(
         error: torch.Tensor, reference: torch.Tensor
-    ) -> tuple[float, float]:
+    ) -> torch.Tensor:
         reference_rms = reference.square().mean().sqrt()
         if reference_rms == 0:
             if error.max() == 0:
-                return 0.0, 0.0
-            return float("inf"), float("inf")
-        relative_errors = error / reference_rms
+                return torch.zeros_like(error)
+            return torch.full_like(error, float("inf"))
+        return error / reference_rms
+
+    @classmethod
+    def _relative_l2_metrics(
+        cls, error: torch.Tensor, reference: torch.Tensor
+    ) -> tuple[float, float]:
+        relative_error = cls._relative_l2_error(error, reference)
         return (
-            float(relative_errors.square().mean().sqrt()),
-            float(relative_errors.max()),
+            float(relative_error.square().mean().sqrt()),
+            float(relative_error.max()),
         )
 
     def _error_lines(
@@ -953,12 +1011,12 @@ class FieldPlayground:
     ) -> tuple[str, str]:
         mean, maximum = self._relative_l2_metrics(error, reference)
         return (
-            rf"$\mathrm{{mean}}:\ {self._latex_number(mean)}$",
-            rf"$\mathrm{{max}}:\ {self._latex_number(maximum)}$",
+            rf"$\mathrm{{mean}} = {self._latex_number(mean)}$",
+            rf"$\mathrm{{max}} = {self._latex_number(maximum)}$",
         )
 
     @staticmethod
-    def _add_metrics(axis, lines: tuple[str, ...], fontsize: float = 10.5) -> None:
+    def _add_metrics(axis, lines: tuple[str, ...]) -> None:
         axis.text(
             0.5,
             -0.075,
@@ -966,41 +1024,33 @@ class FieldPlayground:
             transform=axis.transAxes,
             ha="center",
             va="top",
-            fontsize=fontsize,
+            fontsize=PANEL_FONT_SIZE,
             color="#26343c",
             clip_on=False,
         )
 
-    def _add_cometric_metrics(
-        self, axis, error: torch.Tensor, reference: torch.Tensor
-    ) -> None:
+    def _add_cometric_metrics(self, axis) -> None:
         self._add_metrics(
             axis,
-            (
-                rf"$A_I$ time={self._format_time(self.analysis.operator_time)}",
-                *self._error_lines(error, reference),
-            ),
+            (rf"$A_I$ time = {self._format_time(self.analysis.operator_time)}",),
         )
 
     def _add_error_metrics(
         self, axis, error: torch.Tensor, reference: torch.Tensor
     ) -> None:
-        self._add_metrics(axis, self._error_lines(error, reference), fontsize=9.5)
+        self._add_metrics(axis, self._error_lines(error, reference))
 
-    def _add_solver_metrics(
-        self, axis, error: torch.Tensor, reference: torch.Tensor
-    ) -> None:
+    def _add_solver_metrics(self, axis) -> None:
         self._add_metrics(
             axis,
             (
-                rf"$\mathrm{{iterations}}={self.analysis.solver_iterations}$",
-                rf"$A_I^{{-1}}$ time={self._format_time(self.analysis.solver_time)}",
-                *self._error_lines(error, reference),
+                rf"$\mathrm{{iterations}} = {self.analysis.solver_iterations}$",
+                rf"$A_I^{{-1}}$ time = {self._format_time(self.analysis.solver_time)}",
             ),
         )
 
     def _set_energy(self, norm: str, value: float) -> None:
-        self.norm_text.set_text(rf"${norm}={self._latex_number(value)}$")
+        self.norm_text.set_text(rf"${norm} = {self._latex_number(value)}$")
 
     def _plot_base_image(self, axis) -> None:
         self._base_images[axis].set_visible(True)
@@ -1016,57 +1066,30 @@ class FieldPlayground:
         footer: str | None = None,
     ) -> None:
         self._plot_base_image(axis)
-        version = field._version
-        display = self._vector_display_cache.get(axis)
-        if (
-            display is None
-            or display.source is not field
-            or display.version != version
-            or display.auto_scale != auto_scale
-        ):
-            display_field = field.detach().cpu()
-            magnitude = display_field.square().sum(dim=1).sqrt()[0]
-            maximum = float(magnitude.max())
-            visible = magnitude >= max(
-                1e-8, VECTOR_DISPLAY_RELATIVE_THRESHOLD * maximum
-            )
-            visible_count = int(visible.sum())
-            factor = 1.0
-            if visible_count and auto_scale:
+        display_field = field.detach().cpu()
+        magnitude = display_field.square().sum(dim=1).sqrt()[0]
+        maximum = float(magnitude.max())
+        visible = magnitude >= max(
+            1e-8, VECTOR_DISPLAY_RELATIVE_THRESHOLD * maximum
+        )
+        visible_count = int(visible.sum())
+        factor = 1.0
+        if visible_count:
+            if auto_scale:
                 q95 = float(torch.quantile(magnitude[visible], 0.95))
                 target = float(np.clip(0.06 * min(magnitude.shape), 12, 48))
                 factor = target / q95
-            pooled = (
-                F.max_pool2d(
-                    magnitude[None, None], kernel_size=3, stride=1, padding=1
-                )[0, 0]
-                if visible_count
-                else None
-            )
-            display = VectorDisplay(
-                field,
-                version,
-                auto_scale,
-                display_field,
-                magnitude,
-                visible,
-                pooled,
-                visible_count,
-                factor,
-            )
-            self._vector_display_cache[axis] = display
-
-        factor = display.factor
-        visible = display.visible
-        if display.visible_count:
+            pooled = F.max_pool2d(
+                magnitude[None, None], kernel_size=3, stride=1, padding=1
+            )[0, 0]
             spacing = int(self.spacing_slider.val)
             spacing = max(
                 spacing,
-                int(np.ceil(np.sqrt(display.visible_count / MAX_DISPLAY_ARROWS))),
+                int(np.ceil(np.sqrt(visible_count / MAX_DISPLAY_ARROWS))),
             )
             mask = torch.zeros_like(visible)
             mask[::spacing, ::spacing] = True
-            mask |= visible & (display.magnitude == display.pooled)
+            mask |= visible & (magnitude == pooled)
             y, x = torch.where(mask & visible)
             if y.numel() > MAX_DISPLAY_ARROWS:
                 keep = torch.linspace(
@@ -1076,8 +1099,8 @@ class FieldPlayground:
             axis.quiver(
                 x.numpy(),
                 y.numpy(),
-                (display.field[0, 0, y, x] * factor).numpy(),
-                (display.field[0, 1, y, x] * factor).numpy(),
+                (display_field[0, 0, y, x] * factor).numpy(),
+                (display_field[0, 1, y, x] * factor).numpy(),
                 color=color,
                 angles="xy",
                 scale_units="xy",
@@ -1092,12 +1115,14 @@ class FieldPlayground:
                 transform=axis.transAxes,
                 ha="center",
                 va="top",
-                fontsize=9.5,
+                fontsize=PANEL_FONT_SIZE,
                 color="#26343c",
                 clip_on=False,
             )
         suffix = "" if abs(factor - 1) < 0.02 else f"  [x{factor:.2g}]"
-        axis.set_title(title + suffix, fontsize=11, color="#24333b", pad=8)
+        axis.set_title(
+            title + suffix, fontsize=PANEL_FONT_SIZE, color="#24333b", pad=8
+        )
 
     def _plot_scalar(
         self,
@@ -1144,7 +1169,7 @@ class FieldPlayground:
                     vmax=limit,
                     alpha=0.68 if signed else 0.78,
                 )
-        axis.set_title(title, fontsize=11, color="#24333b", pad=8)
+        axis.set_title(title, fontsize=PANEL_FONT_SIZE, color="#24333b", pad=8)
 
     def _plot_message(self, axis, message: str) -> None:
         self._plot_base_image(axis)
@@ -1156,7 +1181,7 @@ class FieldPlayground:
             ha="center",
             va="center",
             color="white",
-            fontsize=11,
+            fontsize=PANEL_FONT_SIZE,
             bbox={"facecolor": "#24333b", "alpha": 0.88, "edgecolor": "none", "pad": 8},
         )
 

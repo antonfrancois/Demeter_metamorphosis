@@ -22,6 +22,7 @@ from draft.playground.field_playground import (
     FieldPlayground,
     LoadedField,
     PRIMAL_COLOR,
+    VECTOR_DISPLAY_RELATIVE_THRESHOLD,
     add_vector_arrow,
     analyze_field,
     coerce_field,
@@ -165,6 +166,14 @@ def test_scalar_forward_and_inverse_round_trip():
         covector * cometric.image_gradient[:, 0]
     )
     torch.testing.assert_close(result.kernel_response, expected_response)
+    vector_momentum = covector * cometric.image_gradient[:, 0]
+    deformation_energy = 0.25 * float((vector_momentum * expected_response).sum())
+    intensity_energy = 0.75 * float(covector.square().sum())
+    assert result.deformation_energy_contribution == pytest.approx(deformation_energy)
+    assert result.squared_norm == pytest.approx(
+        intensity_energy + deformation_energy,
+        rel=2e-6,
+    )
 
     inverse = analyze_field(
         image,
@@ -181,6 +190,10 @@ def test_scalar_forward_and_inverse_round_trip():
     assert inverse.operator_time is None
     assert inverse.solver_iterations >= 1
     assert inverse.solver_time >= 0
+    assert inverse.deformation_energy_contribution == pytest.approx(
+        deformation_energy,
+        rel=2e-4,
+    )
 
 
 def test_cometric_inverse_exposes_solver_info():
@@ -248,6 +261,78 @@ def test_invalid_cg_tolerance_and_field_file_inputs(tmp_path):
         load_field_file(invalid)
 
 
+def test_vector_edit_after_kind_switch_updates_analysis_and_display():
+    image = torch.zeros(1, 1, 32, 36)
+    app = FieldPlayground(image, device="cpu")
+    app._on_press(
+        SimpleNamespace(
+            inaxes=app.input_ax, xdata=3.0, ydata=6.0, button=1, key=None
+        )
+    )
+    app._on_motion(
+        SimpleNamespace(inaxes=app.input_ax, xdata=9.0, ydata=6.0)
+    )
+    app._on_release(
+        SimpleNamespace(inaxes=app.input_ax, xdata=9.0, ydata=6.0, button=1)
+    )
+    initial = app.fields["vector"].clone()
+    app.run()
+
+    app.kind_radio.set_active(0)
+    assert app.kind == "velocity"
+    app._on_press(
+        SimpleNamespace(
+            inaxes=app.input_ax, xdata=24.0, ydata=20.0, button=1, key=None
+        )
+    )
+    app._on_motion(
+        SimpleNamespace(inaxes=app.input_ax, xdata=24.0, ydata=27.0)
+    )
+    app._on_release(
+        SimpleNamespace(inaxes=app.input_ax, xdata=24.0, ydata=27.0, button=1)
+    )
+    updated = app.fields["vector"]
+    assert not torch.equal(updated, initial)
+
+    app.run()
+    operator = SobolevFluidOperator(alpha=0.2, beta=0.2, gamma=0.001)
+    expected = operator.apply_operator(updated)
+    stale = operator.apply_operator(initial)
+    torch.testing.assert_close(app.analysis.counterpart, expected)
+    assert not torch.allclose(app.analysis.counterpart, stale)
+
+    quivers = [
+        artist for artist in app.output_ax.collections if isinstance(artist, Quiver)
+    ]
+    assert len(quivers) == 1
+    magnitude = expected.square().sum(1).sqrt()[0]
+    visible = magnitude >= max(
+        1e-8, VECTOR_DISPLAY_RELATIVE_THRESHOLD * float(magnitude.max())
+    )
+    factor = float(np.clip(0.06 * min(magnitude.shape), 12, 48)) / float(
+        torch.quantile(magnitude[visible], 0.95)
+    )
+    x = torch.as_tensor(quivers[0].X, dtype=torch.long)
+    y = torch.as_tensor(quivers[0].Y, dtype=torch.long)
+    np.testing.assert_allclose(
+        quivers[0].U,
+        (expected[0, 0, y, x] * factor).numpy(),
+        rtol=1e-5,
+        atol=1e-6,
+    )
+    np.testing.assert_allclose(
+        quivers[0].V,
+        (expected[0, 1, y, x] * factor).numpy(),
+        rtol=1e-5,
+        atol=1e-6,
+    )
+    assert any(
+        (x_coord - 24) ** 2 + (y_coord - 20) ** 2 <= 4
+        for x_coord, y_coord in zip(quivers[0].X, quivers[0].Y)
+    )
+    plt.close(app.fig)
+
+
 def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     image = torch.zeros(1, 1, 32, 36)
     image[..., 8:24, 10:26] = 1
@@ -258,11 +343,30 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     assert app.gamma_slider.valtext.get_text() == "0.001"
     assert app.analysis is None
     assert app.kind == "vector_momentum"
+    assert not app.scalar_error_button.ax.get_visible()
+    assert not app.scalar_kernel_button.ax.get_visible()
     radio_colors = app.kind_radio._buttons.get_facecolors()
     np.testing.assert_allclose(radio_colors[1], to_rgba(DUAL_COLOR))
     assert radio_colors[0, 3] == 0
     app.mode_radio.set_active(1)
     assert app.kind == "u"
+    assert app.scalar_detail == "error"
+    assert app.scalar_error_button.ax.get_visible()
+    assert app.scalar_kernel_button.ax.get_visible()
+    detail_position = app.detail_ax.get_position()
+    button_left = app.scalar_error_button.ax.get_position()
+    button_right = app.scalar_kernel_button.ax.get_position()
+    assert (button_left.x0 + button_right.x1) / 2 == pytest.approx(
+        (detail_position.x0 + detail_position.x1) / 2
+    )
+    assert 0 < button_left.y0 - detail_position.y1 < 0.08
+    assert button_left.height >= 0.035
+    app._set_scalar_detail("kernel")
+    app.mode_radio.set_active(0)
+    assert not app.scalar_error_button.ax.get_visible()
+    assert not app.scalar_kernel_button.ax.get_visible()
+    app.mode_radio.set_active(1)
+    assert app.scalar_detail == "error"
     app.mode_radio.set_active(0)
 
     display_field = torch.full((1, 2, 32, 36), 1e-3)
@@ -335,8 +439,9 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     assert app.output_ax.get_title().startswith(r"Output: velocity $v=Km$")
     assert "display" not in app.output_ax.get_title()
     output_footer = app.output_ax.texts[-1].get_text()
-    assert "$K$ time=" in output_footer
+    assert "$K$ time = " in output_footer
     assert "q_{95}" not in output_footer
+    assert app.output_ax.texts[-1].get_fontsize() == app.output_ax.title.get_fontsize()
     output_arrows = [
         artist for artist in app.output_ax.collections if isinstance(artist, Quiver)
     ]
@@ -345,29 +450,37 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     )
     assert app.output_ax.title.get_color() == "#24333b"
     energy = app.norm_text.get_text()
-    assert r"\Vert v\Vert_V^2=\Vert m\Vert_{V^*}^2" in energy
+    assert r"\Vert v\Vert_V^2 = \Vert m\Vert_{V^*}^2" in energy
     assert r"\langle" not in energy
     assert app.norm_text.axes is app.input_ax
     assert app.norm_text.get_position() == (0.5, -0.075)
+    assert app.norm_text.get_fontsize() == app.input_ax.title.get_fontsize()
     assert isinstance(app.error_colorbar.mappable.norm, LogNorm)
     assert app.error_colorbar.ax.get_ylabel() == ""
     error = (app.analysis.roundtrip - app.fields["vector"]).square().sum(1).sqrt()
-    precision_floor = float(
-        torch.finfo(error.dtype).eps
-        * app.fields["vector"].norm()
-        / np.sqrt(error.numel())
-    )
+    precision_floor = torch.finfo(error.dtype).eps
     assert app.error_colorbar.mappable.norm.vmin == pytest.approx(precision_floor)
     heatmap = app.error_colorbar.mappable.get_array()
     assert not np.ma.getmaskarray(heatmap).any()
     assert float(heatmap.min()) == pytest.approx(precision_floor)
-    assert r"\left\Vert L(Km)-m\right\Vert_2" in app.detail_ax.get_title()
+    assert r"\Vert L(Km)-m\Vert_2/\mathrm{RMS}(\Vert m\Vert_2)" in (
+        app.detail_ax.get_title()
+    )
     error_legend = app.detail_ax.texts[-1].get_text()
-    assert r"\mathrm{mean}" in error_legend
-    assert r"\mathrm{max}" in error_legend
+    assert r"\mathrm{mean} = " in error_legend
+    assert r"\mathrm{max} = " in error_legend
+    assert ":" not in error_legend
+    assert app.detail_ax.texts[-1].get_fontsize() == app.detail_ax.title.get_fontsize()
     assert "q_{99}" not in error_legend
     assert "|e|" not in error_legend
     reference = app.fields["vector"].square().sum(1).sqrt()
+    relative_error = app._relative_l2_error(error, reference)
+    np.testing.assert_allclose(
+        heatmap,
+        relative_error[0].clamp_min(precision_floor).numpy(),
+        rtol=1e-5,
+        atol=0,
+    )
     relative_mean, relative_max = app._relative_l2_metrics(error, reference)
     assert relative_mean == pytest.approx(app.analysis.relative_roundtrip)
     assert app._latex_number(relative_mean) in error_legend
@@ -386,7 +499,7 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
         for artists in (app.detail_ax.images, app.detail_ax.collections, app.detail_ax.texts)
         for artist in artists
     )
-    assert r"\Vert v\Vert_V^2=\Vert m\Vert_{V^*}^2" in app.norm_text.get_text()
+    assert r"\Vert v\Vert_V^2 = \Vert m\Vert_{V^*}^2" in app.norm_text.get_text()
     analysis = app.analysis
     app.kind_radio.set_active(app.kind_radio.index_selected)
     assert app.analysis is analysis
@@ -412,58 +525,87 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     radio_colors = app.kind_radio._buttons.get_facecolors()
     np.testing.assert_allclose(radio_colors[0], to_rgba(PRIMAL_COLOR))
     assert radio_colors[1, 3] == 0
-    assert r"\left\Vert K(Lv)-v\right\Vert_2" in app.detail_ax.get_title()
+    assert r"\Vert K(Lv)-v\Vert_2/\mathrm{RMS}(\Vert v\Vert_2)" in (
+        app.detail_ax.get_title()
+    )
     assert app.error_colorbar.ax.get_ylabel() == ""
-    assert "$L$ time=" in app.output_ax.texts[-1].get_text()
+    assert "$L$ time = " in app.output_ax.texts[-1].get_text()
     assert app.input_ax.title.get_color() == "#24333b"
     assert app.output_ax.title.get_color() == "#24333b"
 
     app.mode_radio.set_active(1)
     assert app.error_colorbar is None
+    assert app.scalar_detail == "error"
+    assert app.scalar_error_button.ax.get_visible()
+    assert app.scalar_kernel_button.ax.get_visible()
     app.fields["scalar"].fill_(0.1)
     app.kind_radio.set_active(0)
     app.run()
     assert app.input_ax.title.get_color() == "#24333b"
     assert app.output_ax.title.get_color() == "#24333b"
-    kernel_arrows = [
-        artist for artist in app.detail_ax.collections if isinstance(artist, Quiver)
-    ]
-    np.testing.assert_allclose(
-        kernel_arrows[0].get_facecolors()[0], to_rgba(PRIMAL_COLOR)
-    )
+    assert isinstance(app.error_colorbar.mappable.norm, LogNorm)
+    assert r"\left|A_I(A_I^{-1}a)-a\right|" in app.detail_ax.get_title()
+    assert r"\mathrm{RMS}(\left|a\right|)" in app.detail_ax.get_title()
+    scalar_error_legend = app.detail_ax.texts[-1].get_text()
+    assert r"\mathrm{mean} = " in scalar_error_legend
+    assert r"\mathrm{max} = " in scalar_error_legend
+    assert ":" not in scalar_error_legend
     solver_legend = app.output_ax.texts[-1].get_text()
-    assert solver_legend.count("\n") == 3
-    assert "iterations" in solver_legend
-    assert r"$A_I^{-1}$ time=" in solver_legend
-    assert r"\mathrm{mean}" in solver_legend
-    assert r"\mathrm{max}" in solver_legend
-    assert "error" not in solver_legend
+    assert solver_legend.count("\n") == 1
+    assert r"\mathrm{iterations} = " in solver_legend
+    assert r"$A_I^{-1}$ time = " in solver_legend
+    assert r"\mathrm{mean}" not in solver_legend
+    assert r"\mathrm{max}" not in solver_legend
     scalar_energy = app.norm_text.get_text()
-    assert r"\Vert a\Vert_{A_I^{-1}}^2=\Vert u\Vert_{A_I}^2" in scalar_energy
+    assert r"\Vert a\Vert_{A_I^{-1}}^2 = \Vert u\Vert_{A_I}^2" in scalar_energy
     assert r"\langle" not in scalar_energy
     scalar_panel_artist_ids = tuple(
         id(artist)
-        for axis in (app.input_ax, app.output_ax)
+        for axis in (app.input_ax, app.output_ax, app.detail_ax)
         for artists in (axis.images, axis.collections, axis.texts)
         for artist in artists
     )
+    scalar_error_colorbar = app.error_colorbar
     app.spacing_slider.set_val(8)
     assert scalar_panel_artist_ids == tuple(
         id(artist)
-        for axis in (app.input_ax, app.output_ax)
+        for axis in (app.input_ax, app.output_ax, app.detail_ax)
         for artists in (axis.images, axis.collections, axis.texts)
         for artist in artists
     )
+    assert app.error_colorbar is scalar_error_colorbar
     assert app.norm_text.get_text() == scalar_energy
+
+    app._set_scalar_detail("kernel")
+    assert app.error_colorbar is None
+    assert app.scalar_kernel_button.label.get_color() == "white"
+    kernel_arrows = [
+        artist for artist in app.detail_ax.collections if isinstance(artist, Quiver)
+    ]
+    assert len(kernel_arrows) == 1
+    np.testing.assert_allclose(
+        kernel_arrows[0].get_facecolors()[0], to_rgba(PRIMAL_COLOR)
+    )
+    assert app.detail_ax.get_title().startswith(r"Kernel response $K(u\nabla I)$")
+    kernel_energy = app.detail_ax.texts[-1].get_text()
+    assert r"\rho\,\Vert K(u\nabla I)\Vert_V^2 = " in kernel_energy
+    assert app._latex_number(app.analysis.deformation_energy_contribution) in kernel_energy
+    assert app.detail_ax.texts[-1].get_fontsize() == app.detail_ax.title.get_fontsize()
+
+    app._set_scalar_detail("error")
+    assert isinstance(app.error_colorbar.mappable.norm, LogNorm)
     app.kind_radio.set_active(1)
     app.run()
     assert app.input_ax.title.get_color() == "#24333b"
     assert app.output_ax.title.get_color() == "#24333b"
+    assert r"A_I^{-1}(A_Iu)-u" in app.detail_ax.get_title()
     cometric_legend = app.output_ax.texts[-1].get_text()
-    assert "$A_I$ time=" in cometric_legend
-    assert r"\mathrm{mean}" in cometric_legend
-    assert r"\mathrm{max}" in cometric_legend
+    assert "$A_I$ time = " in cometric_legend
+    assert r"\mathrm{mean}" not in cometric_legend
+    assert r"\mathrm{max}" not in cometric_legend
     app.mode_radio.set_active(0)
+    assert not app.scalar_error_button.ax.get_visible()
+    assert not app.scalar_kernel_button.ax.get_visible()
     app.kind_radio.set_active(1)
 
     output = app.save(tmp_path / "field.pt")
