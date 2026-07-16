@@ -31,10 +31,8 @@ FIELD_KEYS = (
 )
 
 
-def _coerce_real_tensor(value: Any, name: str) -> torch.Tensor:
+def _as_tensor(value: Any) -> torch.Tensor:
     tensor = torch.as_tensor(value)
-    if tensor.is_complex():
-        raise TypeError(f"{name} must be real")
     if tensor.dtype != torch.float64:
         tensor = tensor.float()
     return tensor.detach().cpu()
@@ -52,7 +50,7 @@ class LoadedField:
 class AnalysisResult:
     counterpart: torch.Tensor
     roundtrip: torch.Tensor
-    kernel_response: torch.Tensor | None
+    deformation_velocity: torch.Tensor | None
     relative_roundtrip: float
     squared_norm: float
     deformation_energy_contribution: float | None = None
@@ -62,14 +60,10 @@ class AnalysisResult:
 
 
 def mode_for_kind(kind: str) -> str:
-    if kind in VECTOR_KINDS:
-        return "vector"
-    if kind in SCALAR_KINDS:
-        return "scalar"
-    raise ValueError(f"unsupported field kind {kind!r}")
+    return "vector" if kind in VECTOR_KINDS else "scalar"
 
 
-def _canonical_kind(value: Any, mode: str, *, strict: bool = False) -> str:
+def _canonical_kind(value: Any, mode: str) -> str:
     text = str(value).lower().strip()
     aliases = {
         "v": "velocity",
@@ -82,37 +76,17 @@ def _canonical_kind(value: Any, mode: str, *, strict: bool = False) -> str:
         "primal": "velocity" if mode == "vector" else "a",
         "dual": "vector_momentum" if mode == "vector" else "u",
     }
-    kind = aliases.get(text, text)
-    allowed = VECTOR_KINDS if mode == "vector" else SCALAR_KINDS
-    if kind in allowed:
-        return kind
-    if strict:
-        raise ValueError(f"field kind {value!r} is incompatible with a {mode} field")
-    return allowed[0]
+    return aliases.get(text, text)
 
 
 def coerce_image(value: Any) -> torch.Tensor:
-    image = _coerce_real_tensor(value, "image")
+    image = _as_tensor(value)
     if image.ndim == 2:
         image = image[None, None]
     elif image.ndim == 3:
-        if image.shape[0] == 1:
-            image = image[None]
-        elif image.shape[-1] == 1:
-            image = image.movedim(-1, 0)[None]
-        else:
-            raise ValueError(f"image must have one channel, got {tuple(image.shape)}")
-    elif image.ndim == 4:
-        if image.shape[0] != 1:
-            raise ValueError(f"image must represent one 2D image, got {tuple(image.shape)}")
-        if image.shape[1] != 1 and image.shape[-1] == 1:
-            image = image.movedim(-1, 1)
-    else:
-        raise ValueError(f"image must represent one 2D image, got {tuple(image.shape)}")
-    if image.shape[1] != 1:
-        raise ValueError(f"image must have one channel, got {tuple(image.shape)}")
-    if not torch.isfinite(image).all():
-        raise ValueError("image contains non-finite values")
+        image = image[None] if image.shape[0] == 1 else image.movedim(-1, 0)[None]
+    elif image.shape[1] != 1:
+        image = image.movedim(-1, 1)
     minimum, maximum = image.amin(), image.amax()
     if maximum > 1 or minimum < 0:
         span = maximum - minimum
@@ -121,33 +95,15 @@ def coerce_image(value: Any) -> torch.Tensor:
 
 
 def coerce_field(value: Any) -> tuple[torch.Tensor, str]:
-    is_tensor = torch.is_tensor(value)
-    tensor = _coerce_real_tensor(value, "field")
-    if not torch.isfinite(tensor).all():
-        raise ValueError("field contains non-finite values")
+    tensor = _as_tensor(value)
     if tensor.ndim == 2:
-        return tensor[None, None].contiguous(), "scalar"
-    if tensor.ndim in (3, 4):
-        if tensor.ndim == 4 and tensor.shape[0] != 1:
-            raise ValueError(f"field must contain one sample, got {tuple(tensor.shape)}")
-        channel_first = tensor.shape[-3] in (1, 2)
-        channel_last = tensor.shape[-1] in (1, 2)
-        if channel_first and channel_last and not (tensor.ndim == 4 and is_tensor):
-            raise ValueError(f"ambiguous field channel layout for shape {tuple(tensor.shape)}")
-        if channel_first and channel_last:
-            channel_last = False
-        if not channel_first and not channel_last:
-            raise ValueError(f"field has no supported channel axis: {tuple(tensor.shape)}")
-        if channel_last:
-            tensor = tensor.movedim(-1, -3)
-        if tensor.ndim == 3:
-            tensor = tensor[None]
-        mode = "scalar" if tensor.shape[1] == 1 else "vector"
-        return tensor.contiguous(), mode
-    raise ValueError(
-        "field must have shape [H,W], [C,H,W], [H,W,C], "
-        f"[1,C,H,W], or [1,H,W,C]; got {tuple(tensor.shape)}"
-    )
+        tensor = tensor[None, None]
+    elif tensor.ndim == 3:
+        tensor = tensor[None] if tensor.shape[0] in (1, 2) else tensor.movedim(-1, 0)[None]
+    elif tensor.shape[1] not in (1, 2):
+        tensor = tensor.movedim(-1, 1)
+    mode = "scalar" if tensor.shape[1] == 1 else "vector"
+    return tensor.contiguous(), mode
 
 
 def resize_field(
@@ -166,10 +122,8 @@ def resize_field(
     return resized
 
 
-def _metadata_scalar(value: Any, name: str) -> Any:
+def _metadata_scalar(value: Any) -> Any:
     if isinstance(value, np.ndarray):
-        if value.ndim != 0:
-            raise ValueError(f"{name} metadata must be scalar")
         value = value.item()
     if isinstance(value, bytes):
         value = value.decode()
@@ -183,26 +137,13 @@ def load_field_file(path: str | Path) -> LoadedField:
         payload: Any = np.load(path, allow_pickle=False)
     elif suffix == ".npz":
         with np.load(path, allow_pickle=False) as archive:
-            if not archive.files:
-                raise ValueError(f"empty field archive {path}")
             field_keys = [key for key in FIELD_KEYS if key in archive.files]
-            if len(field_keys) > 1:
-                raise ValueError(f"multiple field arrays found in {path}: {field_keys}")
             if field_keys:
-                payload = {
-                    key: archive[key].copy()
-                    for key in archive.files
-                    if key in FIELD_KEYS
-                    or key in {"field_kind", "kind", "format_version", "dx_convention", "image"}
-                }
-            elif len(archive.files) == 1:
-                payload = archive[archive.files[0]].copy()
+                payload = {key: archive[key].copy() for key in archive.files}
             else:
-                raise ValueError(f"no supported field array found in {path}")
-    elif suffix in (".pt", ".pth"):
-        payload = torch.load(path, map_location="cpu", weights_only=True)
+                payload = archive[archive.files[0]].copy()
     else:
-        raise ValueError(f"unsupported field file extension {suffix!r}")
+        payload = torch.load(path, map_location="cpu", weights_only=True)
 
     metadata: dict[str, Any] = {}
     image = None
@@ -210,45 +151,20 @@ def load_field_file(path: str | Path) -> LoadedField:
     named_kind_hint = None
     value = payload
     if isinstance(payload, dict):
-        version = _metadata_scalar(payload.get("format_version"), "format_version")
-        if version is not None:
-            numeric_version = float(version)
-            if not numeric_version.is_integer() or not 1 <= numeric_version <= FORMAT_VERSION:
-                raise ValueError(f"unsupported field format version {version}")
-        convention = _metadata_scalar(payload.get("dx_convention"), "dx_convention")
-        if convention not in (None, "pixel"):
-            raise ValueError(f"the playground cannot edit {convention!r} fields")
         metadata = {
             key: val
             for key, val in payload.items()
             if key not in FIELD_KEYS and key != "image" and not torch.is_tensor(val)
         }
         image = coerce_image(payload["image"]) if "image" in payload else None
-        kind_hint = _metadata_scalar(
-            payload.get("field_kind", payload.get("kind")), "field_kind"
-        )
-        field_keys = [key for key in FIELD_KEYS if key in payload]
-        if len(field_keys) != 1:
-            if field_keys:
-                raise ValueError(f"multiple supported field keys found in {path}: {field_keys}")
-            raise ValueError(f"no supported field key found in {path}")
-        key = field_keys[0]
+        kind_hint = _metadata_scalar(payload.get("field_kind", payload.get("kind")))
+        key = next(key for key in FIELD_KEYS if key in payload)
         value = payload[key]
         named_kind_hint = None if key == "field" else key
 
     field, mode = coerce_field(value)
     default_kind = "velocity" if mode == "vector" else "u"
-    kind = _canonical_kind(
-        kind_hint or named_kind_hint or default_kind,
-        mode,
-        strict=kind_hint is not None or named_kind_hint is not None,
-    )
-    if kind_hint is not None and named_kind_hint is not None:
-        named_kind = _canonical_kind(named_kind_hint, mode, strict=True)
-        if kind != named_kind:
-            raise ValueError(
-                f"field_kind {kind_hint!r} conflicts with array name {named_kind_hint!r}"
-            )
+    kind = _canonical_kind(kind_hint or named_kind_hint or default_kind, mode)
     return LoadedField(field, kind, image, metadata)
 
 
@@ -260,8 +176,6 @@ def gaussian_patch_mask(
     device=None,
     dtype=torch.float32,
 ) -> torch.Tensor:
-    if not dtype.is_floating_point:
-        raise TypeError("Gaussian masks require a floating-point dtype")
     y = torch.arange(size[0], device=device, dtype=dtype)[:, None]
     x = torch.arange(size[1], device=device, dtype=dtype)[None, :]
     distance_sq = (x - center[0]).square() + (y - center[1]).square()
@@ -322,13 +236,6 @@ def _stroke_mask(
     return mask
 
 
-def _check_edit_field(field: torch.Tensor, channels: int) -> None:
-    if field.ndim != 4 or field.shape[1] != channels:
-        raise ValueError(f"field must have shape [B, {channels}, H, W]")
-    if not torch.is_floating_point(field):
-        raise TypeError("field must be floating point")
-
-
 def add_vector_arrow(
     field: torch.Tensor,
     start: tuple[float, float],
@@ -336,7 +243,6 @@ def add_vector_arrow(
     sigma: float,
     gain: float = 1.0,
 ) -> torch.Tensor:
-    _check_edit_field(field, 2)
     displacement = field.new_tensor((end[0] - start[0], end[1] - start[1])) * float(gain)
     mask = gaussian_patch_mask(
         field.shape[-2:], start, sigma, device=field.device, dtype=field.dtype
@@ -350,7 +256,6 @@ def paint_scalar_stroke(
     sigma: float,
     amplitude: float,
 ) -> torch.Tensor:
-    _check_edit_field(field, 1)
     return field + float(amplitude) * _stroke_mask(field, points, sigma)[None, None]
 
 
@@ -359,10 +264,6 @@ def erase_stroke(
     points: list[tuple[float, float]],
     sigma: float,
 ) -> torch.Tensor:
-    if field.ndim != 4 or field.shape[1] not in (1, 2):
-        raise ValueError("field must have shape [B, C, H, W] with C equal to 1 or 2")
-    if not torch.is_floating_point(field):
-        raise TypeError("field must be floating point")
     mask = _stroke_mask(field, points, sigma)
     return field * (1 - mask[None, None])
 
@@ -405,20 +306,12 @@ def analyze_field(
     device: str | torch.device = "cpu",
 ) -> AnalysisResult:
     mode = mode_for_kind(kind)
-    if field.ndim != 4:
-        raise ValueError(f"field must have shape [B, C, H, W], got {field.shape}")
-    if field.is_complex():
-        raise TypeError("field must be real")
     dtype = torch.float64 if field.dtype == torch.float64 else torch.float32
     field = field.to(device=device, dtype=dtype)
-    if not torch.isfinite(field).all():
-        raise ValueError("field contains non-finite values")
     operator = SobolevFluidOperator(alpha=alpha, beta=beta, gamma=gamma)
 
     with torch.no_grad():
         if mode == "vector":
-            if field.shape[1] != 2:
-                raise ValueError(f"{kind} requires a vector field")
             if kind == "velocity":
                 counterpart, operator_time = _timed_call(
                     operator.apply_operator, field
@@ -441,15 +334,6 @@ def analyze_field(
             )
 
         image = image.to(device=device, dtype=dtype)
-        if (
-            field.shape[1] != 1
-            or image.ndim != 4
-            or image.shape[:2] != field.shape[:2]
-            or image.shape[-2:] != field.shape[-2:]
-        ):
-            raise ValueError("scalar image and field must have matching [B, 1, H, W] shapes")
-        if not torch.isfinite(image).all():
-            raise ValueError("image contains non-finite values")
 
         cometric = CometricOperator(
             image, rho, operator, dx_convention="pixel"
@@ -474,6 +358,7 @@ def analyze_field(
 
         vector_momentum = covector * cometric.image_gradient[:, 0]
         kernel_response = operator.apply_inverse(vector_momentum)
+        deformation_velocity = -(cometric.rho**0.5) * kernel_response
         relative_error = _relative_error(roundtrip, expected)
         squared_norm = float((covector * acceleration).sum())
         deformation_energy_contribution = float(
@@ -482,7 +367,7 @@ def analyze_field(
         return AnalysisResult(
             counterpart.cpu(),
             roundtrip.cpu(),
-            kernel_response.cpu(),
+            deformation_velocity.cpu(),
             relative_error,
             squared_norm,
             deformation_energy_contribution=deformation_energy_contribution,

@@ -18,16 +18,19 @@ from draft.cometric_inversion import CometricOperator
 from draft.conjugate_gradient import conjugate_gradient
 from draft.sobolevfluid_operator import SobolevFluidOperator
 from draft.playground.field_playground import (
+    DEFAULT_IMAGE,
     DUAL_COLOR,
     FieldPlayground,
     LoadedField,
     PRIMAL_COLOR,
+    SIGNED_FIELD_CMAP,
     VECTOR_DISPLAY_RELATIVE_THRESHOLD,
     add_vector_arrow,
     analyze_field,
     coerce_field,
     coerce_image,
     erase_stroke,
+    load_image,
     load_field_file,
     paint_scalar_stroke,
     resize_field,
@@ -67,17 +70,22 @@ def test_field_layout_coercion_and_vector_resize():
 
 
 def test_channel_last_layouts_and_npz_semantics(tmp_path):
+    default_image, default_path = load_image(DEFAULT_IMAGE)
+    assert default_path == DEFAULT_IMAGE.resolve()
+    assert default_image.shape[:2] == (1, 1)
+
+    signed_colors = SIGNED_FIELD_CMAP(np.array([0.0, 0.5, 1.0]))
+    assert signed_colors[1, 3] == pytest.approx(0)
+    assert not np.any(np.all(signed_colors[:, :3] == 0, axis=1))
+    assert not np.any(np.all(signed_colors[:, :3] == 1, axis=1))
+
     image = coerce_image(np.full((1, 6, 7, 1), 0.3, dtype=np.float32))
     assert image.shape == (1, 1, 6, 7)
     assert torch.allclose(image, torch.full_like(image, 0.3))
-    with pytest.raises(ValueError, match="one channel"):
-        coerce_image(np.zeros((6, 7, 3), dtype=np.float32))
 
     scalar, mode = coerce_field(np.zeros((6, 7, 1), dtype=np.float32))
     assert scalar.shape == (1, 1, 6, 7)
     assert mode == "scalar"
-    with pytest.raises(ValueError, match="ambiguous"):
-        coerce_field(np.zeros((1, 7, 2), dtype=np.float32))
     assert coerce_field(torch.zeros(1, 2, 7, 2))[0].shape == (1, 2, 7, 2)
     assert coerce_image(torch.zeros(1, 1, 7, 3)).shape == (1, 1, 7, 3)
 
@@ -89,15 +97,6 @@ def test_channel_last_layouts_and_npz_semantics(tmp_path):
     loaded = load_field_file(path)
     assert loaded.kind == "vector_momentum"
     assert loaded.field.shape == (1, 2, 6, 7)
-
-    conflicting = tmp_path / "conflicting.npz"
-    np.savez(
-        conflicting,
-        vector_momentum=np.zeros((6, 7, 2), dtype=np.float32),
-        field_kind=np.array("velocity"),
-    )
-    with pytest.raises(ValueError, match="conflicts"):
-        load_field_file(conflicting)
 
 
 def test_vector_analysis_round_trips():
@@ -157,7 +156,7 @@ def test_scalar_forward_and_inverse_round_trip():
         cg_eps=1e-7,
     )
     assert result.counterpart.shape == covector.shape
-    assert result.kernel_response.shape == (1, 2, 20, 24)
+    assert result.deformation_velocity.shape == (1, 2, 20, 24)
     assert result.relative_roundtrip < 1e-4
     assert result.operator_time >= 0
     operator = SobolevFluidOperator(alpha=0.4, beta=0.2, gamma=0.3)
@@ -165,7 +164,9 @@ def test_scalar_forward_and_inverse_round_trip():
     expected_response = operator.apply_inverse(
         covector * cometric.image_gradient[:, 0]
     )
-    torch.testing.assert_close(result.kernel_response, expected_response)
+    expected_velocity = -(0.25**0.5) * expected_response
+    torch.testing.assert_close(result.deformation_velocity, expected_velocity)
+    assert (result.deformation_velocity * expected_response).sum() < 0
     vector_momentum = covector * cometric.image_gradient[:, 0]
     deformation_energy = 0.25 * float((vector_momentum * expected_response).sum())
     intensity_energy = 0.75 * float(covector.square().sum())
@@ -190,6 +191,12 @@ def test_scalar_forward_and_inverse_round_trip():
     assert inverse.operator_time is None
     assert inverse.solver_iterations >= 1
     assert inverse.solver_time >= 0
+    torch.testing.assert_close(
+        inverse.deformation_velocity,
+        expected_velocity,
+        atol=2e-5,
+        rtol=2e-4,
+    )
     assert inverse.deformation_energy_contribution == pytest.approx(
         deformation_energy,
         rel=2e-4,
@@ -245,20 +252,12 @@ def test_conjugate_gradient_solves_spd_system_and_zero_rhs():
     assert iterations == 0
 
 
-def test_invalid_cg_tolerance_and_field_file_inputs(tmp_path):
+def test_cometric_rejects_nonpositive_cg_tolerance():
     image = torch.zeros(1, 1, 8, 9)
     acceleration = torch.zeros_like(image)
     operator = lambda value: value
     with pytest.raises(ValueError, match="eps"):
         CometricOperator(image, 0.5, operator).inverse(acceleration, eps=0)
-
-    invalid = tmp_path / "invalid.pt"
-    torch.save(
-        {"field": torch.zeros(1, 1, 8, 9), "field_kind": "velocity"},
-        invalid,
-    )
-    with pytest.raises(ValueError, match="incompatible"):
-        load_field_file(invalid)
 
 
 def test_vector_edit_after_kind_switch_updates_analysis_and_display():
@@ -344,7 +343,7 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     assert app.analysis is None
     assert app.kind == "vector_momentum"
     assert not app.scalar_error_button.ax.get_visible()
-    assert not app.scalar_kernel_button.ax.get_visible()
+    assert not app.scalar_deformation_button.ax.get_visible()
     radio_colors = app.kind_radio._buttons.get_facecolors()
     np.testing.assert_allclose(radio_colors[1], to_rgba(DUAL_COLOR))
     assert radio_colors[0, 3] == 0
@@ -352,19 +351,19 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     assert app.kind == "u"
     assert app.scalar_detail == "error"
     assert app.scalar_error_button.ax.get_visible()
-    assert app.scalar_kernel_button.ax.get_visible()
+    assert app.scalar_deformation_button.ax.get_visible()
     detail_position = app.detail_ax.get_position()
     button_left = app.scalar_error_button.ax.get_position()
-    button_right = app.scalar_kernel_button.ax.get_position()
+    button_right = app.scalar_deformation_button.ax.get_position()
     assert (button_left.x0 + button_right.x1) / 2 == pytest.approx(
         (detail_position.x0 + detail_position.x1) / 2
     )
     assert 0 < button_left.y0 - detail_position.y1 < 0.08
     assert button_left.height >= 0.035
-    app._set_scalar_detail("kernel")
+    app._set_scalar_detail("deformation")
     app.mode_radio.set_active(0)
     assert not app.scalar_error_button.ax.get_visible()
-    assert not app.scalar_kernel_button.ax.get_visible()
+    assert not app.scalar_deformation_button.ax.get_visible()
     app.mode_radio.set_active(1)
     assert app.scalar_detail == "error"
     app.mode_radio.set_active(0)
@@ -537,12 +536,14 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     assert app.error_colorbar is None
     assert app.scalar_detail == "error"
     assert app.scalar_error_button.ax.get_visible()
-    assert app.scalar_kernel_button.ax.get_visible()
+    assert app.scalar_deformation_button.ax.get_visible()
     app.fields["scalar"].fill_(0.1)
     app.kind_radio.set_active(0)
     app.run()
     assert app.input_ax.title.get_color() == "#24333b"
     assert app.output_ax.title.get_color() == "#24333b"
+    assert app.input_ax.images[-1].get_cmap().name == SIGNED_FIELD_CMAP.name
+    assert app.output_ax.images[-1].get_cmap().name == SIGNED_FIELD_CMAP.name
     assert isinstance(app.error_colorbar.mappable.norm, LogNorm)
     assert r"\left|A_I(A_I^{-1}a)-a\right|" in app.detail_ax.get_title()
     assert r"\mathrm{RMS}(\left|a\right|)" in app.detail_ax.get_title()
@@ -576,21 +577,47 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     assert app.error_colorbar is scalar_error_colorbar
     assert app.norm_text.get_text() == scalar_energy
 
-    app._set_scalar_detail("kernel")
+    app._set_scalar_detail("deformation")
     assert app.error_colorbar is None
-    assert app.scalar_kernel_button.label.get_color() == "white"
-    kernel_arrows = [
+    assert app.scalar_deformation_button.label.get_color() == "white"
+    deformation_arrows = [
         artist for artist in app.detail_ax.collections if isinstance(artist, Quiver)
     ]
-    assert len(kernel_arrows) == 1
+    assert len(deformation_arrows) == 1
     np.testing.assert_allclose(
-        kernel_arrows[0].get_facecolors()[0], to_rgba(PRIMAL_COLOR)
+        deformation_arrows[0].get_facecolors()[0], to_rgba(PRIMAL_COLOR)
     )
-    assert app.detail_ax.get_title().startswith(r"Kernel response $K(u\nabla I)$")
-    kernel_energy = app.detail_ax.texts[-1].get_text()
-    assert r"\rho\,\Vert K(u\nabla I)\Vert_V^2 = " in kernel_energy
-    assert app._latex_number(app.analysis.deformation_energy_contribution) in kernel_energy
+    assert app.detail_ax.get_title().startswith(
+        r"Deformation velocity $-\sqrt{\rho}\,K(u\nabla I)$"
+    )
+    deformation_energy = app.detail_ax.texts[-1].get_text()
+    assert r"\rho\,\Vert K(u\nabla I)\Vert_V^2 = " in deformation_energy
+    assert app._latex_number(app.analysis.deformation_energy_contribution) in (
+        deformation_energy
+    )
     assert app.detail_ax.texts[-1].get_fontsize() == app.detail_ax.title.get_fontsize()
+    displayed_velocity = app.analysis.deformation_velocity
+    magnitude = displayed_velocity.square().sum(1).sqrt()[0]
+    visible = magnitude >= max(
+        1e-8, VECTOR_DISPLAY_RELATIVE_THRESHOLD * float(magnitude.max())
+    )
+    factor = float(np.clip(0.06 * min(magnitude.shape), 12, 48)) / float(
+        torch.quantile(magnitude[visible], 0.95)
+    )
+    x = torch.as_tensor(deformation_arrows[0].X, dtype=torch.long)
+    y = torch.as_tensor(deformation_arrows[0].Y, dtype=torch.long)
+    np.testing.assert_allclose(
+        deformation_arrows[0].U,
+        (displayed_velocity[0, 0, y, x] * factor).numpy(),
+        rtol=1e-5,
+        atol=1e-6,
+    )
+    np.testing.assert_allclose(
+        deformation_arrows[0].V,
+        (displayed_velocity[0, 1, y, x] * factor).numpy(),
+        rtol=1e-5,
+        atol=1e-6,
+    )
 
     app._set_scalar_detail("error")
     assert isinstance(app.error_colorbar.mappable.norm, LogNorm)
@@ -605,7 +632,7 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     assert r"\mathrm{max}" not in cometric_legend
     app.mode_radio.set_active(0)
     assert not app.scalar_error_button.ax.get_visible()
-    assert not app.scalar_kernel_button.ax.get_visible()
+    assert not app.scalar_deformation_button.ax.get_visible()
     app.kind_radio.set_active(1)
 
     output = app.save(tmp_path / "field.pt")

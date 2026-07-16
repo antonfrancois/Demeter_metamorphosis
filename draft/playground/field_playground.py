@@ -17,7 +17,7 @@ if "MPLBACKEND" not in os.environ:
 
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
+from matplotlib.colors import LinearSegmentedColormap, LogNorm
 from matplotlib.patches import FancyArrowPatch
 from matplotlib.widgets import Button, RadioButtons, Slider
 import numpy as np
@@ -47,6 +47,7 @@ from draft.playground.field_playground_core import (
 )
 
 IMAGE_BANK = PROJECT_ROOT / "examples" / "im2Dbank"
+DEFAULT_IMAGE = IMAGE_BANK / "BraTS2021_00090_80_.png"
 VECTOR_DISPLAY_RELATIVE_THRESHOLD = 0.03
 MAX_DISPLAY_ARROWS = 2500
 UNDO_LIMIT = 12
@@ -54,6 +55,15 @@ PANEL_FONT_SIZE = 11
 PRIMAL_COLOR = "#ffd166"
 DUAL_COLOR = "#ef8354"
 PRIMAL_KINDS = frozenset((VECTOR_KINDS[0], SCALAR_KINDS[0]))
+SIGNED_FIELD_CMAP = LinearSegmentedColormap.from_list(
+    "signed_field",
+    (
+        (0.0, (0.08, 0.36, 0.72, 1.0)),
+        (0.5, (0.50, 0.50, 0.50, 0.0)),
+        (1.0, (0.84, 0.18, 0.16, 1.0)),
+    ),
+    N=257,
+)
 
 
 def _variable_color(kind: str) -> str:
@@ -87,18 +97,8 @@ def load_image(
     return image, path
 
 
-def _validate_parameters(alpha: Any, beta: Any, gamma: Any, rho: Any) -> dict[str, float]:
-    try:
-        values = dict(alpha=float(alpha), beta=float(beta), gamma=float(gamma), rho=float(rho))
-    except (TypeError, ValueError):
-        raise ValueError("operator parameters must be numeric") from None
-    if not all(np.isfinite(value) for value in values.values()):
-        raise ValueError("operator parameters must be finite")
-    if values["alpha"] < 0 or values["beta"] < 0 or values["gamma"] <= 0:
-        raise ValueError("alpha and beta must be non-negative, and gamma must be positive")
-    if not 0 <= values["rho"] <= 0.95:
-        raise ValueError("the interactive rho range is [0, 0.95]")
-    return values
+def _parameter_values(alpha: Any, beta: Any, gamma: Any, rho: Any) -> dict[str, float]:
+    return dict(alpha=float(alpha), beta=float(beta), gamma=float(gamma), rho=float(rho))
 
 
 @dataclass
@@ -134,7 +134,7 @@ class FieldPlayground:
         rho: float = 0.5,
         output_path: str | Path | None = None,
     ):
-        parameters = _validate_parameters(alpha, beta, gamma, rho)
+        parameters = _parameter_values(alpha, beta, gamma, rho)
         self.image = coerce_image(image)
         self.image_path = str(image_path) if image_path is not None else None
         self.device = device
@@ -271,22 +271,29 @@ class FieldPlayground:
         detail_position = self.detail_ax.get_position()
         detail_center = (detail_position.x0 + detail_position.x1) / 2
         button_gap = 0.008
-        error_width, kernel_width = 0.075, 0.125
-        button_left = detail_center - (error_width + button_gap + kernel_width) / 2
+        error_width, deformation_width = 0.075, 0.125
+        button_left = detail_center - (
+            error_width + button_gap + deformation_width
+        ) / 2
         button_y = detail_position.y1 + 0.07
         self.scalar_error_button = Button(
             self.fig.add_axes([button_left, button_y, error_width, 0.036]),
             "Error",
         )
-        self.scalar_kernel_button = Button(
+        self.scalar_deformation_button = Button(
             self.fig.add_axes(
-                [button_left + error_width + button_gap, button_y, kernel_width, 0.036]
+                [
+                    button_left + error_width + button_gap,
+                    button_y,
+                    deformation_width,
+                    0.036,
+                ]
             ),
-            "Kernel response",
+            "Deformation velocity",
         )
         self.scalar_detail_buttons = {
             "error": self.scalar_error_button,
-            "kernel": self.scalar_kernel_button,
+            "deformation": self.scalar_deformation_button,
         }
         for button in self.scalar_detail_buttons.values():
             button.ax.set_visible(False)
@@ -318,8 +325,8 @@ class FieldPlayground:
         self.scalar_error_button.on_clicked(
             lambda _event: self._set_scalar_detail("error")
         )
-        self.scalar_kernel_button.on_clicked(
-            lambda _event: self._set_scalar_detail("kernel")
+        self.scalar_deformation_button.on_clicked(
+            lambda _event: self._set_scalar_detail("deformation")
         )
         self.spacing_slider.on_changed(self._on_spacing_change)
         for widget in (self.rho_slider, self.alpha_slider, self.beta_slider):
@@ -430,9 +437,9 @@ class FieldPlayground:
                     r"\Vert v\Vert_V^2 = \Vert m\Vert_{V^*}^2",
                     self.analysis.squared_norm,
                 )
-        elif self.analysis is not None and self.scalar_detail == "kernel":
+        elif self.analysis is not None and self.scalar_detail == "deformation":
             self._clear_axis_dynamic(self.detail_ax)
-            self._plot_scalar_kernel_response()
+            self._plot_scalar_deformation_velocity()
         self.fig.canvas.draw_idle()
 
     def _set_scalar_detail(self, detail: str) -> None:
@@ -688,12 +695,9 @@ class FieldPlayground:
     def _restore_parameters(self, parameters: Any) -> bool:
         if not isinstance(parameters, dict):
             return False
-        try:
-            values = _validate_parameters(
-                parameters["alpha"], parameters["beta"], parameters["gamma"], parameters["rho"]
-            )
-        except (KeyError, ValueError):
-            return False
+        values = _parameter_values(
+            parameters["alpha"], parameters["beta"], parameters["gamma"], parameters["rho"]
+        )
         log_gamma = float(np.log10(values["gamma"]))
         widget_values = {
             self.alpha_slider: values["alpha"],
@@ -775,8 +779,8 @@ class FieldPlayground:
                 )
             payload["counterpart"] = self.analysis.counterpart
             payload["roundtrip"] = self.analysis.roundtrip
-            if self.analysis.kernel_response is not None:
-                payload["kernel_response"] = self.analysis.kernel_response
+            if self.analysis.deformation_velocity is not None:
+                payload["deformation_velocity"] = self.analysis.deformation_velocity
         return payload
 
     def save(self, path: str | Path) -> Path:
@@ -928,7 +932,7 @@ class FieldPlayground:
             )
             self._add_error_metrics(self.detail_ax, error, reference)
         else:
-            self._plot_scalar_kernel_response()
+            self._plot_scalar_deformation_velocity()
         if acceleration_input:
             self._add_solver_metrics(self.output_ax)
         else:
@@ -938,12 +942,12 @@ class FieldPlayground:
             self.analysis.squared_norm,
         )
 
-    def _plot_scalar_kernel_response(self) -> None:
+    def _plot_scalar_deformation_velocity(self) -> None:
         assert self.analysis is not None
         self._plot_vector(
             self.detail_ax,
-            self.analysis.kernel_response,
-            r"Kernel response $K(u\nabla I)$",
+            self.analysis.deformation_velocity,
+            r"Deformation velocity $-\sqrt{\rho}\,K(u\nabla I)$",
             PRIMAL_COLOR,
             footer=(
                 r"$\rho\,\Vert K(u\nabla I)\Vert_V^2 = "
@@ -1163,7 +1167,7 @@ class FieldPlayground:
                 )
                 axis.imshow(
                     display,
-                    cmap="coolwarm" if signed else "magma",
+                    cmap=SIGNED_FIELD_CMAP if signed else "magma",
                     origin="lower",
                     vmin=-limit if signed else 0,
                     vmax=limit,
@@ -1206,15 +1210,12 @@ def main(argv: list[str] | None = None) -> FieldPlayground:
     args = build_parser().parse_args(argv)
     loaded = load_field_file(args.field) if args.field else None
     saved = loaded.metadata.get("parameters", {}) if loaded is not None else {}
-    try:
-        parameters = _validate_parameters(
-            args.alpha if args.alpha is not None else saved.get("alpha", 0.2),
-            args.beta if args.beta is not None else saved.get("beta", 0.2),
-            args.gamma if args.gamma is not None else saved.get("gamma", 0.001),
-            args.rho if args.rho is not None else saved.get("rho", 0.5),
-        )
-    except ValueError as error:
-        raise SystemExit(str(error)) from None
+    parameters = _parameter_values(
+        args.alpha if args.alpha is not None else saved.get("alpha", 0.2),
+        args.beta if args.beta is not None else saved.get("beta", 0.2),
+        args.gamma if args.gamma is not None else saved.get("gamma", 0.001),
+        args.rho if args.rho is not None else saved.get("rho", 0.5),
+    )
 
     size = tuple(args.size) if args.size else None
     if args.image is not None:
@@ -1225,7 +1226,7 @@ def main(argv: list[str] | None = None) -> FieldPlayground:
             image = F.interpolate(image, size=size, mode="bilinear", align_corners=False)
         image_path = loaded.metadata.get("image_path") or None
     else:
-        image, image_path = load_image("01", size)
+        image, image_path = load_image(DEFAULT_IMAGE, size)
 
     app = FieldPlayground(
         image,
