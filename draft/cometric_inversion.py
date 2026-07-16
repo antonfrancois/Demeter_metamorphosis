@@ -11,9 +11,9 @@ def _apply_cometric(image_gradient, covector, rho, kernel_operator):
     if rho == 0:
         return covector
 
-    vector_momentum = (covector.unsqueeze(2) * image_gradient).sum(dim=1)
+    vector_momentum = covector * image_gradient[:, 0]
     velocity = kernel_operator(vector_momentum)
-    deformation = (velocity.unsqueeze(1) * image_gradient).sum(dim=2)
+    deformation = (velocity * image_gradient[:, 0]).sum(dim=1, keepdim=True)
     return (1 - rho) * covector + rho * deformation
 
 
@@ -86,6 +86,8 @@ class CometricOperator:
     """
 
     def __init__(self, image, rho, kernel_operator, dx_convention="pixel"):
+        if image.ndim != 4 or image.shape[1] != 1:
+            raise ValueError(f"image must have shape [B, 1, H, W], got {image.shape}")
         self.rho = float(rho)
         if not 0 <= self.rho <= 1:
             raise ValueError("rho must be in [0, 1]")
