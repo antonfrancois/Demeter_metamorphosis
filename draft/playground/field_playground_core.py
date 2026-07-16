@@ -1,5 +1,6 @@
 """Pure tensor and file operations used by the field playground."""
 
+" Version : July 16 2026"
 from __future__ import annotations
 
 from dataclasses import dataclass, field as dataclass_field

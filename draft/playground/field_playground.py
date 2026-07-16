@@ -1,5 +1,5 @@
 """Interactive vector/scalar field editor for Metamorphosplines prototypes."""
-
+" Version : July 16 2026"
 from __future__ import annotations
 
 import argparse
