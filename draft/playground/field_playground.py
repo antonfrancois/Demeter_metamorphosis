@@ -50,6 +50,17 @@ IMAGE_BANK = PROJECT_ROOT / "examples" / "im2Dbank"
 VECTOR_DISPLAY_RELATIVE_THRESHOLD = 0.03
 MAX_DISPLAY_ARROWS = 2500
 UNDO_LIMIT = 12
+PRIMAL_COLOR = "#ffd166"
+DUAL_COLOR = "#ef8354"
+PRIMAL_KINDS = frozenset((VECTOR_KINDS[0], SCALAR_KINDS[0]))
+
+
+def _variable_color(kind: str) -> str:
+    return PRIMAL_COLOR if kind in PRIMAL_KINDS else DUAL_COLOR
+
+
+def _counterpart_color(kind: str) -> str:
+    return DUAL_COLOR if kind in PRIMAL_KINDS else PRIMAL_COLOR
 
 
 def resolve_image_path(value: str | Path) -> Path:
@@ -107,6 +118,19 @@ class Drag:
         return self.mode == "vector" and not self.erase and self.button == 1
 
 
+@dataclass
+class VectorDisplay:
+    source: torch.Tensor
+    version: int
+    auto_scale: bool
+    field: torch.Tensor
+    magnitude: torch.Tensor
+    visible: torch.Tensor
+    pooled: torch.Tensor | None
+    visible_count: int
+    factor: float
+
+
 class FieldPlayground:
     """Single-window editor. Numerical and file operations live in the core module."""
 
@@ -137,6 +161,7 @@ class FieldPlayground:
         self.analysis: AnalysisResult | None = None
         self.error_colorbar = None
         self.drag: Drag | None = None
+        self._vector_display_cache: dict[Any, VectorDisplay] = {}
         self._syncing_widgets = False
 
         self._build_figure(parameters)
@@ -162,6 +187,17 @@ class FieldPlayground:
         )
         self.axes = [self.fig.add_subplot(grid[0, index]) for index in range(3)]
         self.input_ax, self.output_ax, self.detail_ax = self.axes
+        image = self.image[0, 0].numpy()
+        self._base_images = {}
+        for axis in self.axes:
+            axis.set_facecolor("#10191e")
+            axis.set_aspect("equal")
+            axis.set_xlim(-0.5, image.shape[1] - 0.5)
+            axis.set_ylim(-0.5, image.shape[0] - 0.5)
+            axis.set_axis_off()
+            self._base_images[axis] = axis.imshow(
+                image, cmap="gray", origin="lower", vmin=0, vmax=1
+            )
         self.fig.suptitle(
             "Metamorphosplines Field Playground",
             x=0.47,
@@ -198,7 +234,7 @@ class FieldPlayground:
             self.fig.add_axes([0.815, 0.705, 0.165, 0.1], facecolor=panel_color),
             (r"Primal: velocity $v$", r"Dual: momentum $m$"),
             active=1,
-            activecolor="#d66b45",
+            radio_props={"facecolor": (PRIMAL_COLOR, DUAL_COLOR)},
         )
 
         def slider(y, label, low, high, value, **kwargs):
@@ -245,9 +281,7 @@ class FieldPlayground:
         self.undo_button = Button(self.fig.add_axes([0.815, 0.12, 0.078, 0.043]), "Undo")
         self.clear_button = Button(self.fig.add_axes([0.902, 0.12, 0.078, 0.043]), "Clear")
         self.status_text = self.fig.text(0.815, 0.055, "", fontsize=8.5, color="#26343c", wrap=True)
-        self.norm_text = self.fig.text(
-            0.41, 0.025, "", fontsize=11, color="#26343c", ha="center", va="bottom"
-        )
+        self.norm_text = None
         self.fig.text(
             0.02,
             0.985,
@@ -270,10 +304,20 @@ class FieldPlayground:
         self.save_button.on_clicked(lambda _event: self.save_dialog())
         self.undo_button.on_clicked(lambda _event: self.undo())
         self.clear_button.on_clicked(lambda _event: self.clear())
-        self.spacing_slider.on_changed(lambda _value: self._render())
+        self.spacing_slider.on_changed(self._on_spacing_change)
         for widget in (self.rho_slider, self.alpha_slider, self.beta_slider):
             widget.on_changed(self._on_parameter_change)
         self.gamma_slider.on_changed(self._on_gamma_change)
+        for widget in (
+            self.mode_radio,
+            self.kind_radio,
+            self.spacing_slider,
+            self.rho_slider,
+            self.alpha_slider,
+            self.beta_slider,
+            self.gamma_slider,
+        ):
+            widget.drawon = False
 
     def _connect_events(self) -> None:
         canvas = self.fig.canvas
@@ -295,22 +339,27 @@ class FieldPlayground:
         self.status_text.set_text(message)
 
     def _cancel_drag(self) -> bool:
-        cancelled = self.drag is not None
-        if self.drag is not None and self.drag.artist is not None:
-            self.drag.artist.set_animated(False)
+        drag = self.drag
+        if drag is None:
+            return False
+        if drag.background is not None and self.fig.canvas.supports_blit:
+            self.fig.canvas.restore_region(drag.background)
+            self.fig.canvas.blit(self.input_ax.bbox)
+        if drag.artist is not None:
+            drag.artist.set_animated(False)
             try:
-                self.drag.artist.remove()
+                drag.artist.remove()
             except ValueError:
                 pass
         self.drag = None
-        return cancelled
+        return True
 
     def _invalidate(self, message: str, *, immediate: bool = False) -> None:
         self.analysis = None
         self._set_status(message)
         self._render(immediate=immediate)
 
-    def run(self, solve_inverse: bool = True) -> None:
+    def run(self) -> None:
         self._cancel_drag()
         self._set_status("Computing...")
         self.fig.canvas.draw_idle()
@@ -320,7 +369,6 @@ class FieldPlayground:
                 self.fields[self.mode],
                 self.kind,
                 device=self.device,
-                solve_inverse=solve_inverse,
                 **self._parameters(),
             )
             self._set_status("Computation complete.")
@@ -329,16 +377,46 @@ class FieldPlayground:
             self._set_status(f"ERROR: {type(error).__name__}: {error}")
         self._render()
 
-    def refresh(self, solve_inverse: bool = True) -> None:
-        self.run(solve_inverse=solve_inverse)
+    def refresh(self) -> None:
+        self.run()
 
     def _on_parameter_change(self, _value: float) -> None:
-        if not self._syncing_widgets:
+        if self._syncing_widgets:
+            return
+        if self.analysis is None:
+            self._set_status("Parameters changed. Press Run.")
+            self.fig.canvas.draw_idle()
+        else:
             self._invalidate("Parameters changed. Press Run.")
 
     def _on_gamma_change(self, value: float) -> None:
         self.gamma_slider.valtext.set_text(f"{10 ** float(value):.3g}")
         self._on_parameter_change(value)
+
+    def _on_spacing_change(self, _value: float) -> None:
+        self._cancel_drag()
+        if self.mode == "vector":
+            self._clear_axis_dynamic(self.input_ax)
+            self._create_energy_text()
+            current = self.fields["vector"]
+            self._plot_vector(
+                self.input_ax,
+                current,
+                f"Input: {self._kind_title(self.kind)}",
+                _variable_color(self.kind),
+                auto_scale=False,
+            )
+            if self.analysis is not None:
+                self._clear_axis_dynamic(self.output_ax)
+                self._plot_vector_output()
+                self._set_energy(
+                    r"\Vert v\Vert_V^2=\Vert m\Vert_{V^*}^2",
+                    self.analysis.squared_norm,
+                )
+        elif self.analysis is not None:
+            self._clear_axis_dynamic(self.detail_ax)
+            self._plot_scalar_kernel_response()
+        self.fig.canvas.draw_idle()
 
     def _sync_radios(self) -> None:
         self._syncing_widgets = True
@@ -350,27 +428,37 @@ class FieldPlayground:
                 if mode == "vector"
                 else (r"Primal: acceleration $a$", r"Dual: covector $u$")
             )
-            self.mode_radio.set_active(0 if mode == "vector" else 1)
+            mode_index = 0 if mode == "vector" else 1
+            if self.mode_radio.index_selected != mode_index:
+                self.mode_radio.set_active(mode_index)
             for text, label in zip(self.kind_radio.labels, labels):
                 text.set_text(label)
-            self.kind_radio.set_active(kinds.index(self.kind))
+            kind_index = kinds.index(self.kind)
+            if self.kind_radio.index_selected != kind_index:
+                self.kind_radio.set_active(kind_index)
         finally:
             self._syncing_widgets = False
 
-    def _on_mode(self, label: str) -> None:
+    def _on_mode(self, _label: str) -> None:
         if self._syncing_widgets:
             return
         index = (VECTOR_KINDS if self.mode == "vector" else SCALAR_KINDS).index(self.kind)
-        kinds = VECTOR_KINDS if label.startswith("Vector") else SCALAR_KINDS
-        self.kind = kinds[index]
+        kinds = VECTOR_KINDS if self.mode_radio.index_selected == 0 else SCALAR_KINDS
+        new_kind = kinds[index]
+        if new_kind == self.kind:
+            return
+        self.kind = new_kind
         self._sync_radios()
         self._invalidate("Mode changed. Press Run.")
 
-    def _on_kind(self, label: str) -> None:
+    def _on_kind(self, _label: str) -> None:
         if self._syncing_widgets:
             return
         kinds = VECTOR_KINDS if self.mode == "vector" else SCALAR_KINDS
-        self.kind = kinds[0 if label.startswith("Primal") else 1]
+        new_kind = kinds[self.kind_radio.index_selected]
+        if new_kind == self.kind:
+            return
+        self.kind = new_kind
         self._invalidate("Field interpretation changed. Press Run.")
 
     def _toolbar_is_active(self) -> bool:
@@ -387,9 +475,6 @@ class FieldPlayground:
         ):
             return
         self._cancel_drag()
-        if self.analysis is not None:
-            self.analysis = None
-            self._render(immediate=True)
         point = (float(event.xdata), float(event.ydata))
         erase = event.button == 3 and self.mode == "vector"
         erase |= "shift" in (event.key or "").lower()
@@ -403,6 +488,8 @@ class FieldPlayground:
             sigma=float(self.brush_slider.val),
             amplitude=float(self.amplitude_slider.val),
         )
+        if self.fig.canvas.supports_blit:
+            self.drag.background = self.fig.canvas.copy_from_bbox(self.input_ax.bbox)
 
     def _on_motion(self, event) -> None:
         drag = self.drag
@@ -418,11 +505,11 @@ class FieldPlayground:
                     drag.start,
                     point,
                     arrowstyle="->",
-                    color="#ffd166",
+                    color=_variable_color(self.kind),
                     linewidth=2.2,
                     mutation_scale=12,
                     zorder=10,
-                    animated=True,
+                    animated=self.fig.canvas.supports_blit,
                 )
                 self.input_ax.add_patch(drag.artist)
             else:
@@ -434,18 +521,19 @@ class FieldPlayground:
                 (drag.artist,) = self.input_ax.plot(
                     x,
                     y,
-                    color="#ffd166" if drag.erase else "#ef8354",
+                    color="#87949b" if drag.erase else _variable_color(self.kind),
                     linewidth=max(2, drag.sigma / 3),
                     alpha=0.8,
                     zorder=10,
-                    animated=True,
+                    animated=self.fig.canvas.supports_blit,
                 )
             else:
                 drag.artist.set_data(x, y)
         canvas = self.fig.canvas
+        if not canvas.supports_blit:
+            canvas.draw_idle()
+            return
         if drag.background is None:
-            # Official Matplotlib lifecycle: draw once with the animated artist
-            # excluded, then cache that clean background.
             canvas.draw()
             drag.background = canvas.copy_from_bbox(self.input_ax.bbox)
         else:
@@ -462,6 +550,11 @@ class FieldPlayground:
             return
         if event.inaxes is self.input_ax and event.xdata is not None and event.ydata is not None:
             drag.end = (float(event.xdata), float(event.ydata))
+        if drag.is_vector_arrow and np.hypot(
+            drag.end[0] - drag.start[0], drag.end[1] - drag.start[1]
+        ) < 0.5:
+            self._cancel_drag()
+            return
         if not drag.is_vector_arrow and drag.points[-1] != drag.end:
             drag.points.append(drag.end)
         if drag.artist is not None:
@@ -471,9 +564,6 @@ class FieldPlayground:
 
         field = self.fields[drag.mode]
         if drag.is_vector_arrow:
-            if np.hypot(drag.end[0] - drag.start[0], drag.end[1] - drag.start[1]) < 0.5:
-                self._render(immediate=True)
-                return
             new_field = add_vector_arrow(
                 field, drag.start, drag.end, drag.sigma, drag.amplitude
             )
@@ -508,7 +598,6 @@ class FieldPlayground:
             self.mode_radio.set_active(1)
         elif key == "escape":
             self._cancel_drag()
-            self._render(immediate=True)
 
     def undo(self) -> None:
         self._cancel_drag()
@@ -591,16 +680,18 @@ class FieldPlayground:
 
     def _choose_file(self, *, save: bool) -> Path | None:
         try:
-            from PyQt5.QtWidgets import QFileDialog
+            from matplotlib.backends.qt_compat import QtWidgets
         except ImportError:
             self._set_status("Qt file dialog unavailable; use --field or --output.")
+            self.fig.canvas.draw_idle()
             return None
+        file_dialog = QtWidgets.QFileDialog
         if save:
-            filename, _ = QFileDialog.getSaveFileName(
+            filename, _ = file_dialog.getSaveFileName(
                 None, "Save field", str(PROJECT_ROOT / "draft"), "PyTorch field (*.pt)"
             )
         else:
-            filename, _ = QFileDialog.getOpenFileName(
+            filename, _ = file_dialog.getOpenFileName(
                 None,
                 "Load field",
                 str(PROJECT_ROOT / "draft"),
@@ -609,6 +700,7 @@ class FieldPlayground:
         return Path(filename) if filename else None
 
     def load_dialog(self) -> None:
+        self._cancel_drag()
         path = self._choose_file(save=False)
         if path is None:
             return
@@ -638,6 +730,8 @@ class FieldPlayground:
                     solver_iterations=self.analysis.solver_iterations,
                     solver_time=self.analysis.solver_time,
                 )
+            if self.analysis.operator_time is not None:
+                payload["diagnostics"]["operator_time"] = self.analysis.operator_time
             payload["counterpart"] = self.analysis.counterpart
             payload["roundtrip"] = self.analysis.roundtrip
             if self.analysis.kernel_response is not None:
@@ -656,6 +750,7 @@ class FieldPlayground:
         return path
 
     def save_dialog(self, quick: bool = False) -> None:
+        self._cancel_drag()
         path = self.output_path if quick and self.output_path is not None else self._choose_file(save=True)
         if path is None:
             return
@@ -665,95 +760,154 @@ class FieldPlayground:
             self._set_status(f"SAVE ERROR: {type(error).__name__}: {error}")
             self.fig.canvas.draw_idle()
 
-    def _render(self, *, immediate: bool = False) -> None:
-        self._cancel_drag()
-        if self.error_colorbar is not None:
+    def _clear_axis_dynamic(self, axis) -> None:
+        if (
+            self.error_colorbar is not None
+            and self.error_colorbar.mappable.axes is axis
+        ):
             self.error_colorbar.remove()
             self.error_colorbar = None
-        image = self.image[0, 0].numpy()
-        self.norm_text.set_text("")
+        base_image = self._base_images[axis]
+        for image in list(axis.images):
+            if image is not base_image:
+                image.remove()
+        for artists in (axis.collections, axis.lines, axis.patches, axis.texts):
+            for artist in list(artists):
+                artist.remove()
+        base_image.set_visible(True)
+        axis.set_title("")
+
+    def _clear_dynamic_artists(self) -> None:
         for axis in self.axes:
-            axis.clear()
-            axis.set_facecolor("#10191e")
-            axis.set_aspect("equal")
-            axis.set_xlim(-0.5, image.shape[1] - 0.5)
-            axis.set_ylim(-0.5, image.shape[0] - 0.5)
-            axis.set_axis_off()
+            self._clear_axis_dynamic(axis)
+
+    def _create_energy_text(self) -> None:
+        self.norm_text = self.input_ax.text(
+            0.5,
+            -0.075,
+            "",
+            transform=self.input_ax.transAxes,
+            ha="center",
+            va="top",
+            fontsize=9.5,
+            color="#26343c",
+            clip_on=False,
+        )
+
+    def _render(self, *, immediate: bool = False) -> None:
+        self._cancel_drag()
+        self._clear_dynamic_artists()
+        self._create_energy_text()
 
         current = self.fields[self.mode]
         if self.mode == "vector":
-            self._plot_vector(
-                self.input_ax,
-                current,
-                f"Input: {self._kind_title(self.kind)}",
-                "#ffd166",
-                auto_scale=False,
-            )
+            self._render_vector_mode(current)
         else:
-            self._plot_scalar(self.input_ax, current, f"Input: {self._kind_title(self.kind)}")
+            self._render_scalar_mode(current)
+        active_vector_axes = set()
+        if self.mode == "vector":
+            active_vector_axes.add(self.input_ax)
+            if self.analysis is not None:
+                active_vector_axes.add(self.output_ax)
+        elif self.analysis is not None:
+            active_vector_axes.add(self.detail_ax)
+        for axis in self._vector_display_cache.keys() - active_vector_axes:
+            del self._vector_display_cache[axis]
+        self.fig.canvas.draw() if immediate else self.fig.canvas.draw_idle()
 
+    def _render_vector_mode(self, current: torch.Tensor) -> None:
+        self._plot_vector(
+            self.input_ax,
+            current,
+            f"Input: {self._kind_title(self.kind)}",
+            _variable_color(self.kind),
+            auto_scale=False,
+        )
         if self.analysis is None:
             self._plot_message(self.output_ax, "Press Run")
             self._plot_message(self.detail_ax, "No derived field yet")
-        elif self.mode == "vector":
-            output_title = (
-                r"Output: momentum $m=Lv$"
-                if self.kind == "velocity"
-                else r"Output: velocity $v=Km$"
-            )
-            self._plot_vector(self.output_ax, self.analysis.counterpart, output_title, "#ef8354")
-            error = (self.analysis.roundtrip - current).square().sum(dim=1, keepdim=True).sqrt()
-            precision_floor = float(
-                torch.finfo(current.dtype).eps * current.norm() / np.sqrt(error.numel())
-            )
-            if self.kind == "velocity":
-                title = r"$\left\Vert K(Lv)-v\right\Vert_2$ (log scale)"
-                formula = r"\frac{\Vert K(Lv)-v\Vert_2}{\Vert v\Vert_2}"
-            else:
-                title = r"$\left\Vert L(Km)-m\right\Vert_2$ (log scale)"
-                formula = r"\frac{\Vert L(Km)-m\Vert_2}{\Vert m\Vert_2}"
-            self._plot_scalar(
-                self.detail_ax,
-                error,
-                title,
-                signed=False,
-                log_scale=True,
-                log_floor=precision_floor,
-                show_base=False,
-            )
-            self._add_error_metrics(self.detail_ax, formula, error)
-            self._set_norm(
-                r"\Vert v\Vert_V^2=\Vert m\Vert_{V^*}^2"
-                r"=\langle v,Lv\rangle=\langle m,Km\rangle",
-                self.analysis.squared_norm,
-            )
+            return
+
+        velocity_input = self.kind == "velocity"
+        self._plot_vector_output()
+        error = (self.analysis.roundtrip - current).square().sum(1, keepdim=True).sqrt()
+        reference = current.square().sum(1, keepdim=True).sqrt()
+        precision_floor = float(
+            torch.finfo(current.dtype).eps * current.norm() / np.sqrt(error.numel())
+        )
+        title = (
+            r"$\left\Vert K(Lv)-v\right\Vert_2$ (log scale)"
+            if velocity_input
+            else r"$\left\Vert L(Km)-m\right\Vert_2$ (log scale)"
+        )
+        self._plot_scalar(
+            self.detail_ax,
+            error,
+            title,
+            signed=False,
+            log_scale=True,
+            log_floor=precision_floor,
+            show_base=False,
+        )
+        self._add_error_metrics(self.detail_ax, error, reference)
+        self._set_energy(
+            r"\Vert v\Vert_V^2=\Vert m\Vert_{V^*}^2",
+            self.analysis.squared_norm,
+        )
+
+    def _plot_vector_output(self) -> None:
+        assert self.analysis is not None
+        velocity_input = self.kind == "velocity"
+        operator_name = "L" if velocity_input else "K"
+        output_title = (
+            r"Output: momentum $m=Lv$"
+            if velocity_input
+            else r"Output: velocity $v=Km$"
+        )
+        self._plot_vector(
+            self.output_ax,
+            self.analysis.counterpart,
+            output_title,
+            _counterpart_color(self.kind),
+            footer=rf"${operator_name}$ time={self._format_time(self.analysis.operator_time)}",
+        )
+
+    def _render_scalar_mode(self, current: torch.Tensor) -> None:
+        self._plot_scalar(
+            self.input_ax, current, f"Input: {self._kind_title(self.kind)}"
+        )
+        if self.analysis is None:
+            self._plot_message(self.output_ax, "Press Run")
+            self._plot_message(self.detail_ax, "No derived field yet")
+            return
+
+        acceleration_input = self.kind == "a"
+        output_title = (
+            r"Output: covector $u=A_I^{-1}a$"
+            if acceleration_input
+            else r"Output: acceleration $a=A_Iu$"
+        )
+        self._plot_scalar(self.output_ax, self.analysis.counterpart, output_title)
+        self._plot_scalar_kernel_response()
+        error = (self.analysis.roundtrip - current).abs()
+        reference = current.abs()
+        if acceleration_input:
+            self._add_solver_metrics(self.output_ax, error, reference)
         else:
-            output_title = (
-                r"Output: acceleration $a=A_Iu$"
-                if self.kind == "u"
-                else r"Output: covector $u=A_I^{-1}a$"
-            )
-            self._plot_scalar(self.output_ax, self.analysis.counterpart, output_title)
-            self._plot_vector(
-                self.detail_ax,
-                self.analysis.kernel_response,
-                r"Kernel response $K(u\nabla I)$",
-                "#65d4c3",
-            )
-            formula = (
-                r"\frac{\Vert A_I^{-1}(A_Iu)-u\Vert_2}{\Vert u\Vert_2}"
-                if self.kind == "u"
-                else r"\frac{\Vert A_Iu-a\Vert_2}{\Vert a\Vert_2}"
-            )
-            if self.kind == "a":
-                self._add_solver_metrics(self.output_ax)
-            else:
-                self._add_metric(self.output_ax, formula, self.analysis.relative_roundtrip)
-            self._set_norm(
-                r"\Vert u\Vert_{A_I}^2=\langle u,A_Iu\rangle",
-                self.analysis.squared_norm,
-            )
-        self.fig.canvas.draw() if immediate else self.fig.canvas.draw_idle()
+            self._add_cometric_metrics(self.output_ax, error, reference)
+        self._set_energy(
+            r"\Vert a\Vert_{A_I^{-1}}^2=\Vert u\Vert_{A_I}^2",
+            self.analysis.squared_norm,
+        )
+
+    def _plot_scalar_kernel_response(self) -> None:
+        assert self.analysis is not None
+        self._plot_vector(
+            self.detail_ax,
+            self.analysis.kernel_response,
+            r"Kernel response $K(u\nabla I)$",
+            PRIMAL_COLOR,
+        )
 
     @staticmethod
     def _kind_title(kind: str) -> str:
@@ -766,69 +920,90 @@ class FieldPlayground:
 
     @staticmethod
     def _latex_number(value: float) -> str:
+        if np.isinf(value):
+            return r"\infty"
+        if np.isnan(value):
+            return r"\mathrm{nan}"
         if value == 0:
             return "0"
         exponent = int(np.floor(np.log10(abs(value))))
         return rf"{value / 10**exponent:.3g}\times 10^{{{exponent}}}"
 
-    def _add_metric(self, axis, formula: str, value: float) -> None:
+    @staticmethod
+    def _format_time(elapsed: float) -> str:
+        return f"{elapsed * 1e3:.3g} ms" if elapsed < 1 else f"{elapsed:.3g} s"
+
+    @staticmethod
+    def _relative_l2_metrics(
+        error: torch.Tensor, reference: torch.Tensor
+    ) -> tuple[float, float]:
+        reference_rms = reference.square().mean().sqrt()
+        if reference_rms == 0:
+            if error.max() == 0:
+                return 0.0, 0.0
+            return float("inf"), float("inf")
+        relative_errors = error / reference_rms
+        return (
+            float(relative_errors.square().mean().sqrt()),
+            float(relative_errors.max()),
+        )
+
+    def _error_lines(
+        self, error: torch.Tensor, reference: torch.Tensor
+    ) -> tuple[str, str]:
+        mean, maximum = self._relative_l2_metrics(error, reference)
+        return (
+            rf"$\mathrm{{mean}}:\ {self._latex_number(mean)}$",
+            rf"$\mathrm{{max}}:\ {self._latex_number(maximum)}$",
+        )
+
+    @staticmethod
+    def _add_metrics(axis, lines: tuple[str, ...], fontsize: float = 10.5) -> None:
         axis.text(
             0.5,
             -0.075,
-            rf"${formula}={self._latex_number(value)}$",
+            "\n".join(lines),
             transform=axis.transAxes,
             ha="center",
             va="top",
-            fontsize=10.5,
+            fontsize=fontsize,
             color="#26343c",
             clip_on=False,
         )
 
-    def _add_error_metrics(self, axis, formula: str, error: torch.Tensor) -> None:
-        axis.text(
-            0.5,
-            -0.075,
-            "\n".join(
-                (
-                    rf"${formula}={self._latex_number(self.analysis.relative_roundtrip)}$",
-                    rf"$q_{{99}}(|e|)={self._latex_number(float(torch.quantile(error, 0.99)))}$",
-                    rf"$\max |e|={self._latex_number(float(error.max()))}$",
-                )
+    def _add_cometric_metrics(
+        self, axis, error: torch.Tensor, reference: torch.Tensor
+    ) -> None:
+        self._add_metrics(
+            axis,
+            (
+                rf"$A_I$ time={self._format_time(self.analysis.operator_time)}",
+                *self._error_lines(error, reference),
             ),
-            transform=axis.transAxes,
-            ha="center",
-            va="top",
-            fontsize=9.5,
-            color="#26343c",
-            clip_on=False,
         )
 
-    def _add_solver_metrics(self, axis) -> None:
-        elapsed = self.analysis.solver_time
-        time_text = f"{elapsed * 1e3:.3g} ms" if elapsed < 1 else f"{elapsed:.3g} s"
-        axis.text(
-            0.5,
-            -0.075,
-            "\n".join(
-                (
-                    rf"$\mathrm{{iterations}}={self.analysis.solver_iterations}$",
-                    rf"$\mathrm{{time}}={time_text}$",
-                    rf"$\mathrm{{error}}={self._latex_number(self.analysis.relative_roundtrip)}$",
-                )
+    def _add_error_metrics(
+        self, axis, error: torch.Tensor, reference: torch.Tensor
+    ) -> None:
+        self._add_metrics(axis, self._error_lines(error, reference), fontsize=9.5)
+
+    def _add_solver_metrics(
+        self, axis, error: torch.Tensor, reference: torch.Tensor
+    ) -> None:
+        self._add_metrics(
+            axis,
+            (
+                rf"$\mathrm{{iterations}}={self.analysis.solver_iterations}$",
+                rf"$A_I^{{-1}}$ time={self._format_time(self.analysis.solver_time)}",
+                *self._error_lines(error, reference),
             ),
-            transform=axis.transAxes,
-            ha="center",
-            va="top",
-            fontsize=10.5,
-            color="#26343c",
-            clip_on=False,
         )
 
-    def _set_norm(self, formula: str, value: float) -> None:
-        self.norm_text.set_text(rf"${formula}={self._latex_number(value)}$")
+    def _set_energy(self, norm: str, value: float) -> None:
+        self.norm_text.set_text(rf"${norm}={self._latex_number(value)}$")
 
     def _plot_base_image(self, axis) -> None:
-        axis.imshow(self.image[0, 0].numpy(), cmap="gray", origin="lower", vmin=0, vmax=1)
+        self._base_images[axis].set_visible(True)
 
     def _plot_vector(
         self,
@@ -838,34 +1013,60 @@ class FieldPlayground:
         color: str,
         *,
         auto_scale: bool = True,
+        footer: str | None = None,
     ) -> None:
         self._plot_base_image(axis)
-        field = field.detach().cpu()
-        magnitude = field.square().sum(dim=1).sqrt()[0]
-        maximum = float(magnitude.max())
-        visible = magnitude >= max(1e-8, VECTOR_DISPLAY_RELATIVE_THRESHOLD * maximum)
-        values = magnitude[visible]
-        factor = 1.0
-        if values.numel():
-            spacing = int(self.spacing_slider.val)
-            visible_count = int(visible.sum())
-            spacing = max(
-                spacing,
-                int(np.ceil(np.sqrt(visible_count / MAX_DISPLAY_ARROWS))),
+        version = field._version
+        display = self._vector_display_cache.get(axis)
+        if (
+            display is None
+            or display.source is not field
+            or display.version != version
+            or display.auto_scale != auto_scale
+        ):
+            display_field = field.detach().cpu()
+            magnitude = display_field.square().sum(dim=1).sqrt()[0]
+            maximum = float(magnitude.max())
+            visible = magnitude >= max(
+                1e-8, VECTOR_DISPLAY_RELATIVE_THRESHOLD * maximum
             )
-            q95 = float(torch.quantile(values, 0.95))
-            if auto_scale:
+            visible_count = int(visible.sum())
+            factor = 1.0
+            if visible_count and auto_scale:
+                q95 = float(torch.quantile(magnitude[visible], 0.95))
                 target = float(np.clip(0.06 * min(magnitude.shape), 12, 48))
                 factor = target / q95
+            pooled = (
+                F.max_pool2d(
+                    magnitude[None, None], kernel_size=3, stride=1, padding=1
+                )[0, 0]
+                if visible_count
+                else None
+            )
+            display = VectorDisplay(
+                field,
+                version,
+                auto_scale,
+                display_field,
+                magnitude,
+                visible,
+                pooled,
+                visible_count,
+                factor,
+            )
+            self._vector_display_cache[axis] = display
+
+        factor = display.factor
+        visible = display.visible
+        if display.visible_count:
+            spacing = int(self.spacing_slider.val)
+            spacing = max(
+                spacing,
+                int(np.ceil(np.sqrt(display.visible_count / MAX_DISPLAY_ARROWS))),
+            )
             mask = torch.zeros_like(visible)
             mask[::spacing, ::spacing] = True
-            pooled = F.max_pool2d(
-                magnitude[None, None],
-                kernel_size=3,
-                stride=1,
-                padding=1,
-            )[0, 0]
-            mask |= visible & (magnitude == pooled)
+            mask |= visible & (display.magnitude == display.pooled)
             y, x = torch.where(mask & visible)
             if y.numel() > MAX_DISPLAY_ARROWS:
                 keep = torch.linspace(
@@ -875,18 +1076,19 @@ class FieldPlayground:
             axis.quiver(
                 x.numpy(),
                 y.numpy(),
-                (field[0, 0, y, x] * factor).numpy(),
-                (field[0, 1, y, x] * factor).numpy(),
+                (display.field[0, 0, y, x] * factor).numpy(),
+                (display.field[0, 1, y, x] * factor).numpy(),
                 color=color,
                 angles="xy",
                 scale_units="xy",
                 scale=1,
                 width=0.004,
             )
+        if footer is not None:
             axis.text(
                 0.5,
                 -0.075,
-                rf"$q_{{95}}(|f|)={q95:.3g},\quad \mathrm{{display}}\times {factor:.3g}$",
+                footer,
                 transform=axis.transAxes,
                 ha="center",
                 va="top",
@@ -894,7 +1096,7 @@ class FieldPlayground:
                 color="#26343c",
                 clip_on=False,
             )
-        suffix = "" if abs(factor - 1) < 0.02 else rf"  [display $\times {factor:.2g}$]"
+        suffix = "" if abs(factor - 1) < 0.02 else f"  [x{factor:.2g}]"
         axis.set_title(title + suffix, fontsize=11, color="#24333b", pad=8)
 
     def _plot_scalar(
@@ -908,15 +1110,15 @@ class FieldPlayground:
         log_floor: float = 0,
         show_base: bool = True,
     ) -> None:
-        if show_base:
-            self._plot_base_image(axis)
+        self._base_images[axis].set_visible(show_base)
         values = field[0, 0].detach().cpu()
         if torch.count_nonzero(values):
             if log_scale:
                 visible = values > log_floor
                 if torch.any(visible):
-                    maximum = float(values[visible].max())
-                    minimum = log_floor or float(values[visible].min())
+                    visible_values = values[visible]
+                    maximum = float(visible_values.max())
+                    minimum = log_floor or float(visible_values.min())
                     if minimum == maximum:
                         minimum /= 10
                     display = values.clamp_min(minimum).numpy()
@@ -929,8 +1131,11 @@ class FieldPlayground:
                     colorbar_axis = axis.inset_axes([1.02, 0, 0.035, 1])
                     self.error_colorbar = self.fig.colorbar(heatmap, cax=colorbar_axis)
             else:
-                limit = max(float(torch.quantile(values.abs().flatten(), 0.99)), 1e-8)
-                display = np.ma.masked_where(values.abs().numpy() < 0.001 * limit, values.numpy())
+                absolute = values.abs()
+                limit = max(float(torch.quantile(absolute.flatten(), 0.99)), 1e-8)
+                display = np.ma.masked_where(
+                    absolute.numpy() < 0.001 * limit, values.numpy()
+                )
                 axis.imshow(
                     display,
                     cmap="coolwarm" if signed else "magma",
