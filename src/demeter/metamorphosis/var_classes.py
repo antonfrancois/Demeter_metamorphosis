@@ -3,21 +3,98 @@ from logging import warning
 from typing import Optional, Sequence, Tuple
 
 import torch
+import torch.utils.checkpoint
 from torch import Tensor
 from torch.utils._pytree import register_pytree_node
 
 
-_MOMENTA_FIELDS: Tuple[str, ...] = (
-    "momentum_I",
-    "momentum_R",
-    "momentum_T",
-    "momentum_S",
-    "momentum_A",
-)
+class TorchDataClass:
+
+    def __post_init__(self):
+        for field in fields(self):
+            tensor = getattr(self, field.name)
+            if not (isinstance(tensor, Tensor) or tensor is None):
+                raise TypeError(f"Momentum.{field.name} must be a tensor, got {type(tensor)} at initialization")
+
+    def __iter__(self):
+        for field in fields(self):
+            val = getattr(self, field.name)
+            if val is not None:
+                yield (field.name, val)
+
+    def as_dict(self) -> dict:
+        """Return a dict that matches the previous API (skips None entries)."""
+        return {field.name: getattr(self, field.name) for field in fields(self) if getattr(self, field.name) is not None}
+
+    def requires_grad_(self, flag: bool = True) -> "Momenta":
+        """Set requires_grad for all present tensor fields."""
+        for field in fields(self):
+            tensor = getattr(self, field.name)
+            if tensor is not None:
+                tensor.requires_grad_(flag)
+        return self
+
+    def detach(self) -> "Momenta":
+        """Detach all present tensor fields and return self."""
+        for field in fields(self):
+            tensor = getattr(self, field.name)
+            if tensor is not None:
+                setattr(self, field.name, tensor.detach())
+        return self
+
+    def clone(self) -> "Momenta":
+        """Return a deep copy of the container with cloned tensors."""
+        return Momenta(
+            **{
+                field.name: (getattr(self, field.name).clone() if getattr(self, field.name) is not None else None)
+                for field in fields(self)
+            }
+        )
+
+    def nan_report(self):
+        """
+        Check NaNs field by field.
+
+        Returns
+        -------
+        dict
+            Keys match momentum names; values are booleans or None when the field is absent.
+            Includes an extra key 'any' summarizing if any present tensor contains NaN.
+        """
+        report = {}
+        any_nan = False
+        for field in fields(self):
+            tensor = getattr(self, field.name)
+            if tensor is None:
+                report[field.name] = None
+            else:
+                has_nan = bool(tensor.isnan().any().item())
+                report[field.name] = has_nan
+                any_nan = any_nan or has_nan
+        report["any"] = any_nan
+        return report
+
+    def has_nan(self) -> bool:
+        """Return True if any present tensor contains NaNs."""
+        return self.nan_report()["any"]
+
+    def __repr__(self):
+        # Keep a readable summary even when optional tensors are absent
+        lines = [self.__class__.__name__+'(']
+        for field in fields(self):
+            tensor = getattr(self, field.name)
+            if tensor is None:
+                lines.append(f"\t{field.name}=None")
+            else:
+                lines.append(f"\t{field.name}=Tensor(shape={tuple(tensor.shape)}, device={tensor.device}, dtype={tensor.dtype})")
+        lines.append(")")
+        return ",\n".join(lines)
+
+
 
 
 @dataclass
-class Momenta:
+class Momenta(TorchDataClass):
     """
     Structured container for metamorphosis momenta.
 
@@ -72,86 +149,6 @@ class Momenta:
     momentum_T: Optional[Tensor] = None
     momentum_S: Optional[Tensor] = None
     momentum_A: Optional[Tensor] = None
-
-    def __post_init__(self):
-        for name in _MOMENTA_FIELDS:
-            tensor = getattr(self, name)
-            if not (isinstance(tensor, Tensor) or tensor is None):
-                raise TypeError(f"Momentum.{name} must be a tensor, got {type(tensor)} at initialization")
-
-    def __iter__(self):
-        for field in fields(self):
-            val = getattr(self, field.name)
-            if val is not None:
-                yield (field.name, val)
-
-    def as_dict(self) -> dict:
-        """Return a dict that matches the previous API (skips None entries)."""
-        return {name: getattr(self, name) for name in _MOMENTA_FIELDS if getattr(self, name) is not None}
-
-    def requires_grad_(self, flag: bool = True) -> "Momenta":
-        """Set requires_grad for all present tensor fields."""
-        for name in _MOMENTA_FIELDS:
-            tensor = getattr(self, name)
-            if tensor is not None:
-                tensor.requires_grad_(flag)
-        return self
-
-    def detach(self) -> "Momenta":
-        """Detach all present tensor fields and return self."""
-        for name in _MOMENTA_FIELDS:
-            tensor = getattr(self, name)
-            if tensor is not None:
-                setattr(self, name, tensor.detach())
-        return self
-
-    def clone(self) -> "Momenta":
-        """Return a deep copy of the container with cloned tensors."""
-        return Momenta(
-            **{
-                name: (getattr(self, name).clone() if getattr(self, name) is not None else None)
-                for name in _MOMENTA_FIELDS
-            }
-        )
-
-    def nan_report(self):
-        """
-        Check NaNs field by field.
-
-        Returns
-        -------
-        dict
-            Keys match momentum names; values are booleans or None when the field is absent.
-            Includes an extra key 'any' summarizing if any present tensor contains NaN.
-        """
-        report = {}
-        any_nan = False
-        for name in _MOMENTA_FIELDS:
-            tensor = getattr(self, name)
-            if tensor is None:
-                report[name] = None
-            else:
-                has_nan = bool(tensor.isnan().any().item())
-                report[name] = has_nan
-                any_nan = any_nan or has_nan
-        report["any"] = any_nan
-        return report
-
-    def has_nan(self) -> bool:
-        """Return True if any present tensor contains NaNs."""
-        return self.nan_report()["any"]
-
-    def __repr__(self):
-        # Keep a readable summary even when optional tensors are absent
-        lines = ["Momenta("]
-        for name in _MOMENTA_FIELDS:
-            tensor = getattr(self, name)
-            if tensor is None:
-                lines.append(f"\t{name}=None")
-            else:
-                lines.append(f"\t{name}=Tensor(shape={tuple(tensor.shape)}, device={tensor.device}, dtype={tensor.dtype})")
-        lines.append(")")
-        return ",\n".join(lines)
 
     @classmethod
     def from_config(
@@ -229,8 +226,8 @@ class Momenta:
 def _momenta_flatten(momenta: Momenta):
     children = []
     mask = []
-    for name in _MOMENTA_FIELDS:
-        tensor = getattr(momenta, name)
+    for field in fields(momenta):
+        tensor = getattr(momenta, field.name)
         present = tensor is not None
         mask.append(present)
         if present:
@@ -238,13 +235,13 @@ def _momenta_flatten(momenta: Momenta):
     # PyTorch expects (children, context)
     return tuple(children), tuple(mask)
 
-
 def _momenta_unflatten(children: Tuple[Tensor, ...], mask: Tuple[bool, ...]):
     child_iter = iter(children)
     kwargs = {}
-    for name, present in zip(_MOMENTA_FIELDS, mask):
-        kwargs[name] = next(child_iter) if present else None
+    for field, present in zip(fields(Momenta), mask):
+        kwargs[field.name] = next(child_iter) if present else None
     return Momenta(**kwargs)
 
 
 register_pytree_node(Momenta, _momenta_flatten, _momenta_unflatten)
+

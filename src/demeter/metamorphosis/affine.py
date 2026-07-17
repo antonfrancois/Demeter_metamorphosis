@@ -6,7 +6,6 @@ from numbers import Number
 import matplotlib.pyplot as plt
 import torch
 
-import __init__
 from math import prod, sqrt
 
 
