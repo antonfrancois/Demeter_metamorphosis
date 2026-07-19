@@ -2,7 +2,8 @@
 
 The per-time-step files are directly loadable by the field playground. The
 exported vector momentum and velocity form a matched pair for the configured
-Sobolev fluid operator: ``momentum = L(velocity)``.
+Sobolev fluid operator, and the scalar image momentum is paired with the image
+velocity produced by the metamorphosis cometric.
 """
 
 from __future__ import annotations
@@ -26,8 +27,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 import demeter.metamorphosis as mt
-from demeter.utils import torchbox as tb
 
+from draft.cometric_inversion import CometricOperator
 from draft.sobolevfluid_operator import SobolevFluidOperator
 
 
@@ -129,8 +130,9 @@ def extract_trajectory(
 
     Demeter stores images and scalar image momenta after every integration
     step. Its optimized momentum supplies the missing state at ``t=0``.
-    Velocity is recomputed at every node from the classical Hamiltonian
-    relation ``v = -sqrt(rho) K(p grad(I))``.
+    Deformation velocity is recomputed at every node from the classical
+    Hamiltonian relation ``v = -sqrt(rho) K(p grad(I))``. Scalar image
+    velocity is evaluated with the prototype cometric as ``A_I p``.
     """
     initial_momentum = registration.to_analyse[0].detach().cpu()
     images = torch.cat(
@@ -144,16 +146,21 @@ def extract_trajectory(
     times = torch.linspace(0, 1, registration.mp.n_step + 1)
 
     with torch.no_grad():
-        image_gradients = tb.spatialGradient(images, dx_convention="pixel")
+        cometric = CometricOperator(
+            images, rho, operator, dx_convention="pixel"
+        )
+        image_gradients = cometric.image_gradient
         vector_momenta = -math.sqrt(rho) * (
             image_gradients * image_momenta.unsqueeze(2)
         ).sum(dim=1)
         velocities = operator.apply_inverse(vector_momenta)
+        image_velocities = cometric(image_momenta)
 
     return {
         "times": times,
         "images": images,
         "image_momenta": image_momenta,
+        "image_velocities": image_velocities,
         "vector_momenta": vector_momenta,
         "velocities": velocities,
     }
@@ -169,8 +176,9 @@ def _field_payload(
     source_path: Path,
     target_path: Path,
     parameters: dict[str, Any],
+    field_role: str | None = None,
 ) -> dict[str, Any]:
-    return {
+    payload = {
         "format_version": FORMAT_VERSION,
         "field": field.detach().cpu(),
         "field_kind": field_kind,
@@ -182,6 +190,9 @@ def _field_payload(
         "dx_convention": "pixel",
         "parameters": parameters,
     }
+    if field_role is not None:
+        payload["field_role"] = field_role
+    return payload
 
 
 def save_trajectory(
@@ -194,6 +205,15 @@ def save_trajectory(
 ) -> Path:
     """Save paired playground files and one complete trajectory archive."""
     output_dir.mkdir(parents=True, exist_ok=True)
+    field_directories = {
+        "velocity": Path("vector") / "velocity",
+        "vector_momentum": Path("vector") / "momentum",
+        "image_velocity": Path("scalar") / "velocity",
+        "image_momentum": Path("scalar") / "momentum",
+    }
+    for directory in field_directories.values():
+        (output_dir / directory).mkdir(parents=True, exist_ok=True)
+
     frame_records = []
     frame_count = len(trajectory["times"])
     digits = max(3, len(str(frame_count - 1)))
@@ -203,6 +223,16 @@ def save_trajectory(
         suffix = f"t{index:0{digits}d}"
         velocity_name = f"velocity_{suffix}.pt"
         momentum_name = f"momentum_{suffix}.pt"
+        image_momentum_name = f"image_momentum_{suffix}.pt"
+        image_velocity_name = f"image_velocity_{suffix}.pt"
+        velocity_path = field_directories["velocity"] / velocity_name
+        momentum_path = field_directories["vector_momentum"] / momentum_name
+        image_momentum_path = (
+            field_directories["image_momentum"] / image_momentum_name
+        )
+        image_velocity_path = (
+            field_directories["image_velocity"] / image_velocity_name
+        )
         image = trajectory["images"][index : index + 1]
 
         torch.save(
@@ -216,7 +246,7 @@ def save_trajectory(
                 target_path=target_path,
                 parameters=parameters,
             ),
-            output_dir / velocity_name,
+            output_dir / velocity_path,
         )
         torch.save(
             _field_payload(
@@ -229,14 +259,44 @@ def save_trajectory(
                 target_path=target_path,
                 parameters=parameters,
             ),
-            output_dir / momentum_name,
+            output_dir / momentum_path,
+        )
+        torch.save(
+            _field_payload(
+                trajectory["image_momenta"][index : index + 1],
+                "u",
+                image,
+                time=time,
+                time_index=index,
+                source_path=source_path,
+                target_path=target_path,
+                parameters=parameters,
+                field_role="image_momentum",
+            ),
+            output_dir / image_momentum_path,
+        )
+        torch.save(
+            _field_payload(
+                trajectory["image_velocities"][index : index + 1],
+                "a",
+                image,
+                time=time,
+                time_index=index,
+                source_path=source_path,
+                target_path=target_path,
+                parameters=parameters,
+                field_role="image_velocity",
+            ),
+            output_dir / image_velocity_path,
         )
         frame_records.append(
             {
                 "index": index,
                 "time": time,
-                "velocity": velocity_name,
-                "vector_momentum": momentum_name,
+                "velocity": velocity_path.as_posix(),
+                "vector_momentum": momentum_path.as_posix(),
+                "image_momentum": image_momentum_path.as_posix(),
+                "image_velocity": image_velocity_path.as_posix(),
             }
         )
 

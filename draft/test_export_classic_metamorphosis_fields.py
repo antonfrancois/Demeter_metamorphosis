@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 
 import torch
@@ -6,6 +7,7 @@ from draft.export_classic_metamorphosis_fields import (
     extract_trajectory,
     save_trajectory,
 )
+from draft.cometric_inversion import CometricOperator
 from draft.playground.field_playground_core import load_field_file
 from draft.sobolevfluid_operator import SobolevFluidOperator
 
@@ -47,6 +49,12 @@ def test_extract_trajectory_includes_zero_and_endpoint_states():
         rtol=2e-4,
         atol=2e-5,
     )
+    expected_image_velocities = CometricOperator(
+        trajectory["images"], 0.4, operator
+    )(trajectory["image_momenta"])
+    torch.testing.assert_close(
+        trajectory["image_velocities"], expected_image_velocities
+    )
 
 
 def test_saved_frames_are_loadable_by_playground(tmp_path):
@@ -55,6 +63,7 @@ def test_saved_frames_are_loadable_by_playground(tmp_path):
         "times": torch.linspace(0, 1, steps + 1),
         "images": torch.rand(steps + 1, 1, height, width),
         "image_momenta": torch.rand(steps + 1, 1, height, width),
+        "image_velocities": torch.rand(steps + 1, 1, height, width),
         "vector_momenta": torch.rand(steps + 1, 2, height, width),
         "velocities": torch.rand(steps + 1, 2, height, width),
     }
@@ -73,14 +82,38 @@ def test_saved_frames_are_loadable_by_playground(tmp_path):
         parameters=parameters,
     )
 
-    velocity = load_field_file(output / "velocity_t000.pt")
-    momentum = load_field_file(output / "momentum_t002.pt")
+    velocity = load_field_file(output / "vector/velocity/velocity_t000.pt")
+    momentum = load_field_file(output / "vector/momentum/momentum_t002.pt")
+    image_momentum = load_field_file(
+        output / "scalar/momentum/image_momentum_t001.pt"
+    )
+    image_velocity = load_field_file(
+        output / "scalar/velocity/image_velocity_t002.pt"
+    )
     assert velocity.kind == "velocity"
     assert momentum.kind == "vector_momentum"
+    assert image_momentum.kind == "u"
+    assert image_velocity.kind == "a"
     torch.testing.assert_close(velocity.field, trajectory["velocities"][0:1])
     torch.testing.assert_close(momentum.field, trajectory["vector_momenta"][2:3])
+    torch.testing.assert_close(
+        image_momentum.field, trajectory["image_momenta"][1:2]
+    )
+    torch.testing.assert_close(
+        image_velocity.field, trajectory["image_velocities"][2:3]
+    )
     assert velocity.metadata["time"] == 0
     assert momentum.metadata["time"] == 1
+    assert image_momentum.metadata["time"] == 0.5
+    assert image_momentum.metadata["field_role"] == "image_momentum"
+    assert image_velocity.metadata["field_role"] == "image_velocity"
     assert velocity.metadata["parameters"] == parameters
     assert (output / "trajectory.pt").is_file()
     assert (output / "manifest.json").is_file()
+    manifest = json.loads((output / "manifest.json").read_text())
+    assert manifest["frames"][1]["image_momentum"] == (
+        "scalar/momentum/image_momentum_t001.pt"
+    )
+    assert manifest["frames"][2]["image_velocity"] == (
+        "scalar/velocity/image_velocity_t002.pt"
+    )
