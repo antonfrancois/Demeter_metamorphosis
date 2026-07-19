@@ -189,6 +189,7 @@ def test_scalar_forward_and_inverse_round_trip():
     assert inverse.relative_roundtrip < 1e-4
     assert torch.allclose(inverse.counterpart, covector, atol=2e-5, rtol=2e-4)
     assert inverse.operator_time is None
+    assert inverse.solver_residual <= 1e-7
     assert inverse.solver_iterations >= 1
     assert inverse.solver_time >= 0
     torch.testing.assert_close(
@@ -207,7 +208,7 @@ def test_cometric_inverse_exposes_solver_info():
     torch.manual_seed(5)
     image = torch.rand(1, 1, 8, 9)
     acceleration = torch.rand_like(image)
-    solution, iterations, elapsed = CometricOperator(
+    solution, iterations, elapsed, residual = CometricOperator(
         image,
         0.25,
         lambda value: value,
@@ -217,6 +218,7 @@ def test_cometric_inverse_exposes_solver_info():
         return_info=True,
     )
     assert solution.shape == acceleration.shape
+    assert residual <= 1e-7
     assert iterations >= 1
     assert elapsed >= 0
 
@@ -241,15 +243,18 @@ def test_relative_l2_metrics_are_rms_and_pointwise_maximum():
 def test_conjugate_gradient_solves_spd_system_and_zero_rhs():
     matrix = torch.tensor([[4.0, 1.0], [1.0, 3.0]], dtype=torch.float64)
     rhs = torch.tensor([1.0, 2.0], dtype=torch.float64)
-    solution, iterations = conjugate_gradient(matrix.mv, rhs, 1e-12)
+    solution, iterations, residual = conjugate_gradient(matrix.mv, rhs, 1e-12)
     torch.testing.assert_close(solution, torch.linalg.solve(matrix, rhs))
     assert iterations == 2
+    expected_residual = (rhs - matrix.mv(solution)).norm() / rhs.norm().clamp_min(1)
+    assert residual == pytest.approx(float(expected_residual))
 
-    solution, iterations = conjugate_gradient(
+    solution, iterations, residual = conjugate_gradient(
         matrix.mv, torch.zeros_like(rhs), 1e-12
     )
     assert torch.equal(solution, torch.zeros_like(rhs))
     assert iterations == 0
+    assert residual == 0
 
 
 def test_cometric_rejects_nonpositive_cg_tolerance():
@@ -552,11 +557,17 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     assert r"\mathrm{max} = " in scalar_error_legend
     assert ":" not in scalar_error_legend
     solver_legend = app.output_ax.texts[-1].get_text()
-    assert solver_legend.count("\n") == 1
-    assert r"\mathrm{iterations} = " in solver_legend
-    assert r"$A_I^{-1}$ time = " in solver_legend
+    solver_lines = solver_legend.splitlines()
+    assert len(solver_lines) == 3
+    assert r"\mathrm{residual} = " in solver_lines[0]
+    assert app._latex_number(app.analysis.solver_residual) in solver_lines[0]
+    assert r"\mathrm{iterations} = " in solver_lines[1]
+    assert r"$A_I^{-1}$ time = " in solver_lines[2]
     assert r"\mathrm{mean}" not in solver_legend
     assert r"\mathrm{max}" not in solver_legend
+    assert app.make_payload()["diagnostics"]["solver_residual"] == (
+        app.analysis.solver_residual
+    )
     scalar_energy = app.norm_text.get_text()
     assert r"\Vert a\Vert_{A_I^{-1}}^2 = \Vert u\Vert_{A_I}^2" in scalar_energy
     assert r"\langle" not in scalar_energy

@@ -1,5 +1,8 @@
-"""Interactive vector/scalar field editor for Metamorphosplines prototypes."""
-" Version : July 16 2026"
+"""Interactive vector/scalar field editor for Metamorphosplines prototypes.
+
+Version: July 16, 2026.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -768,6 +771,7 @@ class FieldPlayground:
             }
             if self.analysis.solver_iterations is not None:
                 payload["diagnostics"].update(
+                    solver_residual=self.analysis.solver_residual,
                     solver_iterations=self.analysis.solver_iterations,
                     solver_time=self.analysis.solver_time,
                 )
@@ -1048,6 +1052,7 @@ class FieldPlayground:
         self._add_metrics(
             axis,
             (
+                rf"$\mathrm{{residual}} = {self._latex_number(self.analysis.solver_residual)}$",
                 rf"$\mathrm{{iterations}} = {self.analysis.solver_iterations}$",
                 rf"$A_I^{{-1}}$ time = {self._format_time(self.analysis.solver_time)}",
             ),

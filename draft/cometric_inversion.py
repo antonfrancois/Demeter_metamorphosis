@@ -21,14 +21,18 @@ def _solve(image_gradient, acceleration, rho, kernel_operator, eps, stats=None):
     def linear_operator(covector):
         return _apply_cometric(image_gradient, covector, rho, kernel_operator)
 
+    start = 0.0
     if stats is not None:
         if image_gradient.is_cuda:
             torch.cuda.synchronize(image_gradient.device)
         start = perf_counter()
-    solution, iterations = conjugate_gradient(linear_operator, acceleration, eps)
+    solution, iterations, residual = conjugate_gradient(
+        linear_operator, acceleration, eps
+    )
     if stats is not None:
         if image_gradient.is_cuda:
             torch.cuda.synchronize(image_gradient.device)
+        stats["residual"] = residual
         stats["iterations"] = iterations
         stats["elapsed_seconds"] = perf_counter() - start
     return solution
@@ -101,10 +105,13 @@ class CometricOperator:
         )
 
     def inverse(self, acceleration, eps=1e-6, return_info=False):
-        """Solve ``A_I u = a`` with conjugate gradients."""
+        """Solve ``A_I u = a`` with conjugate gradients.
+
+        The optional residual is ``||a - A_I u|| / max(||a||, 1)``.
+        """
         if self.rho == 0:
             if return_info:
-                return acceleration, 0, 0.0
+                return acceleration, 0, 0.0, 0.0
             return acceleration
         if self.rho == 1:
             raise ValueError(
@@ -125,5 +132,11 @@ class CometricOperator:
             stats,
         )
         if return_info:
-            return solution, stats["iterations"], stats["elapsed_seconds"]
+            assert stats is not None
+            return (
+                solution,
+                stats["iterations"],
+                stats["elapsed_seconds"],
+                stats["residual"],
+            )
         return solution

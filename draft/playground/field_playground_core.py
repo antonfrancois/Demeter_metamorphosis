@@ -1,6 +1,8 @@
-"""Pure tensor and file operations used by the field playground."""
+"""Pure tensor and file operations used by the field playground.
 
-" Version : July 16 2026"
+Version: July 16, 2026.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field as dataclass_field
@@ -56,6 +58,7 @@ class AnalysisResult:
     squared_norm: float
     deformation_energy_contribution: float | None = None
     operator_time: float | None = None
+    solver_residual: float | None = None
     solver_iterations: int | None = None
     solver_time: float | None = None
 
@@ -339,7 +342,7 @@ def analyze_field(
         cometric = CometricOperator(
             image, rho, operator, dx_convention="pixel"
         )
-        operator_time = solver_iterations = solver_time = None
+        operator_time = solver_residual = solver_iterations = solver_time = None
         if kind == "u":
             covector = field
             acceleration, operator_time = _timed_call(cometric, covector)
@@ -348,11 +351,12 @@ def analyze_field(
             expected = covector
         else:
             acceleration = field
-            covector, solver_iterations, solver_time = cometric.inverse(
-                acceleration,
-                eps=cg_eps,
-                return_info=True,
-            )
+            (
+                covector,
+                solver_iterations,
+                solver_time,
+                solver_residual,
+            ) = cometric.inverse(acceleration, eps=cg_eps, return_info=True)
             counterpart = covector
             roundtrip = cometric(covector)
             expected = acceleration
@@ -373,6 +377,7 @@ def analyze_field(
             squared_norm,
             deformation_energy_contribution=deformation_energy_contribution,
             operator_time=operator_time,
+            solver_residual=solver_residual,
             solver_iterations=solver_iterations,
             solver_time=solver_time,
         )
