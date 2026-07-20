@@ -431,7 +431,6 @@ class FieldPlayground:
                 current,
                 f"Input: {self._kind_title(self.kind)}",
                 _variable_color(self.kind),
-                auto_scale=False,
             )
             if self.analysis is not None:
                 self._clear_axis_dynamic(self.output_ax)
@@ -862,7 +861,6 @@ class FieldPlayground:
             current,
             f"Input: {self._kind_title(self.kind)}",
             _variable_color(self.kind),
-            auto_scale=False,
         )
         if self.analysis is None:
             self._plot_message(self.output_ax, "Press Run")
@@ -1071,7 +1069,6 @@ class FieldPlayground:
         title: str,
         color: str,
         *,
-        auto_scale: bool = True,
         footer: str | None = None,
     ) -> None:
         self._plot_base_image(axis)
@@ -1084,10 +1081,9 @@ class FieldPlayground:
         visible_count = int(visible.sum())
         factor = 1.0
         if visible_count:
-            if auto_scale:
-                q95 = float(torch.quantile(magnitude[visible], 0.95))
-                target = float(np.clip(0.06 * min(magnitude.shape), 12, 48))
-                factor = target / q95
+            q95 = float(torch.quantile(magnitude[visible], 0.95))
+            target = float(np.clip(0.06 * min(magnitude.shape), 12, 48))
+            factor = target / q95
             pooled = F.max_pool2d(
                 magnitude[None, None], kernel_size=3, stride=1, padding=1
             )[0, 0]

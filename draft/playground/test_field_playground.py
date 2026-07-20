@@ -380,7 +380,8 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     arrows = [artist for artist in app.input_ax.collections if isinstance(artist, Quiver)]
     assert len(arrows) == 1
     assert arrows[0].U.size == 1
-    assert arrows[0].U[0] == pytest.approx(5.0)
+    target = float(np.clip(0.06 * min(display_field.shape[-2:]), 12, 48))
+    assert arrows[0].U[0] == pytest.approx(5.0 * target / np.hypot(5.0, 2.0))
     np.testing.assert_allclose(arrows[0].get_facecolors()[0], to_rgba(DUAL_COLOR))
     assert app.input_ax.title.get_color() == "#24333b"
     assert "display" not in app.input_ax.get_title()
