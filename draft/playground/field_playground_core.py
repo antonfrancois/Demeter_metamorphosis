@@ -21,6 +21,8 @@ from ..sobolevfluid_operator import SobolevFluidOperator
 VECTOR_KINDS = ("velocity", "vector_momentum")
 SCALAR_KINDS = ("a", "u")
 FORMAT_VERSION = 1
+TIMING_WARMUPS = 3
+TIMING_SAMPLES = 20
 FIELD_KEYS = (
     "field",
     "velocity",
@@ -280,7 +282,18 @@ def _relative_error(actual: torch.Tensor, expected: torch.Tensor) -> float:
     return float(error_rms / reference_rms)
 
 
-def _timed_call(function, argument: torch.Tensor):
+def _outlier_filtered_mean(samples: list[float]) -> float:
+    """Return the mean after standard 1.5-IQR outlier rejection."""
+    values = np.asarray(samples)
+    lower_quartile, upper_quartile = np.quantile(values, (0.25, 0.75))
+    interquartile_range = upper_quartile - lower_quartile
+    lower_bound = lower_quartile - 1.5 * interquartile_range
+    upper_bound = upper_quartile + 1.5 * interquartile_range
+    retained = values[(values >= lower_bound) & (values <= upper_bound)]
+    return float(retained.mean())
+
+
+def _timed_once(function, argument: torch.Tensor):
     if argument.is_cuda:
         with torch.cuda.device(argument.device):
             stream = torch.cuda.current_stream()
@@ -295,6 +308,18 @@ def _timed_call(function, argument: torch.Tensor):
     start = perf_counter()
     result = function(argument)
     return result, perf_counter() - start
+
+
+def _timed_call(function, argument: torch.Tensor):
+    """Return the last result and robust mean warm execution time."""
+    result = function(argument)
+    for _ in range(1, TIMING_WARMUPS):
+        result = function(argument)
+    timings = []
+    for _ in range(TIMING_SAMPLES):
+        result, elapsed = _timed_once(function, argument)
+        timings.append(elapsed)
+    return result, _outlier_filtered_mean(timings)
 
 
 def analyze_field(
@@ -351,12 +376,18 @@ def analyze_field(
             expected = covector
         else:
             acceleration = field
+            inverse_result, solver_time = _timed_call(
+                lambda value: cometric.inverse(
+                    value, eps=cg_eps, return_info=True
+                ),
+                acceleration,
+            )
             (
                 covector,
                 solver_iterations,
-                solver_time,
+                _,
                 solver_residual,
-            ) = cometric.inverse(acceleration, eps=cg_eps, return_info=True)
+            ) = inverse_result
             counterpart = covector
             roundtrip = cometric(covector)
             expected = acceleration

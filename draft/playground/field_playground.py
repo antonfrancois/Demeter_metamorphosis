@@ -900,7 +900,7 @@ class FieldPlayground:
             self.analysis.counterpart,
             output_title,
             _counterpart_color(self.kind),
-            footer=rf"${operator_name}$ time = {self._format_time(self.analysis.operator_time)}",
+            footer=rf"${operator_name}$ avg time = {self._format_time(self.analysis.operator_time)}",
         )
 
     def _render_scalar_mode(self, current: torch.Tensor) -> None:
@@ -1038,7 +1038,7 @@ class FieldPlayground:
     def _add_cometric_metrics(self, axis) -> None:
         self._add_metrics(
             axis,
-            (rf"$A_I$ time = {self._format_time(self.analysis.operator_time)}",),
+            (rf"$A_I$ avg time = {self._format_time(self.analysis.operator_time)}",),
         )
 
     def _add_error_metrics(
@@ -1052,7 +1052,7 @@ class FieldPlayground:
             (
                 rf"$\mathrm{{residual}} = {self._latex_number(self.analysis.solver_residual)}$",
                 rf"$\mathrm{{iterations}} = {self.analysis.solver_iterations}$",
-                rf"$A_I^{{-1}}$ time = {self._format_time(self.analysis.solver_time)}",
+                rf"$A_I^{{-1}}$ avg time = {self._format_time(self.analysis.solver_time)}",
             ),
         )
 

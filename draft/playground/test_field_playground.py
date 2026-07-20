@@ -17,6 +17,12 @@ from types import SimpleNamespace
 from draft.cometric_inversion import CometricOperator
 from draft.conjugate_gradient import conjugate_gradient
 from draft.sobolevfluid_operator import SobolevFluidOperator
+from draft.playground.field_playground_core import (
+    TIMING_SAMPLES,
+    TIMING_WARMUPS,
+    _outlier_filtered_mean,
+    _timed_call,
+)
 from draft.playground.field_playground import (
     DEFAULT_IMAGE,
     DUAL_COLOR,
@@ -51,6 +57,26 @@ def test_vector_and_scalar_editing_primitives():
     erased = erase_stroke(scalar, [(8, 10)], sigma=3)
     assert erased[0, 0, 10, 8].abs() < 1e-6
     assert erased[0, 0, 20, 30] < -1
+
+
+def test_timing_uses_warmup_and_outlier_filtered_mean():
+    regular = [0.9, 1.0, 1.0, 1.0, 1.1, 1.1]
+    assert _outlier_filtered_mean(regular + [10.0]) == pytest.approx(
+        np.mean(regular)
+    )
+
+    calls = 0
+
+    def identity(value):
+        nonlocal calls
+        calls += 1
+        return value
+
+    value = torch.ones(1)
+    result, elapsed = _timed_call(identity, value)
+    assert result is value
+    assert calls == TIMING_WARMUPS + TIMING_SAMPLES
+    assert elapsed >= 0
 
 
 def test_field_layout_coercion_and_vector_resize():
@@ -444,7 +470,7 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     assert app.output_ax.get_title().startswith(r"Output: velocity $v=Km$")
     assert "display" not in app.output_ax.get_title()
     output_footer = app.output_ax.texts[-1].get_text()
-    assert "$K$ time = " in output_footer
+    assert "$K$ avg time = " in output_footer
     assert "q_{95}" not in output_footer
     assert app.output_ax.texts[-1].get_fontsize() == app.output_ax.title.get_fontsize()
     output_arrows = [
@@ -534,7 +560,7 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
         app.detail_ax.get_title()
     )
     assert app.error_colorbar.ax.get_ylabel() == ""
-    assert "$L$ time = " in app.output_ax.texts[-1].get_text()
+    assert "$L$ avg time = " in app.output_ax.texts[-1].get_text()
     assert app.input_ax.title.get_color() == "#24333b"
     assert app.output_ax.title.get_color() == "#24333b"
 
@@ -563,7 +589,7 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     assert r"\mathrm{residual} = " in solver_lines[0]
     assert app._latex_number(app.analysis.solver_residual) in solver_lines[0]
     assert r"\mathrm{iterations} = " in solver_lines[1]
-    assert r"$A_I^{-1}$ time = " in solver_lines[2]
+    assert r"$A_I^{-1}$ avg time = " in solver_lines[2]
     assert r"\mathrm{mean}" not in solver_legend
     assert r"\mathrm{max}" not in solver_legend
     assert app.make_payload()["diagnostics"]["solver_residual"] == (
@@ -639,7 +665,7 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     assert app.output_ax.title.get_color() == "#24333b"
     assert r"A_I^{-1}(A_Iu)-u" in app.detail_ax.get_title()
     cometric_legend = app.output_ax.texts[-1].get_text()
-    assert "$A_I$ time = " in cometric_legend
+    assert "$A_I$ avg time = " in cometric_legend
     assert r"\mathrm{mean}" not in cometric_legend
     assert r"\mathrm{max}" not in cometric_legend
     app.mode_radio.set_active(0)
