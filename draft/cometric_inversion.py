@@ -14,7 +14,7 @@ def _apply_cometric(image_gradient, covector, rho, kernel_operator):
     vector_momentum = covector * image_gradient[:, 0]
     velocity = kernel_operator(vector_momentum)
     deformation = (velocity * image_gradient[:, 0]).sum(dim=1, keepdim=True)
-    return (1 - rho) * covector + rho * deformation
+    return torch.lerp(covector, deformation, rho)
 
 
 def _solve(image_gradient, acceleration, rho, kernel_operator, eps, stats=None):

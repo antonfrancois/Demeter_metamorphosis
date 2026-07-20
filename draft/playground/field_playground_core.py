@@ -314,7 +314,7 @@ def analyze_field(
     field = field.to(device=device, dtype=dtype)
     operator = SobolevFluidOperator(alpha=alpha, beta=beta, gamma=gamma)
 
-    with torch.no_grad():
+    with torch.inference_mode():
         if mode == "vector":
             if kind == "velocity":
                 counterpart, operator_time = _timed_call(

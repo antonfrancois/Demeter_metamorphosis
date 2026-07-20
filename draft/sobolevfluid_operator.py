@@ -75,8 +75,20 @@ class SobolevFluidOperator(torch.nn.Module):
             self.beta * sin_x * sin_y,
             diagonal + self.beta * laplace_y,
         )
-        self._symbol_cache = key, symbol
+        l_xx, l_xy, l_yy = symbol
+        determinant = l_xx * l_yy - l_xy.square()
+        inverse_symbol = (
+            l_yy / determinant,
+            -l_xy / determinant,
+            l_xx / determinant,
+        )
+        self._symbol_cache = key, symbol, inverse_symbol
         return symbol
+
+    def _inverse_symbol(self, field):
+        self._symbol(field)
+        assert self._symbol_cache is not None
+        return self._symbol_cache[2]
 
     @staticmethod
     def _check_field(field):
@@ -103,12 +115,11 @@ class SobolevFluidOperator(torch.nn.Module):
         """Apply ``K = L^-1``."""
         self._check_field(field)
         field_hat = torch.fft.rfft2(field)
-        l_xx, l_xy, l_yy = self._symbol(field)
-        determinant = l_xx * l_yy - l_xy.square()
+        k_xx, k_xy, k_yy = self._inverse_symbol(field)
         result_hat = torch.stack(
             (
-                (l_yy * field_hat[:, 0] - l_xy * field_hat[:, 1]) / determinant,
-                (l_xx * field_hat[:, 1] - l_xy * field_hat[:, 0]) / determinant,
+                k_xx * field_hat[:, 0] + k_xy * field_hat[:, 1],
+                k_xy * field_hat[:, 0] + k_yy * field_hat[:, 1],
             ),
             dim=1,
         )
