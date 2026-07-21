@@ -1756,6 +1756,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             path = OPTIM_SAVE_DIR
         else:
             path = save_path
+        os.makedirs(path, exist_ok=True)
 
         ic(path)
         date_time = datetime.now()
