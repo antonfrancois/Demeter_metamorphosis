@@ -5,6 +5,10 @@ registration here by default. Each run stores its playground-ready keyframes
 under this hierarchy:
 
 ```text
+images/
+  source.png
+  target.png
+  final.png
 vector/
   momentum/momentum_tNNN.pt
   velocity/velocity_tNNN.pt
@@ -20,6 +24,9 @@ files contain image momentum `p` (playground dual kind `u`) and image velocity
 
 The nodes are uniformly spaced from `t=0` through `t=1`. `trajectory.pt` also
 contains the images and all four fields for the complete trajectory.
+
+By default, the target is resized to the source image's native dimensions. Pass
+`--size H W` to resize both images to an explicit registration resolution.
 
 Example:
 

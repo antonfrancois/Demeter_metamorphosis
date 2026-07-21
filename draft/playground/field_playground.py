@@ -143,6 +143,7 @@ class FieldPlayground:
         self.device = device
         self.output_path = Path(output_path).expanduser() if output_path else None
         height, width = self.image.shape[-2:]
+        self.image_size_status = f"Loaded image size: {width} x {height} px (W x H)."
         self.fields = {
             "vector": torch.zeros((1, 2, height, width)),
             "scalar": torch.zeros((1, 1, height, width)),
@@ -157,7 +158,7 @@ class FieldPlayground:
 
         self._build_figure(parameters)
         self._connect_events()
-        self._set_status("Amplitude scales edits; Spacing is display-only. Draw, then Run.")
+        self._set_status("")
         self._render()
 
     @property
@@ -363,7 +364,8 @@ class FieldPlayground:
         }
 
     def _set_status(self, message: str) -> None:
-        self.status_text.set_text(message)
+        prefix = f"{message}\n" if message else ""
+        self.status_text.set_text(f"{prefix}{self.image_size_status}")
 
     def _cancel_drag(self) -> bool:
         drag = self.drag

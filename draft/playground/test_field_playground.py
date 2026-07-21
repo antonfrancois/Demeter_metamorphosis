@@ -368,6 +368,11 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     image[..., 8:24, 10:26] = 1
     app = FieldPlayground(image, device="cpu")
     assert app.brush_slider.val == 1
+    assert app.status_text.get_text() == "Loaded image size: 36 x 32 px (W x H)."
+    app._set_status("Field cleared. Press Run.")
+    assert app.status_text.get_text() == (
+        "Field cleared. Press Run.\nLoaded image size: 36 x 32 px (W x H)."
+    )
     assert app.alpha_slider.val == pytest.approx(0.2)
     assert app.beta_slider.val == pytest.approx(0.2)
     assert app.gamma_slider.valtext.get_text() == "0.001"

@@ -5,11 +5,24 @@ import torch
 
 from draft.export_classic_metamorphosis_fields import (
     extract_trajectory,
+    load_image,
+    resize_target_to_source,
     save_trajectory,
 )
 from draft.cometric_inversion import CometricOperator
 from draft.playground.field_playground_core import load_field_file
 from draft.sobolevfluid_operator import SobolevFluidOperator
+
+
+def test_resize_target_to_source_preserves_source_resolution():
+    source = torch.rand(1, 1, 8, 10)
+    target = torch.rand(1, 1, 14, 12)
+
+    resized = resize_target_to_source(source, target)
+
+    assert resized.shape == source.shape
+    assert source.shape == (1, 1, 8, 10)
+    assert resized.is_contiguous()
 
 
 def test_extract_trajectory_includes_zero_and_endpoint_states():
@@ -59,6 +72,7 @@ def test_extract_trajectory_includes_zero_and_endpoint_states():
 
 def test_saved_frames_are_loadable_by_playground(tmp_path):
     steps, height, width = 2, 6, 7
+    target = torch.rand(1, 1, height, width)
     trajectory = {
         "times": torch.linspace(0, 1, steps + 1),
         "images": torch.rand(steps + 1, 1, height, width),
@@ -79,6 +93,7 @@ def test_saved_frames_are_loadable_by_playground(tmp_path):
         tmp_path / "fields",
         source_path=tmp_path / "source.png",
         target_path=tmp_path / "target.png",
+        target_image=target,
         parameters=parameters,
     )
 
@@ -110,7 +125,22 @@ def test_saved_frames_are_loadable_by_playground(tmp_path):
     assert velocity.metadata["parameters"] == parameters
     assert (output / "trajectory.pt").is_file()
     assert (output / "manifest.json").is_file()
+    saved_source = load_image(output / "images/source.png")
+    saved_target = load_image(output / "images/target.png")
+    saved_final = load_image(output / "images/final.png")
+    torch.testing.assert_close(
+        saved_source, trajectory["images"][0:1], rtol=0, atol=2 / 255
+    )
+    torch.testing.assert_close(saved_target, target, rtol=0, atol=2 / 255)
+    torch.testing.assert_close(
+        saved_final, trajectory["images"][-1:], rtol=0, atol=2 / 255
+    )
     manifest = json.loads((output / "manifest.json").read_text())
+    assert manifest["images"] == {
+        "source": "images/source.png",
+        "target": "images/target.png",
+        "final": "images/final.png",
+    }
     assert manifest["frames"][1]["image_momentum"] == (
         "scalar/momentum/image_momentum_t001.pt"
     )

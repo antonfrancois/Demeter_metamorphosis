@@ -77,6 +77,25 @@ def load_image(path: str | Path, size: tuple[int, int] | None = None) -> torch.T
     return image.contiguous()
 
 
+def resize_target_to_source(
+    source: torch.Tensor, target: torch.Tensor
+) -> torch.Tensor:
+    """Resize only the target's spatial dimensions to match the source."""
+    if source.shape[:2] != target.shape[:2]:
+        raise ValueError(
+            "source and target batch/channel dimensions differ "
+            f"({source.shape[:2]} != {target.shape[:2]})"
+        )
+    if source.shape[-2:] == target.shape[-2:]:
+        return target
+    return F.interpolate(
+        target,
+        size=source.shape[-2:],
+        mode="bilinear",
+        align_corners=False,
+    ).contiguous()
+
+
 def resolve_device(value: str) -> torch.device:
     if value == "auto":
         return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -195,12 +214,25 @@ def _field_payload(
     return payload
 
 
+def _save_image(image: torch.Tensor, path: Path) -> None:
+    if image.ndim != 4 or image.shape[:2] != (1, 1):
+        raise ValueError(f"expected image shape [1, 1, H, W], got {image.shape}")
+    mpimg.imsave(
+        path,
+        image.detach().cpu()[0, 0].numpy(),
+        cmap="gray",
+        vmin=0,
+        vmax=1,
+    )
+
+
 def save_trajectory(
     trajectory: dict[str, torch.Tensor],
     output_dir: Path,
     *,
     source_path: Path,
     target_path: Path,
+    target_image: torch.Tensor,
     parameters: dict[str, Any],
 ) -> Path:
     """Save paired playground files and one complete trajectory archive."""
@@ -213,6 +245,15 @@ def save_trajectory(
     }
     for directory in field_directories.values():
         (output_dir / directory).mkdir(parents=True, exist_ok=True)
+    image_paths = {
+        "source": Path("images/source.png"),
+        "target": Path("images/target.png"),
+        "final": Path("images/final.png"),
+    }
+    (output_dir / "images").mkdir(parents=True, exist_ok=True)
+    _save_image(trajectory["images"][0:1], output_dir / image_paths["source"])
+    _save_image(target_image, output_dir / image_paths["target"])
+    _save_image(trajectory["images"][-1:], output_dir / image_paths["final"])
 
     frame_records = []
     frame_count = len(trajectory["times"])
@@ -317,6 +358,7 @@ def save_trajectory(
         "source_path": str(source_path),
         "target_path": str(target_path),
         "trajectory": archive_path.name,
+        "images": {name: path.as_posix() for name, path in image_paths.items()},
         "parameters": parameters,
         "frames": frame_records,
     }
@@ -336,7 +378,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("source", help="Source image path, im2Dbank filename, or shorthand")
     parser.add_argument("target", help="Target image path, im2Dbank filename, or shorthand")
     parser.add_argument("--rho", type=float, default=0.5, help="Metamorphosis balance in [0, 1]")
-    parser.add_argument("--size", nargs=2, type=int, metavar=("H", "W"))
+    parser.add_argument(
+        "--size",
+        nargs=2,
+        type=int,
+        metavar=("H", "W"),
+        help="Resize both images; by default only the target is resized to the source",
+    )
     parser.add_argument("--integration-steps", type=int, default=10)
     parser.add_argument("--iterations", type=int, default=15)
     parser.add_argument("--cost-cst", type=float, default=0.001)
@@ -370,10 +418,11 @@ def main(argv: list[str] | None = None) -> Path:
     source = load_image(source_path, size)
     target = load_image(target_path, size)
     if source.shape != target.shape:
-        raise ValueError(
-            f"source and target shapes differ ({source.shape} != {target.shape}); "
-            "pass --size H W to resize both"
+        print(
+            f"Resizing target from {tuple(target.shape[-2:])} "
+            f"to source size {tuple(source.shape[-2:])}"
         )
+        target = resize_target_to_source(source, target)
 
     device = resolve_device(args.device)
     operator = SobolevFluidOperator(args.alpha, args.beta, args.gamma)
@@ -406,6 +455,7 @@ def main(argv: list[str] | None = None) -> Path:
         args.output_dir.expanduser() / run_name,
         source_path=source_path,
         target_path=target_path,
+        target_image=target,
         parameters=parameters,
     )
     print(f"Saved {len(trajectory['times'])} time nodes to {output_dir}")
