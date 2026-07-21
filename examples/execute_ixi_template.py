@@ -775,12 +775,13 @@ def execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers):
         kernelOperator = rk.Multi_scale_GaussianRKHS(sigma, normalized=False)
 
         # D(I,T) =  alpha *| S \cdot A.T  - T |^2 + (1 - alpha) * | I_1 \cdot A.T - T|^2
-        gamma_kwargs = {'c': 1.0, 'nu': 1e-2} # 1
-        gamma_kwargs = {'c': 1.0, 'nu': 1e-3} # 2
-        gamma_kwargs = {'c': 1.0, 'nu': 1e-1} # 3
-        gamma_kwargs = {'c': 2.0, 'nu': 1e-1} # 4
-        gamma_kwargs = {'c': 2.0, 'nu': 1e-2} # 5
-        gamma_kwargs = {'c': 2.0, 'nu': 1e-3} # 6
+        # gamma_kwargs = {'c': 1.0, 'nu': 1e-2} # 1
+        # gamma_kwargs = {'c': 1.0, 'nu': 1e-3} # 2
+        # gamma_kwargs = {'c': 1.0, 'nu': 1e-1} # 3
+        # gamma_kwargs = {'c': 2.0, 'nu': 1e-1} # 4
+        # gamma_kwargs = {'c': 2.0, 'nu': 1e-2} # 5
+        # gamma_kwargs = {'c': 2.0, 'nu': 1e-3} # 6
+        gamma_kwargs = {"c": 1.0, "nu": 100}
 
         datacost = mt.Rotation_Ssd_Cost(
             target.to("cuda:0"),
@@ -1100,7 +1101,7 @@ def execute_arm4_freeze_reset_all(pp, subjects_numbers):
         )
 
 
-def execute_arm5_two_stage(pp, subjects_numbers, lddmm_n_iter=None):
+def execute_arm5_two_stage(pp, subjects_numbers, lddmm_n_iter=None, first_affine_only = False):
     """
     Arm 5 — two-stage reference: affine-only FA → fresh LDDMM.
 
@@ -1118,9 +1119,17 @@ def execute_arm5_two_stage(pp, subjects_numbers, lddmm_n_iter=None):
     ):
         print(f"\nPatient : {paths['subject_dir'].name}")
         method_name = "fa_arm5_two_stage"
+        if first_affine_only:
+            method_name += "_1affonly"
+        else:
+            method_name += "_1joined"
 
         # Stage 1: affine-only with variational γ (DummyKernel → no diffeo)
-        print(f"  [arm5] stage 1: affine-only  (n_iter={n_iter_affine})")
+        if first_affine_only:
+            print(f"  [arm5] stage 1: affine-only  (n_iter={n_iter_affine})")
+        else:
+            print(f"  [arm5] stage 1: joined affine  (n_iter={n_iter_affine})")
+
         datacost_affine = mt.Rotation_Ssd_Cost(
             target.to("cuda:0"),
             gamma_mode="variationnal",
@@ -1131,7 +1140,7 @@ def execute_arm5_two_stage(pp, subjects_numbers, lddmm_n_iter=None):
             edges_computes=1e-2,
         )
         momenta_affine = mt.prepare_momenta(
-            source.shape, diffeo=False, device="cuda:0", affine=True,
+            source.shape, diffeo=not first_affine_only, device="cuda:0", affine=True,
         )
         mr_affine = mt.affine_along_metamorphosis(
             source.to("cuda:0"), target.to("cuda:0"),
@@ -1192,10 +1201,10 @@ def execute_arm5_two_stage(pp, subjects_numbers, lddmm_n_iter=None):
             light_save=False,
             save_path=os.path.join(result_folder, method_name),
         )
-
         dice = (dices_affine[0] | dices_affine[1]
-                | {"lddmm " + k: v for k, v in (dices_lddmm[0] | dices_lddmm[1]).items()})
+                | {"lddmm " + k: v for k, v in (dices_lddmm).items()})
         now = datetime.datetime.now()
+        print(f"Logging: {method_name}")
         log_metrics(
             db_path,
             patient_id=paths["subject_dir"].name,
@@ -1974,7 +1983,8 @@ if __name__ == '__main__':
         file_db = f"ixi_results_arms_{location}.db"
         # file_db = "ixi_results_meso_20250917.db"
     db_path = os.path.join(result_folder, file_db)
-    # clean_method(db_path, "affine_lddmm_succ")
+    # clean_method(db_path, "fa_arm5_two_stage")
+    clean_method(db_path, "affine_lddmm_succaT-lddmm2-tol")
 
     # execute_dummy(pp, subjects_numbers)
     # execute_control(pp,subjects_numbers)
@@ -1984,13 +1994,14 @@ if __name__ == '__main__':
     # execute_flirt_lddmm(pp, subjects_numbers)
     # elif location == 'local':
     # execute_rigid_along_metamorphosis(pp, subjects_numbers)
-    # execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers)
+    execute_affine_along_metamorphosis_succLddmm(pp, subjects_numbers)
 
     # ── 5-arm freeze ablation (Phase C) ──────────────────────────────────────
-    execute_all_ablation_arms(pp, subjects_numbers)   # full ablation 1→5
+    # execute_all_ablation_arms(pp, subjects_numbers)   # full ablation 1→5
     # execute_arm1_joint_baseline(pp, subjects_numbers)
     # execute_arm2_freeze_affine(pp, subjects_numbers)
     # execute_arm3_freeze_reset_state(pp, subjects_numbers)
     # execute_arm4_freeze_reset_all(pp, subjects_numbers)
-    # execute_arm5_two_stage(pp, subjects_numbers)
+    # execute_arm5_two_stage(pp, subjects_numbers, first_affine_only=True)
+    # execute_arm5_two_stage(pp, subjects_numbers, first_affine_only=False)
 #
