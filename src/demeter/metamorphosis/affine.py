@@ -304,7 +304,13 @@ class Affine_Metamorphosis_integrator(Geodesic_integrator):
         )
 
         # 6. momentum_T (p^\tau)
-        inv_A_mat = torch.linalg.inv(A_mat)
+        det =  torch.linalg.det(A_mat)
+        if det != 0:
+            inv_A_mat = torch.linalg.inv(A_mat)
+        else:
+            inv_A_mat = torch.linalg.pinv(A_mat)
+            Warning(f"A_mat got null det, we computed pseaudo-inverse instead:"
+                    f"det:{det}, A_mat :{A_mat}, inv_A_mat :{inv_A_mat} ")
         field_momentum = field_momentum.reshape(B, d, 1, N)  # [B, (2,3), 1, H * W (* D)] R^(d x 1)
         jaco_field = tb.field_jacobian(field).reshape(B, d, d, N)
         inv_A_matT = inv_A_mat.T
