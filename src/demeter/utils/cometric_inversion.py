@@ -3,7 +3,7 @@ from time import perf_counter
 
 import torch
 
-from demeter.utils import torchbox as tb
+from . import torchbox as tb
 from .conjugate_gradient import conjugate_gradient
 
 

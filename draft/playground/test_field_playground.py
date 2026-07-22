@@ -14,9 +14,9 @@ import pytest
 import torch
 from types import SimpleNamespace
 
-from draft.cometric_inversion import CometricOperator
-from draft.conjugate_gradient import conjugate_gradient
-from draft.sobolevfluid_operator import SobolevFluidOperator
+from demeter.utils.cometric_inversion import CometricOperator
+from demeter.utils.conjugate_gradient import conjugate_gradient
+from demeter.utils.reproducing_kernels import SobolevFluidOperator
 from draft.playground.field_playground_core import (
     TIMING_SAMPLES,
     TIMING_WARMUPS,

@@ -12,8 +12,8 @@ from time import perf_counter
 
 import torch
 
-from draft.cometric_inversion import CometricOperator
-from draft.sobolevfluid_operator import SobolevFluidOperator
+from demeter.utils.cometric_inversion import CometricOperator
+from demeter.utils.reproducing_kernels import SobolevFluidOperator
 
 
 def _synchronize(device: torch.device) -> None:

@@ -28,8 +28,8 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 import demeter.metamorphosis as mt
 
-from draft.cometric_inversion import CometricOperator
-from draft.sobolevfluid_operator import SobolevFluidOperator
+from demeter.utils.cometric_inversion import CometricOperator
+from demeter.utils.reproducing_kernels import SobolevFluidOperator
 
 
 IMAGE_BANK = PROJECT_ROOT / "examples" / "im2Dbank"

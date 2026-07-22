@@ -9,9 +9,9 @@ from draft.export_classic_metamorphosis_fields import (
     resize_target_to_source,
     save_trajectory,
 )
-from draft.cometric_inversion import CometricOperator
+from demeter.utils.cometric_inversion import CometricOperator
 from draft.playground.field_playground_core import load_field_file
-from draft.sobolevfluid_operator import SobolevFluidOperator
+from demeter.utils.reproducing_kernels import SobolevFluidOperator
 
 
 def test_resize_target_to_source_preserves_source_resolution():

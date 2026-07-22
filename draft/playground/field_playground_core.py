@@ -14,8 +14,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from ..cometric_inversion import CometricOperator
-from ..sobolevfluid_operator import SobolevFluidOperator
+from demeter.utils.cometric_inversion import CometricOperator
+from demeter.utils.reproducing_kernels import SobolevFluidOperator
 
 
 VECTOR_KINDS = ("velocity", "vector_momentum")
