@@ -1017,9 +1017,9 @@ class FieldPlayground:
     def _error_lines(
         self, error: torch.Tensor, reference: torch.Tensor
     ) -> tuple[str, str]:
-        mean, maximum = self._relative_l2_metrics(error, reference)
+        rms, maximum = self._relative_l2_metrics(error, reference)
         return (
-            rf"$\mathrm{{mean}} = {self._latex_number(mean)}$",
+            rf"$\mathrm{{RMS}} = {self._latex_number(rms)}$",
             rf"$\mathrm{{max}} = {self._latex_number(maximum)}$",
         )
 
