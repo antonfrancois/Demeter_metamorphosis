@@ -261,8 +261,8 @@ def test_cometric_is_single_channel_and_keeps_idiomatic_call():
 def test_relative_l2_metrics_are_rms_and_pointwise_maximum():
     error = torch.tensor([1.0, 3.0])
     reference = torch.tensor([2.0, 2.0])
-    mean, maximum = FieldPlayground._relative_l2_metrics(error, reference)
-    assert mean == pytest.approx(np.sqrt(5) / 2)
+    rms, maximum = FieldPlayground._relative_l2_metrics(error, reference)
+    assert rms == pytest.approx(np.sqrt(5) / 2)
     assert maximum == pytest.approx(1.5)
 
 
@@ -503,7 +503,7 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
         app.detail_ax.get_title()
     )
     error_legend = app.detail_ax.texts[-1].get_text()
-    assert r"\mathrm{mean} = " in error_legend
+    assert r"\mathrm{RMS} = " in error_legend
     assert r"\mathrm{max} = " in error_legend
     assert ":" not in error_legend
     assert app.detail_ax.texts[-1].get_fontsize() == app.detail_ax.title.get_fontsize()
@@ -517,9 +517,9 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
         rtol=1e-5,
         atol=0,
     )
-    relative_mean, relative_max = app._relative_l2_metrics(error, reference)
-    assert relative_mean == pytest.approx(app.analysis.relative_roundtrip)
-    assert app._latex_number(relative_mean) in error_legend
+    relative_rms, relative_max = app._relative_l2_metrics(error, reference)
+    assert relative_rms == pytest.approx(app.analysis.relative_roundtrip)
+    assert app._latex_number(relative_rms) in error_legend
     assert app._latex_number(relative_max) in error_legend
     assert relative_max >= app.analysis.relative_roundtrip
     error_colorbar = app.error_colorbar
@@ -585,7 +585,7 @@ def test_saved_template_reloads_and_headless_ui_renders(tmp_path):
     assert r"\left|A_I(A_I^{-1}a)-a\right|" in app.detail_ax.get_title()
     assert r"\mathrm{RMS}(\left|a\right|)" in app.detail_ax.get_title()
     scalar_error_legend = app.detail_ax.texts[-1].get_text()
-    assert r"\mathrm{mean} = " in scalar_error_legend
+    assert r"\mathrm{RMS} = " in scalar_error_legend
     assert r"\mathrm{max} = " in scalar_error_legend
     assert ":" not in scalar_error_legend
     solver_legend = app.output_ax.texts[-1].get_text()
