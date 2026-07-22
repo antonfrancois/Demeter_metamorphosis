@@ -5,7 +5,7 @@ import demeter.utils.torchbox as tb
 from demeter.utils.decorators import time_it
 from demeter.constants import *
 # import demeter.utils.image_3d_plotter as i3p
-import demeter.metamorphosis.rotate as mtrt
+import demeter.metamorphosis.affine as mtrt
 import demeter.metamorphosis as mt
 import demeter.utils.cost_functions as cf
 import demeter.utils.reproducing_kernels as rk

@@ -16,6 +16,7 @@ from kornia.geometry.transform import resize
 from numpy import newaxis
 from matplotlib.widgets import Slider
 
+from demeter.utils.decorators import deprecated
 # import decorators
 from .toolbox import rgb2gray
 from . import bspline as mbs
@@ -197,23 +198,56 @@ def pad_to_same_size(img_1, img_2):
     return (img_1_padded, img_2_padded)
 
 
-def grid_from_rotation(grid, rot_mat):
-    if tuple(rot_mat.shape) == (2,2) and len(grid.shape) == 4:
-        return  torch.einsum('ij,bhwj->bhwi',rot_mat, grid)
-        # return rotated_grid
-    elif  tuple(rot_mat.shape) == (3,3) and len(grid.shape) == 5:
-        return  torch.einsum('ij,bdhwj->bdhwi',rot_mat, grid)
-    else:
+def matrix_time_grid(grid: torch.Tensor, rot_mat: torch.Tensor) -> torch.Tensor:
+    """Apply a linear transform matrix to every vector in a sampling grid.
+    Given a vector v and a matrix A, it performs the operation
+    $$ b = Av$$
+
+    Parameters
+    ----------
+    grid : torch.Tensor[B, H, W, 2] | torch.Tensor[B, D, H, W, 3]
+        Sampling grid containing 2D or 3D vectors.
+    rot_mat : torch.Tensor[2, 2] | torch.Tensor[3, 3]
+        Linear transform matrix matching the vector dimensionality.
+
+    Returns
+    -------
+    torch.Tensor
+        Transformed grid with the same shape as `grid`.
+
+    Raises
+    ------
+    ValueError
+        If `grid` and `rot_mat` shapes are not a supported 2D or 3D pair.
+    """
+    d = grid.shape[-1]
+    if rot_mat.shape != (d, d):
         raise ValueError(
-            "In 2d, grid must be of shape [B,H,W,2] and rot_mat [2, 2],"
-            " In 3d grid must be of shape [B, D, H, W,3] and rot_mat [3, 3]"
-            f"got grid.shape : {grid.shape} and rot_mat.shape = {rot_mat.shape}"
+            f"Expected rot_mat shape {(d,d)} to match grid last dim {d}, "
+            f"got grid.shape={tuple(grid.shape)} rot_mat.shape={tuple(rot_mat.shape)}"
         )
+
+    # Ensure same device/dtype (optional but usually what you want)
+    rot_mat = rot_mat.to(device=grid.device, dtype=grid.dtype)
+
+    return grid @ rot_mat.T
+    # if tuple(rot_mat.shape) == (2,2) and len(grid.shape) == 4:
+    #     return  torch.einsum('ij,bhwj->bhwi',rot_mat, grid)
+    #     # return rotated_grid
+    # elif  tuple(rot_mat.shape) == (3,3) and len(grid.shape) == 5:
+    #     return  torch.einsum('ij,bdhwj->bdhwi',rot_mat, grid)
+    # else:
+    #     raise ValueError(
+    #         "In 2d, grid must be of shape [B,H,W,2] and rot_mat [2, 2],"
+    #         " In 3d grid must be of shape [B, D, H, W,3] and rot_mat [3, 3]"
+    #         f"got grid.shape : {grid.shape} and rot_mat.shape = {rot_mat.shape}"
+    #     )
+
 
 def grid_from_rotation_translation(grid, rot_mat, translation):
 
         trans_grid  = grid + translation
-        rot_def =   grid_from_rotation(trans_grid, rot_mat)
+        rot_def =   matrix_time_grid(trans_grid, rot_mat)
         return rot_def
 
 def grid_from_rotation_translation_scaling(grid, rot_mat, translation, scale):
@@ -383,10 +417,13 @@ def dice(img_1, img_2):
 
 def average_dice(segs_1, segs_2, message = '', verbose = False):
     # print(type(segs_1))
+    if segs_1.device != segs_2.device:
+        raise ValueError(f"segs_1 and segs_2 must be the same device, got seg_1.device = {segs_1.device} and seg_2.device = {segs_2.device}")
     uni_1 = torch.unique(segs_1)
     uni_2 = torch.unique(segs_2)
 
     # print(uni_1, uni_2)
+
     assert torch.equal(uni_1, uni_2), f"segs_1 and segs_2 are not equal, got  {uni_1} and {uni_2}"
 
     mask_1 = torch.zeros_like(segs_1)
@@ -1143,17 +1180,13 @@ def temporal_img_cmp(img_1, img_2, seg = False, **kwargs):
 def checkDiffeo(field):
     if len(field.shape) == 4:
         _, H, W, _ = field.shape
-        det_jaco = detOfJacobian(field_2d_jacobian(field))[0]
+        det_jaco = detOfJacobian(field_jacobian(field))[0]
         I = .4 * torch.ones((H, W, 3))
         I[:, :, 0] = (det_jaco <= 0) * 0.83
         I[:, :, 1] = (det_jaco >= 0)
         return I
     elif len(field.shape) == 5:
-        field_im = grid2im(field)
-        jaco = SpatialGradient3d()(field_im)
-        # jaco = spacialGradient_3d(field,dx_convention='pixel')
-        det_jaco = detOfJacobian(jaco)
-        return det_jaco
+        return detOfJacobian(field_jacobian(field))
 
 
 @deco.deprecated("Please specify the dimension by using gridDef_plot_2d ot gridDef_plot_3d")
@@ -1806,6 +1839,30 @@ class RandomGaussianField:
         return divergence[None, None]
 
 
+def field_jacobian(field: torch.Tensor) -> torch.Tensor:
+    r"""
+    Compute the jacobian of a 2D or 3D vector field.
+
+    parameters:
+    -----------
+    field: torch.Tensor
+        2D field of shape (b, h, w, 2) or 3D field of shape (b, d, h, w, 3)
+
+    returns:
+    --------
+    jacobian of the field of shape (b, 2, 2, h, w) or (b, 3, 3, d, h, w)
+    """
+    if field.shape[-1] == 2 and field.dim() == 4:
+        f_d = grid2im(field)
+        return SpatialGradient()(f_d)#return field_2d_jacobian(field)
+    if field.shape[-1] == 3 and field.dim() == 5:
+        field_im = grid2im(field)
+        return SpatialGradient3d()(field_im)
+    raise ValueError(
+        f"field_jacobian expects a 2D or 3D field shaped as (b,h,w,2) or (b,d,h,w,3), got {tuple(field.shape)}"
+    )
+
+@deprecated
 def field_2d_jacobian(field):
     r"""
     compute the jacobian of the field
@@ -1842,9 +1899,9 @@ def field_2d_jacobian(field):
 
         plt.show()
     """
-
-    f_d = grid2im(field)
-    return SpatialGradient()(f_d)
+    return field_jacobian(field)
+    # f_d = grid2im(field)
+    # return SpatialGradient()(f_d)
 
 
 def field_2d_hessian(field_grad):

@@ -15,15 +15,16 @@ from matplotlib.widgets import Slider, Button
 file = "3D_20250313_lddmm_from_PSL_030_M03_to_PSL_030_M04_FLAIR3D_lddmm_francoisa_000.pk1"
 file = "3D_20250310_lddmm_from_PSL_030_M03_to_PSL_030_M04_FLAIR3D_lddmm_francoisa_000.pk1"
 file = "3D_20250326_simplex_test_turtlefox_000.pk1"
+file = "3D_20260311_IXI066-Guys-0731-T1_affine_lddmm_francoisa_001.pk1"
 
 # file = "3D_30_01_2025_ballforhance_LDDMM_000.pk1"
 # file = "3D_01_02_2025_ball_for_hanse_hanse_w_ball_Metamorphosis_000.pk1"
 # # file = "3D_02_12_2024_PSL_005_M06_to_PSL_005_M07_000.pk1"
 mr = mt.load_optimize_geodesicShooting(
     file,
-    path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/saved_optim/'),
+    # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/saved_optim/'),
     # path=os.path.join(ROOT_DIRECTORY, '../RadioAide_Preprocessing/optim_meso/'),
-
+    path = "/home/turtlefox/Documents/11_metamorphoses/data/IXI_results/affine_lddmm/"
 )
 name = file.split('.')[0]
 #
