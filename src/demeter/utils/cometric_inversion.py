@@ -83,13 +83,20 @@ class _CometricInverse(torch.autograd.Function):
 
 
 class CometricOperator:
-    r"""Image-dependent cometric with a cached Demeter spatial gradient.
+    r"""Image-dependent cometric with a cached periodic spatial gradient.
 
     .. math::
         A_I u = (1-\rho)u + \rho\,K(u\nabla I)\cdot\nabla I.
     """
 
-    def __init__(self, image, rho, kernel_operator, dx_convention="pixel"):
+    def __init__(
+        self,
+        image,
+        rho,
+        kernel_operator,
+        dx_convention="pixel",
+        gradient_boundary="periodic",
+    ):
         if image.ndim != 4 or image.shape[1] != 1:
             raise ValueError(f"image must have shape [B, 1, H, W], got {image.shape}")
         self.rho = float(rho)
@@ -97,7 +104,11 @@ class CometricOperator:
             raise ValueError("rho must be in [0, 1]")
 
         self.kernel_operator = kernel_operator
-        self.image_gradient = tb.spatialGradient(image, dx_convention=dx_convention)
+        self.image_gradient = tb.spatialGradient(
+            image,
+            dx_convention=dx_convention,
+            boundary=gradient_boundary,
+        )
 
     def __call__(self, covector):
         return _apply_cometric(

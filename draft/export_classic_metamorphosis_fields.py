@@ -166,7 +166,11 @@ def extract_trajectory(
 
     with torch.no_grad():
         cometric = CometricOperator(
-            images, rho, operator, dx_convention="pixel"
+            images,
+            rho,
+            operator,
+            dx_convention="pixel",
+            gradient_boundary="replicate",
         )
         image_gradients = cometric.image_gradient
         vector_momenta = -math.sqrt(rho) * (

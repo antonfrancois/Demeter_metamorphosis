@@ -11,7 +11,7 @@ from . import torchbox as tb
 
  # TODO : Faire docstring
 class FieldIntegrator:
-    def __init__(self,method,save=False,N=None,dx_convention = 'pixel'):
+    def __init__(self,method,save=False,N=None,dx_convention = 'pixel',boundary='border'):
         r"""
 
         :param method:
@@ -27,6 +27,11 @@ class FieldIntegrator:
         self.N = N
         self.flag = False
         self.dx_convention = dx_convention
+        self.boundary = boundary
+        if self.boundary not in ('border', 'periodic'):
+            raise ValueError("boundary must be 'border' or 'periodic'")
+        if self.boundary == 'periodic' and method != 'temporal':
+            raise NotImplementedError("periodic field integration supports temporal fields")
         self.kwargs = dict(padding_mode="border", align_corners=True)
         if method == 'fast_exp':
             self.integrator = self._fast_exp_integrator
@@ -39,7 +44,11 @@ class FieldIntegrator:
 
     def __call__(self,in_vectField,forward=True,verbose = False):
         self.shape = in_vectField.shape
-        if self.dx_convention == 'pixel':
+        if self.boundary == 'periodic':
+            if self.dx_convention != 'pixel':
+                raise NotImplementedError("periodic field integration requires pixel coordinates")
+            self.in_vectField = in_vectField.clone()
+        elif self.dx_convention == 'pixel':
             self.in_vectField = tb.pixel_to_2square_convention(in_vectField, is_grid=False)
         elif self.dx_convention == 'square':
             self.in_vectField = tb.square_to_2square_convention(in_vectField,is_grid=False)
@@ -59,12 +68,15 @@ class FieldIntegrator:
         # choose forward or backward integration
         self.sign = 1 if forward else -1
 
+        grid_convention = 'pixel' if self.boundary == 'periodic' else '2square'
         self.id_grid = tb.make_regular_grid(in_vectField.shape,
                                             device=device,
-                                            dx_convention='2square')
+                                            dx_convention=grid_convention)
 
         integrated = self.integrator()
 
+        if self.boundary == 'periodic':
+            return integrated
         if self.dx_convention == 'pixel':
             integrated = tb.square2_to_pixel_convention(integrated)
         elif self.dx_convention == 'square':
@@ -72,6 +84,16 @@ class FieldIntegrator:
         if self.flag:
             self.N = None
         return integrated
+
+    def _sample_field(self, field, grid):
+        if self.boundary == 'periodic':
+            return tb.imgDeform(
+                field,
+                grid,
+                dx_convention='pixel',
+                boundary='periodic',
+            )
+        return grid_sample(field, grid, **self.kwargs)
     # ==================================
     #
     #         Exponentials
@@ -105,7 +127,7 @@ class FieldIntegrator:
         for n in range(1,self.N+1):
             field = tb.grid2im(grid_def-self.id_grid)
             slave_grid.data = grid_def.data
-            interp_vectField = grid_sample(field,slave_grid,**self.kwargs)
+            interp_vectField = self._sample_field(field, slave_grid)
 
             grid_def += tb.im2grid(interp_vectField)
 
@@ -131,7 +153,7 @@ class FieldIntegrator:
                                  device=self.in_vectField.device)
         for n in range(1,2**self.N+1):
             slave_grid.data = grid_def.data
-            interp_vectField = grid_sample(in_vectField_im,slave_grid,**self.kwargs)
+            interp_vectField = self._sample_field(in_vectField_im, slave_grid)
 
             grid_def = grid_def + self.sign*tb.im2grid(interp_vectField)
 
@@ -169,8 +191,9 @@ class FieldIntegrator:
 
         for t in range(1,self.in_vectField.shape[0]):
             slave_grid = grid_def.detach()
-            interp_vectField = grid_sample(in_vectField_im[t,...].unsqueeze(0)
-                                           ,slave_grid,**self.kwargs)
+            interp_vectField = self._sample_field(
+                in_vectField_im[t, ...].unsqueeze(0), slave_grid
+            )
 
             grid_def += tb.im2grid(interp_vectField)
 
@@ -293,6 +316,5 @@ print('slow exp executed in ',end - start,' s')
 
 tb.deformation_show(diff_s,step=2,check_diffeo=True,title='slow_exp')
 """
-
 
 

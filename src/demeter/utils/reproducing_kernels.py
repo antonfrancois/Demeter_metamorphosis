@@ -1210,45 +1210,51 @@ def get_sigma_from_img_ratio(img_shape,subdiv,c=.1):
 
         return sigma
 
-class SobolevFluidOperator(torch.nn.Module):
-    r"""Periodic 2D Sobolev fluid operator on ``[B, 2, H, W]`` pixel fields.
 
-    The operator and its inverse are
+class SobolevFluidOperator(torch.nn.Module):
+    r"""Periodic finite-difference Sobolev operator on 2D pixel fields.
 
     .. math::
         L v = -\alpha \Delta v - \beta \nabla(\nabla \cdot v) + \gamma v,
         \qquad K = L^{-1}.
 
-    Periodic finite differences are diagonalized with a 2D FFT. For unit pixel
-    spacing and frequencies :math:`\theta_j = 2\pi k_j/N_j`, define
+    For frequencies :math:`\theta_j=2\pi k_j/N_j`, define
 
     .. math::
-        q_j = 4\sin^2(\theta_j/2) = 2-2\cos(\theta_j) \approx \xi_j^2,
-        \qquad s_j = \sin(\theta_j) \approx \xi_j.
+        q_j=4\sin^2(\theta_j/2),\qquad s_j=\sin(\theta_j).
 
-    With :math:`\lambda=\gamma+\alpha(q_x+q_y)`, the exact discrete symbol is
+    With :math:`\lambda=\gamma+\alpha(q_x+q_y)`, the symbol is
 
     .. math::
-        \widehat L =
+        \widehat L=
         \begin{pmatrix}
         \lambda+\beta q_x & \beta s_xs_y \\
         \beta s_xs_y & \lambda+\beta q_y
-        \end{pmatrix}
-        \approx (\gamma+\alpha|\xi|^2)I + \beta\xi\xi^T.
+        \end{pmatrix}.
 
-    ``apply_operator`` multiplies by this matrix at each frequency;
-    ``apply_inverse`` applies its closed-form ``2 x 2`` inverse.
+    ``K`` is the exact frequency-wise inverse of this validated discrete
+    operator.
     """
 
-    def __init__(self, alpha=0.5, beta=0.5, gamma=0.001):
+    def __init__(
+        self,
+        alpha=0.5,
+        beta=0.5,
+        gamma=0.001,
+        *,
+        boundary="periodic",
+    ):
         super().__init__()
         self.alpha = float(alpha)
         self.beta = float(beta)
         self.gamma = float(gamma)
+        self.boundary = str(boundary)
         self._symbol_cache = None
 
         if self.alpha < 0 or self.beta < 0 or self.gamma <= 0:
             raise ValueError("alpha and beta must be non-negative, and gamma must be positive")
+        if self.boundary != "periodic":
+            raise ValueError("SobolevFluidOperator requires boundary='periodic'")
 
     def _symbol(self, field):
         height, width = field.shape[-2:]
@@ -1305,7 +1311,7 @@ class SobolevFluidOperator(torch.nn.Module):
             raise TypeError(f"field must be floating point, got {field.dtype}")
 
     def apply_operator(self, field):
-        """Apply ``L = -alpha Laplacian - beta grad div + gamma Id``."""
+        """Apply the periodic finite-difference operator ``L``."""
         self._check_field(field)
         field_hat = torch.fft.rfft2(field)
         l_xx, l_xy, l_yy = self._symbol(field)
@@ -1319,7 +1325,7 @@ class SobolevFluidOperator(torch.nn.Module):
         return torch.fft.irfft2(result_hat, s=field.shape[-2:])
 
     def apply_inverse(self, field):
-        """Apply ``K = L^-1``."""
+        """Apply the exact spectral inverse ``K = L^-1``."""
         self._check_field(field)
         field_hat = torch.fft.rfft2(field)
         k_xx, k_xy, k_yy = self._inverse_symbol(field)
@@ -1336,7 +1342,10 @@ class SobolevFluidOperator(torch.nn.Module):
         return self.apply_inverse(field)
 
     def extra_repr(self):
-        return f"alpha={self.alpha}, beta={self.beta}, gamma={self.gamma}, boundary='periodic'"
+        return (
+            f"alpha={self.alpha}, beta={self.beta}, gamma={self.gamma}, "
+            f"boundary='{self.boundary}'"
+        )
 
     def init_kernel(self, image):
         if image.ndim != 4:
@@ -1348,4 +1357,5 @@ class SobolevFluidOperator(torch.nn.Module):
             "alpha": self.alpha,
             "beta": self.beta,
             "gamma": self.gamma,
+            "boundary": self.boundary,
         }

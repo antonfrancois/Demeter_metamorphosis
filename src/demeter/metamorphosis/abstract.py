@@ -840,7 +840,10 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         #     return temporal_integrator(self.field_stock[:n_step]/self.n_step,forward=True)
         #
         temporal_integrator = vff.FieldIntegrator(
-            method="temporal", save=save, dx_convention=self.dx_convention
+            method="temporal",
+            save=save,
+            dx_convention=self.dx_convention,
+            boundary=getattr(self, "field_integration_boundary", "border"),
         )
         if from_t is None and to_t is None:
             print("Je suis passé par là")
@@ -877,7 +880,10 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         """
 
         temporal_integrator = vff.FieldIntegrator(
-            method="temporal", save=save, dx_convention=self.dx_convention
+            method="temporal",
+            save=save,
+            dx_convention=self.dx_convention,
+            boundary=getattr(self, "field_integration_boundary", "border"),
         )
         if from_t is None and to_t is None:
             return temporal_integrator(self.field_stock / self.n_step, forward=False)
@@ -979,7 +985,10 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         temporal = temporal_nfig > 0
         # temporal integration over v_t
         temporal_integrator = vff.FieldIntegrator(
-            method="temporal", save=temporal, dx_convention=self.dx_convention
+            method="temporal",
+            save=temporal,
+            dx_convention=self.dx_convention,
+            boundary=getattr(self, "field_integration_boundary", "border"),
         )
 
         # field_stock_toplot = tb.pixel2square_convention(self.field_stock)

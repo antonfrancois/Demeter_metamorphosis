@@ -63,7 +63,7 @@ def test_extract_trajectory_includes_zero_and_endpoint_states():
         atol=2e-5,
     )
     expected_image_velocities = CometricOperator(
-        trajectory["images"], 0.4, operator
+        trajectory["images"], 0.4, operator, gradient_boundary="replicate"
     )(trajectory["image_momenta"])
     torch.testing.assert_close(
         trajectory["image_velocities"], expected_image_velocities

@@ -520,7 +520,7 @@ def thresholding(image, bounds=(0, 1)):
                          )
 
 
-def spatialGradient(image, dx_convention='pixel'):
+def spatialGradient(image, dx_convention='pixel', boundary='replicate'):
     """ Compute the spatial gradient on 2d and 3d images by applying
     a sobel kernel. Perform the normalisation of the gradient according
     to the spatial convention (`dx_convention`) and make it the closer possible
@@ -535,6 +535,9 @@ def spatialGradient(image, dx_convention='pixel'):
         If tensor, it must be of shape [B,2] or [B,3], where B is the batch size and
         the second dimension is the spatial resolution of the image giving the pixel size.
         Attention : this last values must be in reverse order of the image shape.
+    boundary : str
+        ``'replicate'`` preserves the existing Kornia behavior. ``'periodic'``
+        applies the same normalized Sobel stencil with circular indexing.
 
     Returns
     -------
@@ -568,9 +571,13 @@ def spatialGradient(image, dx_convention='pixel'):
         dx_convention = torch.tensor(dx_convention)
     elif not isinstance(dx_convention, torch.Tensor):
         raise ValueError(f"dx_convention must be a string or a tensor, got {type(dx_convention)}")
+    if boundary not in ('replicate', 'periodic'):
+        raise ValueError("boundary must be 'replicate' or 'periodic'")
     if len(image.shape) == 4:
-        grad_image = spatialGradient_2d(image, dx_convention)
+        grad_image = spatialGradient_2d(image, dx_convention, boundary)
     elif len(image.shape) == 5:
+        if boundary == 'periodic':
+            raise NotImplementedError("periodic spatial gradients are implemented only in 2D")
         grad_image = spatialGradient_3d(image, dx_convention)
     else:
         raise ValueError(f"image should be [B,C,H,W] or [B,C,D,H,W] got {image.shape}")
@@ -606,7 +613,7 @@ def spatialGradient(image, dx_convention='pixel'):
         return grad_image
 
 
-def spatialGradient_2d(image, dx_convention='pixel'):
+def spatialGradient_2d(image, dx_convention='pixel', boundary='replicate'):
     """
     Compute the spatial gradient on 2d images by applying
     a sobel kernel
@@ -615,8 +622,15 @@ def spatialGradient_2d(image, dx_convention='pixel'):
     :param dx_convention:
     :return: [B,C,2,H,W]
     """
-    normalized = True  # if dx_convention == "square" else False
-    grad_image = SpatialGradient(mode='sobel', normalized=normalized)(image)
+    if boundary == 'periodic':
+        B, C, H, W = image.shape
+        sobel_x = get_sobel_kernel_2d().to(image) / 8
+        kernels = torch.stack((sobel_x, sobel_x.T))[:, None]
+        padded = F.pad(image.reshape(B * C, 1, H, W), (1, 1, 1, 1), 'circular')
+        grad_image = F.conv2d(padded, kernels).reshape(B, C, 2, H, W)
+    else:
+        normalized = True  # if dx_convention == "square" else False
+        grad_image = SpatialGradient(mode='sobel', normalized=normalized)(image)
 
     # other normalisation than the pixel one
 
@@ -1569,7 +1583,7 @@ def field2diffeo(in_vectField, N=None, save=False, forward=True):
     return vff.FieldIntegrator(method='fast_exp')(in_vectField.clone(), forward=forward)
 
 
-def imgDeform(img, deform_grid, dx_convention='2square', clamp=False, mode = 'bilinear', gridsample_kwargs= None):
+def imgDeform(img, deform_grid, dx_convention='2square', clamp=False, mode = 'bilinear', gridsample_kwargs= None, boundary='zeros'):
     """
     Apply a deformation grid to an image
 
@@ -1585,6 +1599,9 @@ def imgDeform(img, deform_grid, dx_convention='2square', clamp=False, mode = 'bi
         if True, clamp the image between 0 and 1 if the max value is less than 1 else between 0 and 255 (default False)
     mode : str, optional
         torch grid_sample argument for interpolation mode.
+    boundary : str, optional
+        ``'zeros'`` preserves the existing behavior. ``'periodic'`` wraps a
+        2D pixel-coordinate grid and interpolates across a circular seam.
 
     Returns
     -------
@@ -1594,19 +1611,47 @@ def imgDeform(img, deform_grid, dx_convention='2square', clamp=False, mode = 'bi
 
     if img.shape[0] > 1 and deform_grid.shape[0] == 1:
         deform_grid = torch.cat(img.shape[0] * [deform_grid], dim=0)
-    if dx_convention == 'pixel':
-        deform_grid = pixel_to_2square_convention(deform_grid)
-    elif dx_convention == 'square':
-        deform_grid = square_to_2square_convention(deform_grid)
-    if gridsample_kwargs is None:
-        gridsample_kwargs = DLT_KW_GRIDSAMPLE
-    deformed = F.grid_sample(img.to(deform_grid.dtype),
-                             deform_grid,
-                             mode = mode,
-                             # **gridsample_kwargs
-                             padding_mode="zeros",
-                         align_corners=True
-                             )
+    if boundary == 'periodic':
+        if dx_convention != 'pixel' or img.ndim != 4:
+            raise NotImplementedError(
+                "periodic imgDeform requires a 2D pixel-coordinate grid"
+            )
+        if mode not in ('bilinear', 'nearest'):
+            raise ValueError("periodic imgDeform supports bilinear or nearest mode")
+        H, W = img.shape[-2:]
+        periodic_grid = torch.stack(
+            (
+                2 * torch.remainder(deform_grid[..., 0], W) / W - 1,
+                2 * torch.remainder(deform_grid[..., 1], H) / H - 1,
+            ),
+            dim=-1,
+        )
+        periodic_image = F.pad(
+            img.to(deform_grid.dtype), (0, 1, 0, 1), mode='circular'
+        )
+        deformed = F.grid_sample(
+            periodic_image,
+            periodic_grid,
+            mode=mode,
+            padding_mode='border',
+            align_corners=True,
+        )
+    else:
+        if boundary != 'zeros':
+            raise ValueError("boundary must be 'zeros' or 'periodic'")
+        if dx_convention == 'pixel':
+            deform_grid = pixel_to_2square_convention(deform_grid)
+        elif dx_convention == 'square':
+            deform_grid = square_to_2square_convention(deform_grid)
+        if gridsample_kwargs is None:
+            gridsample_kwargs = DLT_KW_GRIDSAMPLE
+        deformed = F.grid_sample(img.to(deform_grid.dtype),
+                                 deform_grid,
+                                 mode = mode,
+                                 # **gridsample_kwargs
+                                 padding_mode="zeros",
+                             align_corners=True
+                                 )
     # if len(I.shape) == 5:
     #     deformed = deformed.permute(0,1,4,3,2)
     if clamp:
@@ -1962,8 +2007,11 @@ def detOfJacobian(jaco):
 
 class Field_divergence(torch.nn.Module):
 
-    def __init__(self, dx_convention='pixel'):
+    def __init__(self, dx_convention='pixel', boundary='reflect'):
         self.dx_convention = dx_convention
+        self.boundary = boundary
+        if self.boundary not in ('reflect', 'periodic'):
+            raise ValueError("boundary must be 'reflect' or 'periodic'")
 
         super(Field_divergence, self).__init__()
 
@@ -1979,9 +2027,18 @@ class Field_divergence(torch.nn.Module):
 
     def forward(self, field):
         """
-        Note: we don't use the sobel implementation in SpatialGradient to save computation
+        The existing reflected path uses direct filters to save computation.
         """
         field_as_im = grid2im(field)
+        if self.boundary == 'periodic':
+            if field.shape[-1] != 2:
+                raise NotImplementedError("periodic field divergence is implemented only in 2D")
+            gradient = spatialGradient(
+                field_as_im,
+                dx_convention=self.dx_convention,
+                boundary='periodic',
+            )
+            return gradient[:, 0, 0, None] + gradient[:, 1, 1, None]
         if field.shape[-1] == 2:
             x_sobel = get_sobel_kernel_2d().to(field.device) / 8
             _, H, W, _ = field.shape
