@@ -22,6 +22,9 @@ from draft.playground.field_playground_core import (
     TIMING_WARMUPS,
     _outlier_filtered_mean,
     _timed_call,
+    prepare_scalar_display,
+    prepare_vector_display,
+    scaled_field_title,
 )
 from draft.playground.field_playground import (
     DEFAULT_IMAGE,
@@ -57,6 +60,26 @@ def test_vector_and_scalar_editing_primitives():
     erased = erase_stroke(scalar, [(8, 10)], sigma=3)
     assert erased[0, 0, 10, 8].abs() < 1e-6
     assert erased[0, 0, 20, 30] < -1
+
+
+def test_shared_field_display_scaling_and_title_suffix():
+    scalar = torch.zeros(1, 1, 10, 10)
+    scalar[..., -1, :] = 1
+    scalar[..., 0, 0] = 0.0015
+    scalar[..., 0, 1] = 0.0005
+    display, limit = prepare_scalar_display(scalar)
+    mask = np.ma.getmaskarray(display)
+    assert limit == pytest.approx(1)
+    assert not mask[0, 0]
+    assert mask[0, 1]
+
+    vector = torch.full((1, 2, 20, 30), 2.0)
+    vector[:, 1].zero_()
+    _, x, y, factor = prepare_vector_display(vector)
+    assert x.numel() == y.numel() > 0
+    assert factor == pytest.approx(6)
+    assert scaled_field_title("Velocity", factor) == "Velocity  [x6]"
+    assert scaled_field_title("Velocity", 1.019) == "Velocity"
 
 
 def test_timing_uses_warmup_and_outlier_filtered_mean():

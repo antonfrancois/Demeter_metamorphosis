@@ -36,7 +36,9 @@ from draft.playground.field_playground_core import (
     AnalysisResult,
     FORMAT_VERSION,
     LoadedField,
+    MAX_DISPLAY_ARROWS,
     SCALAR_KINDS,
+    VECTOR_DISPLAY_RELATIVE_THRESHOLD,
     VECTOR_KINDS,
     add_vector_arrow,
     analyze_field,
@@ -46,13 +48,14 @@ from draft.playground.field_playground_core import (
     load_field_file,
     mode_for_kind,
     paint_scalar_stroke,
+    prepare_scalar_display,
+    prepare_vector_display,
     resize_field,
+    scaled_field_title,
 )
 
 IMAGE_BANK = PROJECT_ROOT / "examples" / "im2Dbank"
 DEFAULT_IMAGE = IMAGE_BANK / "BraTS2021_00090_80_.png"
-VECTOR_DISPLAY_RELATIVE_THRESHOLD = 0.03
-MAX_DISPLAY_ARROWS = 2500
 UNDO_LIMIT = 12
 PANEL_FONT_SIZE = 11
 PRIMAL_COLOR = "#ffd166"
@@ -1074,35 +1077,11 @@ class FieldPlayground:
         footer: str | None = None,
     ) -> None:
         self._plot_base_image(axis)
-        display_field = field.detach().cpu()
-        magnitude = display_field.square().sum(dim=1).sqrt()[0]
-        maximum = float(magnitude.max())
-        visible = magnitude >= max(
-            1e-8, VECTOR_DISPLAY_RELATIVE_THRESHOLD * maximum
+        display_field, x, y, factor = prepare_vector_display(
+            field,
+            spacing=int(self.spacing_slider.val),
         )
-        visible_count = int(visible.sum())
-        factor = 1.0
-        if visible_count:
-            q95 = float(torch.quantile(magnitude[visible], 0.95))
-            target = float(np.clip(0.06 * min(magnitude.shape), 12, 48))
-            factor = target / q95
-            pooled = F.max_pool2d(
-                magnitude[None, None], kernel_size=3, stride=1, padding=1
-            )[0, 0]
-            spacing = int(self.spacing_slider.val)
-            spacing = max(
-                spacing,
-                int(np.ceil(np.sqrt(visible_count / MAX_DISPLAY_ARROWS))),
-            )
-            mask = torch.zeros_like(visible)
-            mask[::spacing, ::spacing] = True
-            mask |= visible & (magnitude == pooled)
-            y, x = torch.where(mask & visible)
-            if y.numel() > MAX_DISPLAY_ARROWS:
-                keep = torch.linspace(
-                    0, y.numel() - 1, MAX_DISPLAY_ARROWS
-                ).round().long()
-                y, x = y[keep], x[keep]
+        if y.numel():
             axis.quiver(
                 x.numpy(),
                 y.numpy(),
@@ -1126,9 +1105,11 @@ class FieldPlayground:
                 color="#26343c",
                 clip_on=False,
             )
-        suffix = "" if abs(factor - 1) < 0.02 else f"  [x{factor:.2g}]"
         axis.set_title(
-            title + suffix, fontsize=PANEL_FONT_SIZE, color="#24333b", pad=8
+            scaled_field_title(title, factor),
+            fontsize=PANEL_FONT_SIZE,
+            color="#24333b",
+            pad=8,
         )
 
     def _plot_scalar(
@@ -1163,19 +1144,17 @@ class FieldPlayground:
                     colorbar_axis = axis.inset_axes([1.02, 0, 0.035, 1])
                     self.error_colorbar = self.fig.colorbar(heatmap, cax=colorbar_axis)
             else:
-                absolute = values.abs()
-                limit = max(float(torch.quantile(absolute.flatten(), 0.99)), 1e-8)
-                display = np.ma.masked_where(
-                    absolute.numpy() < 0.001 * limit, values.numpy()
-                )
-                axis.imshow(
-                    display,
-                    cmap=SIGNED_FIELD_CMAP if signed else "magma",
-                    origin="lower",
-                    vmin=-limit if signed else 0,
-                    vmax=limit,
-                    alpha=0.68 if signed else 0.78,
-                )
+                prepared = prepare_scalar_display(values)
+                if prepared is not None:
+                    display, limit = prepared
+                    axis.imshow(
+                        display,
+                        cmap=SIGNED_FIELD_CMAP if signed else "magma",
+                        origin="lower",
+                        vmin=-limit if signed else 0,
+                        vmax=limit,
+                        alpha=0.68 if signed else 0.78,
+                    )
         axis.set_title(title, fontsize=PANEL_FONT_SIZE, color="#24333b", pad=8)
 
     def _plot_message(self, axis, message: str) -> None:

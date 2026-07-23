@@ -34,6 +34,72 @@ FIELD_KEYS = (
     "residual",
     "residuals",
 )
+VECTOR_DISPLAY_RELATIVE_THRESHOLD = 0.03
+MAX_DISPLAY_ARROWS = 2500
+DEFAULT_VECTOR_DISPLAY_SPACING = 6
+
+
+def prepare_scalar_display(field: torch.Tensor):
+    """Return the field playground's robust scalar display and color limit."""
+    values = field.detach().cpu()
+    if values.ndim == 4:
+        values = values[0, 0]
+    elif values.ndim == 3:
+        values = values[0]
+    if torch.count_nonzero(values) == 0:
+        return None
+    absolute = values.abs()
+    limit = max(float(torch.quantile(absolute.flatten(), 0.99)), 1e-8)
+    display = np.ma.masked_where(
+        absolute.numpy() < 0.001 * limit,
+        values.numpy(),
+    )
+    return display, limit
+
+
+def prepare_vector_display(
+    field: torch.Tensor,
+    *,
+    spacing: int = DEFAULT_VECTOR_DISPLAY_SPACING,
+):
+    """Return sampled vectors and the field playground's display multiplier."""
+    values = field.detach().cpu()
+    if values.ndim == 3:
+        values = values[None]
+    magnitude = values.square().sum(dim=1).sqrt()[0]
+    maximum = float(magnitude.max())
+    visible = magnitude >= max(1e-8, VECTOR_DISPLAY_RELATIVE_THRESHOLD * maximum)
+    visible_count = int(visible.sum())
+    empty = torch.empty(0, dtype=torch.long)
+    if not visible_count:
+        return values, empty, empty, 1.0
+
+    q95 = float(torch.quantile(magnitude[visible], 0.95))
+    target = float(np.clip(0.06 * min(magnitude.shape), 12, 48))
+    factor = target / q95
+    pooled = F.max_pool2d(
+        magnitude[None, None],
+        kernel_size=3,
+        stride=1,
+        padding=1,
+    )[0, 0]
+    spacing = max(
+        max(1, int(spacing)),
+        int(np.ceil(np.sqrt(visible_count / MAX_DISPLAY_ARROWS))),
+    )
+    mask = torch.zeros_like(visible)
+    mask[::spacing, ::spacing] = True
+    mask |= visible & (magnitude == pooled)
+    y, x = torch.where(mask & visible)
+    if y.numel() > MAX_DISPLAY_ARROWS:
+        keep = torch.linspace(0, y.numel() - 1, MAX_DISPLAY_ARROWS).round().long()
+        y, x = y[keep], x[keep]
+    return values, x, y, factor
+
+
+def scaled_field_title(title: str, factor: float) -> str:
+    suffix = "" if abs(factor - 1) < 0.02 else f"  [x{factor:.2g}]"
+    return title + suffix
 
 
 def _as_tensor(value: Any) -> torch.Tensor:
