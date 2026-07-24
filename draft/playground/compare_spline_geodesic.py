@@ -324,8 +324,8 @@ def main(argv: list[str] | None = None) -> dict[str, Any]:
     report = _serializable_report(comparison)
     print(json.dumps(report, indent=2))
     print(
-        "Finite-step differences are expected because the classical and spline "
-        "semi-Lagrangian schemes place source terms on opposite sides of the warp."
+        "With zero acceleration, zero jerk, and no controls, the classical and "
+        "spline trajectories use the same source-inside-warp update."
     )
     if args.json is not None:
         args.json.expanduser().write_text(
