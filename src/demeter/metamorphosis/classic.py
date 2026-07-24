@@ -120,15 +120,28 @@ class Metamorphosis_integrator(Geodesic_integrator):
 
         # Lagrangian scheme on images and residuals
         deformation = self.id_grid - self.rho * field / self.n_step
-        image = self._update_image_semiLagrangian_(
-            momentum, image, deformation
+        image_source = (1 - self.rho) * momentum.momentum_I
+        self.norm_z_i = None
+        if self.flag_hamiltonian_integration:
+            self.norm_z_i = .5 * image_source.pow(2).sum()
+        image = tb.imgDeform(
+            image + image_source / self.n_step,
+            deformation,
+            dx_convention=self.dx_convention,
+            boundary=getattr(self, "deformation_boundary", "zeros"),
         )
 
-        momentum_I = self._compute_div_momentum_semiLagrangian_(
+        transport = self.rho * field
+        momentum_source = -momentum.momentum_I * tb.Field_divergence(
+            dx_convention=self.dx_convention,
+            boundary=getattr(self, "divergence_boundary", "reflect"),
+        )(transport)
+        momentum_I = tb.imgDeform(
+            momentum.momentum_I + momentum_source / self.n_step,
             deformation,
-            momentum,
-            sqrt(self.rho),
-            sqrt(self.rho) * field,
+            dx_convention=self.dx_convention,
+            clamp=False,
+            boundary=getattr(self, "deformation_boundary", "zeros"),
         )
 
         momentum = Momenta(momentum_I=momentum_I)
