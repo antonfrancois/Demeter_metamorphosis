@@ -31,7 +31,7 @@ def test_rho_zero_classical_geodesic_and_spline_are_identical():
 def test_periodic_nonzero_geodesic_matches_zero_jerk_spline_numerically():
     torch.manual_seed(22)
     source = torch.rand(1, 1, 8, 9)
-    momentum = 1e-3 * torch.randn_like(source)
+    momentum = 0.1 * torch.randn_like(source)
     comparison = compare_geodesics(
         source,
         momentum,
@@ -46,9 +46,9 @@ def test_periodic_nonzero_geodesic_matches_zero_jerk_spline_numerically():
         device="cpu",
     )
 
-    assert comparison["metrics"]["image"]["relative_rms"] < 1e-6
-    assert comparison["metrics"]["momentum"]["relative_rms"] < 1e-6
-    assert comparison["metrics"]["velocity"]["relative_rms"] < 1e-5
+    assert comparison["metrics"]["image"]["maximum_absolute"] < 1e-6
+    assert comparison["metrics"]["momentum"]["maximum_absolute"] < 1e-6
+    assert comparison["metrics"]["velocity"]["maximum_absolute"] < 1e-6
     assert comparison["metrics"]["geodesic_invariant"] == {
         "maximum_force": 0.0,
         "maximum_acceleration": 0.0,
