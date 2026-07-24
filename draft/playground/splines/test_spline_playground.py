@@ -34,6 +34,7 @@ from draft.playground.splines.core import (
     SplineSetup,
     load_setup,
     resolve_device,
+    run_classical,
     run_spline,
     save_setup,
     zero_setup,
@@ -214,6 +215,99 @@ def test_run_converts_initial_force_and_aligns_interval_fields_to_nodes():
         trajectory.momentum[-1][None] * endpoint_gradient
     )
     torch.testing.assert_close(trajectory.velocity[-1][None], expected_velocity)
+
+
+def test_classical_run_matches_geodesic_spline_and_zeroes_spline_fields():
+    torch.manual_seed(13)
+    source = torch.rand(1, 1, 8, 9)
+    target = torch.roll(source, shifts=1, dims=-1)
+    setup = zero_setup(
+        source,
+        target,
+        SplineParameters(
+            rho=0.25,
+            gamma=0.3,
+            n_steps=3,
+            control_steps=(),
+        ),
+    )
+    setup.initial_momentum.normal_(std=0.1)
+    progress = []
+
+    classical = run_classical(
+        setup,
+        device="cpu",
+        progress_callback=lambda completed, total: progress.append(
+            (completed, total)
+        ),
+    )
+    spline = run_spline(setup, device="cpu")
+
+    for name in (
+        "images",
+        "deformed_source",
+        "photometric_only",
+        "momentum",
+        "velocity",
+        "vector_momentum",
+        "target_mse",
+    ):
+        torch.testing.assert_close(
+            getattr(classical, name),
+            getattr(spline, name),
+            atol=2e-6,
+            rtol=2e-6,
+        )
+    for name in ("force", "acceleration", "jerk"):
+        assert torch.count_nonzero(getattr(classical, name)) == 0
+        assert torch.count_nonzero(classical.field_energies[name]) == 0
+    assert progress == [(1, 3), (2, 3), (3, 3)]
+
+
+def test_classical_run_rejects_drawn_non_momentum_fields():
+    setup = zero_setup(
+        torch.zeros(1, 1, 5, 6),
+        parameters=SplineParameters(n_steps=2, control_steps=(1,)),
+    )
+    for field, message in (
+        (setup.initial_force, "initial force"),
+        (setup.initial_jerk, "initial jerk"),
+        (setup.control_jerks, "control jerk"),
+    ):
+        field.fill_(1)
+        with pytest.raises(ValueError, match=message):
+            run_classical(setup, device="cpu")
+        field.zero_()
+
+
+def test_classical_button_uses_shared_workspace_and_reports_invalid_fields():
+    source = torch.zeros(1, 1, 8, 9)
+    source[..., 2:6, 3:7] = 0.5
+    setup = zero_setup(
+        source,
+        torch.roll(source, shifts=1, dims=-1),
+        SplineParameters(rho=0.25, gamma=0.3, n_steps=2),
+    )
+    setup.initial_momentum.fill_(0.05)
+    app = SplinePlayground(setup, device="cpu")
+
+    app.run_classical()
+    assert app.last_error is None
+    assert app.cache is not None
+    assert app.cache.images.shape == (3, 1, 8, 9)
+    assert torch.count_nonzero(app.cache.force) == 0
+    assert torch.count_nonzero(app.cache.acceleration) == 0
+    assert torch.count_nonzero(app.cache.jerk) == 0
+    assert "Classical metamorphosis complete" in app.status_text.get_text()
+    app.set_time_index(2)
+    assert app.current_ax.get_title().startswith("Current image")
+
+    app.fields["initial_force"].fill_(1)
+    app.run_classical()
+    assert app.cache is None
+    assert isinstance(app.last_error, ValueError)
+    assert "accepts only initial momentum" in app.status_text.get_text()
+    plt.close(app.fig)
 
 
 def test_setup_canonicalization_rejects_invalid_data_and_breaks_aliases():
@@ -406,6 +500,11 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.make_setup().parameters.rho == pytest.approx(0.99)
     assert app.menu_button.ax.get_position().y0 > app.file_button.ax.get_position().y0
     assert app.file_button.ax.get_position().y0 > app.run_button.ax.get_position().y0
+    assert (
+        app.run_button.ax.get_position().y0
+        > app.classical_button.ax.get_position().y0
+        > app.clear_button.ax.get_position().y0
+    )
     shortcuts = next(
         text for text in app.fig.texts if text.get_text().startswith("P  parameters")
     )

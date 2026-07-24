@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 from pathlib import Path
 import sys
 from typing import Any
@@ -22,44 +21,15 @@ for path in (PROJECT_ROOT, PROJECT_ROOT / "src"):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-from demeter.metamorphosis.classic import Metamorphosis_integrator
-from demeter.metamorphosis.var_classes import Momenta
-from demeter.utils import torchbox as tb
-from demeter.utils.reproducing_kernels import SobolevFluidOperator
 from draft.export_classic_metamorphosis_fields import load_image
 from draft.playground.field_playground_core import load_field_file
 from draft.playground.splines.core import (
     SplineParameters,
     load_setup,
-    resolve_device,
+    run_classical,
     run_spline,
     zero_setup,
 )
-
-
-def _operator(parameters: SplineParameters) -> SobolevFluidOperator:
-    return SobolevFluidOperator(
-        parameters.alpha,
-        parameters.beta,
-        parameters.gamma,
-        boundary="periodic",
-    )
-
-
-def _node_velocity(
-    images: torch.Tensor,
-    momenta: torch.Tensor,
-    parameters: SplineParameters,
-) -> torch.Tensor:
-    gradient = tb.spatialGradient(
-        images,
-        dx_convention="pixel",
-        boundary="periodic",
-    )
-    vector_momentum = -math.sqrt(parameters.rho) * (
-        gradient * momenta.unsqueeze(2)
-    ).sum(dim=1)
-    return _operator(parameters)(vector_momentum)
 
 
 @torch.inference_mode()
@@ -70,37 +40,13 @@ def run_classical_geodesic(
     *,
     device: str | torch.device,
 ) -> dict[str, torch.Tensor]:
-    run_device = resolve_device(device)
-    source_device = source.to(run_device)
-    momentum_device = initial_momentum.to(run_device)
-    integrator = Metamorphosis_integrator(
-        method="semiLagrangian",
-        rho=parameters.rho,
-        boundary="periodic",
-        kernelOperator=_operator(parameters),
-        n_step=parameters.n_steps,
-        dx_convention="pixel",
-    )
-    integrator(
-        source_device,
-        Momenta(momentum_I=momentum_device),
-        save=True,
-    )
-    images = torch.cat((source.cpu(), integrator.image_stock), dim=0)
-    momenta = torch.cat(
-        (
-            initial_momentum.cpu(),
-            torch.cat(
-                [state.momentum_I for state in integrator.momentum_stock],
-                dim=0,
-            ),
-        ),
-        dim=0,
-    )
+    setup = zero_setup(source, source, parameters)
+    setup.initial_momentum.copy_(initial_momentum)
+    trajectory = run_classical(setup, device=device)
     return {
-        "images": images,
-        "momentum": momenta,
-        "velocity": _node_velocity(images, momenta, parameters),
+        "images": trajectory.images,
+        "momentum": trajectory.momentum,
+        "velocity": trajectory.velocity,
     }
 
 

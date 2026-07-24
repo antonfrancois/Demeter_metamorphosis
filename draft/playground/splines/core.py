@@ -17,10 +17,12 @@ from typing import Any
 import torch
 import torch.nn.functional as F
 
+from demeter.metamorphosis.classic import Metamorphosis_integrator
 from demeter.metamorphosis.splines import (
     MetamorphosisSplineIntegrator,
     SplinesVariables,
 )
+from demeter.metamorphosis.var_classes import Momenta
 from demeter.utils import torchbox as tb
 from demeter.utils.cometric_inversion import CometricOperator
 from demeter.utils.reproducing_kernels import SobolevFluidOperator
@@ -632,6 +634,135 @@ def run_spline(
         force=force,
         acceleration=acceleration,
         jerk=jerk,
+        velocity=velocity,
+        vector_momentum=vector_momentum,
+        field_energies=field_energies,
+        target_mse=target_mse,
+        elapsed_seconds=elapsed,
+    )
+
+
+def run_classical(
+    setup: SplineSetup,
+    *,
+    device: str | torch.device = "auto",
+    progress_callback: Callable[[int, int], None] | None = None,
+) -> SplineTrajectory:
+    """Run classical shooting from a setup containing only initial momentum."""
+    if progress_callback is not None and not callable(progress_callback):
+        raise TypeError("progress_callback must be callable")
+    unsupported = [
+        name
+        for name, field in (
+            ("initial force", setup.initial_force),
+            ("initial jerk", setup.initial_jerk),
+            ("control jerk", setup.control_jerks),
+        )
+        if bool(torch.count_nonzero(field))
+    ]
+    if unsupported:
+        raise ValueError(
+            "classical metamorphosis accepts only initial momentum; clear "
+            + ", ".join(unsupported)
+        )
+
+    parameters = setup.parameters
+    run_device = resolve_device(device)
+    source = setup.source.to(run_device)
+    initial_momentum = setup.initial_momentum.to(run_device)
+    kernel = SobolevFluidOperator(
+        alpha=parameters.alpha,
+        beta=parameters.beta,
+        gamma=parameters.gamma,
+        boundary="periodic",
+    )
+    integrator = Metamorphosis_integrator(
+        method="semiLagrangian",
+        rho=parameters.rho,
+        kernelOperator=kernel,
+        n_step=parameters.n_steps,
+        dx_convention="pixel",
+        boundary="periodic",
+    )
+
+    if run_device.type == "cuda":
+        torch.cuda.synchronize(run_device)
+    start = perf_counter()
+    with torch.no_grad():
+        integrator(
+            source,
+            Momenta(momentum_I=initial_momentum),
+            save=True,
+            progress_callback=progress_callback,
+        )
+        images = torch.cat(
+            (source.detach().cpu(), integrator.image_stock),
+            dim=0,
+        ).contiguous()
+        momentum = torch.cat(
+            (
+                initial_momentum.detach().cpu(),
+                torch.cat(
+                    [state.momentum_I for state in integrator.momentum_stock],
+                    dim=0,
+                ),
+            ),
+            dim=0,
+        ).contiguous()
+        deformed_source_device, photometric_only_device = _decompose_image_nodes(
+            source,
+            integrator.field_stock.to(run_device),
+            ((1 - parameters.rho) * momentum[:-1]).to(run_device),
+        )
+        if parameters.rho == 0:
+            velocity_device = source.new_zeros(
+                (parameters.n_steps + 1, 2) + tuple(source.shape[-2:])
+            )
+        else:
+            image_nodes = images.to(run_device)
+            momentum_nodes = momentum.to(run_device)
+            gradient = tb.spatialGradient(
+                image_nodes,
+                dx_convention="pixel",
+                boundary="periodic",
+            )[:, 0]
+            velocity_device = -sqrt(parameters.rho) * kernel(
+                momentum_nodes * gradient
+            )
+        vector_momentum_device = kernel.apply_operator(velocity_device)
+    if run_device.type == "cuda":
+        torch.cuda.synchronize(run_device)
+
+    deformed_source = deformed_source_device.detach().cpu().contiguous()
+    photometric_only = photometric_only_device.detach().cpu().contiguous()
+    velocity = velocity_device.detach().cpu().contiguous()
+    vector_momentum = vector_momentum_device.detach().cpu().contiguous()
+    zero = torch.zeros_like(momentum)
+    velocity_energy = (velocity * vector_momentum).sum(dim=(1, 2, 3))
+    momentum_energy = (
+        (1 - parameters.rho) * momentum.square().sum(dim=(1, 2, 3))
+        + velocity_energy
+    )
+    zero_energy = torch.zeros_like(momentum_energy)
+    field_energies = {
+        "momentum": momentum_energy,
+        "force": zero_energy,
+        "acceleration": zero_energy,
+        "jerk": zero_energy,
+        "velocity": velocity_energy,
+        "vector_momentum": velocity_energy,
+    }
+    target = setup.target[0].to(dtype=images.dtype)
+    target_mse = (images - target).square().mean(dim=(1, 2, 3))
+    elapsed = perf_counter() - start
+    return SplineTrajectory(
+        images=images,
+        deformed_source=deformed_source,
+        photometric_only=photometric_only,
+        momentum=momentum,
+        force=zero,
+        acceleration=zero.clone(),
+        jerk=zero.clone(),
         velocity=velocity,
         vector_momentum=vector_momentum,
         field_energies=field_energies,

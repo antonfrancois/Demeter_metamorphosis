@@ -386,7 +386,8 @@ class Geodesic_integrator(torch.nn.Module, ABC):
                 t_max=1,
                 verbose=False,
                 sharp=None,
-                hamiltonian_integration=False):
+                hamiltonian_integration=False,
+                progress_callback=None):
         r""" This method is doing the temporal loop using the good method `_step_`
 
         Parameters
@@ -415,10 +416,14 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             practice when True, the Regulation norms of the Hamiltonian are computed
             and saved in the good attributes (usually `norm_v` and `norm_z`),
              by default False
+        progress_callback : callable, optional
+            Called after each step with ``(completed_steps, total_steps)``.
 
         """
         if not isinstance(momenta, Momenta):
             raise TypeError(f"'momenta' must be a Momenta instance, got {type(momenta)}")
+        if progress_callback is not None and not callable(progress_callback):
+            raise TypeError("progress_callback must be callable")
         device = _get_device_from_momenta(momenta)
         self._forward_initialize_integration(
             image,
@@ -429,9 +434,12 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             hamiltonian_integration,
             plot,
         )
-        for i, t in enumerate(torch.linspace(0, t_max, t_max * self.n_step)):
+        total_steps = t_max * self.n_step
+        for i, t in enumerate(torch.linspace(0, t_max, total_steps)):
             self._i = i
             self._forward_single_step(verbose)
+            if progress_callback is not None:
+                progress_callback(i + 1, total_steps)
 
         if plot > 0:
             self.plot(n_figs=plot)

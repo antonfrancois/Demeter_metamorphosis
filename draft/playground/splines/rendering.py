@@ -248,7 +248,7 @@ class SplineRenderer:
             message = self.current_ax.text(
                 0.5,
                 0.5,
-                "Run spline",
+                "Run spline or classical",
                 transform=self.current_ax.transAxes,
                 ha="center",
                 va="center",

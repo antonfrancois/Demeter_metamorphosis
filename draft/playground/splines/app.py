@@ -23,6 +23,7 @@ from .core import (
     load_scalar_field,
     load_setup,
     resolve_device,
+    run_classical,
     run_spline,
     save_setup,
 )
@@ -103,7 +104,7 @@ class SplinePlayground:
         )
         self._connect_events()
         self._refresh_control_widgets()
-        self._set_status("Paint an input field, then run the spline.")
+        self._set_status("Paint an input field, then run a trajectory.")
         self._render()
 
     def _set_fields_from_setup(self, setup: SplineSetup) -> None:
@@ -149,6 +150,7 @@ class SplinePlayground:
         self.menu_button = workspace.menu_button
         self.file_button = workspace.file_button
         self.run_button = workspace.run_button
+        self.classical_button = workspace.classical_button
         self.clear_button = workspace.clear_button
         self.clear_all_button = workspace.clear_all_button
         self.time_slider = workspace.time_slider
@@ -169,6 +171,7 @@ class SplinePlayground:
         self.target_radio.on_clicked(self._on_target_mode)
         self.time_slider.on_changed(self._on_time)
         self.run_button.on_clicked(lambda _event: self.run())
+        self.classical_button.on_clicked(lambda _event: self.run_classical())
         self.parameter_button.on_clicked(
             lambda _event: self.set_parameter_menu_visible(
                 not self.parameter_menu_open
@@ -201,6 +204,7 @@ class SplinePlayground:
             self.clear_all_button,
             self.menu_button,
             self.run_button,
+            self.classical_button,
             self.time_slider,
         ]
         self._set_modal(None)
@@ -733,6 +737,12 @@ class SplinePlayground:
             self._control_markers[marker] = step
 
     def run(self) -> None:
+        self._run_trajectory("spline", run_spline)
+
+    def run_classical(self) -> None:
+        self._run_trajectory("classical metamorphosis", run_classical)
+
+    def _run_trajectory(self, label: str, runner) -> None:
         if (
             self._running
             or getattr(self.fig.canvas, "mouse_grabber", None) is not None
@@ -742,7 +752,7 @@ class SplinePlayground:
         self.editor.cancel()
         self._set_workspace_active(False)
         self._set_status(
-            f"Computing spline... 0/{self.parameters.n_steps} (0%)"
+            f"Computing {label}... 0/{self.parameters.n_steps} (0%)"
         )
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
@@ -750,14 +760,16 @@ class SplinePlayground:
         self.last_error = None
         try:
             setup = self.make_setup()
-            self.cache = run_spline(
+            self._running_label = label
+            trajectory = runner(
                 setup,
                 device=self.device,
                 progress_callback=self._show_run_progress,
             )
+            self.cache = trajectory
             self.parameters = setup.parameters
             self._set_status(
-                f"Spline complete in {self.cache.elapsed_seconds:.3g}s."
+                f"{label.capitalize()} complete in {trajectory.elapsed_seconds:.3g}s."
             )
         except Exception as error:
             self.cache = None
@@ -774,7 +786,8 @@ class SplinePlayground:
     def _show_run_progress(self, completed: int, total: int) -> None:
         percent = int(100 * completed / total)
         self._set_status(
-            f"Computing spline... {completed}/{total} ({percent}%)"
+            f"Computing {getattr(self, '_running_label', 'spline')}... "
+            f"{completed}/{total} ({percent}%)"
         )
         now = perf_counter()
         if completed == total or now - self._last_progress_draw >= 0.1:
