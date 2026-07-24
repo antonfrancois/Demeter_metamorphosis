@@ -9,4 +9,5 @@ from .joined import Weighted_joinedMask_Metamorphosis_integrator,Weighted_joined
 from .simplex import Simplex_sqrt_Metamorphosis_integrator,Simplex_sqrt_Shooting
 from .affine import *
 from .data_cost import *
+from .splines import MetamorphosisSplineIntegrator, SplinesVariables
 # import metamorphosis.data_cost

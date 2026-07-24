@@ -604,7 +604,11 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
     # Done
     def _update_field_(self, momentum, image):
-        grad_image = tb.spatialGradient(image, dx_convention=self.dx_convention)
+        grad_image = tb.spatialGradient(
+            image,
+            dx_convention=self.dx_convention,
+            boundary=getattr(self, "gradient_boundary", "replicate"),
+        )
         # ic(grad_image.min().item(), grad_image.max().item(),self.dx_convention)
         field, self.norm_v_i = self._compute_vectorField_(momentum, grad_image)
         # self.field *= self._field_cst_mult()
@@ -686,11 +690,18 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
         div_v_times_p = cst * (
             momentum.momentum_I
-            * tb.Field_divergence(dx_convention=self.dx_convention)(field)[0, 0]
+            * tb.Field_divergence(
+                dx_convention=self.dx_convention,
+                boundary=getattr(self, "divergence_boundary", "reflect"),
+            )(field)[0, 0]
         )
         momentum_I = (
             tb.imgDeform(
-                momentum.momentum_I, deformation, dx_convention=self.dx_convention, clamp=False
+                momentum.momentum_I,
+                deformation,
+                dx_convention=self.dx_convention,
+                clamp=False,
+                boundary=getattr(self, "deformation_boundary", "zeros"),
             )
             - div_v_times_p / self.n_step
         )
@@ -737,7 +748,12 @@ class Geodesic_integrator(torch.nn.Module, ABC):
         if self.flag_hamiltonian_integration:
             self.norm_z_i = .5 * residuals.pow(2).sum()
         # if self.rho > 0:
-        image_def = tb.imgDeform(image, deformation, dx_convention=self.dx_convention)
+        image_def = tb.imgDeform(
+            image,
+            deformation,
+            dx_convention=self.dx_convention,
+            boundary=getattr(self, "deformation_boundary", "zeros"),
+        )
 
         if self._get_rho_() < 1:
             image_def += residuals / self.n_step
@@ -1030,7 +1046,10 @@ class Geodesic_integrator(torch.nn.Module, ABC):
 
         # show S deformed by full_deformation
         S_deformed = tb.imgDeform(
-            self.source.cpu(), full_deformator, dx_convention=self.dx_convention
+            self.source.cpu(),
+            full_deformator,
+            dx_convention=self.dx_convention,
+            boundary=getattr(self, "deformation_boundary", "zeros"),
         )
         # axes[1,0].imshow(self.source[0,0,:,:].cpu().permute(1,2,0),cmap='gray',origin='lower',vmin=0,vmax=1)
         # axes[1,1].imshow(target[0].cpu().permute(1,2,0),cmap='gray',origin='lower',vmin=0,vmax=1)
@@ -1224,7 +1243,11 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         """
 
         # Computes only
-        grad_source = tb.spatialGradient(image, dx_convention=self.dx_convention)
+        grad_source = tb.spatialGradient(
+            image,
+            dx_convention=self.dx_convention,
+            boundary=getattr(self.mp, "gradient_boundary", "replicate"),
+        )
         field_momentum = (grad_source * momentum.momentum_I.unsqueeze(2)).sum(dim=1)  # / C
         field = self.mp.kernelOperator(field_momentum)
 

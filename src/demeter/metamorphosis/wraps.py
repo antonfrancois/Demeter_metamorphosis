@@ -17,16 +17,21 @@ from ..utils.decorators import time_it, monitor_gpu
 
 
 def _commun_before(momentum_ini, source):
-    if type(momentum_ini) in [int, float]:
-        # momentum_ini = momentum_ini * torch.ones(source.shape, device=source.device)
-        momentum_ini = Momenta.from_config(
-            image_shape=source.shape,
-            diffeo=True, rotation=False, affine=False,translation=False,scaling=False
+    if isinstance(momentum_ini, (int, float)):
+        momentum_ini = torch.full_like(source, float(momentum_ini))
+    if isinstance(momentum_ini, torch.Tensor):
+        if momentum_ini.shape != source.shape:
+            raise ValueError(
+                "initial momentum and source must have the same shape, got "
+                f"{momentum_ini.shape} and {source.shape}"
+            )
+        momentum_ini = Momenta(momentum_I=momentum_ini)
+    if not isinstance(momentum_ini, Momenta):
+        raise TypeError(
+            "momentum_ini must be a scalar, tensor, or Momenta instance, got "
+            f"{type(momentum_ini)}"
         )
-        ic(momentum_ini)
-    momentum_ini.requires_grad = True
-
-    return momentum_ini
+    return momentum_ini.requires_grad_(True)
 
 
 def _commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef,
@@ -66,6 +71,7 @@ def lddmm(
     convergence_patience=3,
     adam_scheduler="reduce_on_plateau",
     adam_grad_clip=None,
+    boundary="legacy",
 ):
     """
     Perform a Large Deformation Diffeomorphic Metric Mapping (LDDMM) transformation between a source and a target.
@@ -120,6 +126,9 @@ def lddmm(
     adam_grad_clip : float or None, optional
         If set, gradient norm is clipped to this value before each Adam step.
         ``None`` (default) disables clipping. Ignored for non-Adam optimizers.
+    boundary : {"legacy", "periodic"}, optional
+        Spatial boundary mode used by the classical integrator. Periodic mode
+        currently requires 2D pixel coordinates.
 
     Returns
     -------
@@ -137,7 +146,8 @@ def lddmm(
         n_step=integration_steps,
         kernelOperator=kernelOperator,
         dx_convention=dx_convention,
-        save_gpu_memory = save_gpu_memory
+        save_gpu_memory=save_gpu_memory,
+        boundary=boundary,
     )
     mr = cl.Metamorphosis_Shooting(
         source,
@@ -184,6 +194,7 @@ def metamorphosis(
     convergence_patience=3,
     adam_scheduler="reduce_on_plateau",
     adam_grad_clip=None,
+    boundary="legacy",
 ):
     """
     Run metamorphosis registration from ``source`` to ``target``.
@@ -243,6 +254,9 @@ def metamorphosis(
     adam_grad_clip : float or None, optional
         If set, gradient norm is clipped to this value before each Adam step.
         ``None`` (default) disables clipping. Ignored for non-Adam optimizers.
+    boundary : {"legacy", "periodic"}, optional
+        Spatial boundary mode used by the classical integrator. Periodic mode
+        currently requires 2D pixel coordinates.
 
     Returns
     -------
@@ -261,6 +275,7 @@ def metamorphosis(
         n_step=integration_steps,
         dx_convention=dx_convention,
         save_gpu_memory=save_gpu_memory,
+        boundary=boundary,
     )
     mr = cl.Metamorphosis_Shooting(
         source,

@@ -47,6 +47,7 @@ class Metamorphosis_integrator(Geodesic_integrator):
     # @monitor_gpu
     def __init__(self, method,
                  rho=1.,
+                 boundary="legacy",
                  # sigma_v= (1,1,1),
                  # multiScale_average=False,
                  **kwargs
@@ -58,7 +59,17 @@ class Metamorphosis_integrator(Geodesic_integrator):
         # self.rho = rho if callable(rho) else lambda :rho
         if rho < 0 or rho > 1:
             raise ValueError("This is the new version of Metamorphosis, rho must be in [0,1]")
+        if boundary not in ("legacy", "periodic"):
+            raise ValueError("boundary must be 'legacy' or 'periodic'")
+        if boundary == "periodic" and self.dx_convention != "pixel":
+            raise ValueError("periodic classical metamorphosis requires dx_convention='pixel'")
         self.rho = rho
+        self.boundary = boundary
+        if boundary == "periodic":
+            self.gradient_boundary = "periodic"
+            self.divergence_boundary = "periodic"
+            self.deformation_boundary = "periodic"
+            self.field_integration_boundary = "periodic"
         # self.n_step = n_step
 
         # inner methods
@@ -103,7 +114,6 @@ class Metamorphosis_integrator(Geodesic_integrator):
 
     # @monitor_gpu
     def _step_full_semiLagrangian(self, image, momentum):
-
         field = self._update_field_(
             momentum, image,
         )
@@ -114,13 +124,14 @@ class Metamorphosis_integrator(Geodesic_integrator):
             momentum, image, deformation
         )
 
-        momentum = self._compute_div_momentum_semiLagrangian_(
+        momentum_I = self._compute_div_momentum_semiLagrangian_(
             deformation,
             momentum,
             sqrt(self.rho),
             sqrt(self.rho) * field,
         )
 
+        momentum = Momenta(momentum_I=momentum_I)
         return (momentum,
                 image,
                 self.rho * field.detach(),
@@ -244,6 +255,8 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
             'rho': self._get_rho_(),
             'method': self.mp.method,
         }
+        if self.mp.boundary != "legacy":
+            params_spe["boundary"] = self.mp.boundary
         return {**params_all, **params_spe}
 
     # @monitor_gpu

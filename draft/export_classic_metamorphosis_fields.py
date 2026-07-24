@@ -1,9 +1,10 @@
-"""Register two images with classical metamorphosis and export its fields.
+"""Register two images with periodic classical metamorphosis and export fields.
 
-The per-time-step files are directly loadable by the field playground. The
-exported vector momentum and velocity form a matched pair for the configured
-Sobolev fluid operator, and the scalar image momentum is paired with the image
-velocity produced by the metamorphosis cometric.
+The registration kernel can be a circular Gaussian RKHS or the matched
+periodic Sobolev fluid inverse ``K=L^-1`` used by the spline lab. Per-frame
+fields are loadable by the field playground; Sobolev runs with ``rho < 1`` also
+emit a complete zero-force, zero-jerk spline-lab setup containing the optimized
+momentum.
 """
 
 from __future__ import annotations
@@ -29,7 +30,12 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 import demeter.metamorphosis as mt
 
 from demeter.utils.cometric_inversion import CometricOperator
-from demeter.utils.reproducing_kernels import SobolevFluidOperator
+from demeter.utils.reproducing_kernels import GaussianRKHS, SobolevFluidOperator
+from draft.playground.splines.core import (
+    SplineParameters,
+    save_setup,
+    zero_setup,
+)
 
 
 IMAGE_BANK = PROJECT_ROOT / "examples" / "im2Dbank"
@@ -105,12 +111,39 @@ def resolve_device(value: str) -> torch.device:
     return device
 
 
+def build_kernel_operator(
+    kind: str,
+    *,
+    alpha: float = 0.2,
+    beta: float = 0.2,
+    gamma: float = 0.001,
+    sigma: tuple[float, float] = (3.0, 3.0),
+    kernel_reach: int = 3,
+):
+    """Build a periodic classical metamorphosis kernel operator."""
+    if kind == "sobolev":
+        return SobolevFluidOperator(
+            alpha,
+            beta,
+            gamma,
+            boundary="periodic",
+        )
+    if kind == "gaussian":
+        return GaussianRKHS(
+            tuple(float(value) for value in sigma),
+            border_type="circular",
+            normalized=True,
+            kernel_reach=kernel_reach,
+        )
+    raise ValueError("kernel kind must be 'gaussian' or 'sobolev'")
+
+
 def run_registration(
     source: torch.Tensor,
     target: torch.Tensor,
     *,
     rho: float,
-    operator: SobolevFluidOperator,
+    operator: Any,
     integration_steps: int,
     iterations: int,
     cost_cst: float,
@@ -137,12 +170,22 @@ def run_registration(
         dx_convention="pixel",
         hamiltonian_integration=False,
         save_gpu_memory=False,
+        boundary="periodic",
     )
+
+
+def _image_momentum(value: Any) -> torch.Tensor:
+    if isinstance(value, torch.Tensor):
+        return value
+    momentum = getattr(value, "momentum_I", None)
+    if isinstance(momentum, torch.Tensor):
+        return momentum
+    raise TypeError(f"expected a tensor or image Momenta, got {type(value)}")
 
 
 def extract_trajectory(
     registration: Any,
-    operator: SobolevFluidOperator,
+    operator: Any,
     rho: float,
 ) -> dict[str, torch.Tensor]:
     """Return states at the uniform nodes ``0, 1/N, ..., 1``.
@@ -153,15 +196,23 @@ def extract_trajectory(
     Hamiltonian relation ``v = -sqrt(rho) K(p grad(I))``. Scalar image
     velocity is evaluated with the prototype cometric as ``A_I p``.
     """
-    initial_momentum = registration.to_analyse[0].detach().cpu()
+    optimized = getattr(registration, "optimized_momenta", None)
+    if optimized is None:
+        optimized = registration.to_analyse[0]
+    initial_momentum = _image_momentum(optimized).detach().cpu()
     images = torch.cat(
         (registration.source.detach().cpu(), registration.mp.image_stock.detach().cpu()),
         dim=0,
     )
-    image_momenta = torch.cat(
-        (initial_momentum, registration.mp.momentum_stock.detach().cpu()),
-        dim=0,
-    )
+    momentum_stock = registration.mp.momentum_stock
+    if isinstance(momentum_stock, torch.Tensor):
+        momentum_nodes = momentum_stock.detach().cpu()
+    else:
+        momentum_nodes = torch.cat(
+            [_image_momentum(momentum).detach().cpu() for momentum in momentum_stock],
+            dim=0,
+        )
+    image_momenta = torch.cat((initial_momentum, momentum_nodes), dim=0)
     times = torch.linspace(0, 1, registration.mp.n_step + 1)
 
     with torch.no_grad():
@@ -170,13 +221,13 @@ def extract_trajectory(
             rho,
             operator,
             dx_convention="pixel",
-            gradient_boundary="replicate",
+            gradient_boundary="periodic",
         )
         image_gradients = cometric.image_gradient
         vector_momenta = -math.sqrt(rho) * (
             image_gradients * image_momenta.unsqueeze(2)
         ).sum(dim=1)
-        velocities = operator.apply_inverse(vector_momenta)
+        velocities = operator(vector_momenta)
         image_velocities = cometric(image_momenta)
 
     return {
@@ -238,6 +289,7 @@ def save_trajectory(
     target_path: Path,
     target_image: torch.Tensor,
     parameters: dict[str, Any],
+    spline_parameters: SplineParameters | None = None,
 ) -> Path:
     """Save paired playground files and one complete trajectory archive."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -364,16 +416,33 @@ def save_trajectory(
         "trajectory": archive_path.name,
         "images": {name: path.as_posix() for name, path in image_paths.items()},
         "parameters": parameters,
+        "initial_momentum": frame_records[0]["image_momentum"],
         "frames": frame_records,
     }
+    if spline_parameters is not None:
+        setup = zero_setup(
+            trajectory["images"][0:1],
+            target_image,
+            spline_parameters,
+            source_path=str(source_path),
+            target_path=str(target_path),
+        )
+        setup.initial_momentum.copy_(trajectory["image_momenta"][0:1])
+        setup_path = save_setup(setup, output_dir / "spline_setup.pt")
+        manifest["spline_setup"] = setup_path.name
     (output_dir / "manifest.json").write_text(
         json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
     )
     return output_dir
 
 
-def _default_run_name(source: Path, target: Path, rho: float) -> str:
-    text = f"{source.stem}_to_{target.stem}_rho_{rho:g}"
+def _default_run_name(
+    source: Path,
+    target: Path,
+    rho: float,
+    kernel: str,
+) -> str:
+    text = f"{source.stem}_to_{target.stem}_{kernel}_rho_{rho:g}"
     return re.sub(r"[^A-Za-z0-9._-]+", "_", text).strip("_")
 
 
@@ -393,9 +462,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--iterations", type=int, default=15)
     parser.add_argument("--cost-cst", type=float, default=0.001)
     parser.add_argument("--grad-coef", type=float, default=1.0)
-    parser.add_argument("--alpha", type=float, default=0.2)
-    parser.add_argument("--beta", type=float, default=0.2)
-    parser.add_argument("--gamma", type=float, default=0.001)
+    parser.add_argument(
+        "--kernel",
+        choices=("gaussian", "sobolev"),
+        default="gaussian",
+        help="Periodic deformation kernel (default: gaussian)",
+    )
+    parser.add_argument("--sigma", nargs=2, type=float, default=(3.0, 3.0))
+    parser.add_argument("--kernel-reach", type=int, default=3)
+    parser.add_argument("--alpha", type=float, default=0.2, help="Sobolev L coefficient")
+    parser.add_argument("--beta", type=float, default=0.2, help="Sobolev L coefficient")
+    parser.add_argument("--gamma", type=float, default=0.001, help="Sobolev L coefficient")
+    parser.add_argument("--cg-eps", type=float, default=1e-5)
     parser.add_argument("--device", default="auto", help="Torch device, or 'auto'")
     parser.add_argument(
         "--output-dir",
@@ -415,6 +493,8 @@ def main(argv: list[str] | None = None) -> Path:
         raise ValueError("integration_steps must be at least 1")
     if args.iterations < 1:
         raise ValueError("iterations must be at least 1")
+    if args.kernel_reach < 1:
+        raise ValueError("kernel_reach must be at least 1")
 
     source_path = resolve_image_path(args.source)
     target_path = resolve_image_path(args.target)
@@ -429,7 +509,14 @@ def main(argv: list[str] | None = None) -> Path:
         target = resize_target_to_source(source, target)
 
     device = resolve_device(args.device)
-    operator = SobolevFluidOperator(args.alpha, args.beta, args.gamma)
+    operator = build_kernel_operator(
+        args.kernel,
+        alpha=args.alpha,
+        beta=args.beta,
+        gamma=args.gamma,
+        sigma=tuple(args.sigma),
+        kernel_reach=args.kernel_reach,
+    )
     registration = run_registration(
         source,
         target,
@@ -443,17 +530,47 @@ def main(argv: list[str] | None = None) -> Path:
     )
     trajectory = extract_trajectory(registration, operator, args.rho)
     parameters = {
+        "kernel": args.kernel,
+        "boundary": "periodic",
         "rho": args.rho,
-        "alpha": args.alpha,
-        "beta": args.beta,
-        "gamma": args.gamma,
         "integration_steps": args.integration_steps,
         "iterations": args.iterations,
         "cost_cst": args.cost_cst,
         "grad_coef": args.grad_coef,
         "device": str(device),
     }
-    run_name = args.name or _default_run_name(source_path, target_path, args.rho)
+    if args.kernel == "sobolev":
+        parameters.update(
+            alpha=args.alpha,
+            beta=args.beta,
+            gamma=args.gamma,
+            cg_eps=args.cg_eps,
+        )
+        spline_parameters = (
+            SplineParameters(
+                alpha=args.alpha,
+                beta=args.beta,
+                gamma=args.gamma,
+                rho=args.rho,
+                cg_eps=args.cg_eps,
+                n_steps=args.integration_steps,
+                control_steps=(),
+            )
+            if args.rho < 1
+            else None
+        )
+    else:
+        parameters.update(
+            sigma=tuple(args.sigma),
+            kernel_reach=args.kernel_reach,
+        )
+        spline_parameters = None
+    run_name = args.name or _default_run_name(
+        source_path,
+        target_path,
+        args.rho,
+        args.kernel,
+    )
     output_dir = save_trajectory(
         trajectory,
         args.output_dir.expanduser() / run_name,
@@ -461,6 +578,7 @@ def main(argv: list[str] | None = None) -> Path:
         target_path=target_path,
         target_image=target,
         parameters=parameters,
+        spline_parameters=spline_parameters,
     )
     print(f"Saved {len(trajectory['times'])} time nodes to {output_dir}")
     return output_dir
