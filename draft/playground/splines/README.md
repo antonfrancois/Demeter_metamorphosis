@@ -14,7 +14,7 @@ The default device is `auto`, which selects CUDA when available and CPU
 otherwise. Use `--device cpu` or `--device cuda` to override it, `--run` to
 integrate immediately, or `--no-show --screenshot spline.png` for a headless
 render. Passing `--control-steps` without values creates a spline without jerk
-resets. The status line reports every completed integration step.
+resets. The status line reports progress, the compute device, and image size.
 
 ## Inputs
 
@@ -32,8 +32,8 @@ resets. The status line reports every completed integration step.
 
 Press `P` or click **Parameter Menu** for the categorized controls:
 
-- **Model** contains `rho`, the Sobolev operator parameters `alpha`, `beta`,
-  `gamma`, and an interactive normalized control-time line;
+- **Model** contains `rho`, a Sobolev/Gaussian operator choice, the active
+  operator parameters, and an interactive normalized control-time line;
 - **Draw** contains brush size and amplitude;
 - **Numerical** contains `steps`, from 1 through 40, and the compute-device
   selector. CUDA is selected by default when available; CPU is always available.
@@ -44,6 +44,10 @@ starts with a zero field. Control times are stored as normalized values, so a
 control at step 8 of 16 steps moves to step 20 when the resolution changes to
 40 steps. Resolutions that would collapse controls onto the same mesh node are
 rejected.
+
+**Run spline** requires the Sobolev operator because it uses cometric inversion.
+**Run classic** accepts Sobolev or Gaussian and requires every editable field
+except the initial momentum to be zero.
 
 Press `M` or click **View / Overlay Menu** to open the three-column display
 menu. Its source column reuses the control-time line to select which control
@@ -59,9 +63,9 @@ can show:
 The deformation-only image replays the same periodic semi-Lagrangian transport
 as the spline integrator. The photometric-only image starts at the source and
 accumulates `dt * residuals_stock[k]` at fixed pixels. Dual `p`, `u`, `r`, and
-the vector momentum `m = L v` overlays are orange; primal `a = A_I u` and
-`v = K m` overlays are yellow. The force is shown as `u = A_I^-1 a`. Press `M`
-or `Esc` to close the menu.
+vector momentum `m` overlays are orange; primal `a = A_I u` and `v = K m`
+overlays are yellow. The force is shown as `u = A_I^-1 a`. Press `M` or `Esc`
+to close the menu.
 
 Field squared norms are shown in LaTeX below the source and current images. The
 target panel shows the normalized MSE for whichever full, deformation-only, or
@@ -74,8 +78,7 @@ knot.
 ## Persistence
 
 Press `L` or click the sidebar's **Load / Save** button to open the unified file
-menu for source and target images, the displayed source field, and complete
-setups.
+menu for source and target images, scalar fields, and complete setups.
 
 **Save setup** stores source, target, editable fields, numerical parameters, and
 normalized control times in one `.pt` file. Legacy setups containing only

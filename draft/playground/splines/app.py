@@ -23,7 +23,7 @@ from .core import (
     load_scalar_field,
     load_setup,
     resolve_device,
-    run_classical,
+    run_classic,
     run_spline,
     save_setup,
 )
@@ -150,7 +150,7 @@ class SplinePlayground:
         self.menu_button = workspace.menu_button
         self.file_button = workspace.file_button
         self.run_button = workspace.run_button
-        self.classical_button = workspace.classical_button
+        self.classic_button = workspace.classic_button
         self.clear_button = workspace.clear_button
         self.clear_all_button = workspace.clear_all_button
         self.time_slider = workspace.time_slider
@@ -171,7 +171,7 @@ class SplinePlayground:
         self.target_radio.on_clicked(self._on_target_mode)
         self.time_slider.on_changed(self._on_time)
         self.run_button.on_clicked(lambda _event: self.run())
-        self.classical_button.on_clicked(lambda _event: self.run_classical())
+        self.classic_button.on_clicked(lambda _event: self.run_classic())
         self.parameter_button.on_clicked(
             lambda _event: self.set_parameter_menu_visible(
                 not self.parameter_menu_open
@@ -191,9 +191,15 @@ class SplinePlayground:
         )
         self.clear_button.on_clicked(lambda _event: self.clear())
         self.clear_all_button.on_clicked(lambda _event: self.clear_all())
-        for widget in (self.rho_slider, self.alpha_slider, self.beta_slider):
+        for widget in (
+            self.rho_slider,
+            self.alpha_slider,
+            self.beta_slider,
+            self.sigma_slider,
+        ):
             widget.on_changed(self._on_parameter_change)
         self.gamma_slider.on_changed(self._on_gamma_change)
+        self.operator_radio.on_clicked(self._on_operator_change)
         self.steps_slider.on_changed(self._on_parameter_change)
         self.device_radio.on_clicked(self._on_device_change)
 
@@ -204,7 +210,7 @@ class SplinePlayground:
             self.clear_all_button,
             self.menu_button,
             self.run_button,
-            self.classical_button,
+            self.classic_button,
             self.time_slider,
         ]
         self._set_modal(None)
@@ -224,6 +230,8 @@ class SplinePlayground:
         self.alpha_slider = self.parameter_menu.alpha_slider
         self.beta_slider = self.parameter_menu.beta_slider
         self.gamma_slider = self.parameter_menu.gamma_slider
+        self.sigma_slider = self.parameter_menu.sigma_slider
+        self.operator_radio = self.parameter_menu.operator_radio
         self.brush_slider = self.parameter_menu.brush_slider
         self.amplitude_slider = self.parameter_menu.amplitude_slider
         self.steps_slider = self.parameter_menu.steps_slider
@@ -248,7 +256,7 @@ class SplinePlayground:
         actions = (
             ("LOAD SOURCE IMAGE", lambda: self._run_file_action(self.load_source_dialog)),
             ("LOAD TARGET IMAGE", lambda: self._run_file_action(self.load_target_dialog)),
-            ("LOAD DISPLAYED FIELD", lambda: self._run_file_action(self.load_field_dialog)),
+            ("LOAD FIELD", lambda: self._run_file_action(self.load_field_dialog)),
             ("LOAD COMPLETE SETUP", lambda: self._run_file_action(self.load_setup_dialog)),
             ("SAVE COMPLETE SETUP", lambda: self._run_file_action(self.save_setup_dialog)),
         )
@@ -351,6 +359,8 @@ class SplinePlayground:
             gamma=10 ** float(self.gamma_slider.val),
             rho=float(self.rho_slider.val),
             n_steps=int(round(self.steps_slider.val)),
+            kernel=self.operator_radio.value_selected.lower(),
+            sigma=float(self.sigma_slider.val),
         )
 
     def make_setup(self) -> SplineSetup:
@@ -378,8 +388,9 @@ class SplinePlayground:
         )
 
     def _set_status(self, message: str) -> None:
+        height, width = self.source.shape[-2:]
         self.status_text.set_text(
-            f"{message}  |  device: {self.device}  |  steps: {self.parameters.n_steps}"
+            f"{message}  |  device: {self.device}  |  size: {height}x{width}"
         )
 
     def _show_message(self, message: str) -> None:
@@ -516,6 +527,9 @@ class SplinePlayground:
     def _on_gamma_change(self, value: float) -> None:
         self.gamma_slider.valtext.set_text(f"{10 ** float(value):.3g}")
         self._on_parameter_change(value)
+
+    def _on_operator_change(self, label: str) -> None:
+        self._on_parameter_change(0.0)
 
     def _on_device_change(self, label: str) -> None:
         if self._syncing_widgets or self._running:
@@ -739,8 +753,8 @@ class SplinePlayground:
     def run(self) -> None:
         self._run_trajectory("spline", run_spline)
 
-    def run_classical(self) -> None:
-        self._run_trajectory("classical metamorphosis", run_classical)
+    def run_classic(self) -> None:
+        self._run_trajectory("classic metamorphosis", run_classic)
 
     def _run_trajectory(self, label: str, runner) -> None:
         if (
@@ -931,11 +945,27 @@ class SplinePlayground:
                 self.rho_slider.valmax,
             )
             self.rho_slider.set_val(self.parameters.rho)
-            self._set_slider_value(self.alpha_slider, self.parameters.alpha)
-            self._set_slider_value(self.beta_slider, self.parameters.beta)
+            self._set_slider_value(
+                self.alpha_slider,
+                self.parameters.alpha,
+                lower_bound=0,
+            )
+            self._set_slider_value(
+                self.beta_slider,
+                self.parameters.beta,
+                lower_bound=0,
+            )
             log_gamma = float(np.log10(self.parameters.gamma))
             self._set_slider_value(self.gamma_slider, log_gamma, padding=1)
             self.gamma_slider.valtext.set_text(f"{self.parameters.gamma:.3g}")
+            self._set_slider_value(
+                self.sigma_slider,
+                self.parameters.sigma,
+                padding=max(0.05, 0.5 * self.parameters.sigma),
+            )
+            self.operator_radio.set_active(
+                0 if self.parameters.kernel == "sobolev" else 1
+            )
             self.steps_slider.valmin = 1
             self.steps_slider.valmax = MAX_STEPS
             self.steps_slider.ax.set_xlim(1, MAX_STEPS)
@@ -946,7 +976,6 @@ class SplinePlayground:
             self.time_slider.set_val(0)
         finally:
             self._syncing_widgets = False
-
         self.editor.set_active(self._active_field_key())
         self.cache = None
         self._refresh_control_widgets()
@@ -954,9 +983,16 @@ class SplinePlayground:
         self._render()
 
     @staticmethod
-    def _set_slider_value(slider: Slider, value: float, padding: float | None = None) -> None:
+    def _set_slider_value(
+        slider: Slider,
+        value: float,
+        padding: float | None = None,
+        lower_bound: float | None = None,
+    ) -> None:
         padding = max(1, abs(value) * 0.5) if padding is None else padding
         slider.valmin = min(slider.valmin, value - padding)
+        if lower_bound is not None:
+            slider.valmin = max(lower_bound, slider.valmin)
         slider.valmax = max(slider.valmax, value + padding)
         slider.ax.set_xlim(slider.valmin, slider.valmax)
         slider.set_val(value)

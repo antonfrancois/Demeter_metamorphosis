@@ -52,6 +52,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--alpha", type=float)
     parser.add_argument("--beta", type=float)
     parser.add_argument("--gamma", type=float)
+    parser.add_argument("--kernel", choices=("sobolev", "gaussian"))
+    parser.add_argument("--sigma", type=float)
     parser.add_argument("--rho", type=float)
     parser.add_argument("--cg-eps", type=float)
     parser.add_argument("--output", help="Path used by Ctrl+S")
@@ -79,6 +81,8 @@ def _parameter_overrides(
         (args.gamma, "gamma"),
         (args.rho, "rho"),
         (args.cg_eps, "cg_eps"),
+        (getattr(args, "kernel", None), "kernel"),
+        (getattr(args, "sigma", None), "sigma"),
     ):
         if argument is not None:
             values[name] = argument
@@ -141,6 +145,8 @@ def main(argv: list[str] | None = None) -> SplinePlayground:
             alpha=args.alpha if args.alpha is not None else 0.2,
             beta=args.beta if args.beta is not None else 0.2,
             gamma=args.gamma if args.gamma is not None else 0.001,
+            kernel=args.kernel if args.kernel is not None else "sobolev",
+            sigma=args.sigma if args.sigma is not None else 3.0,
             rho=args.rho if args.rho is not None else 0.5,
             cg_eps=args.cg_eps if args.cg_eps is not None else 1e-5,
             n_steps=n_steps,

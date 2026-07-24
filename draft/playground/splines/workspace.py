@@ -21,7 +21,7 @@ class Workspace:
     menu_button: Button
     file_button: Button
     run_button: Button
-    classical_button: Button
+    classic_button: Button
     clear_button: Button
     clear_all_button: Button
     time_slider: Slider
@@ -119,14 +119,14 @@ def build_workspace(
     )
     run_button.label.set_color("white")
     run_button.label.set_fontweight("bold")
-    classical_button = Button(
+    classic_button = Button(
         fig.add_axes([0.805, 0.41, 0.17, 0.06]),
-        "RUN CLASSICAL",
+        "RUN CLASSIC",
         color="#168a8a",
         hovercolor="#20a3a3",
     )
-    classical_button.label.set_color("white")
-    classical_button.label.set_fontweight("bold")
+    classic_button.label.set_color("white")
+    classic_button.label.set_fontweight("bold")
     clear_button = Button(
         fig.add_axes([0.805, 0.32, 0.17, 0.055]),
         "CLEAR DISPLAYED FIELD",
@@ -188,7 +188,7 @@ def build_workspace(
         menu_button,
         file_button,
         run_button,
-        classical_button,
+        classic_button,
         clear_button,
         clear_all_button,
         time_slider,

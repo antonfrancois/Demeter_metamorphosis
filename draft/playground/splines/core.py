@@ -25,7 +25,7 @@ from demeter.metamorphosis.splines import (
 from demeter.metamorphosis.var_classes import Momenta
 from demeter.utils import torchbox as tb
 from demeter.utils.cometric_inversion import CometricOperator
-from demeter.utils.reproducing_kernels import SobolevFluidOperator
+from demeter.utils.reproducing_kernels import GaussianRKHS, SobolevFluidOperator
 from ..field_playground_core import (
     coerce_field,
     coerce_image,
@@ -73,6 +73,8 @@ class SplineParameters:
     n_steps: int = 16
     control_steps: tuple[int, ...] = ()
     control_times: tuple[float, ...] = ()
+    kernel: str = "sobolev"
+    sigma: float = 3.0
 
     def __post_init__(self) -> None:
         for name in ("alpha", "beta", "gamma", "rho", "cg_eps"):
@@ -88,6 +90,14 @@ class SplineParameters:
             raise ValueError("rho must satisfy 0 <= rho < 1")
         if self.cg_eps <= 0:
             raise ValueError("cg_eps must be strictly positive")
+        kernel = str(self.kernel).lower()
+        if kernel not in ("sobolev", "gaussian"):
+            raise ValueError("kernel must be 'sobolev' or 'gaussian'")
+        object.__setattr__(self, "kernel", kernel)
+        sigma = float(self.sigma)
+        if not isfinite(sigma) or sigma <= 0:
+            raise ValueError("sigma must be finite and strictly positive")
+        object.__setattr__(self, "sigma", sigma)
         if (
             not isinstance(self.n_steps, int)
             or isinstance(self.n_steps, bool)
@@ -149,6 +159,8 @@ class SplineParameters:
             "n_steps": self.n_steps,
             "control_steps": self.control_steps,
             "control_times": self.control_times,
+            "kernel": self.kernel,
+            "sigma": self.sigma,
         }
 
     @classmethod
@@ -166,6 +178,8 @@ class SplineParameters:
                 if "control_times" in values
                 else ()
             ),
+            kernel=values.get("kernel", "sobolev"),
+            sigma=values.get("sigma", 3.0),
         )
 
 
@@ -415,12 +429,7 @@ def cometric_squared_norm(
 ) -> float:
     """Return ``<covector, A_image covector>`` on the tensor's device."""
     covector = covector.to(device=image.device, dtype=image.dtype)
-    kernel = SobolevFluidOperator(
-        alpha=parameters.alpha,
-        beta=parameters.beta,
-        gamma=parameters.gamma,
-        boundary="periodic",
-    )
+    kernel = _kernel_operator(parameters)
     with torch.no_grad():
         acceleration = CometricOperator(
             image,
@@ -429,6 +438,22 @@ def cometric_squared_norm(
             dx_convention="pixel",
         )(covector)
     return float((covector * acceleration).sum().detach().cpu())
+
+
+def _kernel_operator(parameters: SplineParameters):
+    if parameters.kernel == "gaussian":
+        return GaussianRKHS(
+            (parameters.sigma, parameters.sigma),
+            border_type="circular",
+            normalized=True,
+            kernel_reach=3,
+        )
+    return SobolevFluidOperator(
+        alpha=parameters.alpha,
+        beta=parameters.beta,
+        gamma=parameters.gamma,
+        boundary="periodic",
+    )
 
 
 @dataclass(frozen=True)
@@ -531,6 +556,11 @@ def run_spline(
     if progress_callback is not None and not callable(progress_callback):
         raise TypeError("progress_callback must be callable")
     parameters = setup.parameters
+    if parameters.kernel != "sobolev":
+        raise ValueError(
+            "spline integration requires the Sobolev operator; Gaussian "
+            "cometric inversion is not defined"
+        )
     run_device = resolve_device(device)
     source = setup.source.to(run_device)
     kernel = SobolevFluidOperator(
@@ -642,13 +672,13 @@ def run_spline(
     )
 
 
-def run_classical(
+def run_classic(
     setup: SplineSetup,
     *,
     device: str | torch.device = "auto",
     progress_callback: Callable[[int, int], None] | None = None,
 ) -> SplineTrajectory:
-    """Run classical shooting from a setup containing only initial momentum."""
+    """Run classic shooting from a setup containing only initial momentum."""
     if progress_callback is not None and not callable(progress_callback):
         raise TypeError("progress_callback must be callable")
     unsupported = [
@@ -662,7 +692,7 @@ def run_classical(
     ]
     if unsupported:
         raise ValueError(
-            "classical metamorphosis accepts only initial momentum; clear "
+            "classic metamorphosis accepts only initial momentum; clear "
             + ", ".join(unsupported)
         )
 
@@ -670,12 +700,7 @@ def run_classical(
     run_device = resolve_device(device)
     source = setup.source.to(run_device)
     initial_momentum = setup.initial_momentum.to(run_device)
-    kernel = SobolevFluidOperator(
-        alpha=parameters.alpha,
-        beta=parameters.beta,
-        gamma=parameters.gamma,
-        boundary="periodic",
-    )
+    kernel = _kernel_operator(parameters)
     integrator = Metamorphosis_integrator(
         method="semiLagrangian",
         rho=parameters.rho,
@@ -718,6 +743,7 @@ def run_classical(
             velocity_device = source.new_zeros(
                 (parameters.n_steps + 1, 2) + tuple(source.shape[-2:])
             )
+            vector_momentum_device = torch.zeros_like(velocity_device)
         else:
             image_nodes = images.to(run_device)
             momentum_nodes = momentum.to(run_device)
@@ -726,10 +752,10 @@ def run_classical(
                 dx_convention="pixel",
                 boundary="periodic",
             )[:, 0]
-            velocity_device = -sqrt(parameters.rho) * kernel(
+            vector_momentum_device = -sqrt(parameters.rho) * (
                 momentum_nodes * gradient
             )
-        vector_momentum_device = kernel.apply_operator(velocity_device)
+            velocity_device = kernel(vector_momentum_device)
     if run_device.type == "cuda":
         torch.cuda.synchronize(run_device)
 

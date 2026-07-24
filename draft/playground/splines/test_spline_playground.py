@@ -23,7 +23,7 @@ from types import SimpleNamespace
 
 from demeter.utils import torchbox as tb
 from demeter.utils.cometric_inversion import CometricOperator
-from demeter.utils.reproducing_kernels import SobolevFluidOperator
+from demeter.utils.reproducing_kernels import GaussianRKHS, SobolevFluidOperator
 from draft.playground.field_playground_core import (
     prepare_vector_display,
     scaled_field_title,
@@ -34,7 +34,7 @@ from draft.playground.splines.core import (
     SplineSetup,
     load_setup,
     resolve_device,
-    run_classical,
+    run_classic,
     run_spline,
     save_setup,
     zero_setup,
@@ -217,7 +217,7 @@ def test_run_converts_initial_force_and_aligns_interval_fields_to_nodes():
     torch.testing.assert_close(trajectory.velocity[-1][None], expected_velocity)
 
 
-def test_classical_run_matches_geodesic_spline_and_zeroes_spline_fields():
+def test_classic_run_matches_geodesic_spline_and_zeroes_spline_fields():
     torch.manual_seed(13)
     source = torch.rand(1, 1, 8, 9)
     target = torch.roll(source, shifts=1, dims=-1)
@@ -234,7 +234,7 @@ def test_classical_run_matches_geodesic_spline_and_zeroes_spline_fields():
     setup.initial_momentum.normal_(std=0.1)
     progress = []
 
-    classical = run_classical(
+    classic = run_classic(
         setup,
         device="cpu",
         progress_callback=lambda completed, total: progress.append(
@@ -253,18 +253,18 @@ def test_classical_run_matches_geodesic_spline_and_zeroes_spline_fields():
         "target_mse",
     ):
         torch.testing.assert_close(
-            getattr(classical, name),
+            getattr(classic, name),
             getattr(spline, name),
             atol=2e-6,
             rtol=2e-6,
         )
     for name in ("force", "acceleration", "jerk"):
-        assert torch.count_nonzero(getattr(classical, name)) == 0
-        assert torch.count_nonzero(classical.field_energies[name]) == 0
+        assert torch.count_nonzero(getattr(classic, name)) == 0
+        assert torch.count_nonzero(classic.field_energies[name]) == 0
     assert progress == [(1, 3), (2, 3), (3, 3)]
 
 
-def test_classical_run_rejects_drawn_non_momentum_fields():
+def test_classic_run_rejects_drawn_non_momentum_fields():
     setup = zero_setup(
         torch.zeros(1, 1, 5, 6),
         parameters=SplineParameters(n_steps=2, control_steps=(1,)),
@@ -276,11 +276,49 @@ def test_classical_run_rejects_drawn_non_momentum_fields():
     ):
         field.fill_(1)
         with pytest.raises(ValueError, match=message):
-            run_classical(setup, device="cpu")
+            run_classic(setup, device="cpu")
         field.zero_()
 
 
-def test_classical_button_uses_shared_workspace_and_reports_invalid_fields():
+def test_gaussian_operator_runs_classic_and_is_rejected_for_splines(tmp_path):
+    torch.manual_seed(14)
+    source = torch.rand(1, 1, 7, 8)
+    parameters = SplineParameters(
+        rho=0.25,
+        n_steps=2,
+        kernel="gaussian",
+        sigma=1.5,
+    )
+    setup = zero_setup(source, source, parameters)
+    setup.initial_momentum.normal_(std=0.05)
+
+    trajectory = run_classic(setup, device="cpu")
+    gradient = tb.spatialGradient(
+        trajectory.images,
+        dx_convention="pixel",
+        boundary="periodic",
+    )[:, 0]
+    expected_momentum = -(parameters.rho**0.5) * (
+        trajectory.momentum * gradient
+    )
+    expected_velocity = GaussianRKHS(
+        (1.5, 1.5),
+        border_type="circular",
+        normalized=True,
+        kernel_reach=3,
+    )(expected_momentum)
+
+    torch.testing.assert_close(trajectory.vector_momentum, expected_momentum)
+    torch.testing.assert_close(trajectory.velocity, expected_velocity)
+    assert torch.isfinite(trajectory.images).all()
+    restored = load_setup(save_setup(setup, tmp_path / "gaussian-setup.pt"))
+    assert restored.parameters.kernel == "gaussian"
+    assert restored.parameters.sigma == pytest.approx(1.5)
+    with pytest.raises(ValueError, match="Gaussian cometric inversion"):
+        run_spline(setup, device="cpu")
+
+
+def test_classic_button_uses_shared_workspace_and_reports_invalid_fields():
     source = torch.zeros(1, 1, 8, 9)
     source[..., 2:6, 3:7] = 0.5
     setup = zero_setup(
@@ -291,19 +329,19 @@ def test_classical_button_uses_shared_workspace_and_reports_invalid_fields():
     setup.initial_momentum.fill_(0.05)
     app = SplinePlayground(setup, device="cpu")
 
-    app.run_classical()
+    app.run_classic()
     assert app.last_error is None
     assert app.cache is not None
     assert app.cache.images.shape == (3, 1, 8, 9)
     assert torch.count_nonzero(app.cache.force) == 0
     assert torch.count_nonzero(app.cache.acceleration) == 0
     assert torch.count_nonzero(app.cache.jerk) == 0
-    assert "Classical metamorphosis complete" in app.status_text.get_text()
+    assert "Classic metamorphosis complete" in app.status_text.get_text()
     app.set_time_index(2)
     assert app.current_ax.get_title().startswith("Current image")
 
     app.fields["initial_force"].fill_(1)
-    app.run_classical()
+    app.run_classic()
     assert app.cache is None
     assert isinstance(app.last_error, ValueError)
     assert "accepts only initial momentum" in app.status_text.get_text()
@@ -374,6 +412,8 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
     assert setup.payload()["parameters"]["control_times"] == (0.5,)
     legacy = setup.payload()
     del legacy["parameters"]["control_times"]
+    del legacy["parameters"]["kernel"]
+    del legacy["parameters"]["sigma"]
     legacy_path = tmp_path / "legacy.pt"
     torch.save(legacy, legacy_path)
     assert load_setup(legacy_path).parameters.control_times == (0.5,)
@@ -460,7 +500,8 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
     assert r"\Vert p(t)\Vert_{A_{I(t)}}^2" in app.current_footer.get_text()
     assert r"\mathrm{MSE}" in app.target_footer.get_text()
     assert "device: cpu" in app.status_text.get_text()
-    assert "steps: 4" in app.status_text.get_text()
+    assert "size: 18x20" in app.status_text.get_text()
+    assert "steps:" not in app.status_text.get_text()
     assert app.time_slider.label.get_text() == "t"
     assert app.status_text.get_fontsize() >= 11
     assert all(
@@ -502,7 +543,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.file_button.ax.get_position().y0 > app.run_button.ax.get_position().y0
     assert (
         app.run_button.ax.get_position().y0
-        > app.classical_button.ax.get_position().y0
+        > app.classic_button.ax.get_position().y0
         > app.clear_button.ax.get_position().y0
     )
     shortcuts = next(
@@ -518,6 +559,17 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.parameter_menu_open
     assert app.parameter_menu.backdrop_ax.get_visible()
     assert all(slider.active for slider in app.parameter_menu.sliders)
+    assert [label.get_text() for label in app.operator_radio.labels] == [
+        "Sobolev",
+        "Gaussian",
+    ]
+    app.operator_radio.set_active(1)
+    assert app.parameters.kernel == "gaussian"
+    assert all(slider.active for slider in app.parameter_menu.sliders)
+    app.sigma_slider.set_val(2.5)
+    assert app.parameters.sigma == pytest.approx(2.5)
+    app.operator_radio.set_active(0)
+    assert app.parameters.kernel == "sobolev"
     assert app.device_radio.active
     assert app.device_radio.value_selected == "CPU"
     assert not any(button.active for button in app.file_menu.buttons)
@@ -565,13 +617,12 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
         text for text in app.fig.texts if text.get_text() == "CONTROLS"
     )
     assert controls_heading.get_ha() == "center"
-    operator_text = next(
-        text
-        for text in app.parameter_menu.panel_axes["model"].texts
-        if text.get_text().startswith("OPERATOR")
-    )
-    assert operator_text.get_ha() == "center"
-    assert "Lv=" in operator_text.get_text()
+    operator_texts = [
+        text.get_text() for text in app.parameter_menu.panel_axes["model"].texts
+    ]
+    assert any("L v=" in text and "K=L" in text for text in operator_texts)
+    assert any("Classic only" in text for text in operator_texts)
+    assert app.file_menu.buttons[2].label.get_text() == "LOAD FIELD"
 
     app.input_radio.set_active(3)
     app.set_menu_visible(True)
@@ -589,6 +640,54 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.overlay_control_selector.selected_index == 1
     assert app.control_time_editor.selected_index == 1
     assert int(app.time_slider.val) == 2
+    plt.close(app.fig)
+
+
+def test_only_operator_choice_changes_the_operator():
+    setup = zero_setup(
+        torch.zeros(1, 1, 10, 12),
+        parameters=SplineParameters(n_steps=2),
+    )
+    app = SplinePlayground(setup, device="cpu")
+    app.set_parameter_menu_visible(True)
+    app.fig.canvas.draw()
+    for slider in (app.alpha_slider, app.beta_slider):
+        assert slider.valmin == 0
+        assert slider.ax.get_xlim()[0] == 0
+
+    def click(axis, position=(0.5, 0.5)) -> None:
+        x, y = axis.transAxes.transform(position)
+        for event_name in ("button_press_event", "button_release_event"):
+            event = MouseEvent(event_name, app.fig.canvas, x, y, button=1)
+            app.fig.canvas.callbacks.process(event_name, event)
+
+    original_sigma = app.sigma_slider.val
+    click(app.sigma_slider.ax)
+    assert app.operator_radio.value_selected == "Sobolev"
+    assert app.parameters.kernel == "sobolev"
+    assert app.sigma_slider.val != original_sigma
+    assert all(slider.active for slider in app.parameter_menu.sliders)
+
+    click(app.operator_radio.ax, (0.70, 0.5))
+    assert app.parameters.kernel == "gaussian"
+    assert all(slider.active for slider in app.parameter_menu.sliders)
+
+    original_alpha = app.alpha_slider.val
+    click(app.alpha_slider.ax)
+    assert app.operator_radio.value_selected == "Gaussian"
+    assert app.parameters.kernel == "gaussian"
+    assert app.alpha_slider.val != original_alpha
+
+    click(app.operator_radio.ax, (0.08, 0.5))
+    assert app.parameters.kernel == "sobolev"
+    assert all(slider.active for slider in app.parameter_menu.sliders)
+    for slider in (
+        app.alpha_slider,
+        app.beta_slider,
+        app.gamma_slider,
+        app.sigma_slider,
+    ):
+        assert slider.track.get_alpha() in (None, 1)
     plt.close(app.fig)
 
 
@@ -677,6 +776,8 @@ def test_cli_step_override_preserves_control_time_and_field():
         gamma=None,
         rho=None,
         cg_eps=None,
+        kernel="gaussian",
+        sigma=2.5,
         steps=40,
         control_steps=None,
     )
@@ -684,6 +785,8 @@ def test_cli_step_override_preserves_control_time_and_field():
     replaced = _replace_parameters(setup, parameters)
     assert parameters.control_times == (0.5,)
     assert parameters.control_steps == (20,)
+    assert parameters.kernel == "gaussian"
+    assert parameters.sigma == pytest.approx(2.5)
     torch.testing.assert_close(replaced.control_jerks, setup.control_jerks)
 
 

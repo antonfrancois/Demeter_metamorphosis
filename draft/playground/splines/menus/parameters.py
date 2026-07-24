@@ -21,9 +21,11 @@ class ParameterMenu:
     backdrop_ax: Any
     panel_axes: dict[str, Any]
     rho_slider: Slider
+    operator_radio: RadioButtons
     alpha_slider: Slider
     beta_slider: Slider
     gamma_slider: Slider
+    sigma_slider: Slider
     brush_slider: Slider
     amplitude_slider: Slider
     steps_slider: Slider
@@ -38,6 +40,7 @@ class ParameterMenu:
             self.alpha_slider,
             self.beta_slider,
             self.gamma_slider,
+            self.sigma_slider,
             self.brush_slider,
             self.amplitude_slider,
             self.steps_slider,
@@ -49,6 +52,7 @@ class ParameterMenu:
             self.backdrop_ax,
             *self.panel_axes.values(),
             *(slider.ax for slider in self.sliders),
+            self.operator_radio.ax,
             self.device_radio.ax,
             self.control_time_editor.axis,
             self.close_button.ax,
@@ -56,13 +60,19 @@ class ParameterMenu:
 
     @property
     def widgets(self) -> list[Any]:
-        return [*self.sliders, self.device_radio, self.close_button]
+        return [
+            *self.sliders,
+            self.operator_radio,
+            self.device_radio,
+            self.close_button,
+        ]
 
     def set_visible(self, visible: bool) -> None:
         for axis in self.axes:
             axis.set_visible(visible)
         for widget in self.widgets:
             widget.active = visible
+        set_radio_visible(self.operator_radio, visible)
         set_radio_visible(self.device_radio, visible)
         self.control_time_editor.set_visible(visible)
 
@@ -89,15 +99,32 @@ def build_parameter_menu(
         "numerical": build_panel(fig, [0.60, 0.20, 0.34, 0.25], "NUMERICAL"),
     }
     panels["model"].text(
-        0.5,
-        0.68,
-        r"OPERATOR  $L:\quad Lv=-\alpha\Delta v-\beta\nabla(\nabla\!\cdot v)"
-        r"+\gamma v,\quad K=L^{-1}$",
+        0.25,
+        0.58,
+        r"$L v=-\alpha\Delta v-\beta\nabla(\nabla\!\cdot v)+\gamma v$"
+        "\n" r"$K=L^{-1}$",
         transform=panels["model"].transAxes,
         ha="center",
-        fontsize=10.5,
-        fontweight="bold",
+        va="center",
+        fontsize=8.5,
         color=INK_COLOR,
+    )
+    panels["model"].text(
+        0.75,
+        0.58,
+        r"$K=G_\sigma$" "\n" "Classic only",
+        transform=panels["model"].transAxes,
+        ha="center",
+        va="center",
+        fontsize=9,
+        color=INK_COLOR,
+    )
+    panels["model"].plot(
+        [0.5, 0.5],
+        [0.25, 0.64],
+        color="#c2cccf",
+        linewidth=1,
+        transform=panels["model"].transAxes,
     )
     panels["model"].text(
         0.5,
@@ -134,17 +161,42 @@ def build_parameter_menu(
         return widget
 
     rho = slider([0.17, 0.69, 0.32, 0.028], r"$\rho$", 0, max(0.95, parameters.rho), parameters.rho)
-    alpha = slider([0.17, 0.53, 0.32, 0.028], r"$\alpha$", 0, max(2, 1.5 * parameters.alpha), parameters.alpha)
-    beta = slider([0.17, 0.43, 0.32, 0.028], r"$\beta$", 0, max(2, 1.5 * parameters.beta), parameters.beta)
+    operator_radio = RadioButtons(
+        fig.add_axes([0.12, 0.565, 0.40, 0.045], facecolor=PANEL_COLOR, zorder=102),
+        ("Sobolev", "Gaussian"),
+        active=0 if parameters.kernel == "sobolev" else 1,
+        activecolor="#168a8a",
+        layout=(1, 2),
+    )
+    for label in operator_radio.labels:
+        label.set_fontsize(9.5)
+        label.set_fontweight("bold")
+    operator_radio.labels[0].set_position((0.105, 0.5))
+    operator_radio.labels[1].set_position((0.725, 0.5))
+    buttons = getattr(operator_radio, "_buttons", None)
+    if buttons is not None:
+        buttons.set_offsets(((0.08, 0.5), (0.70, 0.5)))
+    else:
+        operator_radio.circles[0].center = (0.08, 0.5)
+        operator_radio.circles[1].center = (0.70, 0.5)
+    alpha = slider([0.13, 0.47, 0.14, 0.025], r"$\alpha$", 0, max(2, 1.5 * parameters.alpha), parameters.alpha)
+    beta = slider([0.13, 0.39, 0.14, 0.025], r"$\beta$", 0, max(2, 1.5 * parameters.beta), parameters.beta)
     log_gamma = float(np.log10(parameters.gamma))
     gamma = slider(
-        [0.17, 0.33, 0.32, 0.028],
+        [0.13, 0.31, 0.14, 0.025],
         r"$\gamma$",
         min(-5, np.floor(log_gamma) - 1),
         max(1, np.ceil(log_gamma) + 1),
         log_gamma,
     )
     gamma.valtext.set_text(f"{parameters.gamma:.3g}")
+    sigma = slider(
+        [0.38, 0.47, 0.14, 0.025],
+        r"$\sigma$",
+        0.1,
+        max(10, 1.5 * parameters.sigma),
+        parameters.sigma,
+    )
     brush = slider([0.70, 0.68, 0.17, 0.028], "Brush", 1, 40, 3)
     amplitude = slider([0.70, 0.57, 0.17, 0.028], "Amplitude", 0.01, 4, 0.5)
     steps = slider(
@@ -206,9 +258,11 @@ def build_parameter_menu(
         backdrop,
         panels,
         rho,
+        operator_radio,
         alpha,
         beta,
         gamma,
+        sigma,
         brush,
         amplitude,
         steps,
