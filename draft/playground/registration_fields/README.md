@@ -15,16 +15,17 @@ vector/
 scalar/
   momentum/image_momentum_tNNN.pt
   velocity/image_velocity_tNNN.pt
-spline_setup.pt  # Sobolev with rho < 1
+spline_setup.pt  # rho < 1; see kernel limitations below
 ```
 
 The vector files contain the classical deformation velocity
 `v = -sqrt(rho) K(p grad(I))` and its vector momentum. The scalar files contain
 image momentum `p` (playground dual kind `u`) and image velocity `A_I p`
-(playground primal kind `a`). For Sobolev runs, `m = L v` exactly and
+(playground primal kind `a`). For Sobolev runs, `m = L v` exactly.
 `spline_setup.pt` is directly loadable through the spline lab's **Load complete
-setup** action. It contains the optimized `p0` with zero force, jerk, and
-controls.
+setup** action and contains the optimized `p0` with zero force, jerk, and
+controls. It is saved for Sobolev runs and for isotropic Gaussian runs using
+the spline lab's supported kernel reach of 3, provided `rho < 1`.
 
 The nodes are uniformly spaced from `t=0` through `t=1`. `trajectory.pt` also
 contains the images and all four fields for the complete trajectory.
@@ -39,6 +40,7 @@ Example:
   --kernel sobolev --rho 0.5 --size 128 128 --integration-steps 10
 ```
 
+Sobolev is the default because its output can also be integrated as a spline.
 Use `--kernel gaussian --sigma 3 3` for the periodic circular Gaussian RKHS
 instead. Classical gradients, divergence, transport, and flow composition use
 periodic boundaries for both kernel choices.

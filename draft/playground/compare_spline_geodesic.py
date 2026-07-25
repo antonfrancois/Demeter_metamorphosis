@@ -26,7 +26,7 @@ from draft.playground.field_playground_core import load_field_file
 from draft.playground.splines.core import (
     SplineParameters,
     load_setup,
-    run_classical,
+    run_classic,
     run_spline,
     zero_setup,
 )
@@ -42,7 +42,7 @@ def run_classical_geodesic(
 ) -> dict[str, torch.Tensor]:
     setup = zero_setup(source, source, parameters)
     setup.initial_momentum.copy_(initial_momentum)
-    trajectory = run_classical(setup, device=device)
+    trajectory = run_classic(setup, device=device)
     return {
         "images": trajectory.images,
         "momentum": trajectory.momentum,

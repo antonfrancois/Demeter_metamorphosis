@@ -430,6 +430,8 @@ def save_trajectory(
         setup.initial_momentum.copy_(trajectory["image_momenta"][0:1])
         setup_path = save_setup(setup, output_dir / "spline_setup.pt")
         manifest["spline_setup"] = setup_path.name
+    else:
+        (output_dir / "spline_setup.pt").unlink(missing_ok=True)
     (output_dir / "manifest.json").write_text(
         json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
     )
@@ -465,8 +467,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--kernel",
         choices=("gaussian", "sobolev"),
-        default="gaussian",
-        help="Periodic deformation kernel (default: gaussian)",
+        default="sobolev",
+        help="Periodic deformation kernel (default: sobolev)",
     )
     parser.add_argument("--sigma", nargs=2, type=float, default=(3.0, 3.0))
     parser.add_argument("--kernel-reach", type=int, default=3)
@@ -564,7 +566,26 @@ def main(argv: list[str] | None = None) -> Path:
             sigma=tuple(args.sigma),
             kernel_reach=args.kernel_reach,
         )
-        spline_parameters = None
+        isotropic_sigma = math.isclose(args.sigma[0], args.sigma[1])
+        if args.rho < 1 and isotropic_sigma and args.kernel_reach == 3:
+            spline_parameters = SplineParameters(
+                alpha=args.alpha,
+                beta=args.beta,
+                gamma=args.gamma,
+                rho=args.rho,
+                cg_eps=args.cg_eps,
+                n_steps=args.integration_steps,
+                control_steps=(),
+                kernel="gaussian",
+                sigma=args.sigma[0],
+            )
+        else:
+            spline_parameters = None
+            if args.rho < 1:
+                print(
+                    "Not saving spline_setup.pt: the spline lab only represents "
+                    "isotropic Gaussian kernels with kernel reach 3"
+                )
     run_name = args.name or _default_run_name(
         source_path,
         target_path,

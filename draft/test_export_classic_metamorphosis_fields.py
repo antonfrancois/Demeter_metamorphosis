@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import torch
 
 from draft.export_classic_metamorphosis_fields import (
+    build_parser,
     build_kernel_operator,
     extract_trajectory,
     load_image,
@@ -32,6 +33,12 @@ def test_resize_target_to_source_preserves_source_resolution():
     assert resized.shape == source.shape
     assert source.shape == (1, 1, 8, 10)
     assert resized.is_contiguous()
+
+
+def test_exporter_defaults_to_sobolev_for_spline_compatible_output():
+    args = build_parser().parse_args(["source.png", "target.png"])
+
+    assert args.kernel == "sobolev"
 
 
 def test_exporter_builds_periodic_gaussian_or_sobolev_kernel():
@@ -267,13 +274,14 @@ def test_periodic_registration_runs_with_both_kernel_choices():
     )
 
     for operator in operators:
+        initial_ssd = 0.5 * (source - target).square().sum()
         registration = run_registration(
             source,
             target,
             rho=0.25,
             operator=operator,
             integration_steps=2,
-            iterations=1,
+            iterations=2,
             cost_cst=1e-3,
             grad_coef=1.0,
             device=torch.device("cpu"),
@@ -285,6 +293,18 @@ def test_periodic_registration_runs_with_both_kernel_choices():
             isinstance(momentum, Momenta)
             for momentum in registration.mp.momentum_stock
         )
+        final_ssd = 0.5 * (registration.mp.image - target).square().sum()
+        assert final_ssd < initial_ssd
+        assert torch.count_nonzero(registration.optimized_momenta.momentum_I) > 0
         trajectory = extract_trajectory(registration, operator, rho=0.25)
         assert trajectory["images"].shape == (3, 1, 8, 9)
         assert trajectory["image_momenta"].shape == (3, 1, 8, 9)
+        torch.testing.assert_close(
+            0.25**0.5 * trajectory["velocities"][:-1],
+            registration.mp.field_stock.movedim(-1, 1),
+            rtol=2e-5,
+            atol=2e-6,
+        )
+        torch.testing.assert_close(
+            trajectory["images"][-1:], registration.mp.image
+        )
