@@ -433,6 +433,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
         for index in range(self.n_step):
             self._i = index
             old_acceleration = self.acceleration
+
             (
                 next_state,
                 self.image,
