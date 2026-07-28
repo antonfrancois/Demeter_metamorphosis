@@ -112,22 +112,23 @@ def build_workspace(
         color=PANEL_COLOR,
         hovercolor="#d7e4e2",
     )
-    run_button = Button(
-        fig.add_axes([0.805, 0.49, 0.17, 0.07]),
-        f"RUN {model.upper()}",
-        color="#168a8a",
-        hovercolor="#20a3a3",
-    )
-    run_button.label.set_color("white")
-    run_button.label.set_fontweight("bold")
+    model_label = "SPLINE" if model == "splines" else model.upper()
     register_button = Button(
-        fig.add_axes([0.805, 0.41, 0.17, 0.06]),
-        f"REGISTER {model.upper()}",
+        fig.add_axes([0.805, 0.49, 0.17, 0.07]),
+        f"REGISTER {model_label}",
         color="#4267ac",
         hovercolor="#557bc2",
     )
     register_button.label.set_color("white")
     register_button.label.set_fontweight("bold")
+    run_button = Button(
+        fig.add_axes([0.805, 0.41, 0.17, 0.06]),
+        f"RUN {model_label}",
+        color="#168a8a",
+        hovercolor="#20a3a3",
+    )
+    run_button.label.set_color("white")
+    run_button.label.set_fontweight("bold")
     clear_button = Button(
         fig.add_axes([0.805, 0.32, 0.17, 0.055]),
         "CLEAR DISPLAYED FIELD",

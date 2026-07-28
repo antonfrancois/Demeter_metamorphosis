@@ -34,7 +34,7 @@ resets. The status line reports progress, the compute device, and image size.
 
 Press `P` or click **Parameter Menu** for the categorized controls:
 
-- **Model** selects Classic or Splines and contains `rho`, the operator, its
+- **Model** selects Classic or Spline and contains `rho`, the operator, its
   parameters, and an interactive normalized control-time line. Gaussian
   automatically selects Classic because spline cometric inversion is Sobolev-only;
 - **Draw** contains brush size and amplitude. Each editable field remembers its
@@ -54,7 +54,7 @@ The two main actions follow the selected model. **Run** integrates the currently
 drawn or loaded fields. **Register** starts from the images and zero fields,
 optimizes with LBFGS, then loads the optimized fields and a normal replayed
 trajectory into the same editor. Classic accepts Sobolev or Gaussian and uses
-one endpoint target. Splines requires Sobolev and uses every timed target.
+one endpoint target. Spline requires Sobolev and uses every timed target.
 
 Press `M` or click **View / Overlay Menu** to open the three-column display
 menu. Its source column reuses the control-time line to select which control

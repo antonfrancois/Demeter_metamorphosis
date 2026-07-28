@@ -171,7 +171,7 @@ def build_parameter_menu(
 
     model_radio = RadioButtons(
         fig.add_axes([0.12, 0.755, 0.40, 0.05], facecolor=PANEL_COLOR, zorder=102),
-        ("Classic", "Splines"),
+        ("Classic", "Spline"),
         active=0 if parameters.model == "classic" else 1,
         activecolor="#168a8a",
         layout=(1, 2),

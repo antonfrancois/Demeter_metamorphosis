@@ -445,7 +445,11 @@ class SplinePlayground:
             n_steps=int(round(self.steps_slider.val)),
             kernel=self.operator_radio.value_selected.lower(),
             sigma=float(self.sigma_slider.val),
-            model=self.model_radio.value_selected.lower(),
+            model=(
+                "splines"
+                if self.model_radio.value_selected == "Spline"
+                else "classic"
+            ),
             cost_cst=10 ** float(self.cost_slider.val),
             iterations=int(round(self.iterations_slider.val)),
         )
@@ -680,7 +684,7 @@ class SplinePlayground:
         if self._syncing_widgets or self._running:
             return
         previous = self.parameters
-        if label.lower() == "splines" and self.operator_radio.value_selected == "Gaussian":
+        if label == "Spline" and self.operator_radio.value_selected == "Gaussian":
             self._syncing_widgets = True
             self.operator_radio.set_active(0)
             self._syncing_widgets = False
@@ -694,10 +698,11 @@ class SplinePlayground:
             self._show_message(f"Invalid model change: {error}")
             return
         self._update_action_labels()
-        self._invalidate(f"Model changed to {self.parameters.model}. Press Run.")
+        model_label = "spline" if self.parameters.model == "splines" else "classic"
+        self._invalidate(f"Model changed to {model_label}. Press Run.")
 
     def _update_action_labels(self) -> None:
-        model = self.parameters.model.upper()
+        model = "SPLINE" if self.parameters.model == "splines" else "CLASSIC"
         self.run_button.label.set_text(f"RUN {model}")
         self.register_button.label.set_text(f"REGISTER {model}")
 
@@ -709,7 +714,7 @@ class SplinePlayground:
         self.fig.canvas.draw_idle()
 
     def _on_operator_change(self, label: str) -> None:
-        if label == "Gaussian" and self.model_radio.value_selected == "Splines":
+        if label == "Gaussian" and self.model_radio.value_selected == "Spline":
             self._syncing_widgets = True
             self.model_radio.set_active(0)
             self._syncing_widgets = False
@@ -1110,7 +1115,7 @@ class SplinePlayground:
             self.run_spline()
 
     def run_spline(self) -> None:
-        self._run_trajectory("splines", run_spline, "splines")
+        self._run_trajectory("spline", run_spline, "splines")
 
     def run_classic(self) -> None:
         self._run_trajectory("classic", run_classic, "classic")
@@ -1179,14 +1184,15 @@ class SplinePlayground:
         self._running = True
         self.editor.cancel()
         self._set_workspace_active(False)
-        self._set_status(f"Optimizing {model} from the images...")
+        model_label = "spline" if model == "splines" else model
+        self._set_status(f"Optimizing {model_label} from the images...")
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
         self._last_progress_draw = perf_counter()
         self.last_error = None
         try:
             setup = self.make_setup(model)
-            self._running_label = f"optimized {model} replay"
+            self._running_label = f"optimized {model_label} replay"
             result = runner(
                 setup,
                 device=self.device,
@@ -1194,7 +1200,7 @@ class SplinePlayground:
             )
             self._apply_registration_result(result)
             self._set_status(
-                f"{model.capitalize()} registration complete in "
+                f"{model_label.capitalize()} registration complete in "
                 f"{result.elapsed_seconds:.3g}s. Optimized fields loaded."
             )
         except Exception as error:

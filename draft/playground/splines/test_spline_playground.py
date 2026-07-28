@@ -551,8 +551,8 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.menu_button.ax.get_position().y0 > app.file_button.ax.get_position().y0
     assert app.file_button.ax.get_position().y0 > app.run_button.ax.get_position().y0
     assert (
-        app.run_button.ax.get_position().y0
-        > app.register_button.ax.get_position().y0
+        app.register_button.ax.get_position().y0
+        > app.run_button.ax.get_position().y0
         > app.clear_button.ax.get_position().y0
     )
     shortcuts = next(
@@ -1098,8 +1098,8 @@ def test_model_actions_timed_target_selection_and_manual_placement(tmp_path):
         target_paths=("half.png", "final.png"),
     )
     app = SplinePlayground(setup, device="cpu")
-    assert app.run_button.label.get_text() == "RUN SPLINES"
-    assert app.register_button.label.get_text() == "REGISTER SPLINES"
+    assert app.run_button.label.get_text() == "RUN SPLINE"
+    assert app.register_button.label.get_text() == "REGISTER SPLINE"
     assert len(app._target_markers) == 4
 
     app.set_time_index(2)
