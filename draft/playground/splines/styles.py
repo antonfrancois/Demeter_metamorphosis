@@ -5,6 +5,8 @@ PRIMAL_COLOR = "#ffd166"
 INK_COLOR = "#20323a"
 PANEL_COLOR = "#f7f7f2"
 CANVAS_COLOR = "#e7ece9"
+TARGET_COLOR = "#4267ac"
+TARGET_ACTIVE_COLOR = "#7a3db8"
 
 INPUT_FIELDS = (
     "initial_momentum",

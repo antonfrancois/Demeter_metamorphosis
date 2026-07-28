@@ -34,7 +34,7 @@ from ..field_playground_core import (
 )
 
 
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 SETUP_KIND = "demeter_spline_playground"
 TRAJECTORY_FIELDS = (
     "momentum",
@@ -75,6 +75,9 @@ class SplineParameters:
     control_times: tuple[float, ...] = ()
     kernel: str = "sobolev"
     sigma: float = 3.0
+    model: str = "splines"
+    cost_cst: float = 0.01
+    iterations: int = 6
 
     def __post_init__(self) -> None:
         for name in ("alpha", "beta", "gamma", "rho", "cg_eps"):
@@ -86,8 +89,14 @@ class SplineParameters:
             raise ValueError(
                 "alpha and beta must be non-negative, and gamma must be positive"
             )
-        if not 0 <= self.rho < 1:
-            raise ValueError("rho must satisfy 0 <= rho < 1")
+        model = str(self.model).lower()
+        if model not in ("classic", "splines"):
+            raise ValueError("model must be 'classic' or 'splines'")
+        object.__setattr__(self, "model", model)
+        rho_upper_bound = self.rho <= 1 if model == "classic" else self.rho < 1
+        if self.rho < 0 or not rho_upper_bound:
+            bound = "0 <= rho <= 1" if model == "classic" else "0 <= rho < 1"
+            raise ValueError(f"rho must satisfy {bound}")
         if self.cg_eps <= 0:
             raise ValueError("cg_eps must be strictly positive")
         kernel = str(self.kernel).lower()
@@ -98,6 +107,18 @@ class SplineParameters:
         if not isfinite(sigma) or sigma <= 0:
             raise ValueError("sigma must be finite and strictly positive")
         object.__setattr__(self, "sigma", sigma)
+        if model == "splines" and kernel != "sobolev":
+            raise ValueError("spline runs require the Sobolev operator")
+        cost_cst = float(self.cost_cst)
+        if not isfinite(cost_cst) or cost_cst <= 0:
+            raise ValueError("cost_cst must be finite and strictly positive")
+        object.__setattr__(self, "cost_cst", cost_cst)
+        if (
+            not isinstance(self.iterations, int)
+            or isinstance(self.iterations, bool)
+            or self.iterations < 1
+        ):
+            raise ValueError("iterations must be a strictly positive integer")
         if (
             not isinstance(self.n_steps, int)
             or isinstance(self.n_steps, bool)
@@ -161,6 +182,9 @@ class SplineParameters:
             "control_times": self.control_times,
             "kernel": self.kernel,
             "sigma": self.sigma,
+            "model": self.model,
+            "cost_cst": self.cost_cst,
+            "iterations": self.iterations,
         }
 
     @classmethod
@@ -180,6 +204,9 @@ class SplineParameters:
             ),
             kernel=values.get("kernel", "sobolev"),
             sigma=values.get("sigma", 3.0),
+            model=values.get("model", "splines"),
+            cost_cst=values.get("cost_cst", 0.01),
+            iterations=values.get("iterations", 6),
         )
 
 
@@ -217,6 +244,8 @@ class SplineSetup:
     parameters: SplineParameters
     source_path: str = ""
     target_path: str = ""
+    target_times: tuple[float, ...] = (1.0,)
+    target_paths: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         _require_finite_input(self.source, "source")
@@ -235,8 +264,8 @@ class SplineSetup:
         dtype = source.dtype
 
         target = coerce_image(self.target)
-        if target.ndim != 4 or target.shape[:2] != (1, 1):
-            raise ValueError("target must have shape [1, 1, H, W]")
+        if target.ndim != 4 or target.shape[1] != 1 or target.shape[0] < 1:
+            raise ValueError("target must have shape [N, 1, H, W]")
         if tuple(target.shape[-2:]) != size:
             target = F.interpolate(
                 target,
@@ -245,8 +274,36 @@ class SplineSetup:
                 align_corners=False,
             )
 
+        times = tuple(float(time) for time in self.target_times)
+        if len(times) != target.shape[0]:
+            raise ValueError("target_times must contain one time per target")
+        if any(not isfinite(time) or not 0 < time <= 1 for time in times):
+            raise ValueError("target times must be finite and lie in (0, 1]")
+        if any(right <= left for left, right in zip(times, times[1:])):
+            raise ValueError("target times must be strictly increasing")
+        target_steps = tuple(round(time * self.parameters.n_steps) for time in times)
+        if any(not 1 <= step <= self.parameters.n_steps for step in target_steps):
+            raise ValueError("target times must map to nonzero temporal mesh nodes")
+        if any(
+            abs(time * self.parameters.n_steps - step) > 1e-6
+            for time, step in zip(times, target_steps)
+        ):
+            raise ValueError("target times must lie on the temporal mesh")
+        if any(
+            right <= left for left, right in zip(target_steps, target_steps[1:])
+        ):
+            raise ValueError("target times must map to distinct temporal nodes")
+
+        paths = tuple(str(path) for path in self.target_paths)
+        if not paths:
+            paths = (str(self.target_path),) if len(times) == 1 else ("",) * len(times)
+        if len(paths) != len(times):
+            raise ValueError("target_paths must contain one path per target")
+
         self.source = source
         self.target = target.to(dtype=dtype).contiguous().clone()
+        self.target_times = times
+        self.target_paths = paths
         self.initial_momentum = _scalar_field(
             self.initial_momentum,
             size,
@@ -283,7 +340,7 @@ class SplineSetup:
             if not torch.isfinite(tensor).all():
                 raise ValueError(f"{name} must contain only finite values")
         self.source_path = str(self.source_path)
-        self.target_path = str(self.target_path)
+        self.target_path = paths[-1]
 
     @property
     def size(self) -> tuple[int, int]:
@@ -292,6 +349,10 @@ class SplineSetup:
     @property
     def n_controls(self) -> int:
         return len(self.parameters.control_steps)
+
+    @property
+    def target_steps(self) -> tuple[int, ...]:
+        return tuple(round(time * self.parameters.n_steps) for time in self.target_times)
 
     def payload(self) -> dict[str, Any]:
         return {
@@ -306,6 +367,8 @@ class SplineSetup:
             "parameters": self.parameters.as_dict(),
             "source_path": self.source_path,
             "target_path": self.target_path,
+            "target_times": self.target_times,
+            "target_paths": self.target_paths,
         }
 
 
@@ -316,6 +379,8 @@ def zero_setup(
     *,
     source_path: str | Path | None = None,
     target_path: str | Path | None = None,
+    target_times: tuple[float, ...] = (1.0,),
+    target_paths: tuple[str | Path, ...] = (),
 ) -> SplineSetup:
     """Create a zero-field setup matching the source image."""
     parameters = parameters or SplineParameters()
@@ -337,6 +402,8 @@ def zero_setup(
         parameters,
         str(source_path or ""),
         str(target_path or ""),
+        target_times,
+        tuple(str(path) for path in target_paths),
     )
 
 
@@ -366,9 +433,9 @@ def load_setup(path: str | Path) -> SplineSetup:
     if not isinstance(payload, dict) or payload.get("kind") != SETUP_KIND:
         raise ValueError(f"{path} is not a spline playground setup")
     version = payload.get("format_version")
-    if version != FORMAT_VERSION:
+    if version not in (1, FORMAT_VERSION):
         raise ValueError(
-            f"unsupported spline setup format {version!r}; expected {FORMAT_VERSION}"
+            f"unsupported spline setup format {version!r}; expected 1 or {FORMAT_VERSION}"
         )
     required_parameters = {
         "alpha",
@@ -383,7 +450,13 @@ def load_setup(path: str | Path) -> SplineSetup:
     if missing:
         names = ", ".join(sorted(missing))
         raise ValueError(f"spline setup is missing parameters: {names}")
-    parameter_values = payload["parameters"]
+    parameter_values = dict(payload["parameters"])
+    if (
+        version == 1
+        and "model" not in parameter_values
+        and parameter_values.get("kernel", "sobolev") == "gaussian"
+    ):
+        parameter_values["model"] = "classic"
     parameters = SplineParameters.from_dict(parameter_values)
     if (
         "control_times" in parameter_values
@@ -403,6 +476,8 @@ def load_setup(path: str | Path) -> SplineSetup:
         parameters=parameters,
         source_path=payload.get("source_path", ""),
         target_path=payload.get("target_path", ""),
+        target_times=tuple(payload.get("target_times", (1.0,))),
+        target_paths=tuple(payload.get("target_paths", ())),
     )
 
 
@@ -481,6 +556,19 @@ class SplineTrajectory:
     def field_energy(self, name: str, index: int) -> float:
         return float(self.field_energies[name][index])
 
+    def payload(self) -> dict[str, Any]:
+        return {
+            name: value.detach().cpu().clone()
+            for name, value in vars(self).items()
+            if torch.is_tensor(value)
+        } | {
+            "field_energies": {
+                name: value.detach().cpu().clone()
+                for name, value in self.field_energies.items()
+            },
+            "elapsed_seconds": self.elapsed_seconds,
+        }
+
 
 def _decompose_image_nodes(
     source: torch.Tensor,
@@ -514,6 +602,12 @@ def _decompose_image_nodes(
     return (
         torch.stack(deformed_nodes).contiguous(),
         torch.stack(photometric_nodes).contiguous(),
+    )
+
+
+def _target_mse(images: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+    return torch.stack(
+        [(images - target).square().mean(dim=(1, 2, 3)) for target in targets]
     )
 
 
@@ -650,8 +744,8 @@ def run_spline(
         "velocity": velocity_energy,
         "vector_momentum": velocity_energy,
     }
-    target = setup.target[0].to(dtype=images.dtype)
-    target_mse = (images - target).square().mean(dim=(1, 2, 3))
+    targets = setup.target.to(dtype=images.dtype)
+    target_mse = _target_mse(images, targets)
     if progress_callback is not None:
         progress_callback(parameters.n_steps, parameters.n_steps)
     elapsed = perf_counter() - start
@@ -778,8 +872,8 @@ def run_classic(
         "velocity": velocity_energy,
         "vector_momentum": velocity_energy,
     }
-    target = setup.target[0].to(dtype=images.dtype)
-    target_mse = (images - target).square().mean(dim=(1, 2, 3))
+    targets = setup.target.to(dtype=images.dtype)
+    target_mse = _target_mse(images, targets)
     elapsed = perf_counter() - start
     return SplineTrajectory(
         images=images,

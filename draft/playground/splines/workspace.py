@@ -21,7 +21,7 @@ class Workspace:
     menu_button: Button
     file_button: Button
     run_button: Button
-    classic_button: Button
+    register_button: Button
     clear_button: Button
     clear_all_button: Button
     time_slider: Slider
@@ -32,6 +32,7 @@ def build_workspace(
     source: torch.Tensor,
     target: torch.Tensor,
     n_steps: int,
+    model: str,
     dynamic_artists: dict[Any, list[Any]],
 ) -> Workspace:
     fig = plt.figure(figsize=(17, 9.2), facecolor=CANVAS_COLOR)
@@ -76,7 +77,7 @@ def build_workspace(
 
     footers = tuple(panel_footer(axis) for axis in axes)
     fig.suptitle(
-        "Metamorphosis Spline Lab",
+        "Metamorphosis Lab",
         x=0.405,
         y=0.982,
         fontsize=18,
@@ -113,20 +114,20 @@ def build_workspace(
     )
     run_button = Button(
         fig.add_axes([0.805, 0.49, 0.17, 0.07]),
-        "RUN SPLINE",
+        f"RUN {model.upper()}",
         color="#168a8a",
         hovercolor="#20a3a3",
     )
     run_button.label.set_color("white")
     run_button.label.set_fontweight("bold")
-    classic_button = Button(
+    register_button = Button(
         fig.add_axes([0.805, 0.41, 0.17, 0.06]),
-        "RUN CLASSIC",
-        color="#168a8a",
-        hovercolor="#20a3a3",
+        f"REGISTER {model.upper()}",
+        color="#4267ac",
+        hovercolor="#557bc2",
     )
-    classic_button.label.set_color("white")
-    classic_button.label.set_fontweight("bold")
+    register_button.label.set_color("white")
+    register_button.label.set_fontweight("bold")
     clear_button = Button(
         fig.add_axes([0.805, 0.32, 0.17, 0.055]),
         "CLEAR DISPLAYED FIELD",
@@ -169,7 +170,7 @@ def build_workspace(
     fig.text(
         0.012,
         0.975,
-        "P  parameters\nM  view menu\nL  files\nR  run\n"
+        "P  parameters\nM  view menu\nL  files\nR  run\nG  register\n"
         "Arrow keys  move in time\n[ / ]  knots\n"
         "Mouse L/R  paint +/-\nShift-drag  erase",
         ha="left",
@@ -188,7 +189,7 @@ def build_workspace(
         menu_button,
         file_button,
         run_button,
-        classic_button,
+        register_button,
         clear_button,
         clear_all_button,
         time_slider,

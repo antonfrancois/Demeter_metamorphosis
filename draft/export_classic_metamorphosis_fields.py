@@ -557,6 +557,9 @@ def main(argv: list[str] | None = None) -> Path:
                 cg_eps=args.cg_eps,
                 n_steps=args.integration_steps,
                 control_steps=(),
+                model="classic",
+                cost_cst=args.cost_cst,
+                iterations=args.iterations,
             )
             if args.rho < 1
             else None
@@ -578,6 +581,9 @@ def main(argv: list[str] | None = None) -> Path:
                 control_steps=(),
                 kernel="gaussian",
                 sigma=args.sigma[0],
+                model="classic",
+                cost_cst=args.cost_cst,
+                iterations=args.iterations,
             )
         else:
             spline_parameters = None

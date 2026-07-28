@@ -44,7 +44,7 @@ def build_file_menu(
     backdrop = build_modal_backdrop(
         fig,
         "LOAD / SAVE",
-        "Images, scalar fields, and complete spline setups.",
+        "Classic images, timed spline observations, fields, and complete setups.",
     )
     panel = fig.add_axes([0.28, 0.20, 0.44, 0.62], facecolor=PANEL_COLOR, zorder=101)
     panel.set_xticks([])
@@ -59,15 +59,10 @@ def build_file_menu(
         fontweight="bold",
         color=INK_COLOR,
     )
-    positions = (
-        [0.33, 0.60, 0.16, 0.075],
-        [0.51, 0.60, 0.16, 0.075],
-        [0.33, 0.47, 0.34, 0.075],
-        [0.33, 0.34, 0.16, 0.075],
-        [0.51, 0.34, 0.16, 0.075],
-    )
     buttons = []
-    for (label, action), position in zip(actions, positions):
+    for index, (label, action) in enumerate(actions):
+        row, column = divmod(index, 2)
+        position = [0.33 + 0.18 * column, 0.60 - 0.13 * row, 0.16, 0.075]
         button = Button(
             fig.add_axes(position, zorder=102),
             label,

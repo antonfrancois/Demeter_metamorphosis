@@ -76,3 +76,89 @@ def choose_file(
     raise RuntimeError(
         "No file dialog is available for this backend; use a path or CLI option."
     )
+
+
+def choose_files() -> tuple[Path, ...]:
+    """Choose multiple target images with the active GUI backend."""
+    title = "Add spline target images"
+    image_filter = "Images (*.png *.jpg *.jpeg *.tif *.tiff);;All files (*)"
+    backend = plt.get_backend().lower()
+    if "qt" in backend:
+        try:
+            from matplotlib.backends.qt_compat import QtWidgets
+
+            filenames, _ = QtWidgets.QFileDialog.getOpenFileNames(
+                None, title, str(IMAGE_BANK), image_filter
+            )
+            return tuple(Path(filename) for filename in filenames)
+        except Exception:
+            pass
+    if "tk" in backend:
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+
+            root = tk.Tk()
+            root.withdraw()
+            try:
+                filenames = filedialog.askopenfilenames(
+                    title=title,
+                    initialdir=str(IMAGE_BANK),
+                    filetypes=(
+                        ("Images", "*.png *.jpg *.jpeg *.tif *.tiff"),
+                        ("All files", "*"),
+                    ),
+                )
+            finally:
+                root.destroy()
+            return tuple(Path(filename) for filename in filenames)
+        except Exception:
+            pass
+    raise RuntimeError("No multiple-file dialog is available for this backend.")
+
+
+def choose_directory(*, save: bool = False) -> Path | None:
+    """Choose a timed-image directory to load or a new directory path to save."""
+    title = "Save timed image directory" if save else "Load timed image directory"
+    initial = PROJECT_ROOT / "draft"
+    backend = plt.get_backend().lower()
+    if "qt" in backend:
+        try:
+            from matplotlib.backends.qt_compat import QtWidgets
+
+            if save:
+                filename, _ = QtWidgets.QFileDialog.getSaveFileName(
+                    None, title, str(initial / "spline_images"), "Directory name (*)"
+                )
+            else:
+                filename = QtWidgets.QFileDialog.getExistingDirectory(
+                    None, title, str(initial)
+                )
+            return Path(filename) if filename else None
+        except Exception:
+            pass
+    if "tk" in backend:
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+
+            root = tk.Tk()
+            root.withdraw()
+            try:
+                if save:
+                    filename = filedialog.asksaveasfilename(
+                        title=title,
+                        initialdir=str(initial),
+                        initialfile="spline_images",
+                    )
+                else:
+                    filename = filedialog.askdirectory(
+                        title=title,
+                        initialdir=str(initial),
+                    )
+            finally:
+                root.destroy()
+            return Path(filename) if filename else None
+        except Exception:
+            pass
+    raise RuntimeError("No directory dialog is available for this backend.")

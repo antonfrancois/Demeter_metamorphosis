@@ -22,6 +22,8 @@ from draft.playground.splines.images import (
     load_image,
 )
 import matplotlib.pyplot as plt
+
+from demeter.utils.spline_data import load_timed_image_directory
 from draft.playground.splines.core import (
     SplineParameters,
     SplineSetup,
@@ -36,6 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("source", nargs="?", help="Source image path or im2Dbank shorthand")
     parser.add_argument("target", nargs="?", help="Target image path or im2Dbank shorthand")
     parser.add_argument("--setup", help="Saved spline playground setup")
+    parser.add_argument("--timed-images", help="Directory containing images.csv")
     parser.add_argument("--size", nargs=2, type=int, metavar=("H", "W"))
     parser.add_argument(
         "--device",
@@ -56,6 +59,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--sigma", type=float)
     parser.add_argument("--rho", type=float)
     parser.add_argument("--cg-eps", type=float)
+    parser.add_argument("--model", choices=("classic", "splines"))
+    parser.add_argument("--cost-cst", type=float)
+    parser.add_argument("--iterations", type=int)
     parser.add_argument("--output", help="Path used by Ctrl+S")
     parser.add_argument("--field", help="Scalar field loaded before launch")
     parser.add_argument(
@@ -65,6 +71,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--control-index", type=int, default=0)
     parser.add_argument("--run", action="store_true", help="Run immediately")
+    parser.add_argument("--register", action="store_true", help="Optimize immediately")
     parser.add_argument("--screenshot", help="Save the rendered application")
     parser.add_argument("--no-show", action="store_true")
     return parser
@@ -83,6 +90,9 @@ def _parameter_overrides(
         (args.cg_eps, "cg_eps"),
         (getattr(args, "kernel", None), "kernel"),
         (getattr(args, "sigma", None), "sigma"),
+        (getattr(args, "model", None), "model"),
+        (getattr(args, "cost_cst", None), "cost_cst"),
+        (getattr(args, "iterations", None), "iterations"),
     ):
         if argument is not None:
             values[name] = argument
@@ -94,6 +104,8 @@ def _parameter_overrides(
         values["control_times"] = tuple(
             step / values["n_steps"] for step in control_steps
         )
+    if values.get("kernel") == "gaussian" and getattr(args, "model", None) is None:
+        values["model"] = "classic"
     return SplineParameters.from_dict(values)
 
 
@@ -130,6 +142,20 @@ def main(argv: list[str] | None = None) -> SplinePlayground:
         parameters = _parameter_overrides(args, setup.parameters)
         if parameters != setup.parameters:
             setup = _replace_parameters(setup, parameters)
+    elif args.timed_images:
+        if args.source or args.target or size is not None:
+            parser.error("source, target, and --size cannot be combined with --timed-images")
+        batch = load_timed_image_directory(args.timed_images)
+        parameters = _parameter_overrides(args, SplineParameters(model="splines"))
+        setup = zero_setup(
+            batch.source,
+            batch.target,
+            parameters,
+            source_path=batch.source_path,
+            target_path=batch.target_paths[-1],
+            target_times=batch.target_times,
+            target_paths=batch.target_paths,
+        )
     else:
         source, source_path = load_image(args.source or DEFAULT_SOURCE, size)
         target, target_path = load_image(
@@ -151,6 +177,13 @@ def main(argv: list[str] | None = None) -> SplinePlayground:
             cg_eps=args.cg_eps if args.cg_eps is not None else 1e-5,
             n_steps=n_steps,
             control_steps=control_steps,
+            model=(
+                args.model
+                if args.model is not None
+                else ("classic" if args.kernel == "gaussian" else "splines")
+            ),
+            cost_cst=args.cost_cst if args.cost_cst is not None else 0.01,
+            iterations=args.iterations if args.iterations is not None else 6,
         )
         setup = zero_setup(
             source,
@@ -190,6 +223,10 @@ def main(argv: list[str] | None = None) -> SplinePlayground:
         app.run()
         if app.last_error is not None:
             raise RuntimeError("spline integration failed") from app.last_error
+    if args.register:
+        app.register()
+        if app.last_error is not None:
+            raise RuntimeError("registration failed") from app.last_error
     if args.screenshot:
         app.fig.savefig(
             args.screenshot,

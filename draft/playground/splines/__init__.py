@@ -22,17 +22,29 @@ from .core import (
     save_setup,
     zero_setup,
 )
+from .registration import RegistrationResult, register_classic, register_spline
+from demeter.utils.spline_data import (
+    TimedImageBatch,
+    load_timed_image_directory,
+    save_timed_image_directory,
+)
 
 __all__ = [
     "SplineParameters",
     "SplineSetup",
     "SplineTrajectory",
+    "RegistrationResult",
+    "TimedImageBatch",
     "cometric_squared_norm",
     "load_scalar_field",
     "load_setup",
+    "load_timed_image_directory",
+    "register_classic",
+    "register_spline",
     "resolve_device",
     "run_classic",
     "run_spline",
     "save_setup",
+    "save_timed_image_directory",
     "zero_setup",
 ]

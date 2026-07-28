@@ -309,6 +309,9 @@ class SplineRenderer:
         image_mode: str,
         target_mode: str,
         index: int,
+        target_index: int,
+        target_count: int,
+        target_time: float | None,
     ) -> None:
         self.clear_dynamic(self.target_ax)
         displayed = self.current_image_tensor(source, cache, image_mode, index)
@@ -316,7 +319,8 @@ class SplineRenderer:
             self.target_image.set_data(target[0, 0])
             self.target_image.set_cmap("gray")
             self.target_image.set_clim(0, 1)
-            title = "Target (comparison only)"
+            location = "unplaced" if target_time is None else f"t={target_time:.3g}"
+            title = f"Target {target_index + 1}/{target_count} at {location}"
         else:
             error = (displayed - target[0]).abs()[0]
             maximum = max(float(torch.quantile(error.flatten(), 0.99)), 1e-8)
@@ -324,11 +328,13 @@ class SplineRenderer:
             self.target_image.set_cmap("magma")
             self.target_image.set_clim(0, maximum)
             symbol = self.displayed_image_symbol(cache, image_mode)
-            title = rf"Absolute error $|{symbol}-I_\mathrm{{target}}|$"
+            title = (
+                rf"Absolute error $|{symbol}-I_{{{target_index + 1}}}|$"
+            )
         self.target_ax.set_title(title, color=INK_COLOR, fontsize=11, pad=9)
 
         mse = (
-            float(cache.target_mse[index])
+            float(cache.target_mse[target_index, index])
             if cache is not None and image_mode == "full"
             else float((displayed - target[0]).square().mean())
         )

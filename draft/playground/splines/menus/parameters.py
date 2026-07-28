@@ -14,12 +14,14 @@ from .control_times import ControlTimeEditor
 
 
 MAX_STEPS = 40
+MAX_ITERATIONS = 50
 
 
 @dataclass
 class ParameterMenu:
     backdrop_ax: Any
     panel_axes: dict[str, Any]
+    model_radio: RadioButtons
     rho_slider: Slider
     operator_radio: RadioButtons
     alpha_slider: Slider
@@ -29,6 +31,8 @@ class ParameterMenu:
     brush_slider: Slider
     amplitude_slider: Slider
     steps_slider: Slider
+    iterations_slider: Slider
+    cost_slider: Slider
     device_radio: RadioButtons
     control_time_editor: ControlTimeEditor
     close_button: Button
@@ -44,6 +48,8 @@ class ParameterMenu:
             self.brush_slider,
             self.amplitude_slider,
             self.steps_slider,
+            self.iterations_slider,
+            self.cost_slider,
         ]
 
     @property
@@ -53,6 +59,7 @@ class ParameterMenu:
             *self.panel_axes.values(),
             *(slider.ax for slider in self.sliders),
             self.operator_radio.ax,
+            self.model_radio.ax,
             self.device_radio.ax,
             self.control_time_editor.axis,
             self.close_button.ax,
@@ -63,6 +70,7 @@ class ParameterMenu:
         return [
             *self.sliders,
             self.operator_radio,
+            self.model_radio,
             self.device_radio,
             self.close_button,
         ]
@@ -73,6 +81,7 @@ class ParameterMenu:
         for widget in self.widgets:
             widget.active = visible
         set_radio_visible(self.operator_radio, visible)
+        set_radio_visible(self.model_radio, visible)
         set_radio_visible(self.device_radio, visible)
         self.control_time_editor.set_visible(visible)
 
@@ -96,7 +105,7 @@ def build_parameter_menu(
     panels = {
         "model": build_panel(fig, [0.06, 0.14, 0.50, 0.70], "MODEL"),
         "draw": build_panel(fig, [0.60, 0.51, 0.34, 0.33], "DRAW"),
-        "numerical": build_panel(fig, [0.60, 0.20, 0.34, 0.25], "NUMERICAL"),
+        "numerical": build_panel(fig, [0.60, 0.13, 0.34, 0.32], "NUMERICAL"),
     }
     panels["model"].text(
         0.25,
@@ -160,6 +169,24 @@ def build_parameter_menu(
         widget.valtext.set_fontsize(9.5)
         return widget
 
+    model_radio = RadioButtons(
+        fig.add_axes([0.12, 0.755, 0.40, 0.05], facecolor=PANEL_COLOR, zorder=102),
+        ("Classic", "Splines"),
+        active=0 if parameters.model == "classic" else 1,
+        activecolor="#168a8a",
+        layout=(1, 2),
+    )
+    for label in model_radio.labels:
+        label.set_fontsize(11)
+        label.set_fontweight("bold")
+    model_radio.labels[0].set_position((0.13, 0.5))
+    model_radio.labels[1].set_position((0.69, 0.5))
+    model_buttons = getattr(model_radio, "_buttons", None)
+    if model_buttons is not None:
+        model_buttons.set_offsets(((0.09, 0.5), (0.65, 0.5)))
+    else:
+        model_radio.circles[0].center = (0.09, 0.5)
+        model_radio.circles[1].center = (0.65, 0.5)
     rho = slider([0.17, 0.69, 0.32, 0.028], r"$\rho$", 0, max(0.95, parameters.rho), parameters.rho)
     operator_radio = RadioButtons(
         fig.add_axes([0.12, 0.565, 0.40, 0.045], facecolor=PANEL_COLOR, zorder=102),
@@ -200,7 +227,7 @@ def build_parameter_menu(
     brush = slider([0.70, 0.68, 0.17, 0.028], "Brush", 1, 40, 3)
     amplitude = slider([0.70, 0.57, 0.17, 0.028], "Amplitude", 0.01, 4, 0.5)
     steps = slider(
-        [0.70, 0.31, 0.17, 0.028],
+        [0.70, 0.325, 0.17, 0.025],
         "steps",
         1,
         MAX_STEPS,
@@ -208,9 +235,27 @@ def build_parameter_menu(
         valstep=1,
         valfmt="%0.0f",
     )
+    iterations = slider(
+        [0.70, 0.27, 0.17, 0.025],
+        "iterations",
+        1,
+        max(MAX_ITERATIONS, parameters.iterations),
+        parameters.iterations,
+        valstep=1,
+        valfmt="%0.0f",
+    )
+    log_cost = float(np.log10(max(parameters.cost_cst, 1e-12)))
+    cost = slider(
+        [0.70, 0.39, 0.17, 0.025],
+        r"$\log_{10}$ cost",
+        min(-8, np.floor(log_cost) - 1),
+        max(2, np.ceil(log_cost) + 1),
+        log_cost,
+    )
+    cost.valtext.set_text(f"{parameters.cost_cst:.3g}")
     panels["numerical"].text(
         0.5,
-        0.34,
+        0.27,
         "COMPUTE DEVICE",
         transform=panels["numerical"].transAxes,
         ha="center",
@@ -225,7 +270,7 @@ def build_parameter_menu(
     )
     device_names.append("CPU")
     device_radio = RadioButtons(
-        fig.add_axes([0.70, 0.21, 0.17, 0.06], facecolor=PANEL_COLOR, zorder=102),
+        fig.add_axes([0.70, 0.155, 0.17, 0.055], facecolor=PANEL_COLOR, zorder=102),
         device_names,
         active=0 if device.startswith("cuda") else len(device_names) - 1,
         activecolor="#168a8a",
@@ -257,6 +302,7 @@ def build_parameter_menu(
     menu = ParameterMenu(
         backdrop,
         panels,
+        model_radio,
         rho,
         operator_radio,
         alpha,
@@ -266,6 +312,8 @@ def build_parameter_menu(
         brush,
         amplitude,
         steps,
+        iterations,
+        cost,
         device_radio,
         control_editor,
         close,

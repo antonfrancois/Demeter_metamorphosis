@@ -25,6 +25,7 @@ from types import SimpleNamespace
 from demeter.utils import torchbox as tb
 from demeter.utils.cometric_inversion import CometricOperator
 from demeter.utils.reproducing_kernels import GaussianRKHS, SobolevFluidOperator
+from demeter.utils.spline_data import load_timed_image_directory
 from draft.playground.field_playground_core import (
     prepare_vector_display,
     scaled_field_title,
@@ -59,6 +60,11 @@ def test_parameters_require_ordered_interior_control_nodes():
         SplineParameters(n_steps=8, control_steps=(0,))
     with pytest.raises(ValueError, match="strictly increasing"):
         SplineParameters(n_steps=8, control_steps=(5, 2))
+    with pytest.raises(ValueError, match="Sobolev"):
+        SplineParameters(kernel="gaussian", model="splines")
+    assert SplineParameters(rho=1, model="classic").rho == 1
+    with pytest.raises(ValueError, match="rho"):
+        SplineParameters(rho=1, model="splines")
     with pytest.raises(TypeError, match="integers"):
         SplineParameters(n_steps=8, control_steps=(2.0,))  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="distinct"):
@@ -123,7 +129,7 @@ def test_run_converts_initial_force_and_aligns_interval_fields_to_nodes():
     assert trajectory.jerk.shape == (3, 1, 8, 9)
     assert trajectory.velocity.shape == (3, 2, 8, 9)
     assert trajectory.vector_momentum.shape == (3, 2, 8, 9)
-    assert trajectory.target_mse.shape == (3,)
+    assert trajectory.target_mse.shape == (1, 3)
     for tensor in (
         trajectory.images,
         trajectory.deformed_source,
@@ -289,6 +295,7 @@ def test_gaussian_operator_runs_classic_and_is_rejected_for_splines(tmp_path):
         n_steps=2,
         kernel="gaussian",
         sigma=1.5,
+        model="classic",
     )
     setup = zero_setup(source, source, parameters)
     setup.initial_momentum.normal_(std=0.05)
@@ -337,7 +344,7 @@ def test_classic_button_uses_shared_workspace_and_reports_invalid_fields():
     assert torch.count_nonzero(app.cache.force) == 0
     assert torch.count_nonzero(app.cache.acceleration) == 0
     assert torch.count_nonzero(app.cache.jerk) == 0
-    assert "Classic metamorphosis complete" in app.status_text.get_text()
+    assert "Classic complete" in app.status_text.get_text()
     app.set_time_index(2)
     assert app.current_ax.get_title().startswith("Current image")
 
@@ -537,6 +544,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     app = SplinePlayground(setup, device="cpu")
     assert app.rho_slider.val == pytest.approx(0.99)
     assert app.steps_slider.val == 2
+    assert app.iterations_slider.val == 6
     assert app.steps_slider.valmin == 1
     assert app.steps_slider.valmax == 40
     assert app.make_setup().parameters.rho == pytest.approx(0.99)
@@ -544,7 +552,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.file_button.ax.get_position().y0 > app.run_button.ax.get_position().y0
     assert (
         app.run_button.ax.get_position().y0
-        > app.classic_button.ax.get_position().y0
+        > app.register_button.ax.get_position().y0
         > app.clear_button.ax.get_position().y0
     )
     shortcuts = next(
@@ -553,13 +561,15 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert shortcuts.get_position() == pytest.approx((0.012, 0.975))
     assert shortcuts.get_ha() == "left"
     assert shortcuts.get_va() == "top"
-    assert shortcuts.get_text().count("\n") == 7
+    assert shortcuts.get_text().count("\n") == 8
     assert not any("A_I^{-1}" in text.get_text() for text in app.fig.texts)
 
     app._on_key_press(SimpleNamespace(key="p"))
     assert app.parameter_menu_open
     assert app.parameter_menu.backdrop_ax.get_visible()
     assert all(slider.active for slider in app.parameter_menu.sliders)
+    app.iterations_slider.set_val(3)
+    assert app.parameters.iterations == 3
     assert [label.get_text() for label in app.operator_radio.labels] == [
         "Sobolev",
         "Gaussian",
@@ -623,7 +633,8 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     ]
     assert any("L v=" in text and "K=L" in text for text in operator_texts)
     assert any("Classic only" in text for text in operator_texts)
-    assert app.file_menu.buttons[2].label.get_text() == "LOAD FIELD"
+    assert app.file_menu.buttons[2].label.get_text() == "MANAGE SPLINE IMAGES"
+    assert app.file_menu.buttons[3].label.get_text() == "LOAD FIELD"
 
     app.input_radio.set_active(3)
     app.set_menu_visible(True)
@@ -903,7 +914,7 @@ def test_overlay_menu_and_current_image_modes():
         app.cache.photometric_only[app._time_index()],
     )
     assert "Photometric only" in app.current_ax.get_title()
-    assert r"|I_{\mathrm{phot}}(t)-I_\mathrm{target}|" in (
+    assert r"|I_{\mathrm{phot}}(t)-I_{1}|" in (
         app.target_ax.get_title()
     )
     assert r"I_{\mathrm{phot}}(t)" in app.target_footer.get_text()
@@ -1042,3 +1053,128 @@ def test_drawing_amplitude_is_remembered_per_editable_field():
     app._select_control_time(0)
     assert app.amplitude_slider.val == pytest.approx(2.0)
     plt.close(app.fig)
+
+
+def test_timed_targets_setup_round_trip_and_version_one_migration(tmp_path):
+    source = torch.zeros(1, 1, 5, 6)
+    targets = torch.cat((torch.full_like(source, 0.25), torch.ones_like(source)))
+    setup = zero_setup(
+        source,
+        targets,
+        SplineParameters(n_steps=4),
+        target_times=(0.5, 1.0),
+        target_paths=("half.png", "final.png"),
+    )
+    restored = load_setup(save_setup(setup, tmp_path / "timed_setup.pt"))
+    assert restored.target.shape == (2, 1, 5, 6)
+    assert restored.target_times == (0.5, 1.0)
+    assert restored.target_steps == (2, 4)
+    assert restored.target_paths == ("half.png", "final.png")
+
+    legacy = zero_setup(source, source).payload()
+    legacy["format_version"] = 1
+    legacy.pop("target_times")
+    legacy.pop("target_paths")
+    legacy_path = tmp_path / "version_one.pt"
+    torch.save(legacy, legacy_path)
+    migrated = load_setup(legacy_path)
+    assert migrated.target_times == (1.0,)
+    assert migrated.target_paths == ("",)
+
+    legacy["parameters"].pop("model")
+    legacy["parameters"]["kernel"] = "gaussian"
+    torch.save(legacy, legacy_path)
+    assert load_setup(legacy_path).parameters.model == "classic"
+
+
+def test_model_actions_timed_target_selection_and_manual_placement(tmp_path):
+    source = torch.zeros(1, 1, 6, 7)
+    targets = torch.cat((torch.full_like(source, 0.25), torch.ones_like(source)))
+    setup = zero_setup(
+        source,
+        targets,
+        SplineParameters(rho=0, n_steps=4, model="splines"),
+        target_times=(0.5, 1.0),
+        target_paths=("half.png", "final.png"),
+    )
+    app = SplinePlayground(setup, device="cpu")
+    assert app.run_button.label.get_text() == "RUN SPLINES"
+    assert app.register_button.label.get_text() == "REGISTER SPLINES"
+    assert len(app._target_markers) == 4
+
+    app.set_time_index(2)
+    assert app.target_index == 0
+    app.set_time_index(3)
+    assert app.target_index == 1
+    assert "Target 2/2" in app.target_ax.get_title()
+
+    app.run_classic()
+    assert len(app._targets) == 2
+    assert app.target_times == [0.5, 1.0]
+
+    app.model_radio.set_active(0)
+    assert app.run_button.label.get_text() == "RUN CLASSIC"
+    assert app.register_button.label.get_text() == "REGISTER CLASSIC"
+    saved_setup = load_setup(app.save(tmp_path / "classic_timed.pt"))
+    assert saved_setup.target_times == (0.5, 1.0)
+    app.model_radio.set_active(1)
+
+    extra_path = tmp_path / "early.png"
+    plt.imsave(extra_path, np.full((6, 7), 0.5), cmap="gray", vmin=0, vmax=1)
+    app.add_target_images((extra_path,))
+    assert app.target_times[-1] is None
+    app._place_target(2, 0.25)
+    assert app.target_times[-1] == pytest.approx(0.25)
+    ordered = app.make_setup("splines")
+    assert ordered.target_times == (0.25, 0.5, 1.0)
+
+    app.run_spline()
+    destination = app.save_timed_directory(tmp_path / "saved_series")
+    restored = load_timed_image_directory(destination)
+    assert restored.target_times == (0.25, 0.5, 1.0)
+    assert (destination / "spline_setup.pt").is_file()
+    assert (destination / "trajectory.pt").is_file()
+    plt.close(app.fig)
+
+
+def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
+    source = torch.zeros(1, 1, 3, 3)
+    target = torch.ones_like(source)
+
+    classic = SplinePlayground(
+        zero_setup(
+            source,
+            target,
+            SplineParameters(rho=0, n_steps=2, model="classic", iterations=2),
+        ),
+        device="cpu",
+    )
+    classic.register()
+    assert classic.last_error is None
+    assert classic.cache is not None
+    assert classic.last_registration is not None
+    assert len(classic.last_registration.loss_stock) == 2
+    assert torch.count_nonzero(classic.fields["initial_momentum"]) > 0
+    assert torch.count_nonzero(classic.fields["initial_force"]) == 0
+    plt.close(classic.fig)
+
+    splines = SplinePlayground(
+        zero_setup(
+            source,
+            target,
+            SplineParameters(rho=0, n_steps=2, model="splines", iterations=2),
+        ),
+        device="cpu",
+    )
+    splines.register()
+    assert splines.last_error is None
+    assert splines.cache is not None
+    assert splines.last_registration is not None
+    assert all(len(loss) == 2 for loss in splines.last_registration.loss_stock.values())
+    assert torch.count_nonzero(splines.fields["initial_momentum"]) > 0
+    assert "Optimized fields loaded" in splines.status_text.get_text()
+    destination = splines.save_timed_directory(tmp_path / "optimized_project")
+    assert (destination / "optimization.pt").is_file()
+    splines._invalidate("field changed")
+    assert splines.last_registration is None
+    plt.close(splines.fig)

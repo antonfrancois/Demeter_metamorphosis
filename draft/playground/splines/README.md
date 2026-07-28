@@ -1,7 +1,8 @@
 # Metamorphosis Spline Lab
 
-This playground edits the shooting data of the periodic 2D spline integrator and
-keeps the target image comparison-only. It does not optimize the fields.
+This playground can either integrate editable shooting fields or optimize them
+directly from source and target images. It supports classic endpoint
+registration and periodic 2D spline regression against timed observations.
 
 Run it from the repository root:
 
@@ -12,7 +13,8 @@ Run it from the repository root:
 
 The default device is `auto`, which selects CUDA when available and CPU
 otherwise. Use `--device cpu` or `--device cuda` to override it, `--run` to
-integrate immediately, or `--no-show --screenshot spline.png` for a headless
+integrate immediately, `--register` to optimize, or
+`--no-show --screenshot spline.png` for a headless
 render. Passing `--control-steps` without values creates a spline without jerk
 resets. The status line reports progress, the compute device, and image size.
 
@@ -32,12 +34,14 @@ resets. The status line reports progress, the compute device, and image size.
 
 Press `P` or click **Parameter Menu** for the categorized controls:
 
-- **Model** contains `rho`, a Sobolev/Gaussian operator choice, the active
-  operator parameters, and an interactive normalized control-time line;
+- **Model** selects Classic or Splines and contains `rho`, the operator, its
+  parameters, and an interactive normalized control-time line. Gaussian
+  automatically selects Classic because spline cometric inversion is Sobolev-only;
 - **Draw** contains brush size and amplitude. Each editable field remembers its
   own amplitude, shown as `[x...]` in the source-panel title;
-- **Numerical** contains `steps`, from 1 through 40, and the compute-device
-  selector. CUDA is selected by default when available; CPU is always available.
+- **Numerical** contains the registration cost constant, integration `steps`,
+  optimization `iterations`, and the compute-device selector. CUDA is selected
+  by default when available; CPU is always available.
 
 On the control-time line, left-click an empty mesh location to add a control,
 drag a marker to move it, and right-click a marker to remove it. A new control
@@ -46,9 +50,11 @@ control at step 8 of 16 steps moves to step 20 when the resolution changes to
 40 steps. Resolutions that would collapse controls onto the same mesh node are
 rejected.
 
-**Run spline** requires the Sobolev operator because it uses cometric inversion.
-**Run classic** accepts Sobolev or Gaussian and requires every editable field
-except the initial momentum to be zero.
+The two main actions follow the selected model. **Run** integrates the currently
+drawn or loaded fields. **Register** starts from the images and zero fields,
+optimizes with LBFGS, then loads the optimized fields and a normal replayed
+trajectory into the same editor. Classic accepts Sobolev or Gaussian and uses
+one endpoint target. Splines requires Sobolev and uses every timed target.
 
 Press `M` or click **View / Overlay Menu** to open the three-column display
 menu. Its source column reuses the control-time line to select which control
@@ -75,17 +81,39 @@ target panel shows the normalized MSE for whichever full, deformation-only, or
 photometric-only image is currently selected.
 
 The time slider has one value for every state node, including both endpoints.
-Orange knot markers are clickable; `[` and `]` jump to the previous or next
-knot.
+Orange downward knot markers are clickable; `[` and `]` jump to the previous or
+next knot. Blue/purple upward markers are image observations; the currently
+displayed target is purple. The target panel shows the first observation at or
+to the right of the current node, retaining an observation until the slider
+moves past it.
 
 ## Persistence
 
 Press `L` or click the sidebar's **Load / Save** button to open the unified file
-menu for source and target images, scalar fields, and complete setups.
+menu for classic source/target images, timed spline images, scalar fields, and
+complete setups. **Manage spline images** opens a placement menu. Add several
+images, select a row, and click a mesh node to place it; placed rows are marked
+`[x]`. Right-click a row to unplace it.
 
-**Save setup** stores source, target, editable fields, numerical parameters, and
-normalized control times in one `.pt` file. Legacy setups containing only
-control-step indices remain loadable. Reopen a setup in the UI or on launch:
+A timed image directory has this portable form:
+
+```text
+series/
+  images.csv       # columns: filename,time
+  source.png       # the unique row at time 0
+  target_001.png   # rows in (0,1]
+  target_002.png
+```
+
+It can be loaded by the lab, by `--timed-images`, or directly as the `source`
+argument of `MetamorphosisSplines`. Saving from the placement menu writes this
+format plus `spline_setup.pt`, and, when available, `trajectory.pt` and
+`optimization.pt` in one atomic project directory.
+
+**Save setup** stores source, all timed targets, editable fields, model and
+numerical parameters, and normalized control times in one `.pt` file. Version-1
+single-target setups remain loadable as endpoint observations. Reopen a setup in
+the UI or on launch:
 
 ```bash
 .venv/bin/python -m draft.playground.splines --setup draft/spline_setup.pt
@@ -107,11 +135,15 @@ field; control indices are zero-based.
 
 - `core.py`: validation, setup persistence, force-to-acceleration conversion,
   integration, and detached node-aligned trajectory caches.
+- `registration.py`: classic/spline optimizer adapters and normal trajectory replay.
+- `project_io.py`: atomic timed-image project saving.
 - `editor.py`: reusable scalar painting and per-field undo history.
 - `app.py`: application state and interaction coordination.
 - `images.py`: image discovery and loading.
 - `rendering.py`: panel rendering, overlays, and LaTeX diagnostics.
 - `styles.py`: shared colors and display metadata.
 - `workspace.py`: persistent image panels, sidebar, timeline, and status layout.
-- `menus/`: focused parameter, control-time, overlay, file, and dialog modules.
+- `menus/`: focused parameter, control-time, observation-placement, overlay,
+  file, and dialog modules.
+- `src/demeter/utils/spline_data.py`: public timed image directory codec.
 - `main.py`: CLI construction and launch.
