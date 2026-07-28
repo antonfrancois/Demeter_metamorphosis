@@ -21,7 +21,7 @@ from torch import Tensor
 from torch.utils._pytree import register_pytree_node
 
 from .abstract import Geodesic_integrator, Optimize_geodesicShooting
-from .data_cost import DataCost
+from .data_cost import SplineSsd
 from .var_classes import TorchDataClass
 from ..utils import torchbox as tb
 from ..utils.cometric_inversion import CometricOperator
@@ -54,9 +54,6 @@ class SplinesVariables(TorchDataClass):
                 "initial_momentum must have shape [1, 1, H, W] with H,W >= 2, "
                 f"got {tuple(reference.shape)}"
             )
-        if not torch.is_floating_point(reference):
-            raise TypeError("spline variables must be floating-point tensors")
-
         for name, tensor in (
             ("initial_acceleration", self.initial_acceleration),
             ("initial_jerk", self.initial_jerk),
@@ -113,13 +110,6 @@ class SplinesVariables(TorchDataClass):
         variables.requires_grad_(requires_grad)
         return variables
 
-    def clone(self):  # type: ignore[override]
-        return type(self)(*(tensor.clone() for _, tensor in self))
-
-    def to(self, *args, **kwargs) -> "SplinesVariables":
-        return type(self)(*(tensor.to(*args, **kwargs) for _, tensor in self))
-
-
 def _splines_variables_flatten(variables: SplinesVariables):
     return tuple(tensor for _, tensor in variables), None
 
@@ -133,94 +123,6 @@ register_pytree_node(
     _splines_variables_flatten,
     _splines_variables_unflatten,
 )
-
-
-def _validate_observations(
-    source: Tensor,
-    target: Tensor,
-    target_times: Sequence[float] | Tensor,
-    n_step: int,
-) -> tuple[tuple[float, ...], tuple[int, ...]]:
-    if source.ndim != 4 or source.shape[:2] != (1, 1):
-        raise ValueError(
-            "source must have shape [1, 1, H, W], "
-            f"got {tuple(source.shape)}"
-        )
-    if target.ndim != 4 or tuple(target.shape[1:]) != tuple(source.shape[1:]):
-        raise ValueError(
-            "target must have shape [N, 1, H, W] matching source, "
-            f"got {tuple(target.shape)}"
-        )
-    if target.shape[0] == 0:
-        raise ValueError("target must contain at least one observation")
-    if not torch.is_floating_point(source) or not torch.is_floating_point(target):
-        raise TypeError("source and target must be floating point")
-    if source.dtype != target.dtype:
-        raise ValueError("source and target must share one dtype")
-    if not torch.isfinite(source).all() or not torch.isfinite(target).all():
-        raise ValueError("source and target must contain only finite values")
-
-    if isinstance(target_times, Tensor):
-        if target_times.ndim != 1:
-            raise ValueError("target_times must be one-dimensional")
-        values = target_times.detach().cpu().tolist()
-    else:
-        try:
-            values = list(target_times)
-        except TypeError as error:
-            raise TypeError("target_times must be a sequence of real numbers") from error
-
-    if len(values) != target.shape[0]:
-        raise ValueError(
-            "target_times must contain one time per target, "
-            f"got {len(values)} times and {target.shape[0]} targets"
-        )
-
-    times = []
-    steps = []
-    for value in values:
-        if isinstance(value, bool):
-            raise TypeError("target times must be real numbers, not booleans")
-        try:
-            time = float(value)
-        except (TypeError, ValueError) as error:
-            raise TypeError("target times must be real numbers") from error
-        if not isfinite(time) or not 0 < time <= 1:
-            raise ValueError("target times must be finite and lie in (0, 1]")
-
-        exact_step = time * n_step
-        step = round(exact_step)
-        if not isclose(exact_step, step, rel_tol=0, abs_tol=1e-6):
-            raise ValueError(
-                f"target time {time} is not on the {n_step}-step temporal mesh"
-            )
-        times.append(time)
-        steps.append(step)
-
-    if any(right <= left for left, right in zip(times, times[1:])):
-        raise ValueError("target times must be strictly increasing")
-    if any(right <= left for left, right in zip(steps, steps[1:])):
-        raise ValueError("target times must map to distinct mesh nodes")
-    return tuple(times), tuple(steps)
-
-
-class _TimedSplineSsd(DataCost):
-    """SSD evaluated on differentiable spline trajectory nodes."""
-
-    def __init__(self, target: Tensor, target_steps: tuple[int, ...]) -> None:
-        self.target_steps = target_steps
-        super().__init__(target)
-
-    def set_optimizer(self, optimizer) -> None:
-        self.optimizer = optimizer
-
-    def __call__(self, at_step=None, **kwargs) -> Tensor:
-        super().__call__()
-        trajectory_images = torch.cat(
-            [self.optimizer.mp.trajectory[step][0] for step in self.target_steps],
-            dim=0,
-        )
-        return 0.5 * (trajectory_images - self.target).square().sum()
 
 
 class MetamorphosisSplineIntegrator(Geodesic_integrator):
@@ -269,11 +171,6 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             raise TypeError(
                 "kernelOperator must be a SobolevFluidOperator with matched L/K"
             )
-        if kernelOperator.boundary != "periodic":
-            raise ValueError(
-                "the spline integrator requires SobolevFluidOperator(boundary='periodic')"
-            )
-
         controls = tuple(float(time) for time in control_times)
         if any(not isfinite(time) or not 0 < time < 1 for time in controls):
             raise ValueError("control times must be finite and lie strictly in (0, 1)")
@@ -313,9 +210,6 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
         }
         self.dt = 1 / n_step
         self.field_integration_boundary = "periodic"
-        self._divergence_operator = tb.Field_divergence(
-            dx_convention, boundary="periodic"
-        )
 
     def _get_rho_(self) -> float:
         return self.rho
@@ -331,7 +225,12 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
         )[:, 0]
 
     def _divergence(self, vector: Tensor) -> Tensor:
-        return self._divergence_operator(tb.im2grid(vector))
+        gradient = tb.spatialGradient(
+            vector,
+            dx_convention=self.dx_convention,
+            boundary="periodic",
+        )
+        return gradient[:, 0, 0, None] + gradient[:, 1, 1, None]
 
     def _advect(self, value: Tensor, source: Tensor, departure: Tensor) -> Tensor:
         return tb.imgDeform(
@@ -351,7 +250,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
         )
         return cometric
 
-    def _validate_inputs(self, image: Tensor, variables: SplinesVariables) -> None:
+    def _validate_inputs(self, image: Tensor, variables) -> SplinesVariables:
         if not isinstance(variables, SplinesVariables):
             raise TypeError(
                 f"variables must be SplinesVariables, got {type(variables)}"
@@ -381,6 +280,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             or variables.initial_momentum.dtype != image.dtype
         ):
             raise ValueError("image and spline variables must share device and dtype")
+        return variables
 
     @staticmethod
     def _check_finite(**state: Tensor) -> None:
@@ -477,14 +377,9 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             raise NotImplementedError(
                 "use acceleration_energy for the spline regularization integral"
             )
-        if not isinstance(momenta, SplinesVariables):
-            raise TypeError(
-                f"momenta must be SplinesVariables, got {type(momenta)}"
-            )
-        variables = momenta
         if progress_callback is not None and not callable(progress_callback):
             raise TypeError("progress_callback must be callable")
-        self._validate_inputs(image, variables)
+        variables = self._validate_inputs(image, momenta)
         if hasattr(self.kernelOperator, "init_kernel"):
             self.kernelOperator.init_kernel(image)
 
@@ -648,6 +543,77 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
     corresponds to ``sigma_I**2``.
     """
 
+    @staticmethod
+    def _validate_observations(
+        source: Tensor,
+        target: Tensor,
+        target_times: Sequence[float] | Tensor,
+        n_step: int,
+    ) -> tuple[tuple[float, ...], tuple[int, ...]]:
+        if source.ndim != 4 or source.shape[:2] != (1, 1):
+            raise ValueError(
+                "source must have shape [1, 1, H, W], "
+                f"got {tuple(source.shape)}"
+            )
+        if target.ndim != 4 or tuple(target.shape[1:]) != tuple(source.shape[1:]):
+            raise ValueError(
+                "target must have shape [N, 1, H, W] matching source, "
+                f"got {tuple(target.shape)}"
+            )
+        if target.shape[0] == 0:
+            raise ValueError("target must contain at least one observation")
+        if not torch.is_floating_point(source) or not torch.is_floating_point(target):
+            raise TypeError("source and target must be floating point")
+        if source.dtype != target.dtype:
+            raise ValueError("source and target must share one dtype")
+        if not torch.isfinite(source).all() or not torch.isfinite(target).all():
+            raise ValueError("source and target must contain only finite values")
+
+        if isinstance(target_times, Tensor):
+            if target_times.ndim != 1:
+                raise ValueError("target_times must be one-dimensional")
+            values = target_times.detach().cpu().tolist()
+        else:
+            try:
+                values = list(target_times)
+            except TypeError as error:
+                raise TypeError(
+                    "target_times must be a sequence of real numbers"
+                ) from error
+        if len(values) != target.shape[0]:
+            raise ValueError(
+                "target_times must contain one time per target, "
+                f"got {len(values)} times and {target.shape[0]} targets"
+            )
+
+        times = []
+        steps = []
+        for value in values:
+            if isinstance(value, bool):
+                raise TypeError("target times must be real numbers, not booleans")
+            try:
+                time = float(value)
+            except (TypeError, ValueError) as error:
+                raise TypeError("target times must be real numbers") from error
+            if not isfinite(time) or not 0 < time <= 1:
+                raise ValueError("target times must be finite and lie in (0, 1]")
+            exact_step = time * n_step
+            step = round(exact_step)
+            if not isclose(exact_step, step, rel_tol=0, abs_tol=1e-6):
+                raise ValueError(
+                    f"target time {time} is not on the {n_step}-step temporal mesh"
+                )
+            if not 1 <= step <= n_step:
+                raise ValueError("target times must map to nonzero temporal mesh nodes")
+            times.append(time)
+            steps.append(step)
+
+        if any(right <= left for left, right in zip(times, times[1:])):
+            raise ValueError("target times must be strictly increasing")
+        if any(right <= left for left, right in zip(steps, steps[1:])):
+            raise ValueError("target times must map to distinct mesh nodes")
+        return tuple(times), tuple(steps)
+
     def __init__(
         self,
         source: Tensor,
@@ -673,6 +639,11 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
             raise NotImplementedError(
                 "spline regularization uses the integrated acceleration energy"
             )
+        if any(step >= geodesic.n_step - 1 for step in geodesic.control_steps):
+            raise ValueError(
+                "optimized control times must leave at least two integration "
+                "intervals after the control"
+            )
         try:
             cost_cst = float(cost_cst)
         except (TypeError, ValueError) as error:
@@ -680,7 +651,7 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
         if not isfinite(cost_cst) or cost_cst < 0:
             raise ValueError("cost_cst must be finite and non-negative")
 
-        self.target_times, self.target_steps = _validate_observations(
+        self.target_times, self.target_steps = self._validate_observations(
             source, target, target_times, geodesic.n_step
         )
         source = source.detach()
@@ -690,7 +661,7 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
             target=target,
             geodesic=geodesic,
             cost_cst=cost_cst,
-            data_term=_TimedSplineSsd(target, self.target_steps),
+            data_term=SplineSsd(target, self.target_steps),
             optimizer_method=optimizer_method,
             lbfgs_max_iter=lbfgs_max_iter,
             lbfgs_history_size=lbfgs_history_size,
@@ -704,30 +675,16 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
         return float(self.mp.rho)
 
     def _dict_or_torch_parameter_(self) -> list[Tensor]:
-        if not isinstance(self.parameter, SplinesVariables):
-            raise TypeError(
-                "spline optimizer parameter must be SplinesVariables, "
-                f"got {type(self.parameter)}"
-            )
-        parameters = [
-            value for _, value in self.parameter if value.numel() > 0
+        return [
+            value
+            for value in super()._dict_or_torch_parameter_()
+            if value.numel() > 0
         ]
-        if len({id(value) for value in parameters}) != len(parameters):
-            raise ValueError("spline variable tensors must be distinct")
-        for value in parameters:
-            if not value.is_leaf or not value.requires_grad:
-                raise ValueError(
-                    "every optimized spline variable must be a grad-enabled leaf"
-                )
-        return parameters
 
     def cost(self, variables: SplinesVariables, **kwargs) -> Tensor:
-        integrator = self.mp
-        if not isinstance(integrator, MetamorphosisSplineIntegrator):
-            raise TypeError("spline optimizer requires its spline integrator")
-        integrator.forward(self.source, variables, save=False, plot=0)
+        self.mp.forward(self.source, variables, save=False, plot=0)
         self.data_loss = self.data_term()
-        self.acceleration_energy = integrator.acceleration_energy
+        self.acceleration_energy = self.mp.acceleration_energy
         self.total_cost = (
             self.data_loss + self.cost_cst * self.acceleration_energy
         )
@@ -747,11 +704,6 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
         loss_stock["total_cost"][index] = self.total_cost.detach().cpu()
         return loss_stock
 
-    def get_total_cost(self) -> Tensor:
-        if not isinstance(self.loss_stock, dict):
-            raise ValueError("Loss history is not available.")
-        return self.loss_stock["total_cost"]
-
     def _get_loss_components(self):
         if not isinstance(self.loss_stock, dict):
             raise ValueError("Loss history is not available.")
@@ -767,6 +719,11 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
             return self.optimized_momenta
         return None
 
+    def get_geodesic_distance(self, only_zero=False):
+        raise NotImplementedError(
+            "geodesic distance is not defined for acceleration-regularized splines"
+        )
+
     def get_all_arguments(self) -> dict:
         return {
             **super().get_all_arguments(),
@@ -774,4 +731,6 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
             "target_times": self.target_times,
             "control_times": self.mp.control_times,
             "cg_eps": self.mp.cg_eps,
+            "lbfgs_max_iter": self.lbfgs_max_iter,
+            "lbfgs_history_size": self.lbfgs_history_size,
         }

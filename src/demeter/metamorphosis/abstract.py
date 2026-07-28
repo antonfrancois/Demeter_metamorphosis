@@ -1328,9 +1328,16 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
     def _dict_or_torch_parameter_(self):
         if isinstance(self.parameter, TorchDataClass):
-            return [v for v in self.parameter.as_dict().values()]
+            parameters = list(self.parameter.as_dict().values())
         elif isinstance(self.parameter, torch.Tensor):
-            return [self.parameter]
+            parameters = [self.parameter]
+        else:
+            raise TypeError(f"unsupported optimizer parameter {type(self.parameter)}")
+        if len({id(parameter) for parameter in parameters}) != len(parameters):
+            raise ValueError("optimizer parameter tensors must be distinct")
+        if any(not parameter.is_leaf or not parameter.requires_grad for parameter in parameters):
+            raise ValueError("optimizer parameters must be grad-enabled leaf tensors")
+        return parameters
 
     # LBFGS
     def _initialize_LBFGS_(self, dt_step):
@@ -1937,7 +1944,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         if not light_save:
             dict_copy["mp"] = self.mp  # For some reason 'mp' wasn't showing in __dict__
 
-        if type(self.data_term) != dt.Ssd:
+        if not isinstance(self.data_term, (dt.Ssd, dt.SplineSsd)):
             print(
                 "\nBUG WARNING : An other data term than Ssd was detected"
                 "For now our method can't save it, it is ok to visualise"

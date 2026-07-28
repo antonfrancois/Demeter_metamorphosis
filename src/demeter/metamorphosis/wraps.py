@@ -1,6 +1,7 @@
 import torch
 # import __init__
 import sys
+from pathlib import Path
 from icecream import ic
 from warnings import warn
 
@@ -12,6 +13,7 @@ from . import joined as jn
 from . import affine as aff
 from . import affine_decoupled as ad
 from . import splines as spl
+from ..utils.spline_data import load_timed_image_directory
 
 from ..utils import torchbox as tb
 from ..utils.decorators import time_it, monitor_gpu
@@ -300,15 +302,15 @@ def metamorphosis(
 @time_it
 def MetamorphosisSplines(
     source,
-    target,
-    target_times,
-    variables_ini,
-    rho,
-    cost_cst,
-    integration_steps,
-    n_iter,
-    grad_coef,
-    kernelOperator,
+    target=None,
+    target_times=None,
+    variables_ini=None,
+    rho=None,
+    cost_cst=None,
+    integration_steps=None,
+    n_iter=None,
+    grad_coef=None,
+    kernelOperator=None,
     control_times=(),
     cg_eps=1e-6,
     safe_mode=False,
@@ -326,7 +328,34 @@ def MetamorphosisSplines(
     Both observation and control times must lie on the integration mesh.
     ``rho`` must satisfy ``0 <= rho < 1``, and ``cost_cst`` represents the
     observation variance ``sigma_I**2`` in equation (37).
+
+    ``source`` may also be a directory containing ``images.csv``. In that
+    form the unique time-zero image is the source and later rows are targets.
     """
+    if isinstance(source, (str, Path)):
+        if target is not None or target_times is not None:
+            raise ValueError(
+                "target and target_times must be omitted when source is a directory"
+            )
+        batch = load_timed_image_directory(source)
+        source, target, target_times = (
+            batch.source,
+            batch.target,
+            batch.target_times,
+        )
+    if target is None or target_times is None:
+        raise ValueError("target and target_times are required for tensor input")
+    required = {
+        "rho": rho,
+        "cost_cst": cost_cst,
+        "integration_steps": integration_steps,
+        "n_iter": n_iter,
+        "grad_coef": grad_coef,
+        "kernelOperator": kernelOperator,
+    }
+    missing = [name for name, value in required.items() if value is None]
+    if missing:
+        raise TypeError(f"missing required arguments: {', '.join(missing)}")
     if not isinstance(n_iter, int) or isinstance(n_iter, bool) or n_iter < 0:
         raise ValueError("n_iter must be a non-negative integer")
     control_times = tuple(control_times)

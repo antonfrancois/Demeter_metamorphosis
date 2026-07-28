@@ -1,6 +1,6 @@
 from dataclasses import dataclass, fields
 from logging import warning
-from typing import Optional, Sequence, Tuple
+from typing import Optional, Self, Sequence, Tuple
 
 import torch
 import torch.utils.checkpoint
@@ -26,7 +26,7 @@ class TorchDataClass:
         """Return a dict that matches the previous API (skips None entries)."""
         return {field.name: getattr(self, field.name) for field in fields(self) if getattr(self, field.name) is not None}
 
-    def requires_grad_(self, flag: bool = True) -> "Momenta":
+    def requires_grad_(self, flag: bool = True) -> Self:
         """Set requires_grad for all present tensor fields."""
         for field in fields(self):
             tensor = getattr(self, field.name)
@@ -34,7 +34,7 @@ class TorchDataClass:
                 tensor.requires_grad_(flag)
         return self
 
-    def detach(self) -> "Momenta":
+    def detach(self) -> Self:
         """Detach all present tensor fields and return self."""
         for field in fields(self):
             tensor = getattr(self, field.name)
@@ -42,11 +42,24 @@ class TorchDataClass:
                 setattr(self, field.name, tensor.detach())
         return self
 
-    def clone(self) -> "Momenta":
+    def clone(self) -> Self:
         """Return a deep copy of the container with cloned tensors."""
-        return Momenta(
+        return type(self)(
             **{
                 field.name: (getattr(self, field.name).clone() if getattr(self, field.name) is not None else None)
+                for field in fields(self)
+            }
+        )
+
+    def to(self, *args, **kwargs) -> Self:
+        """Return a copy with every present tensor moved or converted."""
+        return type(self)(
+            **{
+                field.name: (
+                    getattr(self, field.name).to(*args, **kwargs)
+                    if getattr(self, field.name) is not None
+                    else None
+                )
                 for field in fields(self)
             }
         )
@@ -244,4 +257,3 @@ def _momenta_unflatten(children: Tuple[Tensor, ...], mask: Tuple[bool, ...]):
 
 
 register_pytree_node(Momenta, _momenta_flatten, _momenta_unflatten)
-

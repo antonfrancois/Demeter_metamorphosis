@@ -19,14 +19,17 @@ from .joined import (
 from .simplex import Simplex_sqrt_Metamorphosis_integrator, Simplex_sqrt_Shooting
 from .affine import Affine_Metamorphosis_integrator, Affine_Metamorphosis_Optimizer
 from .affine_decoupled import Affine_Decoupled_Metamorphosis_integrator, Affine_Decoupled_Metamorphosis_Optimizer
+from .splines import MetamorphosisSplineIntegrator, MetamorphosisSplineOptimizer
 from ..utils.reproducing_kernels import (
     GaussianRKHS,
     VolNormalizedGaussianRKHS,
-    Multi_scale_GaussianRKHS, DummyKernel,
+    Multi_scale_GaussianRKHS, DummyKernel, SobolevFluidOperator,
 )
 
 
 def _find_meta_optimiser_from_repr_(repr_str):
+    if "MetamorphosisSplineOptimizer" in repr_str:
+        return MetamorphosisSplineIntegrator, MetamorphosisSplineOptimizer
     if "ConstrainedMetamorphosis_Shooting" in repr_str:
         return ConstrainedMetamorphosis_integrator, ConstrainedMetamorphosis_Shooting
     if "Metamorphosis_Shooting" in repr_str:
@@ -49,6 +52,8 @@ def _find_meta_optimiser_from_repr_(repr_str):
 
 
 def _find_kernelOp_from_repr_(repr_str):
+    if "SobolevFluidOperator" in repr_str:
+        return SobolevFluidOperator
     if "VolNormalizedGaussianRKHS" in repr_str:
         return VolNormalizedGaussianRKHS
     if "Multi_scale_GaussianRKHS" in repr_str:
@@ -170,20 +175,34 @@ def  _load_light_optim(opti_dict, verbose):
     integrator, optimizer = _find_meta_optimiser_from_repr_(opti_dict["__repr__"])
 
     # Reinitialize the kernelOperator
-    kernelOp = _find_kernelOp_from_repr_(
-        opti_dict["args"]["kernelOperator"]["name"]
-    )
-    ic(_find_kernelOp_from_repr_(opti_dict["args"]["kernelOperator"]["name"]))
-    ic(opti_dict["args"]["kernelOperator"])
-    if opti_dict["args"]["kernelOperator"]["name"] == "DummyKernel":
+    kernel_arguments = dict(opti_dict["args"]["kernelOperator"])
+    kernel_name = kernel_arguments.pop("name")
+    kernelOp = _find_kernelOp_from_repr_(kernel_name)
+    ic(kernelOp)
+    ic(kernel_arguments)
+    if kernel_name == "DummyKernel":
         kernelOp = kernelOp()
     else:
-        kernelOp = kernelOp(**opti_dict["args"]["kernelOperator"])
+        kernelOp = kernelOp(**kernel_arguments)
 
     # and inject it in the args
     opti_dict["args"]["kernelOperator"] = kernelOp
     ## Re-shoot the integration
-    mp = integrator(**opti_dict["args"])
+    if optimizer is MetamorphosisSplineOptimizer:
+        integrator_arguments = {
+            name: opti_dict["args"][name]
+            for name in (
+                "rho",
+                "control_times",
+                "kernelOperator",
+                "n_step",
+                "cg_eps",
+                "dx_convention",
+            )
+        }
+        mp = integrator(**integrator_arguments)
+    else:
+        mp = integrator(**opti_dict["args"])
     print("Light save loaded : Reshooting integrator ...")
     mp.forward(
         opti_dict["source"],
@@ -198,7 +217,19 @@ def  _load_light_optim(opti_dict, verbose):
     opti_dict["geodesic"] = mp
 
     opti_dict["hamiltonian_integration"] = opti_dict["args"]["hamiltonian_integration"]
-    mr = optimizer(**opti_dict)
+    if optimizer is MetamorphosisSplineOptimizer:
+        mr = optimizer(
+            source=opti_dict["source"],
+            target=opti_dict["target"],
+            target_times=opti_dict["args"]["target_times"],
+            geodesic=mp,
+            cost_cst=opti_dict["cost_cst"],
+            optimizer_method=opti_dict["optimizer_method_name"],
+            lbfgs_max_iter=opti_dict["args"].get("lbfgs_max_iter", 20),
+            lbfgs_history_size=opti_dict["args"].get("lbfgs_history_size", 100),
+        )
+    else:
+        mr = optimizer(**opti_dict)
     mr.optimized_momenta, mr.loss_stock, mr.integration_diverged = _extract_analysis_results(opti_dict)
 
     return mr
@@ -231,6 +262,17 @@ def _load_heavy_optim(opti_dict, verbose):
             hamiltonian_integration=opti_dict["args"]["hamiltonian_integration"],
         )
 
+    elif optimizer is MetamorphosisSplineOptimizer:
+        new_optim = optimizer(
+            source=opti_dict["source"],
+            target=opti_dict["target"],
+            target_times=opti_dict["args"]["target_times"],
+            geodesic=opti_dict["mp"],
+            cost_cst=opti_dict["cost_cst"],
+            optimizer_method=opti_dict["optimizer_method_name"],
+            lbfgs_max_iter=opti_dict["args"].get("lbfgs_max_iter", 20),
+            lbfgs_history_size=opti_dict["args"].get("lbfgs_history_size", 100),
+        )
     else:
         new_optim = optimizer(
             source=opti_dict["source"],
@@ -242,6 +284,8 @@ def _load_heavy_optim(opti_dict, verbose):
         )
 
     for k in FIELD_TO_SAVE[5:]:
+        if optimizer is MetamorphosisSplineOptimizer and k == "data_term":
+            continue
         if k in opti_dict:
             new_optim.__dict__[k] = opti_dict[k]
 

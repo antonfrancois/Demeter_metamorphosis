@@ -356,6 +356,25 @@ class Mutual_Information(DataCost):
         self.target = self.target.to(device)
 
 
+class SplineSsd(DataCost):
+    """SSD evaluated on differentiable spline trajectory nodes."""
+
+    def __init__(self, target, target_steps):
+        self.target_steps = tuple(target_steps)
+        super().__init__(target)
+
+    def set_optimizer(self, optimizer):
+        self.optimizer = optimizer
+
+    def __call__(self, at_step=None, **kwargs):
+        super().__call__()
+        images = torch.cat(
+            [self.optimizer.mp.trajectory[step][0] for step in self.target_steps],
+            dim=0,
+        )
+        return 0.5 * (images - self.target).square().sum()
+
+
 
 class Longitudinal_DataCost(DataCost):
     """This class is used to compute the data
