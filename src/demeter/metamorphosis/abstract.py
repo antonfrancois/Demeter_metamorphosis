@@ -58,7 +58,7 @@ from ..utils import cost_functions as cf
 from ..utils import fill_saves_overview as fill_saves_overview
 
 from ..metamorphosis import data_cost as dt
-from .var_classes import Momenta
+from .var_classes import Momenta, TorchDataClass
 
 # TO DRAW THE BACKWARD GRAPH
 # from torchviz import make_dot
@@ -70,23 +70,28 @@ from .var_classes import Momenta
 # =========================================================================
 # See them as a toolkit
 
-def _get_device_from_momenta(momenta_ini: Momenta):
-    if isinstance(momenta_ini, Momenta):
+def _get_device_from_momenta(momenta_ini: TorchDataClass):
+    if isinstance(momenta_ini, TorchDataClass):
         for tensor in momenta_ini.as_dict().values():
             if tensor.is_cuda:
                 return tensor.device
         # fall back to first tensor device or cpu
         first = next(iter(momenta_ini.as_dict().values()), None)
         return first.device if first is not None else "cpu"
-    raise TypeError(f"momenta_ini must be a Momenta instance, got {type(momenta_ini)}")
+    raise TypeError(
+        "momenta_ini must be a TorchDataClass instance, "
+        f"got {type(momenta_ini)}"
+    )
 
 
-def _momenta_to_device(momenta: Momenta, device: str) -> Momenta:
-    return Momenta(**{k: v.to(device) for k, v in momenta.as_dict().items()})
+def _momenta_to_device(momenta: TorchDataClass, device: str) -> TorchDataClass:
+    return type(momenta)(**{k: v.to(device) for k, v in momenta.as_dict().items()})
 
 
-def _momenta_detach(momenta: Momenta) -> Momenta:
-    return Momenta(**{k: v.detach().clone() for k, v in momenta.as_dict().items()})
+def _momenta_detach(momenta: TorchDataClass) -> TorchDataClass:
+    return type(momenta)(
+        **{k: v.detach().clone() for k, v in momenta.as_dict().items()}
+    )
 
 
 def _zero_like_momenta(momenta: Momenta, device: str) -> Momenta:
@@ -1322,7 +1327,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.optimizer.step(verbose=False)
 
     def _dict_or_torch_parameter_(self):
-        if isinstance(self.parameter, Momenta):
+        if isinstance(self.parameter, TorchDataClass):
             return [v for v in self.parameter.as_dict().values()]
         elif isinstance(self.parameter, torch.Tensor):
             return [self.parameter]
@@ -1485,10 +1490,11 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         plt.show()
 
     def _build_parameter_dict_(self, momentum_ini):
-        if isinstance(momentum_ini, Momenta):
+        if isinstance(momentum_ini, TorchDataClass):
             return momentum_ini
         raise ValueError(
-            "In Optimize_geodesicShooting forward, momentum_ini must be a Momenta "
+            "In Optimize_geodesicShooting forward, momentum_ini must be a "
+            "TorchDataClass "
             f"instance. Got : {type(momentum_ini)}"
         )
 
@@ -1527,13 +1533,15 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         """
         def _detach(p):
-            if isinstance(p, Momenta):
+            if isinstance(p, TorchDataClass):
                 return _momenta_detach(p)
-            raise TypeError(f"parameter must be Momenta, got {type(p)}")
+            raise TypeError(f"parameter must be a TorchDataClass, got {type(p)}")
 
-        print("momenta type", type(momenta_ini))
-        if not isinstance(momenta_ini, Momenta):
-            raise TypeError(f"momenta_ini must be a Momenta instance, got {type(momenta_ini)}")
+        if not isinstance(momenta_ini, TorchDataClass):
+            raise TypeError(
+                "momenta_ini must be a TorchDataClass instance, "
+                f"got {type(momenta_ini)}"
+            )
         device = _get_device_from_momenta(momenta_ini)
         self.integration_diverged = False
 
@@ -1640,11 +1648,11 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         self.mp.to_device(device)
         self.source = self.source.to(device)
         self.target = self.target.to(device)
-        if isinstance(self.parameter, Momenta):
+        if isinstance(self.parameter, TorchDataClass):
             self.parameter = _momenta_to_device(self.parameter, device)
         self.id_grid = self.id_grid.to(device)
         self.data_term.to_device(device)
-        if isinstance(self.optimized_momenta, Momenta):
+        if isinstance(self.optimized_momenta, TorchDataClass):
             self.optimized_momenta = _momenta_to_device(self.optimized_momenta, device)
         def _loss_to_device(loss):
             if loss is None or isinstance(loss, str):
