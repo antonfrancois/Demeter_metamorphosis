@@ -41,7 +41,8 @@ Press `P` or click **Parameter Menu** for the categorized controls:
   own amplitude, shown as `[x...]` in the source-panel title;
 - **Numerical** contains the registration cost constant, integration `steps`,
   optimization `iterations`, and the compute-device selector. CUDA is selected
-  by default when available; CPU is always available.
+  by default when available; CPU is always available. Registration defaults to
+  10 optimization iterations.
 
 On the control-time line, left-click an empty mesh location to add a control,
 drag a marker to move it, and right-click a marker to remove it. A new control
@@ -89,11 +90,17 @@ moves past it.
 
 ## Persistence
 
-Press `L` or click the sidebar's **Load / Save** button to open the unified file
-menu for classic source/target images, timed spline images, scalar fields, and
-complete setups. **Manage spline images** opens a placement menu. Add several
-images, select a row, and click a mesh node to place it; placed rows are marked
-`[x]`. Right-click a row to unplace it.
+Press `I` or click **Images** for model-specific image actions. Classic shows
+only **Load source image** and **Load target image**. Spline shows only
+**Manage spline images**, which opens the timed placement menu. **Add images**
+adds unplaced rows; click any mesh node to place the selected image. Node 0 is
+the source, marked `[S]`. Placing another image at node 0 promotes it to source
+and moves the previous source into that image's former slot. Right-click a
+non-source row to unplace it.
+
+Press `L` or click **Load / Save** for scalar-field loading, complete-setup
+loading, complete-setup saving, and timed-project saving. Image loading is kept
+entirely in the separate Images menu.
 
 A timed image directory has this portable form:
 
@@ -106,8 +113,8 @@ series/
 ```
 
 It can be loaded by the lab, by `--timed-images`, or directly as the `source`
-argument of `MetamorphosisSplines`. Saving from the placement menu writes this
-format plus `spline_setup.pt`, and, when available, `trajectory.pt` and
+argument of `MetamorphosisSplines`. **Save timed project** writes this format
+plus `spline_setup.pt`, and, when available, `trajectory.pt` and
 `optimization.pt` in one atomic project directory.
 
 **Save setup** stores source, all timed targets, editable fields, model and
@@ -143,7 +150,7 @@ field; control indices are zero-based.
 - `rendering.py`: panel rendering, overlays, and LaTeX diagnostics.
 - `styles.py`: shared colors and display metadata.
 - `workspace.py`: persistent image panels, sidebar, timeline, and status layout.
-- `menus/`: focused parameter, control-time, observation-placement, overlay,
-  file, and dialog modules.
+- `menus/`: focused parameter, control-time, image, observation-placement,
+  overlay, file, and dialog modules.
 - `src/demeter/utils/spline_data.py`: public timed image directory codec.
 - `main.py`: CLI construction and launch.

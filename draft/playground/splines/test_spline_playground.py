@@ -544,12 +544,13 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     app = SplinePlayground(setup, device="cpu")
     assert app.rho_slider.val == pytest.approx(0.99)
     assert app.steps_slider.val == 2
-    assert app.iterations_slider.val == 6
+    assert app.iterations_slider.val == 10
     assert app.steps_slider.valmin == 1
     assert app.steps_slider.valmax == 40
     assert app.make_setup().parameters.rho == pytest.approx(0.99)
-    assert app.menu_button.ax.get_position().y0 > app.file_button.ax.get_position().y0
-    assert app.file_button.ax.get_position().y0 > app.run_button.ax.get_position().y0
+    assert app.menu_button.ax.get_position().y0 > app.image_button.ax.get_position().y0
+    assert app.image_button.ax.get_position().y0 > app.file_button.ax.get_position().y0
+    assert app.file_button.ax.get_position().y0 > app.register_button.ax.get_position().y0
     assert (
         app.register_button.ax.get_position().y0
         > app.run_button.ax.get_position().y0
@@ -561,7 +562,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert shortcuts.get_position() == pytest.approx((0.012, 0.975))
     assert shortcuts.get_ha() == "left"
     assert shortcuts.get_va() == "top"
-    assert shortcuts.get_text().count("\n") == 8
+    assert shortcuts.get_text().count("\n") == 9
     assert not any("A_I^{-1}" in text.get_text() for text in app.fig.texts)
 
     app._on_key_press(SimpleNamespace(key="p"))
@@ -633,8 +634,12 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     ]
     assert any("L v=" in text and "K=L" in text for text in operator_texts)
     assert any("Classic only" in text for text in operator_texts)
-    assert app.file_menu.buttons[2].label.get_text() == "MANAGE SPLINE IMAGES"
-    assert app.file_menu.buttons[3].label.get_text() == "LOAD FIELD"
+    assert [button.label.get_text() for button in app.file_menu.buttons] == [
+        "LOAD FIELD",
+        "LOAD COMPLETE SETUP",
+        "SAVE COMPLETE SETUP",
+        "SAVE TIMED PROJECT",
+    ]
 
     app.input_radio.set_active(3)
     app.set_menu_visible(True)
@@ -1121,9 +1126,12 @@ def test_model_actions_timed_target_selection_and_manual_placement(tmp_path):
 
     extra_path = tmp_path / "early.png"
     plt.imsave(extra_path, np.full((6, 7), 0.5), cmap="gray", vmin=0, vmax=1)
-    app.add_target_images((extra_path,))
+    app.add_images((extra_path,))
     assert app.target_times[-1] is None
-    app._place_target(2, 0.25)
+    app._place_image(3, 0.0)
+    assert float(app.source.mean()) == pytest.approx(0.5, abs=3e-3)
+    assert app.target_times[-1] is None
+    app._place_image(3, 0.25)
     assert app.target_times[-1] == pytest.approx(0.25)
     ordered = app.make_setup("splines")
     assert ordered.target_times == (0.25, 0.5, 1.0)

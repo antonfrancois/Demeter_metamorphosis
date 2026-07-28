@@ -19,6 +19,7 @@ class Workspace:
     controls_heading: Any
     parameter_button: Button
     menu_button: Button
+    image_button: Button
     file_button: Button
     run_button: Button
     register_button: Button
@@ -95,26 +96,32 @@ def build_workspace(
     )
 
     parameter_button = Button(
-        fig.add_axes([0.805, 0.76, 0.17, 0.055]),
+        fig.add_axes([0.805, 0.78, 0.17, 0.05]),
         "PARAMETER MENU  [P]",
         color=PANEL_COLOR,
         hovercolor="#d7e4e2",
     )
     menu_button = Button(
-        fig.add_axes([0.805, 0.68, 0.17, 0.055]),
+        fig.add_axes([0.805, 0.715, 0.17, 0.05]),
         "VIEW / OVERLAY MENU  [M]",
         color=PANEL_COLOR,
         hovercolor="#d7e4e2",
     )
+    image_button = Button(
+        fig.add_axes([0.805, 0.65, 0.17, 0.05]),
+        "IMAGES  [I]",
+        color=PANEL_COLOR,
+        hovercolor="#d7e4e2",
+    )
     file_button = Button(
-        fig.add_axes([0.805, 0.60, 0.17, 0.055]),
+        fig.add_axes([0.805, 0.585, 0.17, 0.05]),
         "LOAD / SAVE  [L]",
         color=PANEL_COLOR,
         hovercolor="#d7e4e2",
     )
     model_label = "SPLINE" if model == "splines" else model.upper()
     register_button = Button(
-        fig.add_axes([0.805, 0.49, 0.17, 0.07]),
+        fig.add_axes([0.805, 0.48, 0.17, 0.07]),
         f"REGISTER {model_label}",
         color="#4267ac",
         hovercolor="#557bc2",
@@ -122,7 +129,7 @@ def build_workspace(
     register_button.label.set_color("white")
     register_button.label.set_fontweight("bold")
     run_button = Button(
-        fig.add_axes([0.805, 0.41, 0.17, 0.06]),
+        fig.add_axes([0.805, 0.405, 0.17, 0.055]),
         f"RUN {model_label}",
         color="#168a8a",
         hovercolor="#20a3a3",
@@ -144,6 +151,7 @@ def build_workspace(
     for button in (
         parameter_button,
         menu_button,
+        image_button,
         file_button,
         clear_button,
         clear_all_button,
@@ -171,7 +179,7 @@ def build_workspace(
     fig.text(
         0.012,
         0.975,
-        "P  parameters\nM  view menu\nL  files\nR  run\nG  register\n"
+        "P  parameters\nM  view menu\nI  images\nL  files\nR  run\nG  register\n"
         "Arrow keys  move in time\n[ / ]  knots\n"
         "Mouse L/R  paint +/-\nShift-drag  erase",
         ha="left",
@@ -188,6 +196,7 @@ def build_workspace(
         controls_heading,
         parameter_button,
         menu_button,
+        image_button,
         file_button,
         run_button,
         register_button,

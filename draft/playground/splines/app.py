@@ -34,6 +34,7 @@ from .images import load_image
 from .menus import (
     MAX_STEPS,
     build_file_menu,
+    build_image_menu,
     build_observation_menu,
     build_overlay_menu,
     build_parameter_menu,
@@ -91,6 +92,7 @@ class SplinePlayground:
         self.target_times: list[float | None] = list(setup.target_times)
         self.target_paths = list(setup.target_paths)
         self.target_index = 0
+        self.image_index = 1
         self.fields: dict[str, torch.Tensor] = {}
         self._set_fields_from_setup(setup)
         self._drawing_amplitudes = {
@@ -181,6 +183,7 @@ class SplinePlayground:
         )
         self.parameter_button = workspace.parameter_button
         self.menu_button = workspace.menu_button
+        self.image_button = workspace.image_button
         self.file_button = workspace.file_button
         self.run_button = workspace.run_button
         self.register_button = workspace.register_button
@@ -197,6 +200,7 @@ class SplinePlayground:
 
         self._build_parameter_menu()
         self._build_overlay_menu()
+        self._build_image_menu()
         self._build_file_menu()
         self._build_observation_menu()
         self.input_radio.on_clicked(self._on_input_field)
@@ -225,6 +229,9 @@ class SplinePlayground:
         self.file_button.on_clicked(
             lambda _event: self.set_file_menu_visible(not self.file_menu_open)
         )
+        self.image_button.on_clicked(
+            lambda _event: self.set_image_menu_visible(not self.image_menu_open)
+        )
         self.clear_button.on_clicked(lambda _event: self.clear())
         self.clear_all_button.on_clicked(lambda _event: self.clear_all())
         for widget in (
@@ -245,6 +252,7 @@ class SplinePlayground:
 
         self._workspace_widgets = [
             self.parameter_button,
+            self.image_button,
             self.file_button,
             self.clear_button,
             self.clear_all_button,
@@ -299,43 +307,57 @@ class SplinePlayground:
 
     def _build_file_menu(self) -> None:
         actions = (
-            ("LOAD SOURCE IMAGE", lambda: self._run_file_action(self.load_source_dialog)),
-            ("LOAD CLASSIC TARGET", lambda: self._run_file_action(self.load_target_dialog)),
-            ("MANAGE SPLINE IMAGES", lambda: self._set_modal("observations")),
             ("LOAD FIELD", lambda: self._run_file_action(self.load_field_dialog)),
             ("LOAD COMPLETE SETUP", lambda: self._run_file_action(self.load_setup_dialog)),
             ("SAVE COMPLETE SETUP", lambda: self._run_file_action(self.save_setup_dialog)),
+            ("SAVE TIMED PROJECT", lambda: self._run_file_action(self.save_timed_directory_dialog)),
         )
         self.file_menu = build_file_menu(self.fig, actions)
         self.file_menu.close_button.on_clicked(
             lambda _event: self.set_file_menu_visible(False)
         )
 
+    def _build_image_menu(self) -> None:
+        self.image_menu = build_image_menu(self.fig)
+        self.image_menu.load_source_button.on_clicked(
+            lambda _event: self._run_image_action(self.load_source_dialog)
+        )
+        self.image_menu.load_target_button.on_clicked(
+            lambda _event: self._run_image_action(self.load_target_dialog)
+        )
+        self.image_menu.manage_spline_button.on_clicked(
+            lambda _event: self._set_modal("observations")
+        )
+        self.image_menu.close_button.on_clicked(
+            lambda _event: self.set_image_menu_visible(False)
+        )
+
     def _build_observation_menu(self) -> None:
         self.observation_menu = build_observation_menu(
             self.fig,
-            on_select=self._select_target,
-            on_place=self._place_target,
-            on_unplace=self._unplace_target,
+            on_select=self._select_image,
+            on_place=self._place_image,
+            on_unplace=self._unplace_image,
         )
         self.observation_menu.load_directory_button.on_clicked(
             lambda _event: self.load_timed_directory_dialog()
         )
         self.observation_menu.add_images_button.on_clicked(
-            lambda _event: self.add_target_images_dialog()
-        )
-        self.observation_menu.save_directory_button.on_clicked(
-            lambda _event: self.save_timed_directory_dialog()
+            lambda _event: self.add_images_dialog()
         )
         self.observation_menu.remove_button.on_clicked(
-            lambda _event: self.remove_selected_target()
+            lambda _event: self.remove_selected_image()
         )
         self.observation_menu.close_button.on_clicked(
-            lambda _event: self._set_modal(None)
+            lambda _event: self.set_image_menu_visible(True)
         )
 
     def _run_file_action(self, action) -> None:
         self.set_file_menu_visible(False)
+        action()
+
+    def _run_image_action(self, action) -> None:
+        self.set_image_menu_visible(False)
         action()
 
     def _connect_events(self) -> None:
@@ -364,6 +386,13 @@ class SplinePlayground:
     def file_menu_open(self) -> bool:
         return self.active_modal == "files"
 
+    def set_image_menu_visible(self, visible: bool) -> None:
+        self._set_modal("images" if visible else None)
+
+    @property
+    def image_menu_open(self) -> bool:
+        return self.active_modal == "images"
+
     def set_parameter_menu_visible(self, visible: bool) -> None:
         self._set_modal("parameters" if visible else None)
 
@@ -390,6 +419,7 @@ class SplinePlayground:
             ),
         )
         self.file_menu.set_visible(self.file_menu_open)
+        self.image_menu.set_visible(self.image_menu_open, self.parameters.model)
         self.observation_menu.set_visible(modal == "observations")
         self.parameter_menu.set_visible(self.parameter_menu_open)
         self._set_workspace_active(modal is None)
@@ -734,14 +764,17 @@ class SplinePlayground:
             for index, path in enumerate(self.target_paths)
         )
 
+    def _image_names(self) -> tuple[str, ...]:
+        return (self.source_path or "source", *self._target_names())
+
     def _refresh_observation_widgets(self) -> None:
         if not hasattr(self, "observation_menu"):
             return
         self.observation_menu.editor.set_state(
             self.parameters.n_steps,
-            self._target_names(),
-            tuple(self.target_times),
-            self.target_index,
+            self._image_names(),
+            (0.0, *self.target_times),
+            self.image_index,
         )
         self._refresh_target_markers()
 
@@ -749,9 +782,47 @@ class SplinePlayground:
         if not len(self._targets):
             return
         self.target_index = min(max(int(index), 0), len(self._targets) - 1)
+        self.image_index = self.target_index + 1
         self._refresh_observation_widgets()
         self._render_panels(self._render_target)
         self.fig.canvas.draw_idle()
+
+    def _select_image(self, index: int) -> None:
+        self.image_index = min(max(int(index), 0), len(self._targets))
+        if self.image_index > 0:
+            self.target_index = self.image_index - 1
+            self._render_panels(self._render_target)
+        self._refresh_observation_widgets()
+        self.fig.canvas.draw_idle()
+
+    def _place_image(self, index: int, time: float) -> None:
+        if index == 0:
+            if time != 0:
+                self._show_message("Replace the source by placing another image at node 0.")
+            return
+        if time == 0:
+            self._promote_target_to_source(index - 1)
+        else:
+            self._place_target(index - 1, time)
+
+    def _unplace_image(self, index: int) -> None:
+        if index == 0:
+            self._show_message("The source at node 0 cannot be unplaced.")
+            return
+        self._unplace_target(index - 1)
+
+    def _promote_target_to_source(self, index: int) -> None:
+        if not 0 <= index < len(self._targets):
+            return
+        old_source = self.source.clone()
+        old_source_path = self.source_path
+        self.source = self._targets[index:index + 1].clone()
+        self.source_path = self.target_paths[index]
+        self._targets[index:index + 1] = old_source
+        self.target_paths[index] = old_source_path
+        self.image_index = 0
+        self._invalidate("Source image changed. Press Run.")
+        self._refresh_observation_widgets()
 
     def _place_target(self, index: int, time: float) -> None:
         for other_index, other_time in enumerate(self.target_times):
@@ -760,6 +831,7 @@ class SplinePlayground:
                 return
         self.target_times[index] = float(time)
         self.target_index = index
+        self.image_index = index + 1
         self.last_registration = None
         self._refresh_observation_widgets()
         self._set_status(f"Placed target {index + 1} at t={time:.3g}.")
@@ -775,7 +847,11 @@ class SplinePlayground:
         self._set_status(f"Target {index + 1} is now unplaced.")
         self.fig.canvas.draw_idle()
 
-    def remove_selected_target(self) -> None:
+    def remove_selected_image(self) -> None:
+        if self.image_index == 0:
+            self._show_message("Replace the source before removing it.")
+            return
+        self.target_index = self.image_index - 1
         if len(self._targets) <= 1:
             self._show_message("At least one target image is required.")
             return
@@ -784,6 +860,7 @@ class SplinePlayground:
         self.target_times = [self.target_times[index] for index in keep]
         self.target_paths = [self.target_paths[index] for index in keep]
         self.target_index = min(self.target_index, len(self._targets) - 1)
+        self.image_index = self.target_index + 1
         self.last_registration = None
         self._update_target_mse_cache()
         self._refresh_observation_widgets()
@@ -825,6 +902,7 @@ class SplinePlayground:
         self.target_paths = list(setup.target_paths)
         self.target_index = min(self.target_index, len(self._targets) - 1)
         self._sync_target_to_time()
+        self.image_index = self.target_index + 1
         self._refresh_observation_widgets()
 
     def _control_fields(self) -> list[torch.Tensor]:
@@ -947,6 +1025,9 @@ class SplinePlayground:
             return
         if key == "l":
             self.set_file_menu_visible(not self.file_menu_open)
+            return
+        if key == "i":
+            self.set_image_menu_visible(not self.image_menu_open)
             return
         if key == "escape" and self.active_modal is not None:
             self._set_modal(None)
@@ -1320,6 +1401,7 @@ class SplinePlayground:
         image, resolved = load_image(path, self.source.shape[-2:])
         self.source = image.to(dtype=self.source.dtype)
         self.source_path = str(resolved)
+        self._refresh_observation_widgets()
         self._invalidate(f"Loaded source from {resolved}. Press Run.")
 
     def load_target(self, path: str | Path) -> None:
@@ -1328,6 +1410,7 @@ class SplinePlayground:
         self.target_times = [1.0]
         self.target_paths = [str(resolved)]
         self.target_index = 0
+        self.image_index = 1
         self.last_registration = None
         self._update_target_mse_cache()
         self._refresh_observation_widgets()
@@ -1335,7 +1418,7 @@ class SplinePlayground:
         self._render_target()
         self.fig.canvas.draw_idle()
 
-    def add_target_images(self, paths: tuple[str | Path, ...]) -> None:
+    def add_images(self, paths: tuple[str | Path, ...]) -> None:
         if not paths:
             return
         images = []
@@ -1348,10 +1431,11 @@ class SplinePlayground:
         self.target_times.extend([None] * len(images))
         self.target_paths.extend(resolved_paths)
         self.target_index = len(self._targets) - len(images)
+        self.image_index = self.target_index + 1
         self.last_registration = None
         self._update_target_mse_cache()
         self._refresh_observation_widgets()
-        self._set_status("Target images added. Place every unmarked image on the timeline.")
+        self._set_status("Images added. Place every unmarked image on the timeline.")
         self._render_target()
         self.fig.canvas.draw_idle()
 
@@ -1421,6 +1505,7 @@ class SplinePlayground:
         self.target_times = list(setup.target_times)
         self.target_paths = list(setup.target_paths)
         self.target_index = 0
+        self.image_index = 1
         self._set_fields_from_setup(setup)
         self._drawing_amplitudes = {
             key: DEFAULT_DRAWING_AMPLITUDE for key in self.fields
@@ -1541,10 +1626,10 @@ class SplinePlayground:
         if path is not None:
             self._dialog_action(self.load_target, path, "TARGET LOAD")
 
-    def add_target_images_dialog(self) -> None:
+    def add_images_dialog(self) -> None:
         try:
             paths = choose_files()
-            self.add_target_images(paths)
+            self.add_images(paths)
         except Exception as error:
             self._set_status(f"IMAGE LOAD ERROR: {type(error).__name__}: {error}")
             self.fig.canvas.draw_idle()

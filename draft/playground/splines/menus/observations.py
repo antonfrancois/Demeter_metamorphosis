@@ -1,4 +1,4 @@
-"""Timed target-image placement menu."""
+"""Timed spline-image placement menu."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from .common import build_modal_backdrop
 
 
 class ObservationTimeEditor:
-    """Select target rows and place them on endpoint-inclusive mesh nodes."""
+    """Select image rows and place them on endpoint-inclusive mesh nodes."""
 
     def __init__(self, axis, *, on_select, on_place, on_unplace) -> None:
         self.axis = axis
@@ -61,7 +61,7 @@ class ObservationTimeEditor:
             axis.text(
                 0.5,
                 0.5,
-                "Add target images, then place each one on the timeline.",
+                "Add images, then place each one on the timeline.",
                 transform=axis.transAxes,
                 ha="center",
                 va="center",
@@ -72,7 +72,7 @@ class ObservationTimeEditor:
         for index, (name, time) in enumerate(zip(self.names, self.times)):
             if index == self.selected:
                 axis.axhspan(index - 0.42, index + 0.42, color="#dcebea", zorder=0)
-            status = "[x]" if time is not None else "[ ]"
+            status = "[S]" if time == 0 else "[x]" if time is not None else "[ ]"
             axis.text(
                 -label_width + 0.1,
                 index,
@@ -115,7 +115,7 @@ class ObservationTimeEditor:
             return
         if event.button != 1 or event.xdata < 0:
             return
-        step = min(max(round(event.xdata), 1), self.n_steps)
+        step = min(max(round(event.xdata), 0), self.n_steps)
         self.on_place(row, step / self.n_steps)
 
 
@@ -126,7 +126,6 @@ class ObservationMenu:
     editor: ObservationTimeEditor
     load_directory_button: Button
     add_images_button: Button
-    save_directory_button: Button
     remove_button: Button
     close_button: Button
 
@@ -135,7 +134,6 @@ class ObservationMenu:
         return [
             self.load_directory_button,
             self.add_images_button,
-            self.save_directory_button,
             self.remove_button,
             self.close_button,
         ]
@@ -167,7 +165,7 @@ def build_observation_menu(
     backdrop = build_modal_backdrop(
         fig,
         "SPLINE IMAGES",
-        "Load a timed directory or add images and place each target on the mesh.",
+        "Place one source at node 0 and every observation on a later mesh node.",
     )
     panel = fig.add_axes([0.07, 0.15, 0.86, 0.69], facecolor=PANEL_COLOR, zorder=101)
     panel.set_xticks([])
@@ -175,7 +173,7 @@ def build_observation_menu(
     panel.text(
         0.5,
         0.92,
-        "TARGET OBSERVATIONS",
+        "IMAGE TRAJECTORY",
         transform=panel.transAxes,
         ha="center",
         fontsize=13,
@@ -200,10 +198,9 @@ def build_observation_menu(
         widget.label.set_fontsize(8.5)
         return widget
 
-    load_directory = button([0.12, 0.20, 0.17, 0.06], "LOAD TIMED DIRECTORY")
-    add_images = button([0.31, 0.20, 0.17, 0.06], "ADD TARGET IMAGES")
-    save_directory = button([0.50, 0.20, 0.17, 0.06], "SAVE TIMED DIRECTORY")
-    remove = button([0.69, 0.20, 0.19, 0.06], "REMOVE SELECTED TARGET")
+    load_directory = button([0.18, 0.20, 0.19, 0.06], "LOAD TIMED DIRECTORY")
+    add_images = button([0.405, 0.20, 0.19, 0.06], "ADD IMAGES")
+    remove = button([0.63, 0.20, 0.19, 0.06], "REMOVE SELECTED IMAGE")
     close = Button(
         fig.add_axes([0.42, 0.07, 0.16, 0.055], zorder=102),
         "RETURN TO IMAGES",
@@ -217,7 +214,6 @@ def build_observation_menu(
         editor,
         load_directory,
         add_images,
-        save_directory,
         remove,
         close,
     )

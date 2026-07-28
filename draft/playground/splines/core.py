@@ -77,7 +77,7 @@ class SplineParameters:
     sigma: float = 3.0
     model: str = "splines"
     cost_cst: float = 0.01
-    iterations: int = 6
+    iterations: int = 10
 
     def __post_init__(self) -> None:
         for name in ("alpha", "beta", "gamma", "rho", "cg_eps"):
@@ -206,7 +206,7 @@ class SplineParameters:
             sigma=values.get("sigma", 3.0),
             model=values.get("model", "splines"),
             cost_cst=values.get("cost_cst", 0.01),
-            iterations=values.get("iterations", 6),
+            iterations=values.get("iterations", 10),
         )
 
 

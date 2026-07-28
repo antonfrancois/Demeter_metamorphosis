@@ -44,7 +44,7 @@ def build_file_menu(
     backdrop = build_modal_backdrop(
         fig,
         "LOAD / SAVE",
-        "Classic images, timed spline observations, fields, and complete setups.",
+        "Load fields or setups, and save complete work.",
     )
     panel = fig.add_axes([0.28, 0.20, 0.44, 0.62], facecolor=PANEL_COLOR, zorder=101)
     panel.set_xticks([])

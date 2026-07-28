@@ -183,7 +183,7 @@ def main(argv: list[str] | None = None) -> SplinePlayground:
                 else ("classic" if args.kernel == "gaussian" else "splines")
             ),
             cost_cst=args.cost_cst if args.cost_cst is not None else 0.01,
-            iterations=args.iterations if args.iterations is not None else 6,
+            iterations=args.iterations if args.iterations is not None else 10,
         )
         setup = zero_setup(
             source,

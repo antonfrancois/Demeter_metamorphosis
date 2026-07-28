@@ -79,8 +79,8 @@ def choose_file(
 
 
 def choose_files() -> tuple[Path, ...]:
-    """Choose multiple target images with the active GUI backend."""
-    title = "Add spline target images"
+    """Choose multiple spline images with the active GUI backend."""
+    title = "Add spline images"
     image_filter = "Images (*.png *.jpg *.jpeg *.tif *.tiff);;All files (*)"
     backend = plt.get_backend().lower()
     if "qt" in backend:
