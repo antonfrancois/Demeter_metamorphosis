@@ -11,6 +11,7 @@ from . import simplex as sp
 from . import joined as jn
 from . import affine as aff
 from . import affine_decoupled as ad
+from . import splines as spl
 
 from ..utils import torchbox as tb
 from ..utils.decorators import time_it, monitor_gpu
@@ -294,6 +295,84 @@ def metamorphosis(
     mr = _commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef,
                       convergence_tol=convergence_tol, convergence_patience=convergence_patience)
     return mr
+
+
+@time_it
+def MetamorphosisSplines(
+    source,
+    target,
+    target_times,
+    variables_ini,
+    rho,
+    cost_cst,
+    integration_steps,
+    n_iter,
+    grad_coef,
+    kernelOperator,
+    control_times=(),
+    cg_eps=1e-6,
+    safe_mode=False,
+    optimizer_method="LBFGS_torch",
+    lbfgs_max_iter=20,
+    lbfgs_history_size=100,
+    convergence_tol=None,
+    convergence_patience=3,
+    debug=False,
+):
+    """Fit a metamorphosis spline to images observed at normalized times.
+
+    ``source`` is fixed at time zero. ``target`` has shape ``[N, 1, H, W]``
+    and ``target_times`` contains its strictly increasing observation times.
+    Both observation and control times must lie on the integration mesh.
+    ``rho`` must satisfy ``0 <= rho < 1``, and ``cost_cst`` represents the
+    observation variance ``sigma_I**2`` in equation (37).
+    """
+    if not isinstance(n_iter, int) or isinstance(n_iter, bool) or n_iter < 0:
+        raise ValueError("n_iter must be a non-negative integer")
+    control_times = tuple(control_times)
+    if variables_ini is None:
+        variables_ini = spl.SplinesVariables.zeros(
+            source,
+            n_controls=len(control_times),
+        )
+    if not isinstance(variables_ini, spl.SplinesVariables):
+        raise TypeError("variables_ini must be SplinesVariables or None")
+    variables_ini = spl.SplinesVariables(
+        *(value.detach().clone() for _, value in variables_ini)
+    ).requires_grad_(True)
+
+    integrator = spl.MetamorphosisSplineIntegrator(
+        rho=rho,
+        control_times=control_times,
+        kernelOperator=kernelOperator,
+        n_step=integration_steps,
+        cg_eps=cg_eps,
+        dx_convention="pixel",
+        debug=debug,
+    )
+    optimizer = spl.MetamorphosisSplineOptimizer(
+        source=source,
+        target=target,
+        target_times=target_times,
+        geodesic=integrator,
+        cost_cst=cost_cst,
+        optimizer_method=optimizer_method,
+        lbfgs_max_iter=lbfgs_max_iter,
+        lbfgs_history_size=lbfgs_history_size,
+        debug=debug,
+    )
+    if n_iter == 0:
+        return optimizer
+
+    forward = optimizer.forward_safe_mode if safe_mode else optimizer.forward
+    forward(
+        variables_ini,
+        n_iter=n_iter,
+        grad_coef=grad_coef,
+        convergence_tol=convergence_tol,
+        convergence_patience=convergence_patience,
+    )
+    return optimizer
 
 
 # ==================================================

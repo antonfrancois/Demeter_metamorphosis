@@ -20,7 +20,8 @@ import torch
 from torch import Tensor
 from torch.utils._pytree import register_pytree_node
 
-from .abstract import Geodesic_integrator
+from .abstract import Geodesic_integrator, Optimize_geodesicShooting
+from .data_cost import DataCost
 from .var_classes import TorchDataClass
 from ..utils import torchbox as tb
 from ..utils.cometric_inversion import CometricOperator
@@ -134,6 +135,94 @@ register_pytree_node(
 )
 
 
+def _validate_observations(
+    source: Tensor,
+    target: Tensor,
+    target_times: Sequence[float] | Tensor,
+    n_step: int,
+) -> tuple[tuple[float, ...], tuple[int, ...]]:
+    if source.ndim != 4 or source.shape[:2] != (1, 1):
+        raise ValueError(
+            "source must have shape [1, 1, H, W], "
+            f"got {tuple(source.shape)}"
+        )
+    if target.ndim != 4 or tuple(target.shape[1:]) != tuple(source.shape[1:]):
+        raise ValueError(
+            "target must have shape [N, 1, H, W] matching source, "
+            f"got {tuple(target.shape)}"
+        )
+    if target.shape[0] == 0:
+        raise ValueError("target must contain at least one observation")
+    if not torch.is_floating_point(source) or not torch.is_floating_point(target):
+        raise TypeError("source and target must be floating point")
+    if source.dtype != target.dtype:
+        raise ValueError("source and target must share one dtype")
+    if not torch.isfinite(source).all() or not torch.isfinite(target).all():
+        raise ValueError("source and target must contain only finite values")
+
+    if isinstance(target_times, Tensor):
+        if target_times.ndim != 1:
+            raise ValueError("target_times must be one-dimensional")
+        values = target_times.detach().cpu().tolist()
+    else:
+        try:
+            values = list(target_times)
+        except TypeError as error:
+            raise TypeError("target_times must be a sequence of real numbers") from error
+
+    if len(values) != target.shape[0]:
+        raise ValueError(
+            "target_times must contain one time per target, "
+            f"got {len(values)} times and {target.shape[0]} targets"
+        )
+
+    times = []
+    steps = []
+    for value in values:
+        if isinstance(value, bool):
+            raise TypeError("target times must be real numbers, not booleans")
+        try:
+            time = float(value)
+        except (TypeError, ValueError) as error:
+            raise TypeError("target times must be real numbers") from error
+        if not isfinite(time) or not 0 < time <= 1:
+            raise ValueError("target times must be finite and lie in (0, 1]")
+
+        exact_step = time * n_step
+        step = round(exact_step)
+        if not isclose(exact_step, step, rel_tol=0, abs_tol=1e-6):
+            raise ValueError(
+                f"target time {time} is not on the {n_step}-step temporal mesh"
+            )
+        times.append(time)
+        steps.append(step)
+
+    if any(right <= left for left, right in zip(times, times[1:])):
+        raise ValueError("target times must be strictly increasing")
+    if any(right <= left for left, right in zip(steps, steps[1:])):
+        raise ValueError("target times must map to distinct mesh nodes")
+    return tuple(times), tuple(steps)
+
+
+class _TimedSplineSsd(DataCost):
+    """SSD evaluated on differentiable spline trajectory nodes."""
+
+    def __init__(self, target: Tensor, target_steps: tuple[int, ...]) -> None:
+        self.target_steps = target_steps
+        super().__init__(target)
+
+    def set_optimizer(self, optimizer) -> None:
+        self.optimizer = optimizer
+
+    def __call__(self, at_step=None, **kwargs) -> Tensor:
+        super().__call__()
+        trajectory_images = torch.cat(
+            [self.optimizer.mp.trajectory[step][0] for step in self.target_steps],
+            dim=0,
+        )
+        return 0.5 * (trajectory_images - self.target).square().sum()
+
+
 class MetamorphosisSplineIntegrator(Geodesic_integrator):
     r"""Integrate system (43) on the pixel torus.
 
@@ -195,7 +284,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
         for time in controls:
             exact_step = time * n_step
             step = round(exact_step)
-            if not isclose(exact_step, step, rel_tol=0, abs_tol=1e-8):
+            if not isclose(exact_step, step, rel_tol=0, abs_tol=1e-6):
                 raise ValueError(
                     f"control time {time} is not on the {n_step}-step temporal mesh"
                 )
@@ -507,6 +596,29 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
                 if hasattr(self, name):
                     delattr(self, name)
 
+    def to_device(self, device) -> None:
+        super().to_device(device)
+        for name in (
+            "source",
+            "momentum",
+            "acceleration",
+            "jerk",
+            "force",
+            "velocity",
+            "acceleration_energy",
+        ):
+            value = getattr(self, name, None)
+            if isinstance(value, Tensor):
+                setattr(self, name, value.to(device))
+        initial_variables = getattr(self, "initial_variables", None)
+        if isinstance(initial_variables, SplinesVariables):
+            self.initial_variables = initial_variables.to(device)
+        if hasattr(self, "trajectory"):
+            self.trajectory = tuple(
+                tuple(value.to(device) for value in state)
+                for state in self.trajectory
+            )
+
     def plot(self, n_figs=5):
         raise NotImplementedError("spline trajectory plotting is not implemented")
 
@@ -518,4 +630,148 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             "n_step": self.n_step,
             "cg_eps": self.cg_eps,
             "dx_convention": self.dx_convention,
+        }
+
+
+class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
+    r"""Optimize a spline trajectory against images observed at fixed times.
+
+    The implemented discretization of equation (37) is
+
+    .. math::
+        E(\theta) = \frac12\sum_i \|I(t_i)-J_i\|_2^2
+          + \lambda E_{\mathrm{acc}},
+
+    where ``theta`` is a :class:`SplinesVariables` instance and
+    ``E_acc`` is accumulated by :class:`MetamorphosisSplineIntegrator`.
+    This is equation (37) multiplied by ``sigma_I**2``, so ``cost_cst``
+    corresponds to ``sigma_I**2``.
+    """
+
+    def __init__(
+        self,
+        source: Tensor,
+        target: Tensor,
+        target_times: Sequence[float] | Tensor,
+        geodesic: MetamorphosisSplineIntegrator,
+        cost_cst: float,
+        optimizer_method: str = "LBFGS_torch",
+        lbfgs_max_iter: int = 20,
+        lbfgs_history_size: int = 100,
+        hamiltonian_integration: bool = False,
+        debug: bool = False,
+        **kwargs,
+    ) -> None:
+        if not isinstance(geodesic, MetamorphosisSplineIntegrator):
+            raise TypeError(
+                "geodesic must be a MetamorphosisSplineIntegrator, "
+                f"got {type(geodesic)}"
+            )
+        if optimizer_method != "LBFGS_torch":
+            raise ValueError("spline optimization currently supports LBFGS_torch only")
+        if hamiltonian_integration:
+            raise NotImplementedError(
+                "spline regularization uses the integrated acceleration energy"
+            )
+        try:
+            cost_cst = float(cost_cst)
+        except (TypeError, ValueError) as error:
+            raise TypeError("cost_cst must be a finite non-negative scalar") from error
+        if not isfinite(cost_cst) or cost_cst < 0:
+            raise ValueError("cost_cst must be finite and non-negative")
+
+        self.target_times, self.target_steps = _validate_observations(
+            source, target, target_times, geodesic.n_step
+        )
+        source = source.detach()
+        target = target.detach()
+        super().__init__(
+            source=source,
+            target=target,
+            geodesic=geodesic,
+            cost_cst=cost_cst,
+            data_term=_TimedSplineSsd(target, self.target_steps),
+            optimizer_method=optimizer_method,
+            lbfgs_max_iter=lbfgs_max_iter,
+            lbfgs_history_size=lbfgs_history_size,
+            hamiltonian_integration=False,
+            debug=debug,
+            **kwargs,
+        )
+        self._cost_saving_ = self._spline_cost_saving_
+
+    def _get_rho_(self) -> float:
+        return float(self.mp.rho)
+
+    def _dict_or_torch_parameter_(self) -> list[Tensor]:
+        if not isinstance(self.parameter, SplinesVariables):
+            raise TypeError(
+                "spline optimizer parameter must be SplinesVariables, "
+                f"got {type(self.parameter)}"
+            )
+        parameters = [
+            value for _, value in self.parameter if value.numel() > 0
+        ]
+        if len({id(value) for value in parameters}) != len(parameters):
+            raise ValueError("spline variable tensors must be distinct")
+        for value in parameters:
+            if not value.is_leaf or not value.requires_grad:
+                raise ValueError(
+                    "every optimized spline variable must be a grad-enabled leaf"
+                )
+        return parameters
+
+    def cost(self, variables: SplinesVariables, **kwargs) -> Tensor:
+        integrator = self.mp
+        if not isinstance(integrator, MetamorphosisSplineIntegrator):
+            raise TypeError("spline optimizer requires its spline integrator")
+        integrator.forward(self.source, variables, save=False, plot=0)
+        self.data_loss = self.data_term()
+        self.acceleration_energy = integrator.acceleration_energy
+        self.total_cost = (
+            self.data_loss + self.cost_cst * self.acceleration_energy
+        )
+        return self.total_cost
+
+    def _spline_cost_saving_(self, index: int, loss_stock):
+        if loss_stock is None:
+            return {
+                "data_loss": torch.zeros(index),
+                "acceleration_energy": torch.zeros(index),
+                "total_cost": torch.zeros(index),
+            }
+        loss_stock["data_loss"][index] = self.data_loss.detach().cpu()
+        loss_stock["acceleration_energy"][index] = (
+            self.acceleration_energy.detach().cpu()
+        )
+        loss_stock["total_cost"][index] = self.total_cost.detach().cpu()
+        return loss_stock
+
+    def get_total_cost(self) -> Tensor:
+        if not isinstance(self.loss_stock, dict):
+            raise ValueError("Loss history is not available.")
+        return self.loss_stock["total_cost"]
+
+    def _get_loss_components(self):
+        if not isinstance(self.loss_stock, dict):
+            raise ValueError("Loss history is not available.")
+        return (
+            self.loss_stock["data_loss"],
+            self.loss_stock["acceleration_energy"],
+            None,
+        )
+
+    @property
+    def optimized_variables(self) -> SplinesVariables | None:
+        if isinstance(self.optimized_momenta, SplinesVariables):
+            return self.optimized_momenta
+        return None
+
+    def get_all_arguments(self) -> dict:
+        return {
+            **super().get_all_arguments(),
+            "rho": self._get_rho_(),
+            "target_times": self.target_times,
+            "control_times": self.mp.control_times,
+            "cg_eps": self.mp.cg_eps,
         }
