@@ -544,6 +544,22 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
     assert "size: 100x100" in app.status_text.get_text()
     plt.close(app.fig)
 
+    spline_app = SplinePlayground(
+        zero_setup(torch.zeros(1, 1, 18, 20), parameters=SplineParameters()),
+        device="cpu",
+    )
+    spline_app.add_images(
+        (
+            PROJECT_ROOT / "examples/im2Dbank_low/reg_test_01.png",
+            PROJECT_ROOT / "examples/im2Dbank_low/reg_test_02.png",
+        )
+    )
+    spline_app._place_image(2, 0.0)
+    assert spline_app.source.shape[-2:] == (64, 64)
+    assert spline_app._targets.shape[-2:] == (64, 64)
+    assert "size: 64x64" in spline_app.status_text.get_text()
+    plt.close(spline_app.fig)
+
 
 def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     setup = zero_setup(
@@ -1115,6 +1131,7 @@ def test_model_actions_timed_target_selection_and_manual_placement(tmp_path):
     assert app.run_button.label.get_text() == "RUN SPLINE"
     assert app.register_button.label.get_text() == "REGISTER SPLINE"
     assert len(app._target_markers) == 4
+    assert app.control_time_editor.image_steps == (2, 4)
 
     app.set_time_index(2)
     assert app.target_index == 0

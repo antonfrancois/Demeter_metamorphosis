@@ -784,6 +784,7 @@ class SplinePlayground:
             (0.0, *self.target_times),
             self.image_index,
         )
+        self._sync_control_time_widgets()
         self._refresh_target_markers()
 
     def _select_target(self, index: int) -> None:
@@ -824,11 +825,19 @@ class SplinePlayground:
             return
         old_source = self.source.clone()
         old_source_path = self.source_path
-        self.source = self._targets[index:index + 1].clone()
-        self.source_path = self.target_paths[index]
+        new_source_path = self.target_paths[index]
+        new_source = self._targets[index:index + 1].clone()
+        if new_source_path:
+            try:
+                new_source, _resolved = load_image(new_source_path)
+            except FileNotFoundError:
+                pass
+        self.source = new_source.to(dtype=self.source.dtype)
+        self.source_path = new_source_path
         self._targets[index:index + 1] = old_source
         self.target_paths[index] = old_source_path
         self.image_index = 0
+        self._set_native_image_size(reload_targets=True)
         self._invalidate("Source image changed. Press Run.")
         self._refresh_observation_widgets()
 
@@ -1127,12 +1136,22 @@ class SplinePlayground:
         )
 
     def _sync_control_time_widgets(self) -> None:
-        for widget in (self.control_time_editor, self.overlay_control_selector):
-            widget.set_state(
-                self.parameters.n_steps,
-                self.parameters.control_steps,
-                self.control_index,
-            )
+        image_steps = tuple(
+            round(time * self.parameters.n_steps)
+            for time in self.target_times
+            if time is not None
+        )
+        self.control_time_editor.set_state(
+            self.parameters.n_steps,
+            self.parameters.control_steps,
+            self.control_index,
+            image_steps=image_steps,
+        )
+        self.overlay_control_selector.set_state(
+            self.parameters.n_steps,
+            self.parameters.control_steps,
+            self.control_index,
+        )
 
     def _refresh_control_markers(self) -> None:
         for artist in self._control_markers:
@@ -1407,13 +1426,31 @@ class SplinePlayground:
             self.fig.canvas.draw_idle()
             return None
 
-    def _set_native_image_size(self) -> None:
+    def _set_native_image_size(self, *, reload_targets: bool = False) -> None:
         size = tuple(self.source.shape[-2:])
-        self._targets = resize_field(
-            self._targets,
-            size,
-            scale_vector_displacement=False,
-        ).contiguous()
+        if reload_targets:
+            targets = []
+            for index, path in enumerate(self.target_paths):
+                target = None
+                if path:
+                    try:
+                        target, _resolved = load_image(path, size)
+                    except FileNotFoundError:
+                        pass
+                if target is None:
+                    target = resize_field(
+                        self._targets[index:index + 1],
+                        size,
+                        scale_vector_displacement=False,
+                    )
+                targets.append(target.to(dtype=self.source.dtype))
+            self._targets = torch.cat(targets).contiguous()
+        else:
+            self._targets = resize_field(
+                self._targets,
+                size,
+                scale_vector_displacement=False,
+            ).contiguous()
         for key, field in self.fields.items():
             self.fields[key] = resize_field(
                 field,

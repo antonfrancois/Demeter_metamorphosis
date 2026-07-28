@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from ..styles import DUAL_COLOR, INK_COLOR, PANEL_COLOR
+from ..styles import DUAL_COLOR, INK_COLOR, PANEL_COLOR, TARGET_ACTIVE_COLOR
 
 
 class ControlTimeEditor:
@@ -24,6 +24,7 @@ class ControlTimeEditor:
         self.axis = axis
         self.n_steps = n_steps
         self.control_steps = tuple(control_steps)
+        self.image_steps: tuple[int, ...] = ()
         self.selected_index = 0
         self.on_add = on_add
         self.on_move = on_move
@@ -48,8 +49,10 @@ class ControlTimeEditor:
         n_steps: int,
         control_steps: tuple[int, ...],
         selected_index: int,
+        image_steps: tuple[int, ...] = (),
     ) -> None:
         steps = tuple(control_steps)
+        images = tuple(image_steps)
         selected = min(
             max(int(selected_index), 0),
             max(0, len(steps) - 1),
@@ -57,12 +60,14 @@ class ControlTimeEditor:
         if (
             self.n_steps == n_steps
             and self.control_steps == steps
+            and self.image_steps == images
             and self.selected_index == selected
             and self._drag_index is None
         ):
             return
         self.n_steps = n_steps
         self.control_steps = steps
+        self.image_steps = images
         self.selected_index = selected
         self._drag_index = None
         self._drag_step = None
@@ -121,6 +126,16 @@ class ControlTimeEditor:
                 color="#cad2d3",
                 linewidth=0.7,
                 zorder=1,
+            )
+        for step in self.image_steps:
+            self.axis.plot(
+                step / self.n_steps,
+                0.76,
+                marker="^",
+                markersize=7,
+                markerfacecolor=TARGET_ACTIVE_COLOR,
+                markeredgecolor=TARGET_ACTIVE_COLOR,
+                zorder=2,
             )
         for index, step in enumerate(self._display_steps()):
             selected = index == self.selected_index
