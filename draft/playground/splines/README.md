@@ -92,11 +92,11 @@ moves past it.
 
 Press `I` or click **Images** for model-specific image actions. Classic shows
 only **Load source image** and **Load target image**. Spline shows only
-**Manage spline images**, which opens the timed placement menu. **Add images**
-adds unplaced rows; click any mesh node to place the selected image. Node 0 is
-the source, marked `[S]`. Placing another image at node 0 promotes it to source
-and moves the previous source into that image's former slot. Right-click a
-non-source row to unplace it.
+the timed **Manage spline images** view directly, without an intermediate menu.
+**Add images** adds unplaced rows; click any mesh node to place the selected
+image. Node 0 is the source, marked `[S]`. Placing another image at node 0
+promotes it to source and moves the previous source into that image's former
+slot. Right-click a non-source row to unplace it.
 
 Press `L` or click **Load / Save** for scalar-field loading, complete-setup
 loading, complete-setup saving, and timed-project saving. Image loading is kept

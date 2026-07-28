@@ -231,7 +231,9 @@ class SplinePlayground:
             lambda _event: self.set_file_menu_visible(not self.file_menu_open)
         )
         self.image_button.on_clicked(
-            lambda _event: self.set_image_menu_visible(not self.image_menu_open)
+            lambda _event: self.set_image_menu_visible(
+                self.active_modal not in ("images", "observations")
+            )
         )
         self.clear_button.on_clicked(lambda _event: self.clear())
         self.clear_all_button.on_clicked(lambda _event: self.clear_all())
@@ -350,7 +352,7 @@ class SplinePlayground:
             lambda _event: self.remove_selected_image()
         )
         self.observation_menu.close_button.on_clicked(
-            lambda _event: self.set_image_menu_visible(True)
+            lambda _event: self.set_image_menu_visible(False)
         )
 
     def _run_file_action(self, action) -> None:
@@ -388,7 +390,12 @@ class SplinePlayground:
         return self.active_modal == "files"
 
     def set_image_menu_visible(self, visible: bool) -> None:
-        self._set_modal("images" if visible else None)
+        if not visible:
+            self._set_modal(None)
+        elif self.parameters.model == "splines":
+            self._set_modal("observations")
+        else:
+            self._set_modal("images")
 
     @property
     def image_menu_open(self) -> bool:
@@ -1028,7 +1035,9 @@ class SplinePlayground:
             self.set_file_menu_visible(not self.file_menu_open)
             return
         if key == "i":
-            self.set_image_menu_visible(not self.image_menu_open)
+            self.set_image_menu_visible(
+                self.active_modal not in ("images", "observations")
+            )
             return
         if key == "escape" and self.active_modal is not None:
             self._set_modal(None)
