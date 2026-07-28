@@ -132,7 +132,7 @@ def build_kernel_operator(
         return GaussianRKHS(
             tuple(float(value) for value in sigma),
             border_type="circular",
-            normalized=True,
+            normalized=False,
             kernel_reach=kernel_reach,
         )
     raise ValueError("kernel kind must be 'gaussian' or 'sobolev'")

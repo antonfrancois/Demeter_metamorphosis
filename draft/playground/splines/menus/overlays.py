@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from matplotlib.widgets import Button, RadioButtons
+from matplotlib.widgets import Button, CheckButtons, RadioButtons
 
 from ..core import SplineParameters
 from ..styles import (
@@ -26,6 +26,8 @@ class OverlayMenu:
     input_radio: RadioButtons
     control_time_label: Any
     control_time_selector: ControlTimeEditor
+    input_image_toggle: CheckButtons
+    current_image_toggle: CheckButtons
     current_image_radio: RadioButtons
     current_radio: RadioButtons
     target_radio: RadioButtons
@@ -38,6 +40,8 @@ class OverlayMenu:
             *self.column_axes.values(),
             self.input_radio.ax,
             self.control_time_selector.axis,
+            self.input_image_toggle.ax,
+            self.current_image_toggle.ax,
             self.current_image_radio.ax,
             self.current_radio.ax,
             self.target_radio.ax,
@@ -57,6 +61,8 @@ class OverlayMenu:
     def widgets(self) -> list[Any]:
         return [
             self.input_radio,
+            self.input_image_toggle,
+            self.current_image_toggle,
             self.current_image_radio,
             self.current_radio,
             self.target_radio,
@@ -95,7 +101,7 @@ def build_overlay_menu(
     }
     columns["source"].text(
         0.10,
-        0.85,
+        0.72,
         "Editable field",
         transform=columns["source"].transAxes,
         fontsize=9,
@@ -113,7 +119,7 @@ def build_overlay_menu(
     )
     columns["current"].text(
         0.10,
-        0.86,
+        0.72,
         "Base image",
         transform=columns["current"].transAxes,
         fontsize=9,
@@ -122,7 +128,7 @@ def build_overlay_menu(
     )
     columns["current"].text(
         0.10,
-        0.53,
+        0.45,
         "Field overlay",
         transform=columns["current"].transAxes,
         fontsize=9,
@@ -140,11 +146,17 @@ def build_overlay_menu(
     )
 
     input_radio = RadioButtons(
-        fig.add_axes([0.07, 0.46, 0.22, 0.23], facecolor=PANEL_COLOR, zorder=102),
+        fig.add_axes([0.07, 0.44, 0.22, 0.18], facecolor=PANEL_COLOR, zorder=102),
         INPUT_LABELS,
         active=0,
         activecolor=DUAL_COLOR,
     )
+    input_image_toggle = CheckButtons(
+        fig.add_axes([0.07, 0.68, 0.22, 0.055], facecolor=PANEL_COLOR, zorder=102),
+        ("Show input image",),
+        (True,),
+    )
+    input_image_toggle.labels[0].set_fontsize(9)
     control_time_selector = ControlTimeEditor(
         fig.add_axes([0.07, 0.27, 0.22, 0.105], facecolor=PANEL_COLOR, zorder=102),
         n_steps=parameters.n_steps,
@@ -153,13 +165,19 @@ def build_overlay_menu(
         editable=False,
     )
     current_image_radio = RadioButtons(
-        fig.add_axes([0.39, 0.55, 0.22, 0.16], facecolor=PANEL_COLOR, zorder=102),
+        fig.add_axes([0.39, 0.49, 0.22, 0.13], facecolor=PANEL_COLOR, zorder=102),
         CURRENT_IMAGE_LABELS,
         active=0,
         activecolor="#168a8a",
     )
+    current_image_toggle = CheckButtons(
+        fig.add_axes([0.39, 0.68, 0.22, 0.055], facecolor=PANEL_COLOR, zorder=102),
+        ("Show current image",),
+        (True,),
+    )
+    current_image_toggle.labels[0].set_fontsize(9)
     current_radio = RadioButtons(
-        fig.add_axes([0.39, 0.20, 0.22, 0.29], facecolor=PANEL_COLOR, zorder=102),
+        fig.add_axes([0.39, 0.18, 0.22, 0.25], facecolor=PANEL_COLOR, zorder=102),
         CURRENT_LABELS,
         active=5,
         activecolor=PRIMAL_COLOR,
@@ -183,6 +201,8 @@ def build_overlay_menu(
         input_radio,
         control_time_label,
         control_time_selector,
+        input_image_toggle,
+        current_image_toggle,
         current_image_radio,
         current_radio,
         target_radio,

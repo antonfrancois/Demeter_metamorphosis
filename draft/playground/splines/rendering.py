@@ -179,15 +179,20 @@ class SplineRenderer:
         input_kind: str,
         control_index: int,
         parameters: SplineParameters,
+        drawing_amplitude: float,
+        show_image: bool,
     ) -> None:
         self.clear_dynamic(self.source_ax)
-        self.source_image.set_data(source[0, 0])
+        self.source_image.set_data(
+            source[0, 0] if show_image else torch.zeros_like(source[0, 0])
+        )
         self.source_image.set_clim(0, 1)
-        factor = self.plot_field(self.source_ax, field, "dual")
+        self.plot_field(self.source_ax, field, "dual")
+        title = self.input_title(input_kind, control_index, parameters)
+        if not show_image:
+            title = title.removeprefix("Source + ")
         self.source_ax.set_title(
-            scaled_field_title(
-                self.input_title(input_kind, control_index, parameters), factor
-            ),
+            scaled_field_title(title, drawing_amplitude),
             color=INK_COLOR,
             fontsize=11,
             pad=9,
@@ -216,19 +221,31 @@ class SplineRenderer:
         image_mode: str,
         current_field: str | None,
         index: int,
+        show_image: bool,
     ) -> None:
         self.clear_dynamic(self.current_ax)
         current = self.current_image_tensor(source, cache, image_mode, index)
-        self.current_image.set_data(current[0])
+        self.current_image.set_data(
+            current[0] if show_image else torch.zeros_like(current[0])
+        )
         self.current_image.set_cmap("gray")
-        if image_mode == "photometric" and cache is not None:
+        if not show_image:
+            self.current_image.set_clim(0, 1)
+        elif image_mode == "photometric" and cache is not None:
             lower = min(0.0, float(torch.quantile(current.flatten(), 0.01)))
             upper = max(1.0, float(torch.quantile(current.flatten(), 0.99)))
             self.current_image.set_clim(lower, upper)
         else:
             self.current_image.set_clim(0, 1)
 
-        if cache is None:
+        if not show_image:
+            if cache is None:
+                title = "Current field (run required)"
+            elif current_field is None:
+                title = "No field overlay"
+            else:
+                title = rf"${FIELD_SYMBOL[current_field]}$"
+        elif cache is None:
             title = "Current image (run required)"
         else:
             title = {
@@ -243,7 +260,8 @@ class SplineRenderer:
                 cache.field(current_field)[index],
                 FIELD_CLASS[current_field],
             )
-            title += rf" + ${FIELD_SYMBOL[current_field]}$"
+            if show_image:
+                title += rf" + ${FIELD_SYMBOL[current_field]}$"
         elif cache is None:
             message = self.current_ax.text(
                 0.5,

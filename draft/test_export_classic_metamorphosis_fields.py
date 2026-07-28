@@ -1,5 +1,6 @@
 import json
 from types import SimpleNamespace
+import warnings
 
 import torch
 
@@ -52,12 +53,17 @@ def test_exporter_builds_periodic_gaussian_or_sobolev_kernel():
     assert gaussian.sigma == (1.5, 2.0)
     field = torch.randn(1, 2, 12, 13)
     shift = (2, -3)
-    torch.testing.assert_close(
-        gaussian(torch.roll(field, shift, dims=(-2, -1))),
-        torch.roll(gaussian(field), shift, dims=(-2, -1)),
-        atol=1e-6,
-        rtol=1e-6,
-    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "error",
+            message="Using a non-tuple sequence for multidimensional indexing",
+        )
+        torch.testing.assert_close(
+            gaussian(torch.roll(field, shift, dims=(-2, -1))),
+            torch.roll(gaussian(field), shift, dims=(-2, -1)),
+            atol=3e-6,
+            rtol=2e-6,
+        )
 
     sobolev = build_kernel_operator(
         "sobolev",
@@ -68,6 +74,29 @@ def test_exporter_builds_periodic_gaussian_or_sobolev_kernel():
     assert isinstance(sobolev, SobolevFluidOperator)
     assert sobolev.boundary == "periodic"
     assert (sobolev.alpha, sobolev.beta, sobolev.gamma) == (0.3, 0.4, 0.2)
+
+
+def test_default_gaussian_registration_uses_deformation_after_first_step():
+    source = load_image("examples/im2Dbank/reg_test_01.png", (16, 16))
+    target = load_image("examples/im2Dbank/reg_test_02.png", (16, 16))
+    operator = build_kernel_operator("gaussian", sigma=(3.0, 3.0))
+
+    registration = run_registration(
+        source,
+        target,
+        rho=0.5,
+        operator=operator,
+        integration_steps=2,
+        iterations=2,
+        cost_cst=1e-3,
+        grad_coef=1.0,
+        device=torch.device("cpu"),
+    )
+
+    assert registration.loss_stock[1, 0] > 1e-3
+    deformation_rms = registration.mp.field_stock.square().mean().sqrt()
+    photometric_rms = registration.mp.residuals_stock.square().mean().sqrt()
+    assert deformation_rms > photometric_rms
 
 
 def test_extract_trajectory_includes_zero_and_endpoint_states():

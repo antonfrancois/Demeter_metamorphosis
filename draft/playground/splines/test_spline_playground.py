@@ -17,6 +17,7 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 from matplotlib.backend_bases import MouseEvent
+import numpy as np
 import pytest
 import torch
 from types import SimpleNamespace
@@ -304,7 +305,7 @@ def test_gaussian_operator_runs_classic_and_is_rejected_for_splines(tmp_path):
     expected_velocity = GaussianRKHS(
         (1.5, 1.5),
         border_type="circular",
-        normalized=True,
+        normalized=False,
         kernel_reach=3,
     )(expected_momentum)
 
@@ -942,4 +943,102 @@ def test_overlay_menu_and_current_image_modes():
     assert app.file_menu.backdrop_ax.get_visible()
     app._on_key_press(SimpleNamespace(key="l"))
     assert not app.file_menu_open
+    plt.close(app.fig)
+
+
+def test_input_and_current_image_switches_are_independent():
+    source = torch.zeros(1, 1, 10, 12)
+    source[..., 2:8, 3:9] = 0.5
+    setup = zero_setup(
+        source,
+        torch.roll(source, shifts=1, dims=-1),
+        SplineParameters(rho=0.5, n_steps=2),
+    )
+    setup.initial_momentum.fill_(0.05)
+    app = SplinePlayground(setup, device="cpu")
+    app.run_classic()
+    assert app.cache is not None
+
+    choices = (app.current_image_mode, app.current_field, app.target_mode)
+    app.set_menu_visible(True)
+    app.input_image_toggle.set_active(0)
+    app.current_image_toggle.set_active(0)
+    assert not app.show_input_image
+    assert not app.show_current_image
+    app.set_menu_visible(False)
+
+    assert not np.asarray(app.source_image.get_array()).any()
+    assert not np.asarray(app.current_image.get_array()).any()
+    assert np.asarray(app.target_image.get_array()).any()
+    assert not app.source_ax.get_title().startswith("Source +")
+    assert not app.current_ax.get_title().startswith("Current image")
+    assert (app.current_image_mode, app.current_field, app.target_mode) == choices
+    assert app._dynamic_artists[app.source_ax]
+    assert app._dynamic_artists[app.current_ax]
+
+    app.set_menu_visible(True)
+    app.input_image_toggle.set_active(0)
+    app.set_menu_visible(False)
+    assert app.show_input_image
+    assert not app.show_current_image
+    assert np.asarray(app.source_image.get_array()).any()
+    assert not np.asarray(app.current_image.get_array()).any()
+
+    app.set_menu_visible(True)
+    app.current_image_toggle.set_active(0)
+    app.set_menu_visible(False)
+    assert app.show_current_image
+    assert np.asarray(app.current_image.get_array()).any()
+    assert (app.current_image_mode, app.current_field, app.target_mode) == choices
+    plt.close(app.fig)
+
+
+def test_drawing_amplitude_is_remembered_per_editable_field():
+    setup = zero_setup(
+        torch.zeros(1, 1, 10, 12),
+        parameters=SplineParameters(n_steps=4, control_steps=(1, 3)),
+    )
+    app = SplinePlayground(setup, device="cpu")
+
+    assert app.amplitude_slider.val == pytest.approx(0.5)
+    assert "[x0.5]" in app.source_ax.get_title()
+    app.amplitude_slider.set_val(0.75)
+    assert "[x0.75]" in app.source_ax.get_title()
+
+    app.input_radio.set_active(2)
+    assert app.editor.active_key == "initial_jerk"
+    assert app.amplitude_slider.val == pytest.approx(0.5)
+    app.amplitude_slider.set_val(3.0)
+    app.editor.on_press(
+        SimpleNamespace(
+            inaxes=app.source_ax,
+            xdata=4.0,
+            ydata=5.0,
+            button=1,
+            key=None,
+        )
+    )
+    assert app.editor.stroke is not None
+    assert app.editor.stroke.amplitude == pytest.approx(3.0)
+    app.editor.cancel()
+    assert "[x3]" in app.source_ax.get_title()
+
+    app.input_radio.set_active(0)
+    assert app.amplitude_slider.val == pytest.approx(0.75)
+    assert "[x0.75]" in app.source_ax.get_title()
+
+    app.input_radio.set_active(3)
+    app.amplitude_slider.set_val(2.0)
+    app._select_control_time(1)
+    assert app.amplitude_slider.val == pytest.approx(0.5)
+    app.amplitude_slider.set_val(3.0)
+    app._select_control_time(0)
+    assert app.amplitude_slider.val == pytest.approx(2.0)
+
+    app._add_control_time(0.5)
+    assert app.amplitude_slider.val == pytest.approx(0.5)
+    app._select_control_time(2)
+    assert app.amplitude_slider.val == pytest.approx(3.0)
+    app._select_control_time(0)
+    assert app.amplitude_slider.val == pytest.approx(2.0)
     plt.close(app.fig)

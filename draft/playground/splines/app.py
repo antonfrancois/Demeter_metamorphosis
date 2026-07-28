@@ -51,6 +51,9 @@ from .styles import (
 from .workspace import build_workspace
 
 
+DEFAULT_DRAWING_AMPLITUDE = 0.5
+
+
 class SplinePlayground:
     """Edit shooting fields, run a spline, and inspect its cached trajectory."""
 
@@ -76,11 +79,16 @@ class SplinePlayground:
         self.target_path = setup.target_path
         self.fields: dict[str, torch.Tensor] = {}
         self._set_fields_from_setup(setup)
+        self._drawing_amplitudes = {
+            key: DEFAULT_DRAWING_AMPLITUDE for key in self.fields
+        }
 
         self.input_kind = "initial_momentum"
         self.current_image_mode = "full"
         self.current_field: str | None = "velocity"
         self.target_mode = "Target"
+        self.show_input_image = True
+        self.show_current_image = True
         self.control_index = 0
         self.active_modal: str | None = None
         self._running = False
@@ -98,7 +106,7 @@ class SplinePlayground:
             self.fields,
             active_key=self._active_field_key(),
             brush=lambda: float(self.brush_slider.val),
-            amplitude=lambda: float(self.amplitude_slider.val),
+            amplitude=self._drawing_amplitude,
             color=DUAL_COLOR,
             on_change=self._on_field_changed,
         )
@@ -166,6 +174,8 @@ class SplinePlayground:
         self._build_overlay_menu()
         self._build_file_menu()
         self.input_radio.on_clicked(self._on_input_field)
+        self.input_image_toggle.on_clicked(self._on_input_image_toggle)
+        self.current_image_toggle.on_clicked(self._on_current_image_toggle)
         self.current_image_radio.on_clicked(self._on_current_image_mode)
         self.current_radio.on_clicked(self._on_current_field)
         self.target_radio.on_clicked(self._on_target_mode)
@@ -201,6 +211,7 @@ class SplinePlayground:
         self.gamma_slider.on_changed(self._on_gamma_change)
         self.operator_radio.on_clicked(self._on_operator_change)
         self.steps_slider.on_changed(self._on_parameter_change)
+        self.amplitude_slider.on_changed(self._on_amplitude_change)
         self.device_radio.on_clicked(self._on_device_change)
 
         self._workspace_widgets = [
@@ -247,6 +258,8 @@ class SplinePlayground:
         )
         self.input_radio = self.overlay_menu.input_radio
         self.overlay_control_selector = self.overlay_menu.control_time_selector
+        self.input_image_toggle = self.overlay_menu.input_image_toggle
+        self.current_image_toggle = self.overlay_menu.current_image_toggle
         self.current_image_radio = self.overlay_menu.current_image_radio
         self.current_radio = self.overlay_menu.current_radio
         self.target_radio = self.overlay_menu.target_radio
@@ -351,6 +364,20 @@ class SplinePlayground:
         index = min(self.control_index, len(self.parameters.control_steps) - 1)
         return f"control_jerk:{index}"
 
+    def _drawing_amplitude(self) -> float:
+        return self._drawing_amplitudes.setdefault(
+            self._active_field_key(),
+            DEFAULT_DRAWING_AMPLITUDE,
+        )
+
+    def _sync_amplitude_slider(self) -> None:
+        syncing = self._syncing_widgets
+        self._syncing_widgets = True
+        try:
+            self.amplitude_slider.set_val(self._drawing_amplitude())
+        finally:
+            self._syncing_widgets = syncing
+
     def _current_parameters(self) -> SplineParameters:
         return replace(
             self.parameters,
@@ -428,6 +455,7 @@ class SplinePlayground:
         if selected == "control_jerk" and not self.parameters.control_steps:
             self.input_kind = "initial_jerk"
             self.editor.set_active("initial_jerk")
+            self._sync_amplitude_slider()
             self._syncing_widgets = True
             self.input_radio.set_active(2)
             self._syncing_widgets = False
@@ -438,6 +466,7 @@ class SplinePlayground:
             return
         self.input_kind = selected
         self.editor.set_active(self._active_field_key())
+        self._sync_amplitude_slider()
         if selected == "control_jerk":
             self.jump_to_control(self.control_index)
         self._update_overlay_control_selector_visibility()
@@ -456,6 +485,20 @@ class SplinePlayground:
         )
         if self.cache is not None:
             self._render_panels(self._render_current, self._render_target)
+        self.fig.canvas.draw_idle()
+
+    def _on_input_image_toggle(self, _label: str) -> None:
+        if self._syncing_widgets:
+            return
+        self.show_input_image = self.input_image_toggle.get_status()[0]
+        self._render_panels(self._render_source)
+        self.fig.canvas.draw_idle()
+
+    def _on_current_image_toggle(self, _label: str) -> None:
+        if self._syncing_widgets:
+            return
+        self.show_current_image = self.current_image_toggle.get_status()[0]
+        self._render_panels(self._render_current)
         self.fig.canvas.draw_idle()
 
     def _on_current_field(self, _label: str) -> None:
@@ -528,6 +571,13 @@ class SplinePlayground:
         self.gamma_slider.valtext.set_text(f"{10 ** float(value):.3g}")
         self._on_parameter_change(value)
 
+    def _on_amplitude_change(self, value: float) -> None:
+        if self._syncing_widgets or self._running:
+            return
+        self._drawing_amplitudes[self._active_field_key()] = float(value)
+        self._render_panels(self._render_source)
+        self.fig.canvas.draw_idle()
+
     def _on_operator_change(self, label: str) -> None:
         self._on_parameter_change(0.0)
 
@@ -544,12 +594,28 @@ class SplinePlayground:
             for index in range(len(self.parameters.control_times))
         ]
 
-    def _replace_control_fields(self, fields: list[torch.Tensor]) -> None:
+    def _control_amplitudes(self) -> list[float]:
+        return [
+            self._drawing_amplitudes.get(
+                f"control_jerk:{index}",
+                DEFAULT_DRAWING_AMPLITUDE,
+            )
+            for index in range(len(self.parameters.control_times))
+        ]
+
+    def _replace_control_fields(
+        self,
+        fields: list[torch.Tensor],
+        amplitudes: list[float],
+    ) -> None:
         for key in tuple(self.fields):
             if key.startswith("control_jerk:"):
                 del self.fields[key]
+                self._drawing_amplitudes.pop(key, None)
         for index, field in enumerate(fields):
-            self.fields[f"control_jerk:{index}"] = field
+            key = f"control_jerk:{index}"
+            self.fields[key] = field
+            self._drawing_amplitudes[key] = amplitudes[index]
         self.editor.clear_history()
 
     def _add_control_time(self, time: float) -> None:
@@ -558,17 +624,20 @@ class SplinePlayground:
         times.insert(index, time)
         fields = self._control_fields()
         fields.insert(index, torch.zeros_like(self.fields["initial_jerk"]))
+        amplitudes = self._control_amplitudes()
+        amplitudes.insert(index, DEFAULT_DRAWING_AMPLITUDE)
         try:
             parameters = replace(self.parameters, control_times=tuple(times))
         except ValueError as error:
             self._show_message(f"Cannot add control time: {error}")
             return
         self.parameters = parameters
-        self._replace_control_fields(fields)
+        self._replace_control_fields(fields, amplitudes)
         self.control_index = index
         self._refresh_control_widgets()
         if self.input_kind == "control_jerk":
             self.editor.set_active(self._active_field_key())
+            self._sync_amplitude_slider()
         self._invalidate("Control time added with a zero field. Press Run.")
 
     def _move_control_time(self, index: int, time: float) -> None:
@@ -592,16 +661,18 @@ class SplinePlayground:
     def _remove_control_time(self, index: int) -> None:
         times = list(self.parameters.control_times)
         fields = self._control_fields()
+        amplitudes = self._control_amplitudes()
         if not 0 <= index < len(times):
             return
         times.pop(index)
         fields.pop(index)
+        amplitudes.pop(index)
         self.parameters = replace(
             self.parameters,
             control_steps=(),
             control_times=tuple(times),
         )
-        self._replace_control_fields(fields)
+        self._replace_control_fields(fields, amplitudes)
         self.control_index = min(index, max(0, len(times) - 1))
         if not times and self.input_kind == "control_jerk":
             self.input_kind = "initial_jerk"
@@ -609,6 +680,7 @@ class SplinePlayground:
             self.input_radio.set_active(2)
             self._syncing_widgets = False
         self.editor.set_active(self._active_field_key())
+        self._sync_amplitude_slider()
         self._refresh_control_widgets()
         self._invalidate("Control time removed. Press Run.")
 
@@ -619,6 +691,7 @@ class SplinePlayground:
         self._sync_control_time_widgets()
         if self.input_kind == "control_jerk":
             self.editor.set_active(self._active_field_key())
+            self._sync_amplitude_slider()
             self.jump_to_control(self.control_index)
             self._render_panels(self._render_source)
         self.fig.canvas.draw_idle()
@@ -832,6 +905,8 @@ class SplinePlayground:
             self.input_kind,
             self.control_index,
             self._current_parameters(),
+            self._drawing_amplitude(),
+            self.show_input_image,
         )
 
     def _time_index(self) -> int:
@@ -844,6 +919,7 @@ class SplinePlayground:
             self.current_image_mode,
             self.current_field,
             self._time_index(),
+            self.show_current_image,
         )
 
     def _render_target(self) -> None:
@@ -918,6 +994,9 @@ class SplinePlayground:
         self.source_path = setup.source_path
         self.target_path = setup.target_path
         self._set_fields_from_setup(setup)
+        self._drawing_amplitudes = {
+            key: DEFAULT_DRAWING_AMPLITUDE for key in self.fields
+        }
         self.editor.fields = self.fields
         self.editor.clear_history()
         height, width = self.source.shape[-2:]
@@ -977,6 +1056,7 @@ class SplinePlayground:
         finally:
             self._syncing_widgets = False
         self.editor.set_active(self._active_field_key())
+        self._sync_amplitude_slider()
         self.cache = None
         self._refresh_control_widgets()
         self._set_status("Spline setup loaded. Press Run.")

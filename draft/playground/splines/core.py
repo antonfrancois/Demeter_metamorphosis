@@ -445,7 +445,7 @@ def _kernel_operator(parameters: SplineParameters):
         return GaussianRKHS(
             (parameters.sigma, parameters.sigma),
             border_type="circular",
-            normalized=True,
+            normalized=False,
             kernel_reach=3,
         )
     return SobolevFluidOperator(

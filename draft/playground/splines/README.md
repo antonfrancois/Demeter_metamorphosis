@@ -34,7 +34,8 @@ Press `P` or click **Parameter Menu** for the categorized controls:
 
 - **Model** contains `rho`, a Sobolev/Gaussian operator choice, the active
   operator parameters, and an interactive normalized control-time line;
-- **Draw** contains brush size and amplitude;
+- **Draw** contains brush size and amplitude. Each editable field remembers its
+  own amplitude, shown as `[x...]` in the source-panel title;
 - **Numerical** contains `steps`, from 1 through 40, and the compute-device
   selector. CUDA is selected by default when available; CPU is always available.
 
@@ -65,7 +66,9 @@ as the spline integrator. The photometric-only image starts at the source and
 accumulates `dt * residuals_stock[k]` at fixed pixels. Dual `p`, `u`, `r`, and
 vector momentum `m` overlays are orange; primal `a = A_I u` and `v = K m`
 overlays are yellow. The force is shown as `u = A_I^-1 a`. Press `M` or `Esc`
-to close the menu.
+to close the menu. The source and current columns each have an independent
+image switch; hiding an image leaves its field on a black background without
+changing any image mode or field selection.
 
 Field squared norms are shown in LaTeX below the source and current images. The
 target panel shows the normalized MSE for whichever full, deformation-only, or
