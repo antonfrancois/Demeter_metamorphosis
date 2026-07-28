@@ -533,6 +533,15 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
     screenshot = tmp_path / "spline-playground.png"
     app.fig.savefig(screenshot, dpi=100)
     assert screenshot.stat().st_size > 10_000
+
+    figure_size = tuple(app.fig.get_size_inches())
+    app.load_source(PROJECT_ROOT / "examples/im2Dbank/simplex_tri_s_b.png")
+    assert app.source.shape[-2:] == (100, 100)
+    assert app._targets.shape[-2:] == (100, 100)
+    assert all(field.shape[-2:] == (100, 100) for field in app.fields.values())
+    assert tuple(app.fig.get_size_inches()) == figure_size
+    assert app.source_ax.get_xlim() == pytest.approx((-0.5, 99.5))
+    assert "size: 100x100" in app.status_text.get_text()
     plt.close(app.fig)
 
 

@@ -18,6 +18,7 @@ import torch
 
 from demeter.utils.spline_data import load_timed_image_directory
 
+from ..field_playground_core import resize_field
 from .core import (
     SplineParameters,
     SplineSetup,
@@ -1397,10 +1398,33 @@ class SplinePlayground:
             self.fig.canvas.draw_idle()
             return None
 
+    def _set_native_image_size(self) -> None:
+        size = tuple(self.source.shape[-2:])
+        self._targets = resize_field(
+            self._targets,
+            size,
+            scale_vector_displacement=False,
+        ).contiguous()
+        for key, field in self.fields.items():
+            self.fields[key] = resize_field(
+                field,
+                size,
+                scale_vector_displacement=False,
+            ).contiguous()
+        self.editor.clear_history()
+        height, width = size
+        extent = (-0.5, width - 0.5, -0.5, height - 0.5)
+        for axis in self.axes:
+            axis.set_xlim(-0.5, width - 0.5)
+            axis.set_ylim(-0.5, height - 0.5)
+        for image in (self.source_image, self.current_image, self.target_image):
+            image.set_extent(extent)
+
     def load_source(self, path: str | Path) -> None:
-        image, resolved = load_image(path, self.source.shape[-2:])
+        image, resolved = load_image(path)
         self.source = image.to(dtype=self.source.dtype)
         self.source_path = str(resolved)
+        self._set_native_image_size()
         self._refresh_observation_widgets()
         self._invalidate(f"Loaded source from {resolved}. Press Run.")
 
@@ -1512,13 +1536,7 @@ class SplinePlayground:
         }
         self.editor.fields = self.fields
         self.editor.clear_history()
-        height, width = self.source.shape[-2:]
-        extent = (-0.5, width - 0.5, -0.5, height - 0.5)
-        for axis in self.axes:
-            axis.set_xlim(-0.5, width - 0.5)
-            axis.set_ylim(-0.5, height - 0.5)
-        for image in (self.source_image, self.current_image, self.target_image):
-            image.set_extent(extent)
+        self._set_native_image_size()
         self.control_index = 0
         if not self.parameters.control_steps and self.input_kind == "control_jerk":
             self.input_kind = "initial_jerk"
