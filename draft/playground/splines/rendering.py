@@ -175,8 +175,8 @@ class SplineRenderer:
     ) -> str:
         if input_kind == "initial_momentum":
             return r"Source + initial momentum $p_0$"
-        if input_kind == "initial_force":
-            return r"Source + initial force $u_0$"
+        if input_kind == "initial_acceleration":
+            return r"Source + initial acceleration $a_0$"
         if input_kind == "initial_jerk":
             return r"Source + initial jerk $r_0$"
         time = parameters.mesh_control_times[control_index]
@@ -197,7 +197,11 @@ class SplineRenderer:
             source[0, 0] if show_image else torch.zeros_like(source[0, 0])
         )
         self.source_image.set_clim(0, 1)
-        field_class = "primal" if input_kind == "initial_momentum" else "dual"
+        field_class = (
+            "primal"
+            if input_kind in ("initial_momentum", "initial_acceleration")
+            else "dual"
+        )
         self.plot_field(self.source_ax, field, field_class)
         title = self.input_title(input_kind, control_index, parameters)
         if not show_image:
@@ -213,9 +217,9 @@ class SplineRenderer:
             value = 0.0 if torch.count_nonzero(field) == 0 else metric_squared_norm(
                 source, field, parameters
             )
-        elif input_kind == "initial_force":
-            expression = r"\Vert u_0\Vert_{I_0^*}^2"
-            value = 0.0 if torch.count_nonzero(field) == 0 else cometric_squared_norm(
+        elif input_kind == "initial_acceleration":
+            expression = r"\Vert a_0\Vert_{I_0}^2"
+            value = 0.0 if torch.count_nonzero(field) == 0 else metric_squared_norm(
                 source, field, parameters
             )
         elif input_kind == "initial_jerk":

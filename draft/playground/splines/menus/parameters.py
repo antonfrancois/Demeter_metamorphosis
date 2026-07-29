@@ -14,7 +14,7 @@ from .common import build_modal_backdrop, build_panel, set_radio_visible
 from .control_times import ControlTimeEditor
 
 
-MAX_STEPS = 40
+MAX_STEPS = 60
 MAX_ITERATIONS = 50
 
 

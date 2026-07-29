@@ -10,13 +10,13 @@ TARGET_ACTIVE_COLOR = "#7a3db8"
 
 INPUT_FIELDS = (
     "initial_momentum",
-    "initial_force",
+    "initial_acceleration",
     "initial_jerk",
     "control_jerk",
 )
 INPUT_LABELS = (
     r"Momentum  $p_0$",
-    r"Force  $u_0$",
+    r"Acceleration  $a_0$",
     r"Jerk  $r_0$",
     r"Control jerk  $r(\tau^+)$",
 )
@@ -45,7 +45,7 @@ CURRENT_IMAGE_LABELS = (
     r"Photometric only  $I_{\mathrm{phot}}$",
 )
 FIELD_CLASS = {
-    "momentum": "dual",
+    "momentum": "primal",
     "force": "dual",
     "acceleration": "primal",
     "jerk": "dual",

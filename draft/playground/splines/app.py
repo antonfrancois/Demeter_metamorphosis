@@ -146,7 +146,7 @@ class SplinePlayground:
         self.fields.clear()
         self.fields.update(
             initial_momentum=setup.initial_momentum.clone(),
-            initial_force=setup.initial_force.clone(),
+            initial_acceleration=setup.initial_acceleration.clone(),
             initial_jerk=setup.initial_jerk.clone(),
         )
         for index, field in enumerate(setup.control_jerks):
@@ -534,7 +534,7 @@ class SplinePlayground:
             source=self.source,
             target=targets,
             initial_momentum=self.fields["initial_momentum"],
-            initial_force=self.fields["initial_force"],
+            initial_acceleration=self.fields["initial_acceleration"],
             initial_jerk=self.fields["initial_jerk"],
             control_jerks=controls,
             parameters=parameters,
@@ -1526,7 +1526,7 @@ class SplinePlayground:
             source=batch.source,
             target=batch.target,
             initial_momentum=torch.zeros_like(batch.source),
-            initial_force=torch.zeros_like(batch.source),
+            initial_acceleration=torch.zeros_like(batch.source),
             initial_jerk=torch.zeros_like(batch.source),
             control_jerks=batch.source.new_zeros(
                 (len(parameters.control_steps),) + tuple(batch.source.shape)

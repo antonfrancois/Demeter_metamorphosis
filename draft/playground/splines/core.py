@@ -34,7 +34,7 @@ from ..field_playground_core import (
 )
 
 
-FORMAT_VERSION = 2
+FORMAT_VERSION = 3
 SETUP_KIND = "demeter_spline_playground"
 TRAJECTORY_FIELDS = (
     "momentum",
@@ -238,7 +238,7 @@ class SplineSetup:
     source: torch.Tensor
     target: torch.Tensor
     initial_momentum: torch.Tensor
-    initial_force: torch.Tensor
+    initial_acceleration: torch.Tensor
     initial_jerk: torch.Tensor
     control_jerks: torch.Tensor
     parameters: SplineParameters
@@ -310,11 +310,11 @@ class SplineSetup:
             dtype=dtype,
             name="initial_momentum",
         )
-        self.initial_force = _scalar_field(
-            self.initial_force,
+        self.initial_acceleration = _scalar_field(
+            self.initial_acceleration,
             size,
             dtype=dtype,
-            name="initial_force",
+            name="initial_acceleration",
         )
         self.initial_jerk = _scalar_field(
             self.initial_jerk,
@@ -361,7 +361,7 @@ class SplineSetup:
             "source": self.source.detach().cpu().clone(),
             "target": self.target.detach().cpu().clone(),
             "initial_momentum": self.initial_momentum.detach().cpu().clone(),
-            "initial_force": self.initial_force.detach().cpu().clone(),
+            "initial_acceleration": self.initial_acceleration.detach().cpu().clone(),
             "initial_jerk": self.initial_jerk.detach().cpu().clone(),
             "control_jerks": self.control_jerks.detach().cpu().clone(),
             "parameters": self.parameters.as_dict(),
@@ -433,9 +433,10 @@ def load_setup(path: str | Path) -> SplineSetup:
     if not isinstance(payload, dict) or payload.get("kind") != SETUP_KIND:
         raise ValueError(f"{path} is not a spline playground setup")
     version = payload.get("format_version")
-    if version not in (1, FORMAT_VERSION):
+    if version not in (1, 2, FORMAT_VERSION):
         raise ValueError(
-            f"unsupported spline setup format {version!r}; expected 1 or {FORMAT_VERSION}"
+            f"unsupported spline setup format {version!r}; expected 1, 2, "
+            f"or {FORMAT_VERSION}"
         )
     required_parameters = {
         "alpha",
@@ -466,11 +467,31 @@ def load_setup(path: str | Path) -> SplineSetup:
         )
     ):
         raise ValueError("saved control_steps do not match control_times")
+    if version in (1, 2):
+        source = coerce_image(payload["source"])
+        force = _scalar_field(
+            payload["initial_force"],
+            tuple(source.shape[-2:]),
+            dtype=source.dtype,
+            name="initial_force",
+        )
+        if torch.count_nonzero(force) == 0:
+            initial_acceleration = force.clone()
+        else:
+            with torch.no_grad():
+                initial_acceleration = CometricOperator(
+                    source,
+                    parameters.rho,
+                    _kernel_operator(parameters),
+                    dx_convention="pixel",
+                )(force)
+    else:
+        initial_acceleration = payload["initial_acceleration"]
     return SplineSetup(
         source=payload["source"],
         target=payload["target"],
         initial_momentum=payload["initial_momentum"],
-        initial_force=payload["initial_force"],
+        initial_acceleration=initial_acceleration,
         initial_jerk=payload["initial_jerk"],
         control_jerks=payload["control_jerks"],
         parameters=parameters,
@@ -733,13 +754,7 @@ def run_spline(
         torch.cuda.synchronize(run_device)
     start = perf_counter()
     with torch.no_grad():
-        initial_force = setup.initial_force.to(run_device)
-        initial_acceleration = CometricOperator(
-            source,
-            parameters.rho,
-            kernel,
-            dx_convention="pixel",
-        )(initial_force)
+        initial_acceleration = setup.initial_acceleration.to(run_device)
         variables = SplinesVariables(
             initial_momentum=setup.initial_momentum.to(run_device),
             initial_acceleration=initial_acceleration,
@@ -834,7 +849,7 @@ def run_classic(
     unsupported = [
         name
         for name, field in (
-            ("initial force", setup.initial_force),
+            ("initial acceleration", setup.initial_acceleration),
             ("initial jerk", setup.initial_jerk),
             ("control jerk", setup.control_jerks),
         )

@@ -89,7 +89,7 @@ def register_classic(
         source=setup.source,
         target=setup.target,
         initial_momentum=momenta.momentum_I.detach().cpu(),
-        initial_force=zero,
+        initial_acceleration=zero,
         initial_jerk=zero,
         control_jerks=setup.source.new_zeros(
             (setup.n_controls,) + tuple(setup.source.shape)
@@ -149,12 +149,11 @@ def register_spline(
     variables = optimizer.optimized_variables
     if variables is None:
         raise RuntimeError("spline registration produced no variables")
-    initial_force = optimizer.mp.force_stock[0:1].detach().cpu()
     optimized_setup = SplineSetup(
         source=setup.source,
         target=setup.target,
         initial_momentum=variables.initial_momentum,
-        initial_force=initial_force,
+        initial_acceleration=variables.initial_acceleration,
         initial_jerk=variables.initial_jerk,
         control_jerks=variables.control_jerks,
         parameters=setup.parameters,

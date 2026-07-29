@@ -42,7 +42,7 @@ from draft.playground.splines.core import (
     zero_setup,
 )
 from draft.playground.splines.main import _parameter_overrides, _replace_parameters
-from draft.playground.splines.styles import INK_COLOR
+from draft.playground.splines.styles import FIELD_CLASS, INK_COLOR
 
 
 def test_parameters_require_ordered_interior_control_nodes():
@@ -82,7 +82,7 @@ def test_parameters_require_ordered_interior_control_nodes():
         )
 
 
-def test_run_converts_initial_force_and_aligns_interval_fields_to_nodes():
+def test_run_uses_initial_acceleration_and_aligns_interval_fields_to_nodes():
     torch.manual_seed(12)
     source = torch.rand(1, 1, 8, 9)
     parameters = SplineParameters(
@@ -94,7 +94,7 @@ def test_run_converts_initial_force_and_aligns_interval_fields_to_nodes():
         n_steps=2,
     )
     setup = zero_setup(source, source, parameters)
-    setup.initial_force.normal_(std=1e-3)
+    setup.initial_acceleration.normal_(std=1e-3)
     setup.initial_momentum.normal_(std=1e-3)
     setup.initial_jerk.normal_(std=1e-3)
 
@@ -107,17 +107,18 @@ def test_run_converts_initial_force_and_aligns_interval_fields_to_nodes():
         ),
     )
     kernel = SobolevFluidOperator(alpha=0.4, beta=0.2, gamma=0.3)
-    expected_acceleration = CometricOperator(source, 0.25, kernel)(
-        setup.initial_force
+    expected_force = CometricOperator(source, 0.25, kernel).inverse(
+        setup.initial_acceleration,
+        eps=parameters.cg_eps,
     )
 
     torch.testing.assert_close(
         trajectory.acceleration[0],
-        expected_acceleration[0],
+        setup.initial_acceleration[0],
     )
     torch.testing.assert_close(
         trajectory.force[0],
-        setup.initial_force[0],
+        expected_force[0],
         atol=2e-6,
         rtol=2e-4,
     )
@@ -307,7 +308,7 @@ def test_classic_run_rejects_drawn_non_momentum_fields():
         parameters=SplineParameters(n_steps=2, control_steps=(1,)),
     )
     for field, message in (
-        (setup.initial_force, "initial force"),
+        (setup.initial_acceleration, "initial acceleration"),
         (setup.initial_jerk, "initial jerk"),
         (setup.control_jerks, "control jerk"),
     ):
@@ -378,7 +379,7 @@ def test_classic_button_uses_shared_workspace_and_reports_invalid_fields():
     app.set_time_index(2)
     assert app.current_ax.get_title().startswith("Current image")
 
-    app.fields["initial_force"].fill_(1)
+    app.fields["initial_acceleration"].fill_(1)
     app.run_classic()
     assert app.cache is None
     assert isinstance(app.last_error, ValueError)
@@ -393,7 +394,7 @@ def test_setup_canonicalization_rejects_invalid_data_and_breaks_aliases():
         source=source,
         target=source,
         initial_momentum=shared,
-        initial_force=shared,
+        initial_acceleration=shared,
         initial_jerk=shared,
         control_jerks=source.new_zeros((0,) + tuple(source.shape)),
         parameters=SplineParameters(n_steps=2),
@@ -401,7 +402,7 @@ def test_setup_canonicalization_rejects_invalid_data_and_breaks_aliases():
     source.fill_(1)
     setup.initial_momentum.fill_(2)
     assert torch.count_nonzero(setup.source) == 0
-    assert torch.count_nonzero(setup.initial_force) == 0
+    assert torch.count_nonzero(setup.initial_acceleration) == 0
     assert torch.count_nonzero(setup.initial_jerk) == 0
 
     with pytest.raises(ValueError, match="source must have shape"):
@@ -420,7 +421,7 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
     setup = zero_setup(source, source, parameters)
     setup.initial_jerk.fill_(1)
     setup.control_jerks.fill_(3)
-    setup.initial_force.fill_(0.5)
+    setup.initial_acceleration.fill_(0.5)
 
     path = save_setup(setup, tmp_path / "spline")
     restored = load_setup(path)
@@ -428,7 +429,7 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
 
     assert path.suffix == ".pt"
     assert restored.parameters == parameters
-    assert torch.equal(restored.initial_force, setup.initial_force)
+    assert torch.equal(restored.initial_acceleration, setup.initial_acceleration)
     assert torch.equal(restored.control_jerks, setup.control_jerks)
     assert trajectory.jerk[:, 0].mean(dim=(1, 2)).tolist() == [
         1.0,
@@ -437,7 +438,7 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
         3.0,
         3.0,
     ]
-    torch.testing.assert_close(trajectory.force[0], setup.initial_force[0])
+    torch.testing.assert_close(trajectory.force[0], setup.initial_acceleration[0])
     torch.testing.assert_close(
         trajectory.deformed_source,
         source[0].expand_as(trajectory.deformed_source),
@@ -469,6 +470,42 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
     torch.save(malformed, malformed_path)
     with pytest.raises(ValueError, match="missing parameters: rho"):
         load_setup(malformed_path)
+
+
+@pytest.mark.parametrize("version", (1, 2))
+def test_legacy_setup_force_is_converted_to_initial_acceleration(tmp_path, version):
+    torch.manual_seed(version)
+    source = torch.rand(1, 1, 6, 7)
+    parameters = SplineParameters(
+        alpha=0.4,
+        beta=0.3,
+        gamma=0.2,
+        rho=0.25,
+        n_steps=2,
+    )
+    setup = zero_setup(source, source, parameters)
+    initial_force = torch.randn_like(source)
+    payload = setup.payload()
+    payload["format_version"] = version
+    payload["initial_force"] = initial_force
+    del payload["initial_acceleration"]
+    path = tmp_path / f"version-{version}.pt"
+    torch.save(payload, path)
+
+    restored = load_setup(path)
+    expected = CometricOperator(
+        source,
+        parameters.rho,
+        SobolevFluidOperator(
+            alpha=parameters.alpha,
+            beta=parameters.beta,
+            gamma=parameters.gamma,
+            boundary="periodic",
+        ),
+        dx_convention="pixel",
+    )(initial_force)
+
+    torch.testing.assert_close(restored.initial_acceleration, expected)
 
 
 def test_headless_editor_run_timeline_and_control_markers(tmp_path):
@@ -509,7 +546,7 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
     assert torch.count_nonzero(app.fields["initial_momentum"]) == 0
     app.undo()
     assert torch.count_nonzero(app.fields["initial_momentum"]) > 0
-    app.fields["initial_force"].fill_(0.25)
+    app.fields["initial_acceleration"].fill_(0.25)
     app.clear_all()
     assert all(torch.count_nonzero(field) == 0 for field in app.fields.values())
     app.undo()
@@ -603,7 +640,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.steps_slider.val == 2
     assert app.iterations_slider.val == 10
     assert app.steps_slider.valmin == 1
-    assert app.steps_slider.valmax == 40
+    assert app.steps_slider.valmax == 60
     assert app.make_setup().parameters.rho == pytest.approx(0.99)
     assert app.menu_button.ax.get_position().y0 > app.image_button.ax.get_position().y0
     assert app.image_button.ax.get_position().y0 > app.file_button.ax.get_position().y0
@@ -660,7 +697,11 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert not app._workspace_dirty
 
     app.input_radio.set_active(1)
-    assert app.editor.active_key == "initial_force"
+    assert app.editor.active_key == "initial_acceleration"
+    assert app.input_radio.value_selected == r"Acceleration  $a_0$"
+    assert "initial acceleration" in app.source_ax.get_title()
+    assert r"\Vert a_0\Vert_{I_0}^2" in app.source_footer.get_text()
+    assert FIELD_CLASS["momentum"] == FIELD_CLASS["acceleration"] == "primal"
     app.input_radio.set_active(3)
     assert app.input_kind == "initial_jerk"
     assert app.editor.active_key == "initial_jerk"
@@ -680,7 +721,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.time_slider.valmax == 3
     assert app.steps_slider.val == 3
     assert app.steps_slider.valmin == 1
-    assert app.steps_slider.valmax == 40
+    assert app.steps_slider.valmax == 60
     assert len(app._control_markers) == 4
     controls_heading = next(
         text for text in app.fig.texts if text.get_text() == "CONTROLS"
@@ -774,11 +815,11 @@ def test_control_times_rescale_and_can_be_edited_on_the_parameter_timeline():
     setup.control_jerks[0].fill_(3)
     app = SplinePlayground(setup, device="cpu")
 
-    app.steps_slider.set_val(40)
+    app.steps_slider.set_val(60)
     assert app.parameters.control_times == (0.5,)
-    assert app.parameters.control_steps == (20,)
+    assert app.parameters.control_steps == (30,)
     assert torch.all(app.fields["control_jerk:0"] == 3)
-    assert 20 in app._control_markers.values()
+    assert 30 in app._control_markers.values()
     app.steps_slider.set_val(16)
     assert app.parameters.control_steps == (8,)
 
@@ -1137,6 +1178,7 @@ def test_timed_targets_setup_round_trip_and_version_one_migration(tmp_path):
 
     legacy = zero_setup(source, source).payload()
     legacy["format_version"] = 1
+    legacy["initial_force"] = legacy.pop("initial_acceleration")
     legacy.pop("target_times")
     legacy.pop("target_paths")
     legacy_path = tmp_path / "version_one.pt"
@@ -1223,7 +1265,7 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
     assert classic.last_registration is not None
     assert len(classic.last_registration.loss_stock) == 2
     assert torch.count_nonzero(classic.fields["initial_momentum"]) > 0
-    assert torch.count_nonzero(classic.fields["initial_force"]) == 0
+    assert torch.count_nonzero(classic.fields["initial_acceleration"]) == 0
     plt.close(classic.fig)
 
     splines = SplinePlayground(

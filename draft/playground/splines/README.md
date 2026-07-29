@@ -20,9 +20,9 @@ resets. The status line reports progress, the compute device, and image size.
 
 ## Inputs
 
-- **Momentum** edits the dual initial momentum `p0`.
-- **Force** edits `u0`; each run computes the integrator state
-  `a0 = A_I0 u0`.
+- **Momentum** edits the primal initial momentum `p0`.
+- **Acceleration** edits the actual initial acceleration `a0`; each run computes
+  the displayed force `u0 = A_I0^-1 a0`.
 - **Jerk** edits the initial jerk `r0`.
 - **Control jerk** edits the absolute right limit `r(tau_c+)` at the selected mesh
   node. It is not a jerk increment.
@@ -48,8 +48,8 @@ Press `P` or click **Parameter Menu** for the categorized controls:
 On the control-time line, left-click an empty mesh location to add a control,
 drag a marker to move it, and right-click a marker to remove it. A new control
 starts with a zero field. Control times are stored as normalized values, so a
-control at step 8 of 16 steps moves to step 20 when the resolution changes to
-40 steps. Resolutions that would collapse controls onto the same mesh node are
+control at step 8 of 16 steps moves to step 30 when the resolution changes to
+60 steps. Resolutions that would collapse controls onto the same mesh node are
 rejected.
 
 The two main actions follow the selected model. **Run** integrates the currently
@@ -71,8 +71,8 @@ can show:
 
 The deformation-only image replays the same periodic semi-Lagrangian transport
 as the spline integrator. The photometric-only image starts at the source and
-accumulates `dt * residuals_stock[k]` at fixed pixels. Dual `p`, `u`, `r`, and
-vector momentum `m` overlays are orange; primal `a = A_I u` and `v = K m`
+accumulates `dt * residuals_stock[k]` at fixed pixels. Dual `u`, `r`, and vector
+momentum `m` overlays are orange; primal `p`, `a = A_I u`, and `v = K m`
 overlays are yellow. The force is shown as `u = A_I^-1 a`. Press `M` or `Esc`
 to close the menu. The source and current columns each have an independent
 image switch; hiding an image leaves its field on a black background without
@@ -122,8 +122,9 @@ plus `spline_setup.pt`, and, when available, `trajectory.pt` and
 
 **Save setup** stores source, all timed targets, editable fields, model and
 numerical parameters, and normalized control times in one `.pt` file. Version-1
-single-target setups remain loadable as endpoint observations. Reopen a setup in
-the UI or on launch:
+and version-2 setups remain loadable; their saved initial force is converted to
+initial acceleration. Version-1 single-target setups remain endpoint
+observations. Reopen a setup in the UI or on launch:
 
 ```bash
 .venv/bin/python -m draft.playground.splines --setup draft/spline_setup.pt
@@ -135,7 +136,7 @@ The same operation is available without a GUI file dialog, for example:
 
 ```bash
 .venv/bin/python -m draft.playground.splines m0t m1c \
-  --field draft/u0.pt --field-kind force
+  --field draft/a0.pt --field-kind acceleration
 ```
 
 Use `--field-kind control --control-index 1` to initialize a specific control
@@ -143,7 +144,7 @@ field; control indices are zero-based.
 
 ## Files
 
-- `core.py`: validation, setup persistence, force-to-acceleration conversion,
+- `core.py`: validation, setup persistence, legacy force-to-acceleration migration,
   integration, and detached node-aligned trajectory caches.
 - `registration.py`: classic/spline optimizer adapters and normal trajectory replay.
 - `project_io.py`: atomic timed-image project saving.

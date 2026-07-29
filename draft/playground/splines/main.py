@@ -66,7 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--field", help="Scalar field loaded before launch")
     parser.add_argument(
         "--field-kind",
-        choices=("momentum", "force", "jerk", "control"),
+        choices=("momentum", "acceleration", "jerk", "control"),
         default="momentum",
     )
     parser.add_argument("--control-index", type=int, default=0)
@@ -201,8 +201,8 @@ def main(argv: list[str] | None = None) -> SplinePlayground:
         )
         if args.field_kind == "momentum":
             setup.initial_momentum = field
-        elif args.field_kind == "force":
-            setup.initial_force = field
+        elif args.field_kind == "acceleration":
+            setup.initial_acceleration = field
         elif args.field_kind == "jerk":
             setup.initial_jerk = field
         else:
