@@ -96,6 +96,7 @@ def test_run_converts_initial_force_and_aligns_interval_fields_to_nodes():
     setup = zero_setup(source, source, parameters)
     setup.initial_force.normal_(std=1e-3)
     setup.initial_momentum.normal_(std=1e-3)
+    setup.initial_jerk.normal_(std=1e-3)
 
     progress = []
     trajectory = run_spline(
@@ -176,6 +177,35 @@ def test_run_converts_initial_force_and_aligns_interval_fields_to_nodes():
         trajectory.field_energies["vector_momentum"],
         trajectory.field_energies["velocity"],
     )
+    initial_cometric = CometricOperator(source, 0.25, kernel)
+    for name, field, counterpart in (
+        (
+            "momentum",
+            trajectory.momentum[0:1],
+            initial_cometric.inverse(trajectory.momentum[0:1], eps=parameters.cg_eps),
+        ),
+        (
+            "force",
+            trajectory.force[0:1],
+            initial_cometric(trajectory.force[0:1]),
+        ),
+        (
+            "acceleration",
+            trajectory.acceleration[0:1],
+            initial_cometric.inverse(
+                trajectory.acceleration[0:1], eps=parameters.cg_eps
+            ),
+        ),
+        (
+            "jerk",
+            trajectory.jerk[0:1],
+            initial_cometric(trajectory.jerk[0:1]),
+        ),
+    ):
+        torch.testing.assert_close(
+            trajectory.field_energies[name][0],
+            (field * counterpart).sum(),
+        )
     initial_gradient = tb.spatialGradient(
         source,
         dx_convention="pixel",
@@ -473,6 +503,7 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
         )
     )
     assert torch.count_nonzero(app.fields["initial_momentum"]) > 0
+    assert r"\Vert p_0\Vert_{I_0}^2" in app.source_footer.get_text()
     assert app.cache is None
     app.clear()
     assert torch.count_nonzero(app.fields["initial_momentum"]) == 0
@@ -486,6 +517,7 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
 
     app.input_radio.set_active(3)
     assert app.editor.active_key == "control_jerk:0"
+    assert r"\Vert r(0.5^+)\Vert_{I_0^*}^2" in app.source_footer.get_text()
     assert int(app.time_slider.val) == 2
     assert app.current_ax.get_title() == "Current image (run required)"
     assert "I_0" in app.target_footer.get_text()
@@ -505,7 +537,7 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
     app.current_radio.set_active(1)
     app.set_time_index(4)
     assert app.current_ax.get_title().endswith("$p$")
-    assert r"\Vert p(t)\Vert_{A_{I(t)}}^2" in app.current_footer.get_text()
+    assert r"\Vert p(t)\Vert_{I_t}^2" in app.current_footer.get_text()
     assert r"\mathrm{MSE}" in app.target_footer.get_text()
     assert "device: cpu" in app.status_text.get_text()
     assert "size: 18x20" in app.status_text.get_text()
@@ -952,6 +984,8 @@ def test_overlay_menu_and_current_image_modes():
     app.current_radio.set_active(6)
     assert app.current_field == "vector_momentum"
     assert r"\Vert m(t)\Vert_{V^*}^2" in app.current_footer.get_text()
+    app.spacing_slider.set_val(9)
+    assert app.renderer.vector_spacing == 9
     quivers = [
         artist
         for artist in app._dynamic_artists[app.current_ax]
@@ -962,7 +996,7 @@ def test_overlay_menu_and_current_image_modes():
         matplotlib.colors.to_rgba(DUAL_COLOR)
     )
     displayed = app.cache.vector_momentum[app._time_index()]
-    values, x, y, factor = prepare_vector_display(displayed)
+    values, x, y, factor = prepare_vector_display(displayed, spacing=9)
     assert quivers[0].X.tolist() == x.tolist()
     assert quivers[0].Y.tolist() == y.tolist()
     torch.testing.assert_close(
@@ -1196,7 +1230,7 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
         zero_setup(
             source,
             target,
-            SplineParameters(rho=0, n_steps=2, model="splines", iterations=2),
+            SplineParameters(rho=0, n_steps=3, model="splines", iterations=2),
         ),
         device="cpu",
     )

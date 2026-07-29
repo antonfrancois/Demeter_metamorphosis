@@ -515,6 +515,26 @@ def cometric_squared_norm(
     return float((covector * acceleration).sum().detach().cpu())
 
 
+def metric_squared_norm(
+    image: torch.Tensor,
+    vector: torch.Tensor,
+    parameters: SplineParameters,
+) -> float:
+    """Return ``<vector, A_image^-1 vector>`` on the tensor's device."""
+    if parameters.rho == 1:
+        return float("nan")
+    vector = vector.to(device=image.device, dtype=image.dtype)
+    kernel = _kernel_operator(parameters)
+    with torch.no_grad():
+        covector = CometricOperator(
+            image,
+            parameters.rho,
+            kernel,
+            dx_convention="pixel",
+        ).inverse(vector, eps=parameters.cg_eps)
+    return float((vector * covector).sum().detach().cpu())
+
+
 def _kernel_operator(parameters: SplineParameters):
     if parameters.kernel == "gaussian":
         return GaussianRKHS(
@@ -609,6 +629,44 @@ def _target_mse(images: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
     return torch.stack(
         [(images - target).square().mean(dim=(1, 2, 3)) for target in targets]
     )
+
+
+def _scalar_field_energies(
+    images: torch.Tensor,
+    momentum: torch.Tensor,
+    force: torch.Tensor,
+    acceleration: torch.Tensor,
+    jerk: torch.Tensor,
+    parameters: SplineParameters,
+) -> dict[str, torch.Tensor]:
+    kernel = _kernel_operator(parameters)
+    energies = {name: [] for name in ("momentum", "force", "acceleration", "jerk")}
+    with torch.no_grad():
+        for image, p, u, a, r in zip(images, momentum, force, acceleration, jerk):
+            cometric = CometricOperator(
+                image[None],
+                parameters.rho,
+                kernel,
+                dx_convention="pixel",
+            )
+            if parameters.rho == 1:
+                p_energy = image.new_tensor(float("nan"))
+                a_energy = image.new_tensor(float("nan"))
+            else:
+                p_covector = cometric.inverse(p[None], eps=parameters.cg_eps)[0]
+                a_covector = cometric.inverse(a[None], eps=parameters.cg_eps)[0]
+                p_energy = (p * p_covector).sum()
+                a_energy = (a * a_covector).sum()
+            u_energy = (u * cometric(u[None])[0]).sum()
+            r_energy = (r * cometric(r[None])[0]).sum()
+            for name, value in (
+                ("momentum", p_energy),
+                ("force", u_energy),
+                ("acceleration", a_energy),
+                ("jerk", r_energy),
+            ):
+                energies[name].append(value)
+    return {name: torch.stack(values) for name, values in energies.items()}
 
 
 def _endpoint_fields(
@@ -731,16 +789,14 @@ def run_spline(
     jerk = integrator.jerk_stock.detach().cpu().contiguous()
     vector_momentum = kernel.apply_operator(velocity).contiguous()
     velocity_energy = (velocity * vector_momentum).sum(dim=(1, 2, 3))
-    momentum_energy = (
-        (1 - parameters.rho) * momentum.square().sum(dim=(1, 2, 3))
-        + velocity_energy
-    )
-    force_acceleration_energy = (force * acceleration).sum(dim=(1, 2, 3))
-    field_energies = {
-        "momentum": momentum_energy,
-        "force": force_acceleration_energy,
-        "acceleration": force_acceleration_energy,
-        "jerk": jerk.square().sum(dim=(1, 2, 3)),
+    field_energies = _scalar_field_energies(
+        images,
+        momentum,
+        force,
+        acceleration,
+        jerk,
+        parameters,
+    ) | {
         "velocity": velocity_energy,
         "vector_momentum": velocity_energy,
     }
@@ -859,16 +915,14 @@ def run_classic(
     vector_momentum = vector_momentum_device.detach().cpu().contiguous()
     zero = torch.zeros_like(momentum)
     velocity_energy = (velocity * vector_momentum).sum(dim=(1, 2, 3))
-    momentum_energy = (
-        (1 - parameters.rho) * momentum.square().sum(dim=(1, 2, 3))
-        + velocity_energy
-    )
-    zero_energy = torch.zeros_like(momentum_energy)
-    field_energies = {
-        "momentum": momentum_energy,
-        "force": zero_energy,
-        "acceleration": zero_energy,
-        "jerk": zero_energy,
+    field_energies = _scalar_field_energies(
+        images,
+        momentum,
+        zero,
+        zero,
+        zero,
+        parameters,
+    ) | {
         "velocity": velocity_energy,
         "vector_momentum": velocity_energy,
     }

@@ -7,12 +7,18 @@ import numpy as np
 import torch
 
 from draft.playground.field_playground_core import (
+    DEFAULT_VECTOR_DISPLAY_SPACING,
     prepare_scalar_display,
     prepare_vector_display,
     scaled_field_title,
 )
 
-from .core import SplineParameters, SplineTrajectory, cometric_squared_norm
+from .core import (
+    SplineParameters,
+    SplineTrajectory,
+    cometric_squared_norm,
+    metric_squared_norm,
+)
 from .styles import (
     DUAL_COLOR,
     FIELD_CLASS,
@@ -67,6 +73,7 @@ class SplineRenderer:
         self.source_image, self.current_image, self.target_image = images
         self.source_footer, self.current_footer, self.target_footer = footers
         self.dynamic_artists = dynamic_artists
+        self.vector_spacing = DEFAULT_VECTOR_DISPLAY_SPACING
 
     def clear_dynamic(self, axis: Any) -> None:
         for artist in self.dynamic_artists[axis]:
@@ -103,7 +110,10 @@ class SplineRenderer:
         field: torch.Tensor,
         field_class: str,
     ) -> float:
-        values, x, y, factor = prepare_vector_display(field)
+        values, x, y, factor = prepare_vector_display(
+            field,
+            spacing=self.vector_spacing,
+        )
         if not y.numel():
             return factor
         artist = axis.quiver(
@@ -187,7 +197,8 @@ class SplineRenderer:
             source[0, 0] if show_image else torch.zeros_like(source[0, 0])
         )
         self.source_image.set_clim(0, 1)
-        self.plot_field(self.source_ax, field, "dual")
+        field_class = "primal" if input_kind == "initial_momentum" else "dual"
+        self.plot_field(self.source_ax, field, field_class)
         title = self.input_title(input_kind, control_index, parameters)
         if not show_image:
             title = title.removeprefix("Source + ")
@@ -197,21 +208,27 @@ class SplineRenderer:
             fontsize=11,
             pad=9,
         )
-        if input_kind in ("initial_momentum", "initial_force"):
-            symbol = "p_0" if input_kind == "initial_momentum" else "u_0"
-            expression = rf"\Vert {symbol}\Vert_{{A_{{I_0}}}}^2"
-            value = (
-                0.0
-                if torch.count_nonzero(field) == 0
-                else cometric_squared_norm(source, field, parameters)
+        if input_kind == "initial_momentum":
+            expression = r"\Vert p_0\Vert_{I_0}^2"
+            value = 0.0 if torch.count_nonzero(field) == 0 else metric_squared_norm(
+                source, field, parameters
+            )
+        elif input_kind == "initial_force":
+            expression = r"\Vert u_0\Vert_{I_0^*}^2"
+            value = 0.0 if torch.count_nonzero(field) == 0 else cometric_squared_norm(
+                source, field, parameters
             )
         elif input_kind == "initial_jerk":
-            value = float(field.square().sum())
-            expression = r"\Vert r_0\Vert_2^2"
+            value = 0.0 if torch.count_nonzero(field) == 0 else cometric_squared_norm(
+                source, field, parameters
+            )
+            expression = r"\Vert r_0\Vert_{I_0^*}^2"
         else:
-            value = float(field.square().sum())
+            value = 0.0 if torch.count_nonzero(field) == 0 else cometric_squared_norm(
+                source, field, parameters
+            )
             time = parameters.mesh_control_times[control_index]
-            expression = rf"\Vert r({time:.3g}^+)\Vert_2^2"
+            expression = rf"\Vert r({time:.3g}^+)\Vert_{{I_0^*}}^2"
         self.source_footer.set_text(rf"${expression} = {latex_number(value)}$")
 
     def render_current(
@@ -291,10 +308,10 @@ class SplineRenderer:
             self.current_footer.set_text("")
             return
         expression = {
-            "momentum": r"\Vert p(t)\Vert_{A_{I(t)}}^2",
-            "force": r"\Vert u(t)\Vert_{A_{I(t)}}^2",
-            "acceleration": r"\Vert a(t)\Vert_{A_{I(t)}^{-1}}^2",
-            "jerk": r"\Vert r(t)\Vert_2^2",
+            "momentum": r"\Vert p(t)\Vert_{I_t}^2",
+            "force": r"\Vert u(t)\Vert_{I_t^*}^2",
+            "acceleration": r"\Vert a(t)\Vert_{I_t}^2",
+            "jerk": r"\Vert r(t)\Vert_{I_t^*}^2",
             "velocity": r"\Vert v(t)\Vert_V^2",
             "vector_momentum": r"\Vert m(t)\Vert_{V^*}^2",
         }[current_field]

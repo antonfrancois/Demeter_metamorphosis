@@ -7,6 +7,7 @@ import numpy as np
 from matplotlib.widgets import Button, RadioButtons, Slider
 import torch
 
+from ...field_playground_core import DEFAULT_VECTOR_DISPLAY_SPACING
 from ..core import SplineParameters
 from ..styles import INK_COLOR, PANEL_COLOR
 from .common import build_modal_backdrop, build_panel, set_radio_visible
@@ -30,6 +31,7 @@ class ParameterMenu:
     sigma_slider: Slider
     brush_slider: Slider
     amplitude_slider: Slider
+    spacing_slider: Slider
     steps_slider: Slider
     iterations_slider: Slider
     cost_slider: Slider
@@ -47,6 +49,7 @@ class ParameterMenu:
             self.sigma_slider,
             self.brush_slider,
             self.amplitude_slider,
+            self.spacing_slider,
             self.steps_slider,
             self.iterations_slider,
             self.cost_slider,
@@ -224,8 +227,17 @@ def build_parameter_menu(
         max(10, 1.5 * parameters.sigma),
         parameters.sigma,
     )
-    brush = slider([0.70, 0.68, 0.17, 0.028], "Brush", 1, 40, 3)
-    amplitude = slider([0.70, 0.57, 0.17, 0.028], "Amplitude", 0.01, 4, 0.5)
+    brush = slider([0.70, 0.69, 0.17, 0.025], "Brush", 1, 40, 3)
+    amplitude = slider([0.70, 0.61, 0.17, 0.025], "Amplitude", 0.01, 4, 0.5)
+    spacing = slider(
+        [0.70, 0.535, 0.17, 0.025],
+        "Spacing",
+        1,
+        24,
+        DEFAULT_VECTOR_DISPLAY_SPACING,
+        valstep=1,
+        valfmt="%0.0f",
+    )
     steps = slider(
         [0.70, 0.325, 0.17, 0.025],
         "steps",
@@ -311,6 +323,7 @@ def build_parameter_menu(
         sigma,
         brush,
         amplitude,
+        spacing,
         steps,
         iterations,
         cost,

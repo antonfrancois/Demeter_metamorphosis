@@ -37,8 +37,9 @@ Press `P` or click **Parameter Menu** for the categorized controls:
 - **Model** selects Classic or Spline and contains `rho`, the operator, its
   parameters, and an interactive normalized control-time line. Gaussian
   automatically selects Classic because spline cometric inversion is Sobolev-only;
-- **Draw** contains brush size and amplitude. Each editable field remembers its
-  own amplitude, shown as `[x...]` in the source-panel title;
+- **Draw** contains brush size, amplitude, and vector-arrow spacing. Each
+  editable field remembers its own amplitude, shown as `[x...]` in the
+  source-panel title;
 - **Numerical** contains the registration cost constant, integration `steps`,
   optimization `iterations`, and the compute-device selector. CUDA is selected
   by default when available; CPU is always available. Registration defaults to
@@ -77,8 +78,10 @@ to close the menu. The source and current columns each have an independent
 image switch; hiding an image leaves its field on a black background without
 changing any image mode or field selection.
 
-Field squared norms are shown in LaTeX below the source and current images. The
-target panel shows the normalized MSE for whichever full, deformation-only, or
+Field squared norms are shown in LaTeX below the source and current images.
+Scalar primal fields `p` and `a` use `||.||_{I_t}`, while dual fields `u` and
+`r` use `||.||_{I_t^*}`; no scalar spline field uses a plain L2 norm. The target
+panel shows the normalized MSE for whichever full, deformation-only, or
 photometric-only image is currently selected.
 
 The time slider has one value for every state node, including both endpoints.

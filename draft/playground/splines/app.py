@@ -251,6 +251,7 @@ class SplinePlayground:
         self.steps_slider.on_changed(self._on_parameter_change)
         self.iterations_slider.on_changed(self._on_parameter_change)
         self.amplitude_slider.on_changed(self._on_amplitude_change)
+        self.spacing_slider.on_changed(self._on_spacing_change)
         self.device_radio.on_clicked(self._on_device_change)
 
         self._workspace_widgets = [
@@ -286,6 +287,8 @@ class SplinePlayground:
         self.operator_radio = self.parameter_menu.operator_radio
         self.brush_slider = self.parameter_menu.brush_slider
         self.amplitude_slider = self.parameter_menu.amplitude_slider
+        self.spacing_slider = self.parameter_menu.spacing_slider
+        self.renderer.vector_spacing = int(self.spacing_slider.val)
         self.steps_slider = self.parameter_menu.steps_slider
         self.iterations_slider = self.parameter_menu.iterations_slider
         self.cost_slider = self.parameter_menu.cost_slider
@@ -749,6 +752,13 @@ class SplinePlayground:
             return
         self._drawing_amplitudes[self._active_field_key()] = float(value)
         self._render_panels(self._render_source)
+        self.fig.canvas.draw_idle()
+
+    def _on_spacing_change(self, value: float) -> None:
+        if self._syncing_widgets or self._running:
+            return
+        self.renderer.vector_spacing = int(round(value))
+        self._render_panels(self._render_current)
         self.fig.canvas.draw_idle()
 
     def _on_operator_change(self, label: str) -> None:
