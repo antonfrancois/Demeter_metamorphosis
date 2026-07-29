@@ -345,14 +345,27 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
         jerk_source = jerk_flux_divergence - jerk * divergence_transport
         departure = self.id_grid - self.dt * field
 
+        next_momentum, next_acceleration, next_jerk, next_image = self._advect(
+            torch.cat((momentum, acceleration, jerk, image), dim=1),
+            torch.cat(
+                (
+                    momentum_source,
+                    acceleration_source,
+                    jerk_source,
+                    image_source,
+                ),
+                dim=1,
+            ),
+            departure,
+        ).split(1, dim=1)
         next_state = (
-            self._advect(momentum, momentum_source, departure),
-            self._advect(acceleration, acceleration_source, departure),
-            self._advect(jerk, jerk_source, departure),
+            next_momentum,
+            next_acceleration,
+            next_jerk,
         )
         return (
             next_state,
-            self._advect(image, image_source, departure),
+            next_image,
             field,
             image_source,
             force,
