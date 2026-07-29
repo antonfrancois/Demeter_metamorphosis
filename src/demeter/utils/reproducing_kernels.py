@@ -1251,6 +1251,8 @@ class SobolevFluidOperator(torch.nn.Module):
         self.boundary = str(boundary)
         self._symbol_cache = None
 
+        if not all(math.isfinite(value) for value in (self.alpha, self.beta, self.gamma)):
+            raise ValueError("alpha, beta, and gamma must be finite")
         if self.alpha < 0 or self.beta < 0 or self.gamma <= 0:
             raise ValueError("alpha and beta must be non-negative, and gamma must be positive")
         if self.boundary != "periodic":
@@ -1289,11 +1291,15 @@ class SobolevFluidOperator(torch.nn.Module):
             diagonal + self.beta * laplace_y,
         )
         l_xx, l_xy, l_yy = symbol
-        determinant = l_xx * l_yy - l_xy.square()
+        scale = torch.maximum(torch.maximum(l_xx.abs(), l_xy.abs()), l_yy.abs())
+        scaled_xx = l_xx / scale
+        scaled_xy = l_xy / scale
+        scaled_yy = l_yy / scale
+        scaled_determinant = scaled_xx * scaled_yy - scaled_xy.square()
         inverse_symbol = (
-            l_yy / determinant,
-            -l_xy / determinant,
-            l_xx / determinant,
+            scaled_yy / (scale * scaled_determinant),
+            -scaled_xy / (scale * scaled_determinant),
+            scaled_xx / (scale * scaled_determinant),
         )
         self._symbol_cache = key, symbol, inverse_symbol
         return symbol
@@ -1303,16 +1309,12 @@ class SobolevFluidOperator(torch.nn.Module):
         assert self._symbol_cache is not None
         return self._symbol_cache[2]
 
-    @staticmethod
-    def _check_field(field):
-        if field.ndim != 4 or field.shape[1] != 2:
-            raise ValueError(f"field must have shape [B, 2, H, W], got {field.shape}")
-        if not torch.is_floating_point(field):
-            raise TypeError(f"field must be floating point, got {field.dtype}")
+    def _apply(self, fn):
+        self._symbol_cache = None
+        return super()._apply(fn)
 
     def apply_operator(self, field):
         """Apply the periodic finite-difference operator ``L``."""
-        self._check_field(field)
         field_hat = torch.fft.rfft2(field)
         l_xx, l_xy, l_yy = self._symbol(field)
         result_hat = torch.stack(
@@ -1326,7 +1328,6 @@ class SobolevFluidOperator(torch.nn.Module):
 
     def apply_inverse(self, field):
         """Apply the exact spectral inverse ``K = L^-1``."""
-        self._check_field(field)
         field_hat = torch.fft.rfft2(field)
         k_xx, k_xy, k_yy = self._inverse_symbol(field)
         result_hat = torch.stack(
