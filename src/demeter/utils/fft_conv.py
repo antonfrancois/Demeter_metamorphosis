@@ -111,7 +111,7 @@ def fft_conv(
         slice(0, (signal.size(i) - kernel.size(i) + 1), stride_[i - 2])
         for i in range(2, signal.ndim)
     ]
-    output = output[crop_slices].contiguous()
+    output = output[tuple(crop_slices)].contiguous()
 
     # Optionally, add a bias term before returning.
     if bias is not None:
