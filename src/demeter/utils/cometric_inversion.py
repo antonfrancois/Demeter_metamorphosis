@@ -14,7 +14,7 @@ def _apply_cometric(image_gradient, covector, rho, kernel_operator):
     vector_momentum = covector * image_gradient[:, 0]
     velocity = kernel_operator(vector_momentum)
     deformation = (velocity * image_gradient[:, 0]).sum(dim=1, keepdim=True)
-    return torch.lerp(covector, deformation, rho)
+    return (1 - rho) * covector + rho * deformation
 
 
 def _solve(image_gradient, acceleration, rho, kernel_operator, eps, stats=None):
@@ -97,8 +97,6 @@ class CometricOperator:
         dx_convention="pixel",
         gradient_boundary="periodic",
     ):
-        if image.ndim != 4 or image.shape[1] != 1:
-            raise ValueError(f"image must have shape [B, 1, H, W], got {image.shape}")
         self.rho = float(rho)
         if not 0 <= self.rho <= 1:
             raise ValueError("rho must be in [0, 1]")
