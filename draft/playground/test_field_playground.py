@@ -189,6 +189,13 @@ def test_sobolev_operator_round_trips_and_has_exact_nyquist_symbol():
         assert torch.count_nonzero(mixed_symbol[16]) == 0
         assert torch.count_nonzero(mixed_symbol[:, -1]) == 0
 
+    tiny_gamma = SobolevFluidOperator(alpha=0, beta=0, gamma=1e-23)
+    inverse = tiny_gamma(torch.ones(1, 2, 4, 4))
+    assert torch.isfinite(inverse).all()
+    torch.testing.assert_close(inverse, torch.full_like(inverse, 1e23), rtol=1e-5, atol=0)
+    with pytest.raises(ValueError, match="finite"):
+        SobolevFluidOperator(alpha=float("nan"))
+
 
 def test_scalar_forward_and_inverse_round_trip():
     torch.manual_seed(4)
@@ -257,11 +264,12 @@ def test_cometric_inverse_exposes_solver_info():
     torch.manual_seed(5)
     image = torch.rand(1, 1, 8, 9)
     acceleration = torch.rand_like(image)
-    solution, iterations, elapsed, residual = CometricOperator(
+    cometric = CometricOperator(
         image,
         0.25,
         lambda value: value,
-    ).inverse(
+    )
+    solution, iterations, elapsed, residual = cometric.inverse(
         acceleration,
         eps=1e-7,
         return_info=True,
@@ -270,15 +278,17 @@ def test_cometric_inverse_exposes_solver_info():
     assert residual <= 1e-7
     assert iterations >= 1
     assert elapsed >= 0
+    true_residual = torch.linalg.vector_norm(
+        acceleration - cometric(solution)
+    ) / torch.linalg.vector_norm(acceleration).clamp_min(1)
+    assert residual == pytest.approx(float(true_residual))
 
 
-def test_cometric_is_single_channel_and_keeps_idiomatic_call():
+def test_cometric_keeps_idiomatic_call():
     image = torch.rand(1, 1, 8, 9)
     covector = torch.rand_like(image)
     acceleration = CometricOperator(image, 0.25, lambda value: value)(covector)
     assert acceleration.shape == covector.shape
-    with pytest.raises(ValueError, match=r"\[B, 1, H, W\]"):
-        CometricOperator(torch.rand(1, 2, 8, 9), 0.25, lambda value: value)
 
 
 def test_relative_l2_metrics_are_rms_and_pointwise_maximum():
@@ -303,6 +313,16 @@ def test_conjugate_gradient_solves_spd_system_and_zero_rhs():
     )
     assert torch.equal(solution, torch.zeros_like(rhs))
     assert iterations == 0
+    assert residual == 0
+
+    large_rhs = torch.tensor([1e20], dtype=torch.float32)
+    solution, iterations, residual = conjugate_gradient(
+        lambda value: value,
+        large_rhs,
+        1e-6,
+    )
+    torch.testing.assert_close(solution, large_rhs)
+    assert iterations == 1
     assert residual == 0
 
 
