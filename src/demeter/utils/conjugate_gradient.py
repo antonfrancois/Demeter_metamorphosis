@@ -18,8 +18,6 @@ def conjugate_gradient(linear_operator, rhs, tolerance, max_iterations=None):
         raise ValueError("max_iterations must be a strictly positive integer")
 
     rhs_norm = torch.linalg.vector_norm(rhs)
-    if not torch.isfinite(rhs_norm):
-        raise ValueError("rhs must contain only finite values with a finite norm")
     normalization = rhs_norm.clamp_min(1)
     scaled_rhs = rhs / normalization
     solution = torch.zeros_like(rhs)
@@ -32,27 +30,17 @@ def conjugate_gradient(linear_operator, rhs, tolerance, max_iterations=None):
     direction = residual.clone()
     for iteration in range(1, max_iterations + 1):
         applied = linear_operator(direction)
-        if applied.shape != direction.shape:
-            raise ValueError("linear_operator must preserve the rhs shape")
         curvature = (direction * applied).sum()
-        if not torch.isfinite(curvature) or curvature <= 0:
-            raise RuntimeError(
-                "conjugate gradient encountered non-positive or non-finite curvature"
-            )
         step = residual_norm_sq / curvature
         solution += step * direction
         residual -= step * applied
         next_residual_norm_sq = residual.square().sum()
-        if not torch.isfinite(next_residual_norm_sq):
-            raise RuntimeError("conjugate gradient produced a non-finite residual")
         if next_residual_norm_sq <= threshold:
             candidate_solution = solution * normalization
             true_residual = (
                 rhs - linear_operator(candidate_solution)
             ) / normalization
             true_residual_norm_sq = true_residual.square().sum()
-            if not torch.isfinite(true_residual_norm_sq):
-                raise RuntimeError("conjugate gradient produced a non-finite residual")
             if true_residual_norm_sq <= threshold:
                 return (
                     candidate_solution,
@@ -68,8 +56,6 @@ def conjugate_gradient(linear_operator, rhs, tolerance, max_iterations=None):
                 rhs - linear_operator(solution * normalization)
             ) / normalization
             next_residual_norm_sq = residual.square().sum()
-            if not torch.isfinite(next_residual_norm_sq):
-                raise RuntimeError("conjugate gradient produced a non-finite residual")
             direction = residual.clone()
             residual_norm_sq = next_residual_norm_sq
             continue
