@@ -322,11 +322,16 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             )
             gradient_image = cometric.image_gradient[:, 0]
             gradient_acceleration = self._gradient(acceleration)
-            kernel_momentum = self.kernelOperator(momentum * gradient_image)
-            kernel_force = self.kernelOperator(force * gradient_image)
-            kernel_linearization = self.kernelOperator(
-                jerk * gradient_image + momentum * gradient_acceleration
-            )
+            kernel_momentum, kernel_force, kernel_linearization = self.kernelOperator(
+                torch.cat(
+                    (
+                        momentum * gradient_image,
+                        force * gradient_image,
+                        jerk * gradient_image + momentum * gradient_acceleration,
+                    ),
+                    dim=0,
+                )
+            ).split(1, dim=0)
 
         physical_velocity = -sqrt(self.rho) * kernel_momentum
         transport = sqrt(self.rho) * physical_velocity
@@ -433,11 +438,19 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
         self.momentum = variables.initial_momentum.clone()
         self.acceleration = variables.initial_acceleration.clone()
         self.jerk = variables.initial_jerk.clone()
-        self.id_grid = tb.make_regular_grid(
-            image.shape[-2:],
-            dx_convention=self.dx_convention,
-            device=image.device,
-        ).to(dtype=image.dtype)
+        id_grid = getattr(self, "id_grid", None)
+        expected_grid_shape = (1, *image.shape[-2:], 2)
+        if (
+            not isinstance(id_grid, Tensor)
+            or tuple(id_grid.shape) != expected_grid_shape
+            or id_grid.device != image.device
+            or id_grid.dtype != image.dtype
+        ):
+            self.id_grid = tb.make_regular_grid(
+                image.shape[-2:],
+                dx_convention=self.dx_convention,
+                device=image.device,
+            ).to(dtype=image.dtype)
         self.save = bool(save)
         self.acceleration_energy = image.new_zeros(())
         trajectory = [
@@ -748,14 +761,15 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
                 "acceleration_energy": torch.zeros(index),
                 "total_cost": torch.zeros(index),
             }
-        loss_stock["data_loss"][index] = self.data_loss.detach().cpu()
-        loss_stock["acceleration_energy"][index] = (
-            self.acceleration_energy.detach().cpu()
-        )
-        loss_stock["total_cost"][index] = self.total_cost.detach().cpu()
         self.data_loss = self.data_loss.detach()
         self.acceleration_energy = self.acceleration_energy.detach()
         self.total_cost = self.total_cost.detach()
+        components = torch.stack(
+            (self.data_loss, self.acceleration_energy, self.total_cost)
+        ).cpu()
+        loss_stock["data_loss"][index] = components[0]
+        loss_stock["acceleration_energy"][index] = components[1]
+        loss_stock["total_cost"][index] = components[2]
         return loss_stock
 
     def _get_loss_components(self):
