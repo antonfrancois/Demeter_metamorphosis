@@ -302,6 +302,8 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
         self,
         image: Tensor,
         momentum,
+        *,
+        force_x_0: Tensor | None = None,
     ):
         """Integrate the interior equations over one control-free interval."""
         momentum, acceleration, jerk = momentum
@@ -313,7 +315,11 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             kernel_linearization = torch.zeros_like(kernel_momentum)
         else:
             cometric = self._cometric(image)
-            force = cometric.inverse(acceleration, eps=self.cg_eps)
+            force = cometric.inverse(
+                acceleration,
+                eps=self.cg_eps,
+                x_0=force_x_0,
+            )
             gradient_image = cometric.image_gradient[:, 0]
             gradient_acceleration = self._gradient(acceleration)
             kernel_momentum = self.kernelOperator(momentum * gradient_image)
@@ -452,6 +458,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             accelerations.append(self.acceleration[0].detach().cpu())
             jerks.append(self.jerk[0].detach().cpu())
 
+        force_x_0 = None
         for index in range(self.n_step):
             self._i = index
             old_acceleration = self.acceleration
@@ -466,6 +473,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             ) = self.step(
                 self.image,
                 (self.momentum, self.acceleration, self.jerk),
+                force_x_0=force_x_0,
             )
             self.momentum, self.acceleration, self.jerk = next_state
             self.acceleration_energy = self.acceleration_energy + (
@@ -483,6 +491,8 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
                 jerk=self.jerk,
                 acceleration_energy=self.acceleration_energy,
             )
+            if self.rho > 0:
+                force_x_0 = self.force.detach()
             trajectory.append(
                 (self.image, self.momentum, self.acceleration, self.jerk)
             )

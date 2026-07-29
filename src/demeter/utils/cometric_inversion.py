@@ -17,7 +17,15 @@ def _apply_cometric(image_gradient, covector, rho, kernel_operator):
     return (1 - rho) * covector + rho * deformation
 
 
-def _solve(image_gradient, acceleration, rho, kernel_operator, eps, stats=None):
+def _solve(
+    image_gradient,
+    acceleration,
+    rho,
+    kernel_operator,
+    eps,
+    stats=None,
+    x_0=None,
+):
     def linear_operator(covector):
         return _apply_cometric(image_gradient, covector, rho, kernel_operator)
 
@@ -27,7 +35,10 @@ def _solve(image_gradient, acceleration, rho, kernel_operator, eps, stats=None):
             torch.cuda.synchronize(image_gradient.device)
         start = perf_counter()
     solution, iterations, residual = conjugate_gradient(
-        linear_operator, acceleration, eps
+        linear_operator,
+        acceleration,
+        eps,
+        x_0=x_0,
     )
     if stats is not None:
         if image_gradient.is_cuda:
@@ -42,9 +53,24 @@ class _CometricInverse(torch.autograd.Function):
     """Implicit backward around the in-place CG implementation."""
 
     @staticmethod
-    def forward(ctx, image_gradient, acceleration, rho, kernel_operator, eps, stats):
+    def forward(
+        ctx,
+        image_gradient,
+        acceleration,
+        rho,
+        kernel_operator,
+        eps,
+        stats,
+        x_0,
+    ):
         solution = _solve(
-            image_gradient, acceleration, rho, kernel_operator, eps, stats
+            image_gradient,
+            acceleration,
+            rho,
+            kernel_operator,
+            eps,
+            stats,
+            x_0,
         )
         ctx.save_for_backward(image_gradient, solution)
         ctx.rho = rho
@@ -79,7 +105,7 @@ class _CometricInverse(torch.autograd.Function):
                 )[0]
 
         grad_acceleration = adjoint if ctx.needs_input_grad[1] else None
-        return grad_image_gradient, grad_acceleration, None, None, None, None
+        return grad_image_gradient, grad_acceleration, None, None, None, None, None
 
 
 class CometricOperator:
@@ -113,10 +139,11 @@ class CometricOperator:
             self.image_gradient, covector, self.rho, self.kernel_operator
         )
 
-    def inverse(self, acceleration, eps=1e-6, return_info=False):
+    def inverse(self, acceleration, eps=1e-6, return_info=False, *, x_0=None):
         """Solve ``A_I u = a`` with conjugate gradients.
 
         The optional residual is ``||a - A_I u|| / max(||a||, 1)``.
+        ``x_0`` is a non-differentiable initial guess in physical force units.
         """
         if self.rho == 0:
             if return_info:
@@ -139,6 +166,7 @@ class CometricOperator:
             self.kernel_operator,
             eps,
             stats,
+            x_0,
         )
         if return_info:
             assert stats is not None

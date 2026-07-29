@@ -326,6 +326,92 @@ def test_conjugate_gradient_solves_spd_system_and_zero_rhs():
     assert residual == 0
 
 
+def test_conjugate_gradient_warm_start_uses_physical_units():
+    matrix = torch.tensor([[4.0, 1.0], [1.0, 3.0]], dtype=torch.float64)
+    rhs = torch.tensor([3.0, 4.0], dtype=torch.float64)
+    expected = torch.linalg.solve(matrix, rhs)
+    initial_guess = expected.clone()
+
+    solution, iterations, residual = conjugate_gradient(
+        matrix.mv,
+        rhs,
+        1e-12,
+        x_0=initial_guess,
+    )
+
+    torch.testing.assert_close(solution, expected)
+    torch.testing.assert_close(initial_guess, expected)
+    assert iterations == 0
+    assert residual <= 1e-12
+
+    large_rhs = torch.tensor([1e20], dtype=torch.float32)
+    solution, iterations, residual = conjugate_gradient(
+        lambda value: value,
+        large_rhs,
+        1e-6,
+        x_0=large_rhs,
+    )
+    torch.testing.assert_close(solution, large_rhs)
+    assert iterations == 0
+    assert residual == 0
+
+
+def test_cometric_warm_start_is_a_nondifferentiable_hint():
+    torch.manual_seed(12)
+    image_data = torch.rand(1, 1, 4, 5, dtype=torch.float64)
+    acceleration_data = torch.rand_like(image_data)
+    kernel = lambda value: value
+    with torch.no_grad():
+        exact_guess = CometricOperator(image_data, 0.25, kernel).inverse(
+            acceleration_data,
+            eps=1e-12,
+        )
+    _, iterations, _, residual = CometricOperator(
+        image_data, 0.25, kernel
+    ).inverse(
+        acceleration_data,
+        eps=1e-10,
+        return_info=True,
+        x_0=exact_guess,
+    )
+    assert iterations == 0
+    assert residual <= 1e-10
+
+    def evaluate(initial_guess=None):
+        image = image_data.clone().requires_grad_()
+        acceleration = acceleration_data.clone().requires_grad_()
+        guess = None
+        if initial_guess is not None:
+            guess = initial_guess.clone().requires_grad_()
+        force = CometricOperator(image, 0.25, kernel).inverse(
+            acceleration,
+            eps=1e-10,
+            x_0=guess,
+        )
+        inputs = (
+            (image, acceleration)
+            if guess is None
+            else (image, acceleration, guess)
+        )
+        gradients = torch.autograd.grad(
+            force.square().sum(),
+            inputs,
+            allow_unused=True,
+        )
+        return force.detach(), gradients
+
+    cold_force, cold_gradients = evaluate()
+    warm_force, warm_gradients = evaluate(exact_guess)
+    torch.testing.assert_close(warm_force, cold_force, atol=1e-9, rtol=1e-9)
+    torch.testing.assert_close(
+        warm_gradients[0], cold_gradients[0], atol=1e-8, rtol=1e-8
+    )
+    torch.testing.assert_close(
+        warm_gradients[1], cold_gradients[1], atol=1e-9, rtol=1e-9
+    )
+    assert warm_gradients[2] is None
+
+
 def test_cometric_rejects_nonpositive_cg_tolerance():
     image = torch.zeros(1, 1, 8, 9)
     acceleration = torch.zeros_like(image)

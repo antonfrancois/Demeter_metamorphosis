@@ -3,8 +3,15 @@ from math import isfinite
 import torch
 
 
-def conjugate_gradient(linear_operator, rhs, tolerance, max_iterations=None):
-    """Solve an SPD system and return its true mixed relative residual."""
+def conjugate_gradient(
+    linear_operator,
+    rhs,
+    tolerance,
+    max_iterations=None,
+    *,
+    x_0=None,
+):
+    """Solve an SPD system"""
     tolerance = float(tolerance)
     if not isfinite(tolerance) or tolerance <= 0:
         raise ValueError("tolerance must be finite and strictly positive")
@@ -20,12 +27,16 @@ def conjugate_gradient(linear_operator, rhs, tolerance, max_iterations=None):
     rhs_norm = torch.linalg.vector_norm(rhs)
     normalization = rhs_norm.clamp_min(1)
     scaled_rhs = rhs / normalization
-    solution = torch.zeros_like(rhs)
-    residual = scaled_rhs.clone()
+    if x_0 is None:
+        solution = torch.zeros_like(rhs)
+        residual = scaled_rhs.clone()
+    else:
+        solution = x_0 / normalization
+        residual = scaled_rhs - linear_operator(solution)
     residual_norm_sq = residual.square().sum()
     threshold = tolerance**2
     if residual_norm_sq <= threshold:
-        return solution, 0, float(residual_norm_sq.sqrt())
+        return solution * normalization, 0, float(residual_norm_sq.sqrt())
 
     direction = residual.clone()
     for iteration in range(1, max_iterations + 1):
