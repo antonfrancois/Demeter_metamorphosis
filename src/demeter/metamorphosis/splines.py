@@ -280,12 +280,22 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             or variables.initial_momentum.dtype != image.dtype
         ):
             raise ValueError("image and spline variables must share device and dtype")
+        finite = torch.stack(
+            [torch.isfinite(image).all()]
+            + [torch.isfinite(value).all() for _, value in variables]
+        )
+        if not finite.all():
+            raise ValueError("image and spline variables must contain only finite values")
         return variables
 
     @staticmethod
     def _check_finite(**state: Tensor) -> None:
-        for name, tensor in state.items():
-            if not torch.isfinite(tensor).all():
+        items = tuple(state.items())
+        finite = torch.stack([torch.isfinite(tensor).all() for _, tensor in items])
+        if finite.all():
+            return
+        for (name, _tensor), is_finite in zip(items, finite):
+            if not is_finite:
                 raise OverflowError(f"non-finite values in spline state '{name}'")
 
     def step(  # type: ignore[override]
@@ -383,6 +393,21 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
         if hasattr(self.kernelOperator, "init_kernel"):
             self.kernelOperator.init_kernel(image)
 
+        stock_names = (
+            "time_stock",
+            "image_stock",
+            "momentum_stock",
+            "acceleration_stock",
+            "jerk_stock",
+            "field_stock",
+            "residuals_stock",
+            "force_stock",
+            "velocity_stock",
+        )
+        for name in ("trajectory", *stock_names):
+            if hasattr(self, name):
+                delattr(self, name)
+
         self.source = image.detach()
         self.initial_variables = variables
         self.image = image.clone()
@@ -443,6 +468,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
                 momentum=self.momentum,
                 acceleration=self.acceleration,
                 jerk=self.jerk,
+                acceleration_energy=self.acceleration_energy,
             )
             trajectory.append(
                 (self.image, self.momentum, self.acceleration, self.jerk)
@@ -477,22 +503,13 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             self.force_stock = torch.stack(forces)
             self.velocity_stock = torch.stack(velocities)
         else:
-            for name in (
-                "time_stock",
-                "image_stock",
-                "momentum_stock",
-                "acceleration_stock",
-                "jerk_stock",
-                "field_stock",
-                "residuals_stock",
-                "force_stock",
-                "velocity_stock",
-            ):
+            for name in stock_names:
                 if hasattr(self, name):
                     delattr(self, name)
 
     def to_device(self, device) -> None:
         super().to_device(device)
+        self.kernelOperator.to(device)
         for name in (
             "source",
             "momentum",
@@ -566,6 +583,8 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
             raise TypeError("source and target must be floating point")
         if source.dtype != target.dtype:
             raise ValueError("source and target must share one dtype")
+        if source.device != target.device:
+            raise ValueError("source and target must share one device")
         if not torch.isfinite(source).all() or not torch.isfinite(target).all():
             raise ValueError("source and target must contain only finite values")
 
@@ -639,11 +658,6 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
             raise NotImplementedError(
                 "spline regularization uses the integrated acceleration energy"
             )
-        if any(step >= geodesic.n_step - 1 for step in geodesic.control_steps):
-            raise ValueError(
-                "optimized control times must leave at least two integration "
-                "intervals after the control"
-            )
         try:
             cost_cst = float(cost_cst)
         except (TypeError, ValueError) as error:
@@ -654,6 +668,17 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
         self.target_times, self.target_steps = self._validate_observations(
             source, target, target_times, geodesic.n_step
         )
+        if self.target_steps[-1] < 3:
+            raise ValueError(
+                "spline optimization requires an observation at least three "
+                "integration intervals after the initial state"
+            )
+        for control_step in geodesic.control_steps:
+            if not any(step >= control_step + 3 for step in self.target_steps):
+                raise ValueError(
+                    "each optimized control time must precede an observation "
+                    "by at least three integration intervals"
+                )
         source = source.detach()
         target = target.detach()
         super().__init__(
@@ -682,6 +707,9 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
         ]
 
     def cost(self, variables: SplinesVariables, **kwargs) -> Tensor:
+        for name in ("data_loss", "acceleration_energy", "total_cost"):
+            if hasattr(self, name):
+                delattr(self, name)
         self.mp.forward(self.source, variables, save=False, plot=0)
         self.data_loss = self.data_term()
         self.acceleration_energy = self.mp.acceleration_energy
@@ -702,6 +730,9 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
             self.acceleration_energy.detach().cpu()
         )
         loss_stock["total_cost"][index] = self.total_cost.detach().cpu()
+        self.data_loss = self.data_loss.detach()
+        self.acceleration_energy = self.acceleration_energy.detach()
+        self.total_cost = self.total_cost.detach()
         return loss_stock
 
     def _get_loss_components(self):
