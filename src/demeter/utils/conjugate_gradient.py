@@ -51,14 +51,6 @@ def conjugate_gradient(linear_operator, rhs, tolerance, max_iterations=None):
             direction = residual.clone()
             residual_norm_sq = true_residual_norm_sq
             continue
-        if iteration % 50 == 0:
-            residual = (
-                rhs - linear_operator(solution * normalization)
-            ) / normalization
-            next_residual_norm_sq = residual.square().sum()
-            direction = residual.clone()
-            residual_norm_sq = next_residual_norm_sq
-            continue
         direction = residual + (next_residual_norm_sq / residual_norm_sq) * direction
         residual_norm_sq = next_residual_norm_sq
 
