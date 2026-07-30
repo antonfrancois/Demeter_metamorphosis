@@ -43,6 +43,7 @@ from draft.playground.splines.core import (
     zero_setup,
 )
 from draft.playground.splines.main import _parameter_overrides, _replace_parameters
+from draft.playground.splines.menus.observations import ObservationTimeEditor
 from draft.playground.splines.registration import register_spline
 from draft.playground.splines.styles import FIELD_CLASS, INK_COLOR
 
@@ -82,6 +83,32 @@ def test_parameters_require_ordered_interior_control_nodes():
             device="cpu",
             progress_callback=object(),  # type: ignore[arg-type]
         )
+
+
+def test_observation_menu_disambiguates_duplicate_image_names():
+    figure, axis = plt.subplots()
+    editor = ObservationTimeEditor(
+        axis,
+        on_select=lambda _index: None,
+        on_place=lambda _index, _time: None,
+        on_unplace=lambda _index: None,
+    )
+    editor.set_state(
+        4,
+        (
+            "/images/im2Dbank/reg_test_01.png",
+            "/images/im2Dbank_low/reg_test_01.png",
+            "/images/im2Dbank/reg_test_02.png",
+        ),
+        (0.0, 0.5, 1.0),
+        0,
+    )
+
+    labels = {text.get_text() for text in axis.texts}
+    assert "[S] reg_test_01.png (im2Dbank)" in labels
+    assert "[x] reg_test_01.png (im2Dbank_low)" in labels
+    assert "[x] reg_test_02.png" in labels
+    plt.close(figure)
 
 
 def test_run_uses_initial_acceleration_and_aligns_interval_fields_to_nodes():

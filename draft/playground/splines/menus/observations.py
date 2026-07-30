@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -69,14 +70,21 @@ class ObservationTimeEditor:
             )
             return
 
-        for index, (name, time) in enumerate(zip(self.names, self.times)):
+        paths = tuple(Path(name) for name in self.names)
+        basename_counts = Counter(path.name for path in paths)
+        for index, (path, time) in enumerate(zip(paths, self.times)):
             if index == self.selected:
                 axis.axhspan(index - 0.42, index + 0.42, color="#dcebea", zorder=0)
             status = "[S]" if time == 0 else "[x]" if time is not None else "[ ]"
+            name = path.name
+            if basename_counts[name] > 1 and path.parent.name:
+                name = f"{name} ({path.parent.name})"
+            else:
+                name = name[:28]
             axis.text(
                 -label_width + 0.1,
                 index,
-                f"{status} {Path(name).name[:28]}",
+                f"{status} {name}",
                 va="center",
                 ha="left",
                 fontsize=8.5,
