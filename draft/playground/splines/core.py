@@ -44,6 +44,11 @@ TRAJECTORY_FIELDS = (
     "velocity",
     "vector_momentum",
 )
+OPTIMIZABLE_INITIAL_FIELDS = (
+    "initial_momentum",
+    "initial_acceleration",
+    "initial_jerk",
+)
 
 
 def resolve_device(device: str | torch.device | None = "auto") -> torch.device:
@@ -79,6 +84,7 @@ class SplineParameters:
     cost_cst: float = 0.01
     iterations: int = 10
     lbfgs_lr: float | None = None
+    optimized_fields: tuple[str, ...] = OPTIMIZABLE_INITIAL_FIELDS
 
     def __post_init__(self) -> None:
         for name in ("alpha", "beta", "gamma", "rho", "cg_eps"):
@@ -101,6 +107,22 @@ class SplineParameters:
         if not isfinite(lbfgs_lr) or lbfgs_lr <= 0:
             raise ValueError("lbfgs_lr must be finite and strictly positive")
         object.__setattr__(self, "lbfgs_lr", lbfgs_lr)
+        optimized_fields = tuple(self.optimized_fields)
+        if len(set(optimized_fields)) != len(optimized_fields):
+            raise ValueError("optimized_fields must not contain duplicates")
+        unknown_fields = set(optimized_fields).difference(OPTIMIZABLE_INITIAL_FIELDS)
+        if unknown_fields:
+            names = ", ".join(sorted(unknown_fields))
+            raise ValueError(f"unsupported optimized fields: {names}")
+        object.__setattr__(
+            self,
+            "optimized_fields",
+            tuple(
+                name
+                for name in OPTIMIZABLE_INITIAL_FIELDS
+                if name in optimized_fields
+            ),
+        )
         rho_upper_bound = self.rho <= 1 if model == "classic" else self.rho < 1
         if self.rho < 0 or not rho_upper_bound:
             bound = "0 <= rho <= 1" if model == "classic" else "0 <= rho < 1"
@@ -194,6 +216,7 @@ class SplineParameters:
             "cost_cst": self.cost_cst,
             "iterations": self.iterations,
             "lbfgs_lr": self.lbfgs_lr,
+            "optimized_fields": self.optimized_fields,
         }
 
     @classmethod
@@ -217,6 +240,9 @@ class SplineParameters:
             cost_cst=values.get("cost_cst", 0.01),
             iterations=values.get("iterations", 10),
             lbfgs_lr=values.get("lbfgs_lr"),
+            optimized_fields=tuple(
+                values.get("optimized_fields", OPTIMIZABLE_INITIAL_FIELDS)
+            ),
         )
 
 

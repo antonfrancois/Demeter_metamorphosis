@@ -20,6 +20,7 @@ from demeter.utils.spline_data import load_timed_image_directory
 
 from ..field_playground_core import resize_field
 from .core import (
+    OPTIMIZABLE_INITIAL_FIELDS,
     SplineParameters,
     SplineSetup,
     SplineTrajectory,
@@ -249,6 +250,7 @@ class SplinePlayground:
         self.lbfgs_lr_slider.on_changed(self._on_lbfgs_lr_change)
         self.model_radio.on_clicked(self._on_model_change)
         self.operator_radio.on_clicked(self._on_operator_change)
+        self.optimized_fields_check.on_clicked(self._on_optimized_fields_change)
         self.steps_slider.on_changed(self._on_parameter_change)
         self.iterations_slider.on_changed(self._on_parameter_change)
         self.amplitude_slider.on_changed(self._on_amplitude_change)
@@ -286,6 +288,7 @@ class SplinePlayground:
         self.gamma_slider = self.parameter_menu.gamma_slider
         self.sigma_slider = self.parameter_menu.sigma_slider
         self.operator_radio = self.parameter_menu.operator_radio
+        self.optimized_fields_check = self.parameter_menu.optimized_fields_check
         self.brush_slider = self.parameter_menu.brush_slider
         self.amplitude_slider = self.parameter_menu.amplitude_slider
         self.spacing_slider = self.parameter_menu.spacing_slider
@@ -496,6 +499,14 @@ class SplinePlayground:
             cost_cst=10 ** float(self.cost_slider.val),
             iterations=int(round(self.iterations_slider.val)),
             lbfgs_lr=10 ** float(self.lbfgs_lr_slider.val),
+            optimized_fields=tuple(
+                name
+                for name, active in zip(
+                    OPTIMIZABLE_INITIAL_FIELDS,
+                    self.optimized_fields_check.get_status(),
+                )
+                if active
+            ),
         )
 
     def make_setup(
@@ -727,6 +738,9 @@ class SplinePlayground:
     def _on_lbfgs_lr_change(self, value: float) -> None:
         self.lbfgs_lr_slider.valtext.set_text(f"{10 ** float(value):.3g}")
         self._on_parameter_change(value)
+
+    def _on_optimized_fields_change(self, _label: str) -> None:
+        self._on_parameter_change(0.0)
 
     def _on_model_change(self, label: str) -> None:
         if self._syncing_widgets or self._running:
@@ -1642,6 +1656,15 @@ class SplinePlayground:
             self.model_radio.set_active(
                 0 if self.parameters.model == "classic" else 1
             )
+            optimized_fields = set(self.parameters.optimized_fields)
+            for index, (name, active) in enumerate(
+                zip(
+                    OPTIMIZABLE_INITIAL_FIELDS,
+                    self.optimized_fields_check.get_status(),
+                )
+            ):
+                if active != (name in optimized_fields):
+                    self.optimized_fields_check.set_active(index)
             log_cost = float(np.log10(max(self.parameters.cost_cst, 1e-12)))
             self._set_slider_value(self.cost_slider, log_cost, padding=1)
             self.cost_slider.valtext.set_text(f"{self.parameters.cost_cst:.3g}")

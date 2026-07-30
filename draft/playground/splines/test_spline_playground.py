@@ -53,6 +53,11 @@ def test_parameters_require_ordered_interior_control_nodes():
     assert parameters.control_times == (0.25, 0.625)
     assert parameters.mesh_control_times == (0.25, 0.625)
     assert parameters.lbfgs_lr == pytest.approx(0.1)
+    assert parameters.optimized_fields == (
+        "initial_momentum",
+        "initial_acceleration",
+        "initial_jerk",
+    )
     assert SplineParameters(model="classic").lbfgs_lr == pytest.approx(1.0)
 
     midpoint = SplineParameters(n_steps=16, control_steps=(8,))
@@ -72,6 +77,12 @@ def test_parameters_require_ordered_interior_control_nodes():
         SplineParameters(rho=1, model="splines")
     with pytest.raises(ValueError, match="lbfgs_lr"):
         SplineParameters(lbfgs_lr=0)
+    with pytest.raises(ValueError, match="unsupported optimized fields"):
+        SplineParameters(optimized_fields=("control_jerks",))
+    with pytest.raises(ValueError, match="duplicates"):
+        SplineParameters(
+            optimized_fields=("initial_momentum", "initial_momentum")
+        )
     with pytest.raises(TypeError, match="integers"):
         SplineParameters(n_steps=8, control_steps=(2.0,))  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="distinct"):
@@ -459,6 +470,7 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
         n_steps=4,
         control_steps=(2,),
         lbfgs_lr=0.03,
+        optimized_fields=("initial_momentum", "initial_jerk"),
     )
     setup = zero_setup(source, source, parameters)
     setup.initial_jerk.fill_(1)
@@ -496,11 +508,17 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
     del legacy["parameters"]["kernel"]
     del legacy["parameters"]["sigma"]
     del legacy["parameters"]["lbfgs_lr"]
+    del legacy["parameters"]["optimized_fields"]
     legacy_path = tmp_path / "legacy.pt"
     torch.save(legacy, legacy_path)
     legacy_parameters = load_setup(legacy_path).parameters
     assert legacy_parameters.control_times == (0.5,)
     assert legacy_parameters.lbfgs_lr == pytest.approx(0.1)
+    assert legacy_parameters.optimized_fields == (
+        "initial_momentum",
+        "initial_acceleration",
+        "initial_jerk",
+    )
 
     mismatched = setup.payload()
     mismatched["parameters"]["control_steps"] = (1,)
@@ -686,6 +704,12 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.iterations_slider.val == 10
     assert app.lbfgs_lr_slider.val == pytest.approx(-1)
     assert app.lbfgs_lr_slider.valtext.get_text() == "0.1"
+    assert app.optimized_fields_check.get_status() == [True, True, True]
+    assert [label.get_text() for label in app.optimized_fields_check.labels] == [
+        "Momentum",
+        "Acceleration",
+        "Jerk",
+    ]
     assert app.steps_slider.valmin == 1
     assert app.steps_slider.valmax == 60
     assert app.make_setup().parameters.rho == pytest.approx(0.99)
@@ -714,6 +738,11 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.parameters.iterations == 3
     app.lbfgs_lr_slider.set_val(np.log10(0.025))
     assert app.parameters.lbfgs_lr == pytest.approx(0.025)
+    app.optimized_fields_check.set_active(1)
+    assert app.parameters.optimized_fields == (
+        "initial_momentum",
+        "initial_jerk",
+    )
     assert [label.get_text() for label in app.operator_radio.labels] == [
         "Sobolev",
         "Gaussian",
@@ -765,6 +794,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
             n_steps=3,
             control_steps=(1, 2),
             lbfgs_lr=0.04,
+            optimized_fields=("initial_acceleration",),
         ),
     )
     app.apply_setup(replacement)
@@ -777,6 +807,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.steps_slider.valmax == 60
     assert app.lbfgs_lr_slider.val == pytest.approx(np.log10(0.04))
     assert app.lbfgs_lr_slider.valtext.get_text() == "0.04"
+    assert app.optimized_fields_check.get_status() == [False, True, False]
     assert len(app._control_markers) == 4
     controls_heading = next(
         text for text in app.fig.texts if text.get_text() == "CONTROLS"
@@ -1236,6 +1267,7 @@ def test_timed_targets_setup_round_trip_and_version_one_migration(tmp_path):
     legacy = zero_setup(source, source).payload()
     legacy["format_version"] = 1
     legacy["parameters"].pop("lbfgs_lr")
+    legacy["parameters"].pop("optimized_fields")
     legacy["initial_force"] = legacy.pop("initial_acceleration")
     legacy.pop("target_times")
     legacy.pop("target_paths")
@@ -1245,6 +1277,11 @@ def test_timed_targets_setup_round_trip_and_version_one_migration(tmp_path):
     assert migrated.target_times == (1.0,)
     assert migrated.target_paths == ("",)
     assert migrated.parameters.lbfgs_lr == pytest.approx(0.1)
+    assert migrated.parameters.optimized_fields == (
+        "initial_momentum",
+        "initial_acceleration",
+        "initial_jerk",
+    )
 
     legacy["parameters"].pop("model")
     legacy["parameters"]["kernel"] = "gaussian"
@@ -1394,15 +1431,20 @@ def test_registration_forwards_setup_lbfgs_learning_rate(monkeypatch):
     captured = {}
     trajectory = object()
 
-    def fake_optimizer(**kwargs):
-        captured.update(kwargs)
-        return SimpleNamespace(
-            optimized_variables=kwargs["variables_ini"],
-            mp=object(),
-            loss_stock={},
-        )
+    class FakeOptimizer:
+        def __init__(self, **kwargs):
+            self.mp = kwargs["geodesic"]
+            self.loss_stock = {}
 
-    monkeypatch.setattr(registration_module, "MetamorphosisSplines", fake_optimizer)
+        def forward(self, variables_ini, **kwargs):
+            captured.update(kwargs)
+            self.optimized_variables = variables_ini
+
+    monkeypatch.setattr(
+        registration_module,
+        "_SelectedFieldSplineOptimizer",
+        FakeOptimizer,
+    )
     monkeypatch.setattr(
         registration_module,
         "_trajectory_from_final_spline_integration",
@@ -1444,3 +1486,60 @@ def test_registration_forwards_setup_lbfgs_learning_rate(monkeypatch):
 
     assert classic_captured["grad_coef"] == pytest.approx(0.4)
     assert result.trajectory is trajectory
+
+
+def test_register_spline_optimizes_only_selected_fields_and_always_controls():
+    source = torch.zeros(1, 1, 5, 5, dtype=torch.float64)
+    target = torch.ones_like(source)
+    acceleration_only = zero_setup(
+        source,
+        target,
+        SplineParameters(
+            rho=0,
+            n_steps=3,
+            iterations=2,
+            optimized_fields=("initial_acceleration",),
+        ),
+    )
+
+    result = register_spline(acceleration_only, device="cpu")
+
+    assert torch.count_nonzero(result.setup.initial_momentum) == 0
+    assert torch.count_nonzero(result.setup.initial_acceleration) > 0
+    assert torch.count_nonzero(result.setup.initial_jerk) == 0
+
+    control_only = zero_setup(
+        source,
+        target,
+        SplineParameters(
+            rho=0,
+            n_steps=4,
+            control_steps=(1,),
+            iterations=2,
+            optimized_fields=(),
+        ),
+    )
+
+    result = register_spline(control_only, device="cpu")
+
+    assert torch.count_nonzero(result.setup.initial_momentum) == 0
+    assert torch.count_nonzero(result.setup.initial_acceleration) == 0
+    assert torch.count_nonzero(result.setup.initial_jerk) == 0
+    assert torch.count_nonzero(result.setup.control_jerks) > 0
+
+    no_fields = zero_setup(
+        source,
+        target,
+        SplineParameters(
+            rho=0,
+            n_steps=3,
+            iterations=2,
+            optimized_fields=(),
+        ),
+    )
+
+    result = register_spline(no_fields, device="cpu")
+
+    assert torch.count_nonzero(result.setup.initial_momentum) == 0
+    assert torch.count_nonzero(result.setup.initial_acceleration) == 0
+    assert torch.count_nonzero(result.setup.initial_jerk) == 0

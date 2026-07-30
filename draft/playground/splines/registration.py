@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from time import perf_counter
 from typing import Any
 
 import torch
 
-from demeter.metamorphosis import MetamorphosisSplines, metamorphosis
-from demeter.metamorphosis.splines import SplinesVariables
+from demeter.metamorphosis import metamorphosis
+from demeter.metamorphosis.splines import (
+    MetamorphosisSplineIntegrator,
+    MetamorphosisSplineOptimizer,
+    SplinesVariables,
+)
 from demeter.metamorphosis.var_classes import Momenta
 
 from .core import (
@@ -20,6 +24,7 @@ from .core import (
     _trajectory_from_final_spline_integration,
     resolve_device,
     run_classic,
+    run_spline,
 )
 
 
@@ -51,6 +56,28 @@ LBFGS_MAX_ITER = 5
 LBFGS_HISTORY_SIZE = 10
 
 
+class _SelectedFieldSplineOptimizer(MetamorphosisSplineOptimizer):
+    def _dict_or_torch_parameter_(self) -> list[torch.Tensor]:
+        return [
+            value
+            for _, value in self.parameter
+            if value.requires_grad and value.numel()
+        ]
+
+
+def _zeroed_setup(setup: SplineSetup) -> SplineSetup:
+    zero = torch.zeros_like(setup.source)
+    return replace(
+        setup,
+        initial_momentum=zero,
+        initial_acceleration=zero.clone(),
+        initial_jerk=zero.clone(),
+        control_jerks=setup.source.new_zeros(
+            (setup.n_controls,) + tuple(setup.source.shape)
+        ),
+    )
+
+
 def register_classic(
     setup: SplineSetup,
     *,
@@ -62,6 +89,19 @@ def register_classic(
         raise ValueError("classic registration requires one target at time 1")
     run_device = resolve_device(device)
     start = perf_counter()
+    if "initial_momentum" not in setup.parameters.optimized_fields:
+        optimized_setup = _zeroed_setup(setup)
+        return RegistrationResult(
+            optimized_setup,
+            run_classic(
+                optimized_setup,
+                device=run_device,
+                progress_callback=progress_callback,
+            ),
+            torch.empty(0),
+            perf_counter() - start,
+            "classic",
+        )
     optimizer = metamorphosis(
         source=setup.source.to(run_device),
         target=setup.target.to(run_device),
@@ -125,25 +165,53 @@ def register_spline(
     run_device = resolve_device(device)
     source = setup.source.to(run_device)
     start = perf_counter()
-    optimizer = MetamorphosisSplines(
+    variables_ini = SplinesVariables.zeros(
+        source,
+        n_controls=setup.n_controls,
+        requires_grad=False,
+    )
+    selected_fields = set(setup.parameters.optimized_fields)
+    for name, value in variables_ini:
+        value.requires_grad_(name == "control_jerks" or name in selected_fields)
+    if not any(value.requires_grad and value.numel() for _, value in variables_ini):
+        optimized_setup = _zeroed_setup(setup)
+        return RegistrationResult(
+            optimized_setup,
+            run_spline(
+                optimized_setup,
+                device=run_device,
+                progress_callback=progress_callback,
+            ),
+            {
+                name: torch.empty(0)
+                for name in ("data_loss", "acceleration_energy", "total_cost")
+            },
+            perf_counter() - start,
+            "splines",
+        )
+
+    integrator = MetamorphosisSplineIntegrator(
+        rho=setup.parameters.rho,
+        control_times=setup.parameters.mesh_control_times,
+        kernelOperator=_kernel_operator(setup.parameters),
+        n_step=setup.parameters.n_steps,
+        cg_eps=setup.parameters.cg_eps,
+        dx_convention="pixel",
+    )
+    optimizer = _SelectedFieldSplineOptimizer(
         source=source,
         target=setup.target.to(run_device),
         target_times=setup.target_times,
-        variables_ini=SplinesVariables.zeros(
-            source,
-            n_controls=setup.n_controls,
-        ),
-        rho=setup.parameters.rho,
+        geodesic=integrator,
         cost_cst=setup.parameters.cost_cst,
-        integration_steps=setup.parameters.n_steps,
-        n_iter=setup.parameters.iterations,
-        grad_coef=setup.parameters.lbfgs_lr,
-        kernelOperator=_kernel_operator(setup.parameters),
-        control_times=setup.parameters.mesh_control_times,
-        cg_eps=setup.parameters.cg_eps,
-        safe_mode=False,
+        optimizer_method="LBFGS_torch",
         lbfgs_max_iter=LBFGS_MAX_ITER,
         lbfgs_history_size=LBFGS_HISTORY_SIZE,
+    )
+    optimizer.forward(
+        variables_ini,
+        n_iter=setup.parameters.iterations,
+        grad_coef=setup.parameters.lbfgs_lr,
     )
     variables = optimizer.optimized_variables
     if variables is None:

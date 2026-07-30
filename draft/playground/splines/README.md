@@ -35,8 +35,10 @@ resets. The status line reports progress, the compute device, and image size.
 Press `P` or click **Parameter Menu** for the categorized controls:
 
 - **Model** selects Classic or Spline and contains `rho`, the operator, its
-  parameters, and an interactive normalized control-time line. Gaussian
-  automatically selects Classic because spline cometric inversion is Sobolev-only;
+  parameters, the optimized-initial-field checkboxes, and an interactive
+  normalized control-time line. Unchecked initial fields are fixed to zero;
+  control jerks remain optimized. Gaussian automatically selects Classic
+  because spline cometric inversion is Sobolev-only;
 - **Draw** contains brush size, amplitude, and vector-arrow spacing. Each
   editable field remembers its own amplitude, shown as `[x...]` in the
   source-panel title;

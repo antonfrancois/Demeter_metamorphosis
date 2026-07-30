@@ -4,11 +4,11 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-from matplotlib.widgets import Button, RadioButtons, Slider
+from matplotlib.widgets import Button, CheckButtons, RadioButtons, Slider
 import torch
 
 from ...field_playground_core import DEFAULT_VECTOR_DISPLAY_SPACING
-from ..core import SplineParameters
+from ..core import OPTIMIZABLE_INITIAL_FIELDS, SplineParameters
 from ..styles import INK_COLOR, PANEL_COLOR
 from .common import build_modal_backdrop, build_panel, set_radio_visible
 from .control_times import ControlTimeEditor
@@ -29,6 +29,7 @@ class ParameterMenu:
     beta_slider: Slider
     gamma_slider: Slider
     sigma_slider: Slider
+    optimized_fields_check: CheckButtons
     brush_slider: Slider
     amplitude_slider: Slider
     spacing_slider: Slider
@@ -65,6 +66,7 @@ class ParameterMenu:
             *(slider.ax for slider in self.sliders),
             self.operator_radio.ax,
             self.model_radio.ax,
+            self.optimized_fields_check.ax,
             self.device_radio.ax,
             self.control_time_editor.axis,
             self.close_button.ax,
@@ -76,6 +78,7 @@ class ParameterMenu:
             *self.sliders,
             self.operator_radio,
             self.model_radio,
+            self.optimized_fields_check,
             self.device_radio,
             self.close_button,
         ]
@@ -109,8 +112,8 @@ def build_parameter_menu(
     )
     panels = {
         "model": build_panel(fig, [0.06, 0.14, 0.50, 0.70], "MODEL"),
-        "draw": build_panel(fig, [0.60, 0.51, 0.34, 0.33], "DRAW"),
-        "numerical": build_panel(fig, [0.60, 0.07, 0.34, 0.38], "NUMERICAL"),
+        "draw": build_panel(fig, [0.60, 0.52, 0.34, 0.32], "DRAW"),
+        "numerical": build_panel(fig, [0.60, 0.07, 0.34, 0.40], "NUMERICAL"),
     }
     panels["model"].text(
         0.25,
@@ -135,14 +138,14 @@ def build_parameter_menu(
     )
     panels["model"].plot(
         [0.5, 0.5],
-        [0.25, 0.64],
+        [0.35, 0.64],
         color="#c2cccf",
         linewidth=1,
         transform=panels["model"].transAxes,
     )
     panels["model"].text(
         0.5,
-        0.19,
+        0.14,
         r"CONTROL TIMES  $\tau_c$",
         transform=panels["model"].transAxes,
         ha="center",
@@ -152,7 +155,7 @@ def build_parameter_menu(
     )
     panels["model"].text(
         0.5,
-        0.035,
+        0.01,
         "Left-click add/select, drag move, right-click remove",
         transform=panels["model"].transAxes,
         ha="center",
@@ -211,11 +214,11 @@ def build_parameter_menu(
     else:
         operator_radio.circles[0].center = (0.08, 0.5)
         operator_radio.circles[1].center = (0.70, 0.5)
-    alpha = slider([0.13, 0.47, 0.14, 0.025], r"$\alpha$", 0, max(2, 1.5 * parameters.alpha), parameters.alpha)
-    beta = slider([0.13, 0.39, 0.14, 0.025], r"$\beta$", 0, max(2, 1.5 * parameters.beta), parameters.beta)
+    alpha = slider([0.13, 0.49, 0.14, 0.025], r"$\alpha$", 0, max(2, 1.5 * parameters.alpha), parameters.alpha)
+    beta = slider([0.13, 0.43, 0.14, 0.025], r"$\beta$", 0, max(2, 1.5 * parameters.beta), parameters.beta)
     log_gamma = float(np.log10(parameters.gamma))
     gamma = slider(
-        [0.13, 0.31, 0.14, 0.025],
+        [0.13, 0.37, 0.14, 0.025],
         r"$\gamma$",
         min(-5, np.floor(log_gamma) - 1),
         max(1, np.ceil(log_gamma) + 1),
@@ -223,16 +226,38 @@ def build_parameter_menu(
     )
     gamma.valtext.set_text(f"{parameters.gamma:.3g}")
     sigma = slider(
-        [0.38, 0.47, 0.14, 0.025],
+        [0.38, 0.49, 0.14, 0.025],
         r"$\sigma$",
         0.1,
         max(10, 1.5 * parameters.sigma),
         parameters.sigma,
     )
-    brush = slider([0.70, 0.69, 0.17, 0.025], "Brush", 1, 40, 3)
-    amplitude = slider([0.70, 0.61, 0.17, 0.025], "Amplitude", 0.01, 4, 0.5)
+    panels["model"].text(
+        0.5,
+        0.305,
+        "OPTIMIZED INITIAL FIELDS\n(unchecking sets to 0)",
+        transform=panels["model"].transAxes,
+        ha="center",
+        va="center",
+        fontsize=8.5,
+        fontweight="bold",
+        color=INK_COLOR,
+    )
+    optimized_fields = CheckButtons(
+        fig.add_axes([0.21, 0.285, 0.20, 0.04], facecolor=PANEL_COLOR, zorder=102),
+        ("Momentum", "Acceleration", "Jerk"),
+        tuple(
+            name in parameters.optimized_fields
+            for name in OPTIMIZABLE_INITIAL_FIELDS
+        ),
+        layout=(1, 3),
+    )
+    for label in optimized_fields.labels:
+        label.set_fontsize(8.5)
+    brush = slider([0.70, 0.72, 0.17, 0.025], "Brush", 1, 40, 3)
+    amplitude = slider([0.70, 0.64, 0.17, 0.025], "Amplitude", 0.01, 4, 0.5)
     spacing = slider(
-        [0.70, 0.535, 0.17, 0.025],
+        [0.70, 0.56, 0.17, 0.025],
         "Spacing",
         1,
         24,
@@ -241,7 +266,7 @@ def build_parameter_menu(
         valfmt="%0.0f",
     )
     steps = slider(
-        [0.70, 0.325, 0.17, 0.025],
+        [0.70, 0.31, 0.17, 0.025],
         "steps",
         1,
         MAX_STEPS,
@@ -250,7 +275,7 @@ def build_parameter_menu(
         valfmt="%0.0f",
     )
     iterations = slider(
-        [0.70, 0.27, 0.17, 0.025],
+        [0.70, 0.25, 0.17, 0.025],
         "iterations",
         1,
         max(MAX_ITERATIONS, parameters.iterations),
@@ -260,7 +285,7 @@ def build_parameter_menu(
     )
     log_cost = float(np.log10(max(parameters.cost_cst, 1e-12)))
     cost = slider(
-        [0.70, 0.39, 0.17, 0.025],
+        [0.70, 0.37, 0.17, 0.025],
         r"$\log_{10}$ cost",
         min(-8, np.floor(log_cost) - 1),
         max(2, np.ceil(log_cost) + 1),
@@ -270,7 +295,7 @@ def build_parameter_menu(
     assert parameters.lbfgs_lr is not None
     log_lbfgs_lr = float(np.log10(parameters.lbfgs_lr))
     lbfgs_lr = slider(
-        [0.70, 0.21, 0.17, 0.025],
+        [0.70, 0.19, 0.17, 0.025],
         r"$\log_{10}$ LBFGS lr",
         min(-5, np.floor(log_lbfgs_lr) - 1),
         max(1, np.ceil(log_lbfgs_lr) + 1),
@@ -279,7 +304,7 @@ def build_parameter_menu(
     lbfgs_lr.valtext.set_text(f"{parameters.lbfgs_lr:.3g}")
     panels["numerical"].text(
         0.5,
-        0.21,
+        0.17,
         "COMPUTE DEVICE",
         transform=panels["numerical"].transAxes,
         ha="center",
@@ -294,7 +319,7 @@ def build_parameter_menu(
     )
     device_names.append("CPU")
     device_radio = RadioButtons(
-        fig.add_axes([0.70, 0.09, 0.17, 0.055], facecolor=PANEL_COLOR, zorder=102),
+        fig.add_axes([0.70, 0.08, 0.17, 0.055], facecolor=PANEL_COLOR, zorder=102),
         device_names,
         active=0 if device.startswith("cuda") else len(device_names) - 1,
         activecolor="#168a8a",
@@ -302,7 +327,7 @@ def build_parameter_menu(
     for label in device_radio.labels:
         label.set_fontsize(9)
     control_axis = fig.add_axes(
-        [0.16, 0.205, 0.34, 0.065],
+        [0.16, 0.17, 0.34, 0.055],
         facecolor=PANEL_COLOR,
         zorder=102,
     )
@@ -333,6 +358,7 @@ def build_parameter_menu(
         beta,
         gamma,
         sigma,
+        optimized_fields,
         brush,
         amplitude,
         spacing,
