@@ -22,6 +22,7 @@ import pytest
 import torch
 from types import SimpleNamespace
 
+from demeter.metamorphosis.splines import MetamorphosisSplineIntegrator
 from demeter.utils import torchbox as tb
 from demeter.utils.cometric_inversion import CometricOperator
 from demeter.utils.reproducing_kernels import GaussianRKHS, SobolevFluidOperator
@@ -42,6 +43,7 @@ from draft.playground.splines.core import (
     zero_setup,
 )
 from draft.playground.splines.main import _parameter_overrides, _replace_parameters
+from draft.playground.splines.registration import register_spline
 from draft.playground.splines.styles import FIELD_CLASS, INK_COLOR
 
 
@@ -162,6 +164,10 @@ def test_run_uses_initial_acceleration_and_aligns_interval_fields_to_nodes():
         "vector_momentum",
     }
     assert all(values.shape == (3,) for values in trajectory.field_energies.values())
+    torch.testing.assert_close(
+        trajectory.field_energies["force"],
+        trajectory.field_energies["acceleration"],
+    )
     expected_vector_momentum = kernel.apply_operator(trajectory.velocity)
     torch.testing.assert_close(
         trajectory.vector_momentum,
@@ -1288,3 +1294,28 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
     splines._invalidate("field changed")
     assert splines.last_registration is None
     plt.close(splines.fig)
+
+
+def test_register_spline_reuses_saved_final_integration(monkeypatch):
+    saved_runs = 0
+    original_forward = MetamorphosisSplineIntegrator.forward
+
+    def counting_forward(self, *args, **kwargs):
+        nonlocal saved_runs
+        if kwargs.get("save", True):
+            saved_runs += 1
+        return original_forward(self, *args, **kwargs)
+
+    monkeypatch.setattr(MetamorphosisSplineIntegrator, "forward", counting_forward)
+    source = torch.zeros(1, 1, 3, 3)
+    result = register_spline(
+        zero_setup(
+            source,
+            torch.ones_like(source),
+            SplineParameters(rho=0, n_steps=3, iterations=1),
+        ),
+        device="cpu",
+    )
+
+    assert saved_runs == 1
+    assert result.trajectory.images.shape == (4, 1, 3, 3)

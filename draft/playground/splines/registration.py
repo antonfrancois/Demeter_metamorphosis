@@ -17,9 +17,9 @@ from .core import (
     SplineSetup,
     SplineTrajectory,
     _kernel_operator,
+    _trajectory_from_final_spline_integration,
     resolve_device,
     run_classic,
-    run_spline,
 )
 
 
@@ -149,6 +149,12 @@ def register_spline(
     variables = optimizer.optimized_variables
     if variables is None:
         raise RuntimeError("spline registration produced no variables")
+    trajectory = _trajectory_from_final_spline_integration(
+        optimizer.mp,
+        setup.parameters,
+        setup.target,
+        progress_callback=progress_callback,
+    )
     optimized_setup = SplineSetup(
         source=setup.source,
         target=setup.target,
@@ -161,11 +167,6 @@ def register_spline(
         target_path=setup.target_path,
         target_times=setup.target_times,
         target_paths=setup.target_paths,
-    )
-    trajectory = run_spline(
-        optimized_setup,
-        device=run_device,
-        progress_callback=progress_callback,
     )
     return RegistrationResult(
         optimized_setup,

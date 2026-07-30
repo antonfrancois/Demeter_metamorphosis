@@ -673,12 +673,11 @@ def _scalar_field_energies(
             if parameters.rho == 1:
                 p_energy = image.new_tensor(float("nan"))
                 a_energy = image.new_tensor(float("nan"))
+                u_energy = (u * cometric(u[None])[0]).sum()
             else:
                 p_covector = cometric.inverse(p[None], eps=parameters.cg_eps)[0]
-                a_covector = cometric.inverse(a[None], eps=parameters.cg_eps)[0]
                 p_energy = (p * p_covector).sum()
-                a_energy = (a * a_covector).sum()
-            u_energy = (u * cometric(u[None])[0]).sum()
+                u_energy = a_energy = (u * a).sum()
             r_energy = (r * cometric(r[None])[0]).sum()
             for name, value in (
                 ("momentum", p_energy),
@@ -834,6 +833,67 @@ def run_spline(
         field_energies=field_energies,
         target_mse=target_mse,
         elapsed_seconds=elapsed,
+    )
+
+
+def _trajectory_from_final_spline_integration(
+    integrator: MetamorphosisSplineIntegrator,
+    parameters: SplineParameters,
+    targets: torch.Tensor,
+    progress_callback: Callable[[int, int], None] | None = None,
+) -> SplineTrajectory:
+    """Build playground data from an optimizer's finalized CPU integration."""
+    start = perf_counter()
+    kernel = integrator.kernelOperator
+    with torch.no_grad():
+        endpoint_force, endpoint_velocity = _endpoint_fields(
+            integrator,
+            kernel,
+            parameters,
+        )
+        deformed_source, photometric_only = _decompose_image_nodes(
+            integrator.source,
+            integrator.field_stock,
+            integrator.residuals_stock,
+        )
+    images = integrator.image_stock.detach().contiguous()
+    force = torch.cat((integrator.force_stock, endpoint_force), dim=0).contiguous()
+    velocity = torch.cat(
+        (integrator.velocity_stock, endpoint_velocity),
+        dim=0,
+    ).contiguous()
+    momentum = integrator.momentum_stock.detach().contiguous()
+    acceleration = integrator.acceleration_stock.detach().contiguous()
+    jerk = integrator.jerk_stock.detach().contiguous()
+    vector_momentum = kernel.apply_operator(velocity).contiguous()
+    velocity_energy = (velocity * vector_momentum).sum(dim=(1, 2, 3))
+    field_energies = _scalar_field_energies(
+        images,
+        momentum,
+        force,
+        acceleration,
+        jerk,
+        parameters,
+    ) | {
+        "velocity": velocity_energy,
+        "vector_momentum": velocity_energy,
+    }
+    target_mse = _target_mse(images, targets.to(dtype=images.dtype))
+    if progress_callback is not None:
+        progress_callback(parameters.n_steps, parameters.n_steps)
+    return SplineTrajectory(
+        images=images,
+        deformed_source=deformed_source,
+        photometric_only=photometric_only,
+        momentum=momentum,
+        force=force,
+        acceleration=acceleration,
+        jerk=jerk,
+        velocity=velocity,
+        vector_momentum=vector_momentum,
+        field_energies=field_energies,
+        target_mse=target_mse,
+        elapsed_seconds=perf_counter() - start,
     )
 
 

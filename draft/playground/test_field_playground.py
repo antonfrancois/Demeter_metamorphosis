@@ -315,6 +315,16 @@ def test_conjugate_gradient_solves_spd_system_and_zero_rhs():
     assert iterations == 0
     assert residual == 0
 
+    solution, iterations, residual = conjugate_gradient(
+        matrix.mv,
+        rhs,
+        1e-12,
+        return_residual=False,
+    )
+    torch.testing.assert_close(solution, torch.linalg.solve(matrix, rhs))
+    assert iterations == 2
+    assert residual is None
+
     large_rhs = torch.tensor([1e20], dtype=torch.float32)
     solution, iterations, residual = conjugate_gradient(
         lambda value: value,
