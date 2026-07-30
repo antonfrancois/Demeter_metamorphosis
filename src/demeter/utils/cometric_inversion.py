@@ -4,7 +4,7 @@ from time import perf_counter
 import torch
 
 from . import torchbox as tb
-from .conjugate_gradient import conjugate_gradient
+from .conjugate_gradient import conjugate_gradient, jacobi_preconditioner
 
 
 def _apply_cometric(image_gradient, covector, rho, kernel_operator):
@@ -15,6 +15,22 @@ def _apply_cometric(image_gradient, covector, rho, kernel_operator):
     velocity = kernel_operator(vector_momentum)
     deformation = (velocity * image_gradient[:, 0]).sum(dim=1, keepdim=True)
     return (1 - rho) * covector + rho * deformation
+
+
+def _jacobi_preconditioner(image_gradient, rho, kernel_operator):
+    kernel_at_zero = getattr(kernel_operator, "inverse_kernel_at_zero", None)
+    if kernel_at_zero is None:
+        return None
+
+    block = kernel_at_zero(image_gradient[:, 0])
+    gradient_x, gradient_y = image_gradient[:, 0].unbind(dim=1)
+    diagonal = (
+        block[0, 0] * gradient_x.square()
+        + (block[0, 1] + block[1, 0]) * gradient_x * gradient_y
+        + block[1, 1] * gradient_y.square()
+    ).unsqueeze(1)
+    diagonal.mul_(rho).add_(1 - rho)
+    return jacobi_preconditioner(diagonal)
 
 
 def _solve(
@@ -39,6 +55,9 @@ def _solve(
         acceleration,
         eps,
         x_0=x_0,
+        preconditioner=_jacobi_preconditioner(
+            image_gradient, rho, kernel_operator
+        ),
         return_residual=stats is not None,
     )
     if stats is not None:

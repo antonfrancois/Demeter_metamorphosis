@@ -3,6 +3,12 @@ from math import isfinite
 import torch
 
 
+def jacobi_preconditioner(diagonal):
+    """Return a callable that applies the inverse of ``diagonal``."""
+    inverse_diagonal = diagonal.reciprocal()
+    return inverse_diagonal.mul
+
+
 def conjugate_gradient(
     linear_operator,
     rhs,
@@ -10,9 +16,10 @@ def conjugate_gradient(
     max_iterations=None,
     *,
     x_0=None,
+    preconditioner=None,
     return_residual=True,
 ):
-    """Solve an SPD system"""
+    """Solve an SPD system, optionally using an inverse preconditioner."""
     tolerance = float(tolerance)
     if not isfinite(tolerance) or tolerance <= 0:
         raise ValueError("tolerance must be finite and strictly positive")
@@ -42,11 +49,17 @@ def conjugate_gradient(
         )
         return solution * normalization, 0, residual_value
 
-    direction = residual.clone()
+    if preconditioner is None:
+        preconditioned_residual = residual
+        residual_product = residual_norm_sq
+    else:
+        preconditioned_residual = preconditioner(residual)
+        residual_product = (residual * preconditioned_residual).sum()
+    direction = preconditioned_residual.clone()
     for iteration in range(1, max_iterations + 1):
         applied = linear_operator(direction)
         curvature = (direction * applied).sum()
-        step = residual_norm_sq / curvature
+        step = residual_product / curvature
         solution += step * direction
         residual -= step * applied
         next_residual_norm_sq = residual.square().sum()
@@ -68,11 +81,26 @@ def conjugate_gradient(
                     residual_value,
                 )
             residual = true_residual
-            direction = residual.clone()
             residual_norm_sq = true_residual_norm_sq
+            if preconditioner is None:
+                preconditioned_residual = residual
+                residual_product = residual_norm_sq
+            else:
+                preconditioned_residual = preconditioner(residual)
+                residual_product = (residual * preconditioned_residual).sum()
+            direction = preconditioned_residual.clone()
             continue
-        direction = residual + (next_residual_norm_sq / residual_norm_sq) * direction
+        if preconditioner is None:
+            preconditioned_residual = residual
+            next_residual_product = next_residual_norm_sq
+        else:
+            preconditioned_residual = preconditioner(residual)
+            next_residual_product = (residual * preconditioned_residual).sum()
+        direction = preconditioned_residual + (
+            next_residual_product / residual_product
+        ) * direction
         residual_norm_sq = next_residual_norm_sq
+        residual_product = next_residual_product
 
     true_residual = (
         rhs - linear_operator(solution * normalization)

@@ -1250,6 +1250,7 @@ class SobolevFluidOperator(torch.nn.Module):
         self.gamma = float(gamma)
         self.boundary = str(boundary)
         self._symbol_cache = None
+        self._inverse_kernel_at_zero_cache = None
 
         if not all(math.isfinite(value) for value in (self.alpha, self.beta, self.gamma)):
             raise ValueError("alpha, beta, and gamma must be finite")
@@ -1311,7 +1312,35 @@ class SobolevFluidOperator(torch.nn.Module):
 
     def _apply(self, fn):
         self._symbol_cache = None
+        self._inverse_kernel_at_zero_cache = None
         return super()._apply(fn)
+
+    def inverse_kernel_at_zero(self, field):
+        """Return the zero-offset 2x2 convolution block of ``K``."""
+        inverse_symbol = self._inverse_symbol(field)
+        assert self._symbol_cache is not None
+        key = self._symbol_cache[0]
+        if (
+            self._inverse_kernel_at_zero_cache is not None
+            and self._inverse_kernel_at_zero_cache[0] == key
+        ):
+            return self._inverse_kernel_at_zero_cache[1]
+
+        width = field.shape[-1]
+        weights = field.new_full((width // 2 + 1,), 2)
+        weights[0] = 1
+        if width % 2 == 0:
+            weights[-1] = 1
+        values = (torch.stack(inverse_symbol) * weights).sum(dim=(-2, -1))
+        values = values / (field.shape[-2] * width)
+        block = torch.stack(
+            (
+                torch.stack((values[0], values[1])),
+                torch.stack((values[1], values[2])),
+            )
+        )
+        self._inverse_kernel_at_zero_cache = key, block
+        return block
 
     def apply_operator(self, field):
         """Apply the periodic finite-difference operator ``L``."""
