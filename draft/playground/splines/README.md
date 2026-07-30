@@ -41,9 +41,10 @@ Press `P` or click **Parameter Menu** for the categorized controls:
   editable field remembers its own amplitude, shown as `[x...]` in the
   source-panel title;
 - **Numerical** contains the registration cost constant, integration `steps`,
-  optimization `iterations`, and the compute-device selector. CUDA is selected
-  by default when available; CPU is always available. Registration defaults to
-  10 optimization iterations.
+  optimization `iterations`, LBFGS learning rate, and the compute-device
+  selector. CUDA is selected by default when available; CPU is always
+  available. Registration defaults to 10 optimization iterations; the default
+  learning rate is `0.1` for Spline and `1.0` for Classic.
 
 On the control-time line, left-click an empty mesh location to add a control,
 drag a marker to move it, and right-click a marker to remove it. A new control

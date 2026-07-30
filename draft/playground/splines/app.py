@@ -246,6 +246,7 @@ class SplinePlayground:
             widget.on_changed(self._on_parameter_change)
         self.gamma_slider.on_changed(self._on_gamma_change)
         self.cost_slider.on_changed(self._on_cost_change)
+        self.lbfgs_lr_slider.on_changed(self._on_lbfgs_lr_change)
         self.model_radio.on_clicked(self._on_model_change)
         self.operator_radio.on_clicked(self._on_operator_change)
         self.steps_slider.on_changed(self._on_parameter_change)
@@ -292,6 +293,7 @@ class SplinePlayground:
         self.steps_slider = self.parameter_menu.steps_slider
         self.iterations_slider = self.parameter_menu.iterations_slider
         self.cost_slider = self.parameter_menu.cost_slider
+        self.lbfgs_lr_slider = self.parameter_menu.lbfgs_lr_slider
         self.device_radio = self.parameter_menu.device_radio
         self.control_time_editor = self.parameter_menu.control_time_editor
         self.parameter_menu_close_button = self.parameter_menu.close_button
@@ -493,6 +495,7 @@ class SplinePlayground:
             ),
             cost_cst=10 ** float(self.cost_slider.val),
             iterations=int(round(self.iterations_slider.val)),
+            lbfgs_lr=10 ** float(self.lbfgs_lr_slider.val),
         )
 
     def make_setup(
@@ -719,6 +722,10 @@ class SplinePlayground:
 
     def _on_cost_change(self, value: float) -> None:
         self.cost_slider.valtext.set_text(f"{10 ** float(value):.3g}")
+        self._on_parameter_change(value)
+
+    def _on_lbfgs_lr_change(self, value: float) -> None:
+        self.lbfgs_lr_slider.valtext.set_text(f"{10 ** float(value):.3g}")
         self._on_parameter_change(value)
 
     def _on_model_change(self, label: str) -> None:
@@ -1638,6 +1645,16 @@ class SplinePlayground:
             log_cost = float(np.log10(max(self.parameters.cost_cst, 1e-12)))
             self._set_slider_value(self.cost_slider, log_cost, padding=1)
             self.cost_slider.valtext.set_text(f"{self.parameters.cost_cst:.3g}")
+            assert self.parameters.lbfgs_lr is not None
+            log_lbfgs_lr = float(np.log10(self.parameters.lbfgs_lr))
+            self._set_slider_value(
+                self.lbfgs_lr_slider,
+                log_lbfgs_lr,
+                padding=1,
+            )
+            self.lbfgs_lr_slider.valtext.set_text(
+                f"{self.parameters.lbfgs_lr:.3g}"
+            )
             self.steps_slider.valmin = 1
             self.steps_slider.valmax = MAX_STEPS
             self.steps_slider.ax.set_xlim(1, MAX_STEPS)

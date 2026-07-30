@@ -62,6 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model", choices=("classic", "splines"))
     parser.add_argument("--cost-cst", type=float)
     parser.add_argument("--iterations", type=int)
+    parser.add_argument("--lbfgs-lr", type=float)
     parser.add_argument("--output", help="Path used by Ctrl+S")
     parser.add_argument("--field", help="Scalar field loaded before launch")
     parser.add_argument(
@@ -93,6 +94,7 @@ def _parameter_overrides(
         (getattr(args, "model", None), "model"),
         (getattr(args, "cost_cst", None), "cost_cst"),
         (getattr(args, "iterations", None), "iterations"),
+        (getattr(args, "lbfgs_lr", None), "lbfgs_lr"),
     ):
         if argument is not None:
             values[name] = argument
@@ -184,6 +186,7 @@ def main(argv: list[str] | None = None) -> SplinePlayground:
             ),
             cost_cst=args.cost_cst if args.cost_cst is not None else 0.01,
             iterations=args.iterations if args.iterations is not None else 10,
+            lbfgs_lr=args.lbfgs_lr,
         )
         setup = zero_setup(
             source,

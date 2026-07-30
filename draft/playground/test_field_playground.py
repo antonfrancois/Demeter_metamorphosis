@@ -15,7 +15,10 @@ import torch
 from types import SimpleNamespace
 
 from demeter.utils.cometric_inversion import CometricOperator
-from demeter.utils.conjugate_gradient import conjugate_gradient
+from demeter.utils.conjugate_gradient import (
+    conjugate_gradient,
+    jacobi_preconditioner,
+)
 from demeter.utils.reproducing_kernels import SobolevFluidOperator
 from draft.playground.field_playground_core import (
     TIMING_SAMPLES,
@@ -364,6 +367,41 @@ def test_conjugate_gradient_warm_start_uses_physical_units():
     torch.testing.assert_close(solution, large_rhs)
     assert iterations == 0
     assert residual == 0
+
+
+def test_conjugate_gradient_accepts_jacobi_preconditioner():
+    diagonal = torch.logspace(0, 8, 9, dtype=torch.float64)
+    rhs = torch.ones_like(diagonal)
+
+    solution, iterations, residual = conjugate_gradient(
+        diagonal.mul,
+        rhs,
+        1e-12,
+        preconditioner=jacobi_preconditioner(diagonal),
+    )
+
+    torch.testing.assert_close(solution, diagonal.reciprocal())
+    assert iterations == 1
+    assert residual <= 1e-12
+
+
+@pytest.mark.parametrize("size", ((7, 8), (8, 7)))
+def test_sobolev_inverse_kernel_at_zero_matches_impulse_response(size):
+    operator = SobolevFluidOperator(alpha=0.4, beta=0.2, gamma=0.3)
+    reference = torch.zeros(1, 2, *size, dtype=torch.float64)
+    impulses = reference.new_zeros((2, 2, *size))
+    impulses[0, 0, 0, 0] = 1
+    impulses[1, 1, 0, 0] = 1
+    response = operator(impulses)
+    expected = torch.stack(
+        (
+            response[0, :, 0, 0],
+            response[1, :, 0, 0],
+        ),
+        dim=1,
+    )
+
+    torch.testing.assert_close(operator.inverse_kernel_at_zero(reference), expected)
 
 
 def test_cometric_warm_start_is_a_nondifferentiable_hint():

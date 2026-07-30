@@ -52,6 +52,8 @@ def test_parameters_require_ordered_interior_control_nodes():
     parameters = SplineParameters(n_steps=8, control_steps=(2, 5))
     assert parameters.control_times == (0.25, 0.625)
     assert parameters.mesh_control_times == (0.25, 0.625)
+    assert parameters.lbfgs_lr == pytest.approx(0.1)
+    assert SplineParameters(model="classic").lbfgs_lr == pytest.approx(1.0)
 
     midpoint = SplineParameters(n_steps=16, control_steps=(8,))
     refined = replace(midpoint, n_steps=40)
@@ -68,6 +70,8 @@ def test_parameters_require_ordered_interior_control_nodes():
     assert SplineParameters(rho=1, model="classic").rho == 1
     with pytest.raises(ValueError, match="rho"):
         SplineParameters(rho=1, model="splines")
+    with pytest.raises(ValueError, match="lbfgs_lr"):
+        SplineParameters(lbfgs_lr=0)
     with pytest.raises(TypeError, match="integers"):
         SplineParameters(n_steps=8, control_steps=(2.0,))  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="distinct"):
@@ -450,7 +454,12 @@ def test_setup_canonicalization_rejects_invalid_data_and_breaks_aliases():
 
 def test_control_right_limit_and_setup_round_trip(tmp_path):
     source = torch.zeros(1, 1, 6, 7)
-    parameters = SplineParameters(rho=0, n_steps=4, control_steps=(2,))
+    parameters = SplineParameters(
+        rho=0,
+        n_steps=4,
+        control_steps=(2,),
+        lbfgs_lr=0.03,
+    )
     setup = zero_setup(source, source, parameters)
     setup.initial_jerk.fill_(1)
     setup.control_jerks.fill_(3)
@@ -486,9 +495,12 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
     del legacy["parameters"]["control_times"]
     del legacy["parameters"]["kernel"]
     del legacy["parameters"]["sigma"]
+    del legacy["parameters"]["lbfgs_lr"]
     legacy_path = tmp_path / "legacy.pt"
     torch.save(legacy, legacy_path)
-    assert load_setup(legacy_path).parameters.control_times == (0.5,)
+    legacy_parameters = load_setup(legacy_path).parameters
+    assert legacy_parameters.control_times == (0.5,)
+    assert legacy_parameters.lbfgs_lr == pytest.approx(0.1)
 
     mismatched = setup.payload()
     mismatched["parameters"]["control_steps"] = (1,)
@@ -672,6 +684,8 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.rho_slider.val == pytest.approx(0.99)
     assert app.steps_slider.val == 2
     assert app.iterations_slider.val == 10
+    assert app.lbfgs_lr_slider.val == pytest.approx(-1)
+    assert app.lbfgs_lr_slider.valtext.get_text() == "0.1"
     assert app.steps_slider.valmin == 1
     assert app.steps_slider.valmax == 60
     assert app.make_setup().parameters.rho == pytest.approx(0.99)
@@ -698,6 +712,8 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert all(slider.active for slider in app.parameter_menu.sliders)
     app.iterations_slider.set_val(3)
     assert app.parameters.iterations == 3
+    app.lbfgs_lr_slider.set_val(np.log10(0.025))
+    assert app.parameters.lbfgs_lr == pytest.approx(0.025)
     assert [label.get_text() for label in app.operator_radio.labels] == [
         "Sobolev",
         "Gaussian",
@@ -745,7 +761,11 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
 
     replacement = zero_setup(
         torch.zeros(1, 1, 6, 9),
-        parameters=SplineParameters(n_steps=3, control_steps=(1, 2)),
+        parameters=SplineParameters(
+            n_steps=3,
+            control_steps=(1, 2),
+            lbfgs_lr=0.04,
+        ),
     )
     app.apply_setup(replacement)
     expected_extent = [-0.5, 8.5, -0.5, 5.5]
@@ -755,6 +775,8 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.steps_slider.val == 3
     assert app.steps_slider.valmin == 1
     assert app.steps_slider.valmax == 60
+    assert app.lbfgs_lr_slider.val == pytest.approx(np.log10(0.04))
+    assert app.lbfgs_lr_slider.valtext.get_text() == "0.04"
     assert len(app._control_markers) == 4
     controls_heading = next(
         text for text in app.fig.texts if text.get_text() == "CONTROLS"
@@ -924,6 +946,7 @@ def test_cli_step_override_preserves_control_time_and_field():
         gamma=None,
         rho=None,
         cg_eps=None,
+        lbfgs_lr=0.025,
         kernel="gaussian",
         sigma=2.5,
         steps=40,
@@ -935,6 +958,7 @@ def test_cli_step_override_preserves_control_time_and_field():
     assert parameters.control_steps == (20,)
     assert parameters.kernel == "gaussian"
     assert parameters.sigma == pytest.approx(2.5)
+    assert parameters.lbfgs_lr == pytest.approx(0.025)
     torch.testing.assert_close(replaced.control_jerks, setup.control_jerks)
 
 
@@ -1211,6 +1235,7 @@ def test_timed_targets_setup_round_trip_and_version_one_migration(tmp_path):
 
     legacy = zero_setup(source, source).payload()
     legacy["format_version"] = 1
+    legacy["parameters"].pop("lbfgs_lr")
     legacy["initial_force"] = legacy.pop("initial_acceleration")
     legacy.pop("target_times")
     legacy.pop("target_paths")
@@ -1219,11 +1244,14 @@ def test_timed_targets_setup_round_trip_and_version_one_migration(tmp_path):
     migrated = load_setup(legacy_path)
     assert migrated.target_times == (1.0,)
     assert migrated.target_paths == ("",)
+    assert migrated.parameters.lbfgs_lr == pytest.approx(0.1)
 
     legacy["parameters"].pop("model")
     legacy["parameters"]["kernel"] = "gaussian"
     torch.save(legacy, legacy_path)
-    assert load_setup(legacy_path).parameters.model == "classic"
+    migrated_classic = load_setup(legacy_path).parameters
+    assert migrated_classic.model == "classic"
+    assert migrated_classic.lbfgs_lr == pytest.approx(1.0)
 
 
 def test_model_actions_timed_target_selection_and_manual_placement(tmp_path):
@@ -1346,3 +1374,73 @@ def test_register_spline_reuses_saved_final_integration(monkeypatch):
 
     assert saved_runs == 1
     assert result.trajectory.images.shape == (4, 1, 3, 3)
+
+
+def test_registration_forwards_setup_lbfgs_learning_rate(monkeypatch):
+    from demeter.metamorphosis.var_classes import Momenta
+    from draft.playground.splines import registration as registration_module
+
+    source = torch.zeros(1, 1, 3, 3)
+    setup = zero_setup(
+        source,
+        torch.ones_like(source),
+        SplineParameters(
+            rho=0,
+            n_steps=3,
+            iterations=1,
+            lbfgs_lr=0.025,
+        ),
+    )
+    captured = {}
+    trajectory = object()
+
+    def fake_optimizer(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            optimized_variables=kwargs["variables_ini"],
+            mp=object(),
+            loss_stock={},
+        )
+
+    monkeypatch.setattr(registration_module, "MetamorphosisSplines", fake_optimizer)
+    monkeypatch.setattr(
+        registration_module,
+        "_trajectory_from_final_spline_integration",
+        lambda *_args, **_kwargs: trajectory,
+    )
+
+    result = registration_module.register_spline(setup, device="cpu")
+
+    assert captured["grad_coef"] == pytest.approx(0.025)
+    assert result.trajectory is trajectory
+
+    classic_setup = zero_setup(
+        source,
+        torch.ones_like(source),
+        SplineParameters(
+            model="classic",
+            n_steps=3,
+            iterations=1,
+            lbfgs_lr=0.4,
+        ),
+    )
+    classic_captured = {}
+
+    def fake_classic_optimizer(**kwargs):
+        classic_captured.update(kwargs)
+        return SimpleNamespace(
+            optimized_momenta=Momenta(momentum_I=torch.zeros_like(source)),
+            loss_stock=[],
+        )
+
+    monkeypatch.setattr(registration_module, "metamorphosis", fake_classic_optimizer)
+    monkeypatch.setattr(
+        registration_module,
+        "run_classic",
+        lambda *_args, **_kwargs: trajectory,
+    )
+
+    result = registration_module.register_classic(classic_setup, device="cpu")
+
+    assert classic_captured["grad_coef"] == pytest.approx(0.4)
+    assert result.trajectory is trajectory

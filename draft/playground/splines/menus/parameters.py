@@ -35,6 +35,7 @@ class ParameterMenu:
     steps_slider: Slider
     iterations_slider: Slider
     cost_slider: Slider
+    lbfgs_lr_slider: Slider
     device_radio: RadioButtons
     control_time_editor: ControlTimeEditor
     close_button: Button
@@ -53,6 +54,7 @@ class ParameterMenu:
             self.steps_slider,
             self.iterations_slider,
             self.cost_slider,
+            self.lbfgs_lr_slider,
         ]
 
     @property
@@ -108,7 +110,7 @@ def build_parameter_menu(
     panels = {
         "model": build_panel(fig, [0.06, 0.14, 0.50, 0.70], "MODEL"),
         "draw": build_panel(fig, [0.60, 0.51, 0.34, 0.33], "DRAW"),
-        "numerical": build_panel(fig, [0.60, 0.13, 0.34, 0.32], "NUMERICAL"),
+        "numerical": build_panel(fig, [0.60, 0.07, 0.34, 0.38], "NUMERICAL"),
     }
     panels["model"].text(
         0.25,
@@ -265,9 +267,19 @@ def build_parameter_menu(
         log_cost,
     )
     cost.valtext.set_text(f"{parameters.cost_cst:.3g}")
+    assert parameters.lbfgs_lr is not None
+    log_lbfgs_lr = float(np.log10(parameters.lbfgs_lr))
+    lbfgs_lr = slider(
+        [0.70, 0.21, 0.17, 0.025],
+        r"$\log_{10}$ LBFGS lr",
+        min(-5, np.floor(log_lbfgs_lr) - 1),
+        max(1, np.ceil(log_lbfgs_lr) + 1),
+        log_lbfgs_lr,
+    )
+    lbfgs_lr.valtext.set_text(f"{parameters.lbfgs_lr:.3g}")
     panels["numerical"].text(
         0.5,
-        0.27,
+        0.21,
         "COMPUTE DEVICE",
         transform=panels["numerical"].transAxes,
         ha="center",
@@ -282,7 +294,7 @@ def build_parameter_menu(
     )
     device_names.append("CPU")
     device_radio = RadioButtons(
-        fig.add_axes([0.70, 0.155, 0.17, 0.055], facecolor=PANEL_COLOR, zorder=102),
+        fig.add_axes([0.70, 0.09, 0.17, 0.055], facecolor=PANEL_COLOR, zorder=102),
         device_names,
         active=0 if device.startswith("cuda") else len(device_names) - 1,
         activecolor="#168a8a",
@@ -327,6 +339,7 @@ def build_parameter_menu(
         steps,
         iterations,
         cost,
+        lbfgs_lr,
         device_radio,
         control_editor,
         close,

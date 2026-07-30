@@ -78,6 +78,7 @@ class SplineParameters:
     model: str = "splines"
     cost_cst: float = 0.01
     iterations: int = 10
+    lbfgs_lr: float | None = None
 
     def __post_init__(self) -> None:
         for name in ("alpha", "beta", "gamma", "rho", "cg_eps"):
@@ -93,6 +94,13 @@ class SplineParameters:
         if model not in ("classic", "splines"):
             raise ValueError("model must be 'classic' or 'splines'")
         object.__setattr__(self, "model", model)
+        lbfgs_lr = self.lbfgs_lr
+        if lbfgs_lr is None:
+            lbfgs_lr = 1.0 if model == "classic" else 0.1
+        lbfgs_lr = float(lbfgs_lr)
+        if not isfinite(lbfgs_lr) or lbfgs_lr <= 0:
+            raise ValueError("lbfgs_lr must be finite and strictly positive")
+        object.__setattr__(self, "lbfgs_lr", lbfgs_lr)
         rho_upper_bound = self.rho <= 1 if model == "classic" else self.rho < 1
         if self.rho < 0 or not rho_upper_bound:
             bound = "0 <= rho <= 1" if model == "classic" else "0 <= rho < 1"
@@ -185,6 +193,7 @@ class SplineParameters:
             "model": self.model,
             "cost_cst": self.cost_cst,
             "iterations": self.iterations,
+            "lbfgs_lr": self.lbfgs_lr,
         }
 
     @classmethod
@@ -207,6 +216,7 @@ class SplineParameters:
             model=values.get("model", "splines"),
             cost_cst=values.get("cost_cst", 0.01),
             iterations=values.get("iterations", 10),
+            lbfgs_lr=values.get("lbfgs_lr"),
         )
 
 

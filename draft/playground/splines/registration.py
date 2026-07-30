@@ -49,7 +49,6 @@ class RegistrationResult:
 
 LBFGS_MAX_ITER = 5
 LBFGS_HISTORY_SIZE = 10
-GRAD_COEF = 1.0
 
 
 def register_classic(
@@ -71,7 +70,7 @@ def register_classic(
         cost_cst=setup.parameters.cost_cst,
         integration_steps=setup.parameters.n_steps,
         n_iter=setup.parameters.iterations,
-        grad_coef=GRAD_COEF,
+        grad_coef=setup.parameters.lbfgs_lr,
         kernelOperator=_kernel_operator(setup.parameters),
         safe_mode=False,
         integration_method="semiLagrangian",
@@ -138,7 +137,7 @@ def register_spline(
         cost_cst=setup.parameters.cost_cst,
         integration_steps=setup.parameters.n_steps,
         n_iter=setup.parameters.iterations,
-        grad_coef=GRAD_COEF,
+        grad_coef=setup.parameters.lbfgs_lr,
         kernelOperator=_kernel_operator(setup.parameters),
         control_times=setup.parameters.mesh_control_times,
         cg_eps=setup.parameters.cg_eps,
