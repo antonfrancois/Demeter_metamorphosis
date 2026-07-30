@@ -39,10 +39,12 @@ def _solve(
         acceleration,
         eps,
         x_0=x_0,
+        return_residual=stats is not None,
     )
     if stats is not None:
         if image_gradient.is_cuda:
             torch.cuda.synchronize(image_gradient.device)
+        assert residual is not None
         stats["residual"] = residual
         stats["iterations"] = iterations
         stats["elapsed_seconds"] = perf_counter() - start

@@ -10,6 +10,7 @@ def conjugate_gradient(
     max_iterations=None,
     *,
     x_0=None,
+    return_residual=True,
 ):
     """Solve an SPD system"""
     tolerance = float(tolerance)
@@ -36,7 +37,10 @@ def conjugate_gradient(
     residual_norm_sq = residual.square().sum()
     threshold = tolerance**2
     if residual_norm_sq <= threshold:
-        return solution * normalization, 0, float(residual_norm_sq.sqrt())
+        residual_value = (
+            float(residual_norm_sq.sqrt()) if return_residual else None
+        )
+        return solution * normalization, 0, residual_value
 
     direction = residual.clone()
     for iteration in range(1, max_iterations + 1):
@@ -53,10 +57,15 @@ def conjugate_gradient(
             ) / normalization
             true_residual_norm_sq = true_residual.square().sum()
             if true_residual_norm_sq <= threshold:
+                residual_value = (
+                    float(true_residual_norm_sq.sqrt())
+                    if return_residual
+                    else None
+                )
                 return (
                     candidate_solution,
                     iteration,
-                    float(true_residual_norm_sq.sqrt()),
+                    residual_value,
                 )
             residual = true_residual
             direction = residual.clone()
