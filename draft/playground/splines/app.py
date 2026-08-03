@@ -1343,7 +1343,9 @@ class SplinePlayground:
         self.editor.cancel()
         self._set_workspace_active(False)
         model_label = "spline" if model == "splines" else model
-        self._set_status(f"Optimizing {model_label} from the images...")
+        start_message = f"Starting {model_label} metamorphosis..."
+        print(start_message, flush=True)
+        self._set_status(start_message)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
         self._last_progress_draw = perf_counter()

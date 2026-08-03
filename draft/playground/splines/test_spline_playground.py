@@ -1445,7 +1445,7 @@ def test_model_actions_timed_target_selection_and_manual_placement(tmp_path):
     plt.close(app.fig)
 
 
-def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
+def test_register_actions_load_optimized_fields_and_trajectory(tmp_path, capsys):
     source = torch.zeros(1, 1, 3, 3)
     target = torch.ones_like(source)
 
@@ -1458,6 +1458,7 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
         device="cpu",
     )
     classic.register()
+    assert "Starting classic metamorphosis..." in capsys.readouterr().out
     assert classic.last_error is None
     assert classic.cache is not None
     assert classic.last_registration is not None
@@ -1485,6 +1486,7 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
         device="cpu",
     )
     splines.register()
+    assert "Starting spline metamorphosis..." in capsys.readouterr().out
     assert splines.last_error is None
     assert splines.cache is not None
     assert splines.last_registration is not None
