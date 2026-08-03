@@ -46,7 +46,8 @@ Press `P` or click **Parameter** for the categorized controls:
   optimization `iterations`, LBFGS learning rate, and the compute-device
   selector. CUDA is selected by default when available; CPU is always
   available. Registration defaults to 10 optimization iterations; the default
-  learning rate is `0.1` for Spline and `1.0` for Classic.
+  learning rate is `0.1` for Spline and `1.0` for Classic. Rates at or below
+  `1e-3` are displayed in scientific notation.
 
 On the control-time line, left-click an empty mesh location to add a control,
 drag a marker to move it, and right-click a marker to remove it. A new control

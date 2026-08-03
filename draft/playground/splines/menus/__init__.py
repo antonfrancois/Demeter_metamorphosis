@@ -4,7 +4,7 @@ from .files import build_file_menu
 from .images import build_image_menu
 from .overlays import build_overlay_menu
 from .observations import build_observation_menu
-from .parameters import MAX_STEPS, build_parameter_menu
+from .parameters import MAX_STEPS, build_parameter_menu, format_lbfgs_learning_rate
 
 __all__ = [
     "MAX_STEPS",
@@ -13,4 +13,5 @@ __all__ = [
     "build_overlay_menu",
     "build_observation_menu",
     "build_parameter_menu",
+    "format_lbfgs_learning_rate",
 ]

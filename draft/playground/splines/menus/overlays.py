@@ -92,7 +92,7 @@ def build_overlay_menu(
     backdrop = build_modal_backdrop(
         fig,
         "VIEW",
-        "Choose the base image and field shown in each panel.  Press M or Esc to return.",
+        "Choose the base image and field shown in each panel.  Press M or Esc to close.",
     )
     columns = {
         "source": build_panel(fig, [0.04, 0.15, 0.28, 0.68], "SOURCE"),
@@ -190,7 +190,7 @@ def build_overlay_menu(
     )
     close = Button(
         fig.add_axes([0.42, 0.06, 0.16, 0.055], zorder=102),
-        "RETURN  [M]",
+        "CLOSE  [M]",
         color="#168a8a",
         hovercolor="#20a3a3",
     )

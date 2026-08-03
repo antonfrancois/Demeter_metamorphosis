@@ -76,7 +76,7 @@ def build_file_menu(
         buttons.append(button)
     close = Button(
         fig.add_axes([0.42, 0.10, 0.16, 0.055], zorder=102),
-        "RETURN  [L]",
+        "CLOSE  [L]",
         color="#168a8a",
         hovercolor="#20a3a3",
     )

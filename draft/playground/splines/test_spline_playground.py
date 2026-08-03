@@ -745,11 +745,11 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.menu_button.label.get_text() == "VIEW  [M]"
     assert app.parameter_menu.backdrop_ax.texts[0].get_text() == "PARAMETER"
     assert app.overlay_menu.backdrop_ax.texts[0].get_text() == "VIEW"
-    assert app.parameter_menu.close_button.label.get_text() == "RETURN  [P]"
-    assert app.overlay_menu.close_button.label.get_text() == "RETURN  [M]"
-    assert app.image_menu.close_button.label.get_text() == "RETURN  [I]"
-    assert app.file_menu.close_button.label.get_text() == "RETURN  [L]"
-    assert app.observation_menu.close_button.label.get_text() == "RETURN"
+    assert app.parameter_menu.close_button.label.get_text() == "CLOSE  [P]"
+    assert app.overlay_menu.close_button.label.get_text() == "CLOSE  [M]"
+    assert app.image_menu.close_button.label.get_text() == "CLOSE  [I]"
+    assert app.file_menu.close_button.label.get_text() == "CLOSE  [L]"
+    assert app.observation_menu.close_button.label.get_text() == "CLOSE  [I]"
     assert app.menu_button.ax.get_position().y0 > app.image_button.ax.get_position().y0
     assert app.image_button.ax.get_position().y0 > app.file_button.ax.get_position().y0
     assert app.file_button.ax.get_position().y0 > app.register_button.ax.get_position().y0
@@ -773,8 +773,13 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert all(slider.active for slider in app.parameter_menu.sliders)
     app.iterations_slider.set_val(3)
     assert app.parameters.iterations == 3
+    app.lbfgs_lr_slider.set_val(-3)
+    assert app.lbfgs_lr_slider.valtext.get_text() == "1e-3"
+    app.lbfgs_lr_slider.set_val(np.log10(2.5e-4))
+    assert app.lbfgs_lr_slider.valtext.get_text() == "2.5e-4"
     app.lbfgs_lr_slider.set_val(np.log10(0.025))
     assert app.parameters.lbfgs_lr == pytest.approx(0.025)
+    assert app.lbfgs_lr_slider.valtext.get_text() == "0.025"
     app.optimized_fields_check.set_active(1)
     assert app.parameters.optimized_fields == (
         "initial_momentum",

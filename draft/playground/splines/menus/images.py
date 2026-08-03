@@ -89,7 +89,7 @@ def build_image_menu(fig) -> ImageMenu:
     manage_spline = button([0.39, 0.41, 0.22, 0.10], "MANAGE SPLINE IMAGES")
     close = Button(
         fig.add_axes([0.42, 0.14, 0.16, 0.055], zorder=102),
-        "RETURN  [I]",
+        "CLOSE  [I]",
         color="#168a8a",
         hovercolor="#20a3a3",
     )

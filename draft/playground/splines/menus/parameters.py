@@ -18,6 +18,13 @@ MAX_STEPS = 60
 MAX_ITERATIONS = 50
 
 
+def format_lbfgs_learning_rate(value: float) -> str:
+    if value > 1e-3:
+        return f"{value:.3g}"
+    mantissa, exponent = f"{value:.3e}".split("e")
+    return f"{mantissa.rstrip('0').rstrip('.')}e{int(exponent):+d}"
+
+
 @dataclass
 class ParameterMenu:
     backdrop_ax: Any
@@ -108,7 +115,7 @@ def build_parameter_menu(
     backdrop = build_modal_backdrop(
         fig,
         "PARAMETER",
-        "Model, drawing, and numerical controls.  Press P or Esc to return.",
+        "Model, drawing, and numerical controls.  Press P or Esc to close.",
     )
     panels = {
         "model": build_panel(fig, [0.06, 0.14, 0.50, 0.70], "MODEL"),
@@ -301,7 +308,7 @@ def build_parameter_menu(
         max(1, np.ceil(log_lbfgs_lr) + 1),
         log_lbfgs_lr,
     )
-    lbfgs_lr.valtext.set_text(f"{parameters.lbfgs_lr:.3g}")
+    lbfgs_lr.valtext.set_text(format_lbfgs_learning_rate(parameters.lbfgs_lr))
     panels["numerical"].text(
         0.5,
         0.17,
@@ -343,7 +350,7 @@ def build_parameter_menu(
     )
     close = Button(
         fig.add_axes([0.42, 0.06, 0.16, 0.055], zorder=102),
-        "RETURN  [P]",
+        "CLOSE  [P]",
         color="#168a8a",
         hovercolor="#20a3a3",
     )
