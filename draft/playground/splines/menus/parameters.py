@@ -107,7 +107,7 @@ def build_parameter_menu(
 ) -> ParameterMenu:
     backdrop = build_modal_backdrop(
         fig,
-        "PARAMETER MENU",
+        "PARAMETER",
         "Model, drawing, and numerical controls.  Press P or Esc to return.",
     )
     panels = {
@@ -343,7 +343,7 @@ def build_parameter_menu(
     )
     close = Button(
         fig.add_axes([0.42, 0.06, 0.16, 0.055], zorder=102),
-        "RETURN TO IMAGES  [P]",
+        "RETURN  [P]",
         color="#168a8a",
         hovercolor="#20a3a3",
     )

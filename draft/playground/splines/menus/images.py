@@ -58,7 +58,7 @@ def build_image_menu(fig) -> ImageMenu:
     backdrop = build_modal_backdrop(
         fig,
         "IMAGES",
-        "Image actions follow the model selected in the Parameter Menu.",
+        "Image actions follow the model selected under Parameter.",
     )
     panel = fig.add_axes([0.28, 0.28, 0.44, 0.46], facecolor=PANEL_COLOR, zorder=101)
     panel.set_xticks([])
@@ -89,7 +89,7 @@ def build_image_menu(fig) -> ImageMenu:
     manage_spline = button([0.39, 0.41, 0.22, 0.10], "MANAGE SPLINE IMAGES")
     close = Button(
         fig.add_axes([0.42, 0.14, 0.16, 0.055], zorder=102),
-        "RETURN TO IMAGES  [I]",
+        "RETURN  [I]",
         color="#168a8a",
         hovercolor="#20a3a3",
     )

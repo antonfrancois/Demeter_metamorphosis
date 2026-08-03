@@ -28,6 +28,7 @@ from demeter.utils.cometric_inversion import CometricOperator
 from demeter.utils.reproducing_kernels import GaussianRKHS, SobolevFluidOperator
 from demeter.utils.spline_data import load_timed_image_directory
 from draft.playground.field_playground_core import (
+    load_field_file,
     prepare_vector_display,
     scaled_field_title,
 )
@@ -44,6 +45,7 @@ from draft.playground.splines.core import (
 )
 from draft.playground.splines.main import _parameter_overrides, _replace_parameters
 from draft.playground.splines.menus.observations import ObservationTimeEditor
+from draft.playground.splines.project_io import load_project
 from draft.playground.splines.registration import register_spline
 from draft.playground.splines.styles import FIELD_CLASS, INK_COLOR
 
@@ -739,6 +741,15 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.steps_slider.valmin == 1
     assert app.steps_slider.valmax == 60
     assert app.make_setup().parameters.rho == pytest.approx(0.99)
+    assert app.parameter_button.label.get_text() == "PARAMETER  [P]"
+    assert app.menu_button.label.get_text() == "VIEW  [M]"
+    assert app.parameter_menu.backdrop_ax.texts[0].get_text() == "PARAMETER"
+    assert app.overlay_menu.backdrop_ax.texts[0].get_text() == "VIEW"
+    assert app.parameter_menu.close_button.label.get_text() == "RETURN  [P]"
+    assert app.overlay_menu.close_button.label.get_text() == "RETURN  [M]"
+    assert app.image_menu.close_button.label.get_text() == "RETURN  [I]"
+    assert app.file_menu.close_button.label.get_text() == "RETURN  [L]"
+    assert app.observation_menu.close_button.label.get_text() == "RETURN"
     assert app.menu_button.ax.get_position().y0 > app.image_button.ax.get_position().y0
     assert app.image_button.ax.get_position().y0 > app.file_button.ax.get_position().y0
     assert app.file_button.ax.get_position().y0 > app.register_button.ax.get_position().y0
@@ -748,7 +759,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
         > app.clear_button.ax.get_position().y0
     )
     shortcuts = next(
-        text for text in app.fig.texts if text.get_text().startswith("P  parameters")
+        text for text in app.fig.texts if text.get_text().startswith("P  parameter")
     )
     assert shortcuts.get_position() == pytest.approx((0.012, 0.975))
     assert shortcuts.get_ha() == "left"
@@ -847,9 +858,9 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert any("Classic only" in text for text in operator_texts)
     assert [button.label.get_text() for button in app.file_menu.buttons] == [
         "LOAD FIELD",
-        "LOAD COMPLETE SETUP",
-        "SAVE COMPLETE SETUP",
-        "SAVE TIMED PROJECT",
+        "LOAD PROJECT",
+        "SAVE FIELD",
+        "SAVE PROJECT",
     ]
 
     app.input_radio.set_active(3)
@@ -1318,6 +1329,50 @@ def test_timed_targets_setup_round_trip_and_version_one_migration(tmp_path):
     assert migrated_classic.lbfgs_lr == pytest.approx(1.0)
 
 
+def test_selected_field_and_setup_only_project_round_trip(tmp_path):
+    source = torch.zeros(1, 1, 5, 6)
+    setup = zero_setup(
+        source,
+        torch.ones_like(source),
+        SplineParameters(n_steps=2),
+    )
+    app = SplinePlayground(setup, device="cpu")
+    app.input_radio.set_active(1)
+    app.fields["initial_acceleration"].fill_(0.75)
+
+    field_path = app.save_field(tmp_path / "acceleration")
+    assert field_path.name == "acceleration.pt"
+    loaded_field = load_field_file(field_path)
+    assert loaded_field.kind == "a"
+    assert loaded_field.metadata["field_role"] == "initial_acceleration"
+    app.fields["initial_acceleration"].zero_()
+    app.load_field(field_path)
+    torch.testing.assert_close(
+        app.fields["initial_acceleration"],
+        torch.full_like(source, 0.75),
+    )
+
+    destination = app.save_project(tmp_path / "setup_project")
+    assert (destination / "spline_setup.pt").is_file()
+    assert not (destination / "trajectory.pt").exists()
+    assert not (destination / "optimization.pt").exists()
+
+    app.fields["initial_acceleration"].zero_()
+    app.load_project(destination)
+    assert app.cache is None
+    assert app.last_registration is None
+    torch.testing.assert_close(
+        app.fields["initial_acceleration"],
+        torch.full_like(source, 0.75),
+    )
+    assert "(setup)" in app.status_text.get_text()
+
+    torch.save({}, destination / "optimization.pt")
+    with pytest.raises(ValueError, match="requires trajectory"):
+        load_project(destination)
+    plt.close(app.fig)
+
+
 def test_model_actions_timed_target_selection_and_manual_placement(tmp_path):
     source = torch.zeros(1, 1, 6, 7)
     targets = torch.cat((torch.full_like(source, 0.25), torch.ones_like(source)))
@@ -1364,11 +1419,23 @@ def test_model_actions_timed_target_selection_and_manual_placement(tmp_path):
     assert ordered.target_times == (0.25, 0.5, 1.0)
 
     app.run_spline()
-    destination = app.save_timed_directory(tmp_path / "saved_series")
+    assert app.cache is not None
+    destination = app.save_project(tmp_path / "saved_series")
     restored = load_timed_image_directory(destination)
     assert restored.target_times == (0.25, 0.5, 1.0)
     assert (destination / "spline_setup.pt").is_file()
     assert (destination / "trajectory.pt").is_file()
+    assert not (destination / "optimization.pt").exists()
+
+    loaded = SplinePlayground(zero_setup(source), device="cpu")
+    loaded.load_project(destination)
+    assert loaded.cache is not None
+    assert loaded.last_registration is None
+    assert loaded.parameters.model == "splines"
+    assert loaded.target_times == [0.25, 0.5, 1.0]
+    torch.testing.assert_close(loaded.cache.images, app.cache.images)
+    assert "trajectory" in loaded.status_text.get_text()
+    plt.close(loaded.fig)
     plt.close(app.fig)
 
 
@@ -1388,9 +1455,19 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
     assert classic.last_error is None
     assert classic.cache is not None
     assert classic.last_registration is not None
+    assert classic.last_registration.trajectory is classic.cache
     assert len(classic.last_registration.loss_stock) == 2
     assert torch.count_nonzero(classic.fields["initial_momentum"]) > 0
     assert torch.count_nonzero(classic.fields["initial_acceleration"]) == 0
+    classic_destination = classic.save_project(tmp_path / "classic_project")
+    loaded_classic = SplinePlayground(zero_setup(source), device="cpu")
+    loaded_classic.load_project(classic_destination)
+    assert loaded_classic.parameters.model == "classic"
+    assert loaded_classic.cache is not None
+    assert loaded_classic.last_registration is not None
+    assert loaded_classic.last_registration.trajectory is loaded_classic.cache
+    assert loaded_classic.last_registration.model == "classic"
+    plt.close(loaded_classic.fig)
     plt.close(classic.fig)
 
     splines = SplinePlayground(
@@ -1405,11 +1482,25 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
     assert splines.last_error is None
     assert splines.cache is not None
     assert splines.last_registration is not None
+    assert splines.last_registration.trajectory is splines.cache
     assert all(len(loss) == 2 for loss in splines.last_registration.loss_stock.values())
     assert torch.count_nonzero(splines.fields["initial_momentum"]) > 0
     assert "Optimized fields loaded" in splines.status_text.get_text()
-    destination = splines.save_timed_directory(tmp_path / "optimized_project")
+    destination = splines.save_project(tmp_path / "optimized_project")
     assert (destination / "optimization.pt").is_file()
+    loaded_splines = SplinePlayground(zero_setup(source), device="cpu")
+    loaded_splines.load_project(destination)
+    assert loaded_splines.cache is not None
+    assert loaded_splines.last_registration is not None
+    assert loaded_splines.last_registration.trajectory is loaded_splines.cache
+    for name, losses in splines.last_registration.loss_stock.items():
+        torch.testing.assert_close(
+            loaded_splines.last_registration.loss_stock[name],
+            losses,
+        )
+    copied = loaded_splines.save_project(tmp_path / "optimized_project_copy")
+    assert (copied / "optimization.pt").is_file()
+    plt.close(loaded_splines.fig)
     splines._invalidate("field changed")
     assert splines.last_registration is None
     plt.close(splines.fig)

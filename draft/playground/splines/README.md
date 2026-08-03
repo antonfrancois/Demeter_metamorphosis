@@ -32,7 +32,7 @@ resets. The status line reports progress, the compute device, and image size.
 - **Clear all fields** clears every initial and control field while preserving
   the images and parameters.
 
-Press `P` or click **Parameter Menu** for the categorized controls:
+Press `P` or click **Parameter** for the categorized controls:
 
 - **Model** selects Classic or Spline and contains `rho`, the operator, its
   parameters, the optimized-initial-field checkboxes, and an interactive
@@ -61,9 +61,9 @@ optimizes with LBFGS, then loads the optimized fields and a normal replayed
 trajectory into the same editor. Classic accepts Sobolev or Gaussian and uses
 one endpoint target. Spline requires Sobolev and uses every timed target.
 
-Press `M` or click **View / Overlay Menu** to open the three-column display
-menu. Its source column reuses the control-time line to select which control
-jerk field is displayed, without changing the control topology. That selector
+Press `M` or click **View** to open the three-column display. Its source
+column reuses the control-time line to select which control jerk field is
+displayed, without changing the control topology. That selector
 is shown only while **Control jerk** is the selected editable field. The current panel
 can show:
 
@@ -104,9 +104,9 @@ image. Node 0 is the source, marked `[S]`. Placing another image at node 0
 promotes it to source and moves the previous source into that image's former
 slot. Right-click a non-source row to unplace it.
 
-Press `L` or click **Load / Save** for scalar-field loading, complete-setup
-loading, complete-setup saving, and timed-project saving. Image loading is kept
-entirely in the separate Images menu.
+Press `L` or click **Load / Save** for exactly four actions: **Load field**,
+**Load project**, **Save field**, and **Save project**. Image loading is kept
+entirely in the separate Images view.
 
 A timed image directory has this portable form:
 
@@ -119,23 +119,40 @@ series/
 ```
 
 It can be loaded by the lab, by `--timed-images`, or directly as the `source`
-argument of `MetamorphosisSplines`. **Save timed project** writes this format
-plus `spline_setup.pt`, and, when available, `trajectory.pt` and
-`optimization.pt` in one atomic project directory.
+argument of `MetamorphosisSplines`. A saved project extends this format:
 
-**Save setup** stores source, all timed targets, editable fields, model and
-numerical parameters, and normalized control times in one `.pt` file. Version-1
-and version-2 setups remain loadable; their saved initial force is converted to
-initial acceleration. Version-1 single-target setups remain endpoint
-observations. Reopen a setup in the UI or on launch:
+```text
+project/
+  images.csv
+  source.png
+  target_001.png
+  spline_setup.pt   # always present
+  trajectory.pt     # present after Run or Register
+  optimization.pt   # present only when the trajectory came from Register
+```
+
+**Save project** detects those artifacts from the current application state and
+writes one atomic directory. **Load project** needs only that directory; it
+restores the setup, any computed trajectory, and optimization history when
+present. The exact image tensors come from `spline_setup.pt`; PNG files provide
+the portable timed-image representation.
+
+The standalone `Ctrl+S` setup shortcut stores source, all timed targets,
+editable fields, model and numerical parameters, and normalized control times
+in one `.pt` file; `Ctrl+O` reloads it. Version-1 and version-2 setups remain
+loadable; their saved initial force is converted to initial acceleration.
+Version-1 single-target setups remain endpoint observations. Reopen a setup on
+launch:
 
 ```bash
 .venv/bin/python -m draft.playground.splines --setup draft/spline_setup.pt
 ```
 
+**Save field** stores the currently displayed editable field as a `.pt` file.
 **Load field** accepts scalar `.pt`, `.pth`, `.npy`, and `.npz` files supported
-by `field_playground_core.py`. Loaded fields are resized to the source image.
-The same operation is available without a GUI file dialog, for example:
+by `field_playground_core.py` and replaces the currently selected field. Loaded
+fields are resized to the source image. The same load operation is available
+without a GUI file dialog, for example:
 
 ```bash
 .venv/bin/python -m draft.playground.splines m0t m1c \
@@ -150,7 +167,7 @@ field; control indices are zero-based.
 - `core.py`: validation, setup persistence, legacy force-to-acceleration migration,
   integration, and detached node-aligned trajectory caches.
 - `registration.py`: classic/spline optimizer adapters and normal trajectory replay.
-- `project_io.py`: atomic timed-image project saving.
+- `project_io.py`: atomic project saving, validation, and loading.
 - `editor.py`: reusable scalar painting and per-field undo history.
 - `app.py`: application state and interaction coordination.
 - `images.py`: image discovery and loading.

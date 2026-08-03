@@ -44,7 +44,7 @@ def build_file_menu(
     backdrop = build_modal_backdrop(
         fig,
         "LOAD / SAVE",
-        "Load fields or setups, and save complete work.",
+        "Load or save fields and complete projects.",
     )
     panel = fig.add_axes([0.28, 0.20, 0.44, 0.62], facecolor=PANEL_COLOR, zorder=101)
     panel.set_xticks([])
@@ -76,7 +76,7 @@ def build_file_menu(
         buttons.append(button)
     close = Button(
         fig.add_axes([0.42, 0.10, 0.16, 0.055], zorder=102),
-        "RETURN TO IMAGES  [L]",
+        "RETURN  [L]",
         color="#168a8a",
         hovercolor="#20a3a3",
     )

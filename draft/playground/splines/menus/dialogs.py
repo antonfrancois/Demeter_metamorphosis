@@ -12,8 +12,8 @@ def choose_file(
     *,
     output_path: Path | None,
 ) -> Path | None:
-    save = purpose == "save_setup"
-    if save:
+    save = purpose in ("save_setup", "save_field")
+    if purpose == "save_setup":
         title = "Save spline setup"
         initial = output_path or PROJECT_ROOT / "draft" / "spline_setup.pt"
         qt_filter = "PyTorch setup (*.pt)"
@@ -23,11 +23,16 @@ def choose_file(
         initial = PROJECT_ROOT / "draft"
         qt_filter = "PyTorch setup (*.pt *.pth);;All files (*)"
         tk_types = (("PyTorch setup", "*.pt *.pth"), ("All files", "*"))
-    elif purpose == "field":
+    elif purpose == "load_field":
         title = "Load scalar field"
         initial = PROJECT_ROOT / "draft"
         qt_filter = "Field files (*.pt *.pth *.npy *.npz);;All files (*)"
         tk_types = (("Field files", "*.pt *.pth *.npy *.npz"), ("All files", "*"))
+    elif purpose == "save_field":
+        title = "Save scalar field"
+        initial = PROJECT_ROOT / "draft" / "field.pt"
+        qt_filter = "PyTorch field (*.pt *.pth)"
+        tk_types = (("PyTorch field", "*.pt *.pth"),)
     else:
         title = f"Load {purpose}"
         initial = IMAGE_BANK
@@ -117,9 +122,16 @@ def choose_files() -> tuple[Path, ...]:
     raise RuntimeError("No multiple-file dialog is available for this backend.")
 
 
-def choose_directory(*, save: bool = False) -> Path | None:
-    """Choose a timed-image directory to load or a new directory path to save."""
-    title = "Save timed image directory" if save else "Load timed image directory"
+def choose_directory(purpose: str = "load_timed_images") -> Path | None:
+    """Choose an existing input directory or a new project directory path."""
+    if purpose not in ("load_timed_images", "load_project", "save_project"):
+        raise ValueError(f"unknown directory dialog purpose {purpose!r}")
+    save = purpose == "save_project"
+    title = {
+        "load_timed_images": "Load timed image directory",
+        "load_project": "Load spline project",
+        "save_project": "Save spline project",
+    }[purpose]
     initial = PROJECT_ROOT / "draft"
     backend = plt.get_backend().lower()
     if "qt" in backend:
@@ -128,7 +140,7 @@ def choose_directory(*, save: bool = False) -> Path | None:
 
             if save:
                 filename, _ = QtWidgets.QFileDialog.getSaveFileName(
-                    None, title, str(initial / "spline_images"), "Directory name (*)"
+                    None, title, str(initial / "spline_project"), "Directory name (*)"
                 )
             else:
                 filename = QtWidgets.QFileDialog.getExistingDirectory(
@@ -149,7 +161,7 @@ def choose_directory(*, save: bool = False) -> Path | None:
                     filename = filedialog.asksaveasfilename(
                         title=title,
                         initialdir=str(initial),
-                        initialfile="spline_images",
+                        initialfile="spline_project",
                     )
                 else:
                     filename = filedialog.askdirectory(

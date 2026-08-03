@@ -97,13 +97,13 @@ def build_workspace(
 
     parameter_button = Button(
         fig.add_axes([0.805, 0.78, 0.17, 0.05]),
-        "PARAMETER MENU  [P]",
+        "PARAMETER  [P]",
         color=PANEL_COLOR,
         hovercolor="#d7e4e2",
     )
     menu_button = Button(
         fig.add_axes([0.805, 0.715, 0.17, 0.05]),
-        "VIEW / OVERLAY MENU  [M]",
+        "VIEW  [M]",
         color=PANEL_COLOR,
         hovercolor="#d7e4e2",
     )
@@ -179,7 +179,7 @@ def build_workspace(
     fig.text(
         0.012,
         0.975,
-        "P  parameters\nM  view menu\nI  images\nL  files\nR  run\nG  register\n"
+        "P  parameter\nM  view\nI  images\nL  files\nR  run\nG  register\n"
         "Arrow keys  move in time\n[ / ]  knots\n"
         "Mouse L/R  paint +/-\nShift-drag  erase",
         ha="left",

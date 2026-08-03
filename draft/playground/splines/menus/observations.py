@@ -211,7 +211,7 @@ def build_observation_menu(
     remove = button([0.63, 0.20, 0.19, 0.06], "REMOVE SELECTED IMAGE")
     close = Button(
         fig.add_axes([0.42, 0.07, 0.16, 0.055], zorder=102),
-        "RETURN TO IMAGES",
+        "RETURN",
         color="#168a8a",
         hovercolor="#20a3a3",
     )
