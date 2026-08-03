@@ -12,12 +12,14 @@ def choose_file(
     *,
     output_path: Path | None,
 ) -> Path | None:
-    save = purpose in ("save_setup", "save_field")
+    save = purpose in ("save_setup", "save_field", "save_video")
+    default_extension = ""
     if purpose == "save_setup":
         title = "Save spline setup"
         initial = output_path or PROJECT_ROOT / "draft" / "spline_setup.pt"
         qt_filter = "PyTorch setup (*.pt)"
         tk_types = (("PyTorch setup", "*.pt"),)
+        default_extension = ".pt"
     elif purpose == "load_setup":
         title = "Load spline setup"
         initial = PROJECT_ROOT / "draft"
@@ -33,6 +35,13 @@ def choose_file(
         initial = PROJECT_ROOT / "draft" / "field.pt"
         qt_filter = "PyTorch field (*.pt *.pth)"
         tk_types = (("PyTorch field", "*.pt *.pth"),)
+        default_extension = ".pt"
+    elif purpose == "save_video":
+        title = "Save trajectory video"
+        initial = PROJECT_ROOT / "draft" / "trajectory.mp4"
+        qt_filter = "MP4 video (*.mp4)"
+        tk_types = (("MP4 video", "*.mp4"),)
+        default_extension = ".mp4"
     else:
         title = f"Load {purpose}"
         initial = IMAGE_BANK
@@ -68,7 +77,7 @@ def choose_file(
                 }
                 if save:
                     options["initialfile"] = Path(initial).name
-                    options["defaultextension"] = ".pt"
+                    options["defaultextension"] = default_extension
                     filename = filedialog.asksaveasfilename(**options)
                 else:
                     filename = filedialog.askopenfilename(**options)

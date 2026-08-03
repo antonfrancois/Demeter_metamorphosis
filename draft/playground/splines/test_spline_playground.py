@@ -866,6 +866,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
         "LOAD PROJECT",
         "SAVE FIELD",
         "SAVE PROJECT",
+        "SAVE VIDEO",
     ]
 
     app.input_radio.set_active(3)

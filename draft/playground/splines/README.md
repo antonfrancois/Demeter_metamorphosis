@@ -105,9 +105,9 @@ image. Node 0 is the source, marked `[S]`. Placing another image at node 0
 promotes it to source and moves the previous source into that image's former
 slot. Right-click a non-source row to unplace it.
 
-Press `L` or click **Load / Save** for exactly four actions: **Load field**,
-**Load project**, **Save field**, and **Save project**. Image loading is kept
-entirely in the separate Images view.
+Press `L` or click **Load / Save** for **Load field**, **Load project**, **Save
+field**, **Save project**, and **Save video**. Image loading is kept entirely in
+the separate Images view.
 
 A timed image directory has this portable form:
 
@@ -137,6 +137,13 @@ writes one atomic directory. **Load project** needs only that directory; it
 restores the setup, any computed trajectory, and optimization history when
 present. The exact image tensors come from `spline_setup.pt`; PNG files provide
 the portable timed-image representation.
+
+**Save video** requires a computed or loaded trajectory and exports an H.264
+MP4 of exactly the current panel: the selected full/deformation/photometric
+image, image visibility, field overlay, vector spacing, title, and energy
+footer. The video lasts four seconds, with a one-second freeze on each endpoint
+and the trajectory over the middle two seconds. MP4 export requires `ffmpeg` on
+the system `PATH` and fails with a clear error when it is unavailable.
 
 The standalone `Ctrl+S` setup shortcut stores source, all timed targets,
 editable fields, model and numerical parameters, and normalized control times
@@ -173,6 +180,7 @@ field; control indices are zero-based.
 - `app.py`: application state and interaction coordination.
 - `images.py`: image discovery and loading.
 - `rendering.py`: panel rendering, overlays, and LaTeX diagnostics.
+- `video_export.py`: current-panel frame scheduling, capture, and MP4 encoding.
 - `styles.py`: shared colors and display metadata.
 - `workspace.py`: persistent image panels, sidebar, timeline, and status layout.
 - `menus/`: focused parameter, control-time, image, observation-placement,

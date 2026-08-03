@@ -66,6 +66,7 @@ from .styles import (
     TARGET_ACTIVE_COLOR,
     TARGET_COLOR,
 )
+from .video_export import save_current_panel_video
 from .workspace import build_workspace
 
 
@@ -326,6 +327,7 @@ class SplinePlayground:
             ("LOAD PROJECT", lambda: self._run_file_action(self.load_project_dialog)),
             ("SAVE FIELD", lambda: self._run_file_action(self.save_field_dialog)),
             ("SAVE PROJECT", lambda: self._run_file_action(self.save_project_dialog)),
+            ("SAVE VIDEO", lambda: self._run_file_action(self.save_video_dialog)),
         )
         self.file_menu = build_file_menu(self.fig, actions)
         self.file_menu.close_button.on_clicked(
@@ -1650,6 +1652,26 @@ class SplinePlayground:
         self.fig.canvas.draw_idle()
         return path
 
+    def save_video(self, path: str | Path) -> Path:
+        if self.cache is None:
+            raise ValueError("run or load a trajectory before saving a video")
+        self._set_status("Saving current trajectory video...")
+        self.fig.canvas.draw()
+        destination = save_current_panel_video(
+            path,
+            figure=self.fig,
+            renderer=self.renderer,
+            source=self.source,
+            trajectory=self.cache,
+            image_mode=self.current_image_mode,
+            current_field=self.current_field,
+            show_image=self.show_current_image,
+            restore_index=self._time_index(),
+        )
+        self._set_status(f"Saved video to {destination}.")
+        self.fig.canvas.draw_idle()
+        return destination
+
     def apply_setup(self, setup: SplineSetup) -> None:
         if setup.parameters.n_steps > MAX_STEPS:
             raise ValueError(
@@ -1841,6 +1863,11 @@ class SplinePlayground:
         path = self._choose_file("save_field")
         if path is not None:
             self._dialog_action(self.save_field, path, "FIELD SAVE")
+
+    def save_video_dialog(self) -> None:
+        path = self._choose_file("save_video")
+        if path is not None:
+            self._dialog_action(self.save_video, path, "VIDEO SAVE")
 
     def load_setup_dialog(self) -> None:
         path = self._choose_file("load_setup")

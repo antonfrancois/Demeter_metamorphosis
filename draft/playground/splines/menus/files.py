@@ -44,7 +44,7 @@ def build_file_menu(
     backdrop = build_modal_backdrop(
         fig,
         "LOAD / SAVE",
-        "Load or save fields and complete projects.",
+        "Load or save fields, projects, and trajectory video.",
     )
     panel = fig.add_axes([0.28, 0.20, 0.44, 0.62], facecolor=PANEL_COLOR, zorder=101)
     panel.set_xticks([])
@@ -62,7 +62,12 @@ def build_file_menu(
     buttons = []
     for index, (label, action) in enumerate(actions):
         row, column = divmod(index, 2)
-        position = [0.33 + 0.18 * column, 0.60 - 0.13 * row, 0.16, 0.075]
+        left = (
+            0.42
+            if index == len(actions) - 1 and len(actions) % 2
+            else 0.33 + 0.18 * column
+        )
+        position = [left, 0.60 - 0.13 * row, 0.16, 0.075]
         button = Button(
             fig.add_axes(position, zorder=102),
             label,
