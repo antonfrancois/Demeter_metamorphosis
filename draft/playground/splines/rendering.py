@@ -197,11 +197,7 @@ class SplineRenderer:
             source[0, 0] if show_image else torch.zeros_like(source[0, 0])
         )
         self.source_image.set_clim(0, 1)
-        field_class = (
-            "primal"
-            if input_kind in ("initial_momentum", "initial_acceleration")
-            else "dual"
-        )
+        field_class = "primal" if input_kind == "initial_acceleration" else "dual"
         self.plot_field(self.source_ax, field, field_class)
         title = self.input_title(input_kind, control_index, parameters)
         if not show_image:
@@ -213,8 +209,8 @@ class SplineRenderer:
             pad=9,
         )
         if input_kind == "initial_momentum":
-            expression = r"\Vert p_0\Vert_{I_0}^2"
-            value = 0.0 if torch.count_nonzero(field) == 0 else metric_squared_norm(
+            expression = r"\Vert p_0\Vert_{I_0^*}^2"
+            value = 0.0 if torch.count_nonzero(field) == 0 else cometric_squared_norm(
                 source, field, parameters
             )
         elif input_kind == "initial_acceleration":
@@ -312,7 +308,7 @@ class SplineRenderer:
             self.current_footer.set_text("")
             return
         expression = {
-            "momentum": r"\Vert p(t)\Vert_{I_t}^2",
+            "momentum": r"\Vert p(t)\Vert_{I_t^*}^2",
             "force": r"\Vert u(t)\Vert_{I_t^*}^2",
             "acceleration": r"\Vert a(t)\Vert_{I_t}^2",
             "jerk": r"\Vert r(t)\Vert_{I_t^*}^2",

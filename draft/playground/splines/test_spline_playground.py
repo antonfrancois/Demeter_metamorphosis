@@ -231,7 +231,7 @@ def test_run_uses_initial_acceleration_and_aligns_interval_fields_to_nodes():
         (
             "momentum",
             trajectory.momentum[0:1],
-            initial_cometric.inverse(trajectory.momentum[0:1], eps=parameters.cg_eps),
+            initial_cometric(trajectory.momentum[0:1]),
         ),
         (
             "force",
@@ -348,6 +348,32 @@ def test_classic_run_matches_geodesic_spline_and_zeroes_spline_fields():
         assert torch.count_nonzero(getattr(classic, name)) == 0
         assert torch.count_nonzero(classic.field_energies[name]) == 0
     assert progress == [(1, 3), (2, 3), (3, 3)]
+
+
+def test_classic_lddmm_momentum_energy_uses_the_cometric():
+    torch.manual_seed(131)
+    source = torch.rand(1, 1, 7, 8, dtype=torch.float64)
+    parameters = SplineParameters(
+        rho=1,
+        gamma=0.3,
+        n_steps=2,
+        model="classic",
+    )
+    setup = zero_setup(source, source, parameters)
+    setup.initial_momentum.normal_(std=0.01)
+
+    trajectory = run_classic(setup, device="cpu")
+    kernel = SobolevFluidOperator(alpha=0.2, beta=0.2, gamma=0.3)
+    expected = []
+    for image, momentum in zip(trajectory.images, trajectory.momentum):
+        cometric = CometricOperator(image[None], 1, kernel)
+        expected.append((momentum * cometric(momentum[None])[0]).sum())
+
+    torch.testing.assert_close(
+        trajectory.field_energies["momentum"],
+        torch.stack(expected),
+    )
+    assert torch.isfinite(trajectory.field_energies["momentum"]).all()
 
 
 def test_classic_run_rejects_drawn_non_momentum_fields():
@@ -603,7 +629,7 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
         )
     )
     assert torch.count_nonzero(app.fields["initial_momentum"]) > 0
-    assert r"\Vert p_0\Vert_{I_0}^2" in app.source_footer.get_text()
+    assert r"\Vert p_0\Vert_{I_0^*}^2" in app.source_footer.get_text()
     assert app.cache is None
     app.clear()
     assert torch.count_nonzero(app.fields["initial_momentum"]) == 0
@@ -637,7 +663,7 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
     app.current_radio.set_active(1)
     app.set_time_index(4)
     assert app.current_ax.get_title().endswith("$p$")
-    assert r"\Vert p(t)\Vert_{I_t}^2" in app.current_footer.get_text()
+    assert r"\Vert p(t)\Vert_{I_t^*}^2" in app.current_footer.get_text()
     assert r"\mathrm{MSE}" in app.target_footer.get_text()
     assert "device: cpu" in app.status_text.get_text()
     assert "size: 18x20" in app.status_text.get_text()
@@ -779,7 +805,8 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.input_radio.value_selected == r"Acceleration  $a_0$"
     assert "initial acceleration" in app.source_ax.get_title()
     assert r"\Vert a_0\Vert_{I_0}^2" in app.source_footer.get_text()
-    assert FIELD_CLASS["momentum"] == FIELD_CLASS["acceleration"] == "primal"
+    assert FIELD_CLASS["momentum"] == "dual"
+    assert FIELD_CLASS["acceleration"] == "primal"
     app.input_radio.set_active(3)
     assert app.input_kind == "initial_jerk"
     assert app.editor.active_key == "initial_jerk"

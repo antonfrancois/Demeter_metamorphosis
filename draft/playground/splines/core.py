@@ -706,13 +706,11 @@ def _scalar_field_energies(
                 kernel,
                 dx_convention="pixel",
             )
+            p_energy = (p * cometric(p[None])[0]).sum()
             if parameters.rho == 1:
-                p_energy = image.new_tensor(float("nan"))
                 a_energy = image.new_tensor(float("nan"))
                 u_energy = (u * cometric(u[None])[0]).sum()
             else:
-                p_covector = cometric.inverse(p[None], eps=parameters.cg_eps)[0]
-                p_energy = (p * p_covector).sum()
                 u_energy = a_energy = (u * a).sum()
             r_energy = (r * cometric(r[None])[0]).sum()
             for name, value in (

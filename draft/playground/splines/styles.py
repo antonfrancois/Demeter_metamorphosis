@@ -45,7 +45,7 @@ CURRENT_IMAGE_LABELS = (
     r"Photometric only  $I_{\mathrm{phot}}$",
 )
 FIELD_CLASS = {
-    "momentum": "primal",
+    "momentum": "dual",
     "force": "dual",
     "acceleration": "primal",
     "jerk": "dual",
