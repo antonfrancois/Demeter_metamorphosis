@@ -33,7 +33,8 @@ def _load_grayscale(path: Path) -> Tensor:
         or array.max() > 1
     ):
         raise ValueError(f"image {path} must be a finite grayscale image")
-    image = torch.as_tensor(np.asarray(array).copy()).float()
+    # Raster rows run top-to-bottom; Demeter tensors use a lower-left origin.
+    image = torch.as_tensor(np.flip(np.asarray(array), axis=0).copy()).float()
     return image[None, None].contiguous()
 
 
@@ -147,7 +148,7 @@ def save_timed_image_directory(
         for filename, _time, image in records:
             mpimg.imsave(
                 temporary / filename,
-                image[0, 0].detach().cpu().numpy(),
+                image[0, 0].detach().cpu().flip(0).numpy(),
                 cmap="gray",
                 vmin=0,
                 vmax=1,
