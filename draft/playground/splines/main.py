@@ -50,7 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--control-steps",
         nargs="*",
         type=int,
-        help="Interior mesh nodes; pass the flag without values for no controls",
+        help="Interior mesh nodes (default: none)",
     )
     parser.add_argument("--alpha", type=float)
     parser.add_argument("--beta", type=float)
@@ -165,10 +165,7 @@ def main(argv: list[str] | None = None) -> SplinePlayground:
             tuple(source.shape[-2:]),
         )
         n_steps = args.steps if args.steps is not None else 16
-        if args.control_steps is None:
-            control_steps = (n_steps // 2,) if n_steps > 1 else ()
-        else:
-            control_steps = tuple(args.control_steps)
+        control_steps = tuple(args.control_steps or ())
         parameters = SplineParameters(
             alpha=args.alpha if args.alpha is not None else 0.2,
             beta=args.beta if args.beta is not None else 0.2,

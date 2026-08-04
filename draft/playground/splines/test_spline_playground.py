@@ -47,7 +47,11 @@ from draft.playground.splines.core import (
     zero_setup,
 )
 from draft.playground.splines.images import load_image
-from draft.playground.splines.main import _parameter_overrides, _replace_parameters
+from draft.playground.splines.main import (
+    _parameter_overrides,
+    _replace_parameters,
+    main as launch_playground,
+)
 from draft.playground.splines.menus.observations import ObservationTimeEditor
 from draft.playground.splines.registration import register_spline
 from draft.playground.splines.styles import FIELD_CLASS, INK_COLOR
@@ -103,6 +107,22 @@ def test_parameters_require_ordered_interior_control_nodes():
             device="cpu",
             progress_callback=object(),  # type: ignore[arg-type]
         )
+
+
+def test_new_playground_defaults_to_no_control_times(tmp_path):
+    source = tmp_path / "source.png"
+    target = tmp_path / "target.png"
+    plt.imsave(source, np.zeros((4, 5)), cmap="gray", vmin=0, vmax=1)
+    plt.imsave(target, np.ones((4, 5)), cmap="gray", vmin=0, vmax=1)
+
+    app = launch_playground(
+        [str(source), str(target), "--device", "cpu", "--no-show"]
+    )
+
+    assert app.parameters.control_times == ()
+    assert app.parameters.control_steps == ()
+    assert app.make_setup().control_jerks.shape[0] == 0
+    plt.close(app.fig)
 
 
 def test_observation_menu_disambiguates_duplicate_image_names():
