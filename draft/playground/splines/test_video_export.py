@@ -24,6 +24,17 @@ from draft.playground.splines.core import SplineParameters, zero_setup
 
 
 def test_trajectory_video_schedule_is_always_four_seconds():
+    assert video_export.DEFAULT_VIDEO_FPS == 30
+    assert video_export.trajectory_video_filename(None, True) == "trajectory_images.mp4"
+    assert (
+        video_export.trajectory_video_filename("velocity", True)
+        == "trajectory_images_velocity.mp4"
+    )
+    assert (
+        video_export.trajectory_video_filename("velocity", False)
+        == "trajectory_velocity.mp4"
+    )
+
     for fps in (1, 10, 25, 60):
         indices = video_export.trajectory_frame_indices(7, fps)
         assert len(indices) == 4 * fps
@@ -39,9 +50,9 @@ def test_trajectory_video_schedule_is_always_four_seconds():
         video_export.trajectory_frame_indices(2, 0)
 
 
-def test_save_video_uses_current_panel_and_restores_it(tmp_path, monkeypatch):
-    source = torch.zeros(1, 1, 6, 8)
-    source[..., 2:5, 2:6] = 0.7
+def test_save_video_uses_image_canvas_and_restores_current_panel(tmp_path, monkeypatch):
+    source = torch.zeros(1, 1, 6, 6)
+    source[..., 2:5, 1:5] = 0.7
     setup = zero_setup(
         source,
         torch.roll(source, shifts=1, dims=-1),
@@ -51,6 +62,18 @@ def test_save_video_uses_current_panel_and_restores_it(tmp_path, monkeypatch):
     app = SplinePlayground(setup, device="cpu")
     with pytest.raises(ValueError, match="run or load"):
         app.save_video(tmp_path / "missing.mp4")
+
+    dialog_request = []
+    monkeypatch.setattr(
+        app,
+        "_choose_file",
+        lambda purpose, **options: dialog_request.append((purpose, options)),
+    )
+    app.current_field = "velocity"
+    app.save_video_dialog()
+    assert dialog_request == [
+        ("save_video", {"initial_name": "trajectory_images_velocity.mp4"})
+    ]
 
     app.run_spline()
     assert app.cache is not None
@@ -111,6 +134,7 @@ def test_save_video_uses_current_panel_and_restores_it(tmp_path, monkeypatch):
         frame_directory = Path(command[command.index("-i") + 1]).parent
         frames = sorted(frame_directory.glob("frame_*.png"))
         assert len(frames) == frame_count
+        assert plt.imread(frames[fps]).shape[:2] == (720, 720)
         assert all(frame.read_bytes() == frames[0].read_bytes() for frame in frames[:fps])
         assert all(frame.read_bytes() == frames[-1].read_bytes() for frame in frames[-fps:])
         Path(command[-1]).write_bytes(b"mock mp4")

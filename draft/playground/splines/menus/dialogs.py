@@ -11,6 +11,7 @@ def choose_file(
     purpose: str,
     *,
     output_path: Path | None,
+    initial_name: str | None = None,
 ) -> Path | None:
     save = purpose in ("save_setup", "save_field", "save_video")
     default_extension = ""
@@ -38,7 +39,7 @@ def choose_file(
         default_extension = ".pt"
     elif purpose == "save_video":
         title = "Save trajectory video"
-        initial = PROJECT_ROOT / "draft" / "trajectory.mp4"
+        initial = PROJECT_ROOT / "draft" / (initial_name or "trajectory_images.mp4")
         qt_filter = "MP4 video (*.mp4)"
         tk_types = (("MP4 video", "*.mp4"),)
         default_extension = ".mp4"

@@ -41,7 +41,8 @@ def load_image(
         array = np.dot(array[..., :3], [0.2989, 0.5870, 0.1140])
     if not np.isfinite(array).all():
         raise ValueError(f"image {path} contains non-finite values")
-    image = coerce_image(np.asarray(array).copy())
+    # Raster rows run top-to-bottom; Demeter tensors use a lower-left origin.
+    image = coerce_image(np.flip(np.asarray(array), axis=0).copy())
     if size is not None and tuple(image.shape[-2:]) != tuple(size):
         image = F.interpolate(
             image,

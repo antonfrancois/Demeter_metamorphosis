@@ -40,7 +40,6 @@ from .menus import (
     build_observation_menu,
     build_overlay_menu,
     build_parameter_menu,
-    format_lbfgs_learning_rate,
 )
 from .menus.common import set_radio_active_color
 from .menus.dialogs import choose_directory, choose_file, choose_files
@@ -49,10 +48,7 @@ from .registration import (
     register_classic as optimize_classic,
     register_spline as optimize_spline,
 )
-from .project_io import (
-    load_project as load_project_directory,
-    save_project as save_project_directory,
-)
+from .project_io import save_project as save_timed_project
 from .rendering import SplineRenderer, field_color
 from .styles import (
     CURRENT_FIELDS,
@@ -66,7 +62,7 @@ from .styles import (
     TARGET_ACTIVE_COLOR,
     TARGET_COLOR,
 )
-from .video_export import save_current_panel_video
+from .video_export import save_current_panel_video, trajectory_video_filename
 from .workspace import build_workspace
 
 
@@ -324,9 +320,9 @@ class SplinePlayground:
     def _build_file_menu(self) -> None:
         actions = (
             ("LOAD FIELD", lambda: self._run_file_action(self.load_field_dialog)),
-            ("LOAD PROJECT", lambda: self._run_file_action(self.load_project_dialog)),
-            ("SAVE FIELD", lambda: self._run_file_action(self.save_field_dialog)),
-            ("SAVE PROJECT", lambda: self._run_file_action(self.save_project_dialog)),
+            ("LOAD COMPLETE SETUP", lambda: self._run_file_action(self.load_setup_dialog)),
+            ("SAVE COMPLETE SETUP", lambda: self._run_file_action(self.save_setup_dialog)),
+            ("SAVE TIMED PROJECT", lambda: self._run_file_action(self.save_timed_directory_dialog)),
             ("SAVE VIDEO", lambda: self._run_file_action(self.save_video_dialog)),
         )
         self.file_menu = build_file_menu(self.fig, actions)
@@ -742,9 +738,7 @@ class SplinePlayground:
         self._on_parameter_change(value)
 
     def _on_lbfgs_lr_change(self, value: float) -> None:
-        self.lbfgs_lr_slider.valtext.set_text(
-            format_lbfgs_learning_rate(10 ** float(value))
-        )
+        self.lbfgs_lr_slider.valtext.set_text(f"{10 ** float(value):.3g}")
         self._on_parameter_change(value)
 
     def _on_optimized_fields_change(self, _label: str) -> None:
@@ -926,7 +920,6 @@ class SplinePlayground:
     def _update_target_mse_cache(self) -> None:
         if self.cache is None:
             return
-        previous_cache = self.cache
         targets = self._targets.to(dtype=self.cache.images.dtype)
         mse = torch.stack(
             [
@@ -935,14 +928,6 @@ class SplinePlayground:
             ]
         )
         self.cache = replace(self.cache, target_mse=mse)
-        if (
-            self.last_registration is not None
-            and self.last_registration.trajectory is previous_cache
-        ):
-            self.last_registration = replace(
-                self.last_registration,
-                trajectory=self.cache,
-            )
 
     def _sync_target_to_time(self) -> None:
         placed = sorted(
@@ -1294,7 +1279,6 @@ class SplinePlayground:
         self.fig.canvas.flush_events()
         self._last_progress_draw = perf_counter()
         self.last_error = None
-        self.last_registration = None
         try:
             setup = self.make_setup(model)
             self._running_label = label
@@ -1309,6 +1293,7 @@ class SplinePlayground:
                 self._set_targets_from_setup(setup)
             else:
                 self._update_target_mse_cache()
+            self.last_registration = None
             self._set_status(
                 f"{label.capitalize()} complete in {trajectory.elapsed_seconds:.3g}s."
             )
@@ -1343,9 +1328,7 @@ class SplinePlayground:
         self.editor.cancel()
         self._set_workspace_active(False)
         model_label = "spline" if model == "splines" else model
-        start_message = f"Starting {model_label} metamorphosis..."
-        print(start_message, flush=True)
-        self._set_status(start_message)
+        self._set_status(f"Optimizing {model_label} from the images...")
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
         self._last_progress_draw = perf_counter()
@@ -1468,9 +1451,18 @@ class SplinePlayground:
         self._render_metrics()
         self.fig.canvas.draw_idle()
 
-    def _choose_file(self, purpose: str) -> Path | None:
+    def _choose_file(
+        self,
+        purpose: str,
+        *,
+        initial_name: str | None = None,
+    ) -> Path | None:
         try:
-            return choose_file(purpose, output_path=self.output_path)
+            return choose_file(
+                purpose,
+                output_path=self.output_path,
+                initial_name=initial_name,
+            )
         except RuntimeError as error:
             self._set_status(str(error))
             self.fig.canvas.draw_idle()
@@ -1580,16 +1572,9 @@ class SplinePlayground:
         self.apply_setup(setup)
         self._set_status(f"Loaded timed image directory {Path(path).expanduser()}.")
 
-    def save_project(self, path: str | Path) -> Path:
-        setup = self.make_setup(preserve_targets=True)
+    def save_timed_directory(self, path: str | Path) -> Path:
+        setup = self.make_setup("splines")
         trajectory = self.cache
-        registration = (
-            self.last_registration
-            if trajectory is not None
-            and self.last_registration is not None
-            and self.last_registration.trajectory is trajectory
-            else None
-        )
         if trajectory is not None:
             timed_indices = [
                 (float(time), index)
@@ -1601,58 +1586,15 @@ class SplinePlayground:
                 trajectory,
                 target_mse=trajectory.target_mse[order],
             )
-        destination = save_project_directory(
+        destination = save_timed_project(
             setup,
             path,
             trajectory=trajectory,
-            registration=registration,
+            registration=self.last_registration,
         )
-        self._set_status(f"Saved project to {destination}.")
+        self._set_status(f"Saved timed image project to {destination}.")
         self.fig.canvas.draw_idle()
         return destination
-
-    def load_project(self, path: str | Path) -> None:
-        project = load_project_directory(path)
-        self.apply_setup(project.setup)
-        self.cache = project.trajectory
-        self.last_registration = project.registration
-        self.last_error = None
-        artifacts = ["setup"]
-        if self.cache is not None:
-            artifacts.append("trajectory")
-        if self.last_registration is not None:
-            artifacts.append("optimization")
-        self._set_status(
-            f"Loaded project {Path(path).expanduser()} ({', '.join(artifacts)})."
-        )
-        self._render()
-
-    def load_field(self, path: str | Path) -> None:
-        field = load_scalar_field(
-            path,
-            self.source.shape[-2:],
-            dtype=self.source.dtype,
-        )
-        self.editor.replace(field)
-
-    def save_field(self, path: str | Path) -> Path:
-        path = Path(path).expanduser()
-        if not path.suffix:
-            path = path.with_suffix(".pt")
-        path.parent.mkdir(parents=True, exist_ok=True)
-        role = self._active_field_key()
-        torch.save(
-            {
-                "format_version": 1,
-                "field": self.editor.field.detach().cpu().clone(),
-                "field_kind": "a" if role == "initial_acceleration" else "u",
-                "field_role": role,
-            },
-            path,
-        )
-        self._set_status(f"Saved {role} field to {path}.")
-        self.fig.canvas.draw_idle()
-        return path
 
     def save_video(self, path: str | Path) -> Path:
         if self.cache is None:
@@ -1673,6 +1615,14 @@ class SplinePlayground:
         self._set_status(f"Saved video to {destination}.")
         self.fig.canvas.draw_idle()
         return destination
+
+    def load_field(self, path: str | Path) -> None:
+        field = load_scalar_field(
+            path,
+            self.source.shape[-2:],
+            dtype=self.source.dtype,
+        )
+        self.editor.replace(field)
 
     def apply_setup(self, setup: SplineSetup) -> None:
         if setup.parameters.n_steps > MAX_STEPS:
@@ -1757,7 +1707,7 @@ class SplinePlayground:
                 padding=1,
             )
             self.lbfgs_lr_slider.valtext.set_text(
-                format_lbfgs_learning_rate(self.parameters.lbfgs_lr)
+                f"{self.parameters.lbfgs_lr:.3g}"
             )
             self.steps_slider.valmin = 1
             self.steps_slider.valmax = MAX_STEPS
@@ -1838,22 +1788,13 @@ class SplinePlayground:
             self._set_status(f"DIRECTORY LOAD ERROR: {type(error).__name__}: {error}")
             self.fig.canvas.draw_idle()
 
-    def load_project_dialog(self) -> None:
-        try:
-            path = choose_directory("load_project")
-            if path is not None:
-                self.load_project(path)
-        except Exception as error:
-            self._set_status(f"PROJECT LOAD ERROR: {type(error).__name__}: {error}")
-            self.fig.canvas.draw_idle()
-
-    def save_project_dialog(self) -> None:
+    def save_timed_directory_dialog(self) -> None:
         try:
             path = choose_directory("save_project")
             if path is not None:
-                self.save_project(path)
+                self.save_timed_directory(path)
         except Exception as error:
-            self._set_status(f"PROJECT SAVE ERROR: {type(error).__name__}: {error}")
+            self._set_status(f"DIRECTORY SAVE ERROR: {type(error).__name__}: {error}")
             self.fig.canvas.draw_idle()
 
     def load_field_dialog(self) -> None:
@@ -1861,13 +1802,14 @@ class SplinePlayground:
         if path is not None:
             self._dialog_action(self.load_field, path, "FIELD LOAD")
 
-    def save_field_dialog(self) -> None:
-        path = self._choose_file("save_field")
-        if path is not None:
-            self._dialog_action(self.save_field, path, "FIELD SAVE")
-
     def save_video_dialog(self) -> None:
-        path = self._choose_file("save_video")
+        path = self._choose_file(
+            "save_video",
+            initial_name=trajectory_video_filename(
+                self.current_field,
+                self.show_current_image,
+            ),
+        )
         if path is not None:
             self._dialog_action(self.save_video, path, "VIDEO SAVE")
 

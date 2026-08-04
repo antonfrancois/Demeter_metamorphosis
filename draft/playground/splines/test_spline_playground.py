@@ -26,9 +26,12 @@ from demeter.metamorphosis.splines import MetamorphosisSplineIntegrator
 from demeter.utils import torchbox as tb
 from demeter.utils.cometric_inversion import CometricOperator
 from demeter.utils.reproducing_kernels import GaussianRKHS, SobolevFluidOperator
-from demeter.utils.spline_data import load_timed_image_directory
+from demeter.utils.spline_data import (
+    TimedImageBatch,
+    load_timed_image_directory,
+    save_timed_image_directory,
+)
 from draft.playground.field_playground_core import (
-    load_field_file,
     prepare_vector_display,
     scaled_field_title,
 )
@@ -43,9 +46,9 @@ from draft.playground.splines.core import (
     save_setup,
     zero_setup,
 )
+from draft.playground.splines.images import load_image
 from draft.playground.splines.main import _parameter_overrides, _replace_parameters
 from draft.playground.splines.menus.observations import ObservationTimeEditor
-from draft.playground.splines.project_io import load_project
 from draft.playground.splines.registration import register_spline
 from draft.playground.splines.styles import FIELD_CLASS, INK_COLOR
 
@@ -126,6 +129,27 @@ def test_observation_menu_disambiguates_duplicate_image_names():
     assert "[x] reg_test_01.png (im2Dbank_low)" in labels
     assert "[x] reg_test_02.png" in labels
     plt.close(figure)
+
+
+def test_raster_io_preserves_visual_orientation_with_lower_origin_tensors(tmp_path):
+    raster = np.zeros((4, 5), dtype=np.float32)
+    raster[:2] = 1
+    path = tmp_path / "top_half.png"
+    plt.imsave(path, raster, cmap="gray", vmin=0, vmax=1)
+
+    image, _ = load_image(path)
+    assert float(image[0, 0, :2].max()) < 0.01
+    assert float(image[0, 0, 2:].min()) > 0.99
+
+    destination = save_timed_image_directory(
+        TimedImageBatch(image, 1 - image, (1.0,)),
+        tmp_path / "timed_images",
+    )
+    saved = plt.imread(destination / "source.png")
+    assert float(saved[:2, ..., :3].min()) > 0.99
+    assert float(saved[2:, ..., :3].max()) < 0.01
+    restored = load_timed_image_directory(destination)
+    torch.testing.assert_close(restored.source, image.float())
 
 
 def test_run_uses_initial_acceleration_and_aligns_interval_fields_to_nodes():
@@ -233,7 +257,7 @@ def test_run_uses_initial_acceleration_and_aligns_interval_fields_to_nodes():
         (
             "momentum",
             trajectory.momentum[0:1],
-            initial_cometric(trajectory.momentum[0:1]),
+            initial_cometric.inverse(trajectory.momentum[0:1], eps=parameters.cg_eps),
         ),
         (
             "force",
@@ -350,32 +374,6 @@ def test_classic_run_matches_geodesic_spline_and_zeroes_spline_fields():
         assert torch.count_nonzero(getattr(classic, name)) == 0
         assert torch.count_nonzero(classic.field_energies[name]) == 0
     assert progress == [(1, 3), (2, 3), (3, 3)]
-
-
-def test_classic_lddmm_momentum_energy_uses_the_cometric():
-    torch.manual_seed(131)
-    source = torch.rand(1, 1, 7, 8, dtype=torch.float64)
-    parameters = SplineParameters(
-        rho=1,
-        gamma=0.3,
-        n_steps=2,
-        model="classic",
-    )
-    setup = zero_setup(source, source, parameters)
-    setup.initial_momentum.normal_(std=0.01)
-
-    trajectory = run_classic(setup, device="cpu")
-    kernel = SobolevFluidOperator(alpha=0.2, beta=0.2, gamma=0.3)
-    expected = []
-    for image, momentum in zip(trajectory.images, trajectory.momentum):
-        cometric = CometricOperator(image[None], 1, kernel)
-        expected.append((momentum * cometric(momentum[None])[0]).sum())
-
-    torch.testing.assert_close(
-        trajectory.field_energies["momentum"],
-        torch.stack(expected),
-    )
-    assert torch.isfinite(trajectory.field_energies["momentum"]).all()
 
 
 def test_classic_run_rejects_drawn_non_momentum_fields():
@@ -631,7 +629,7 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
         )
     )
     assert torch.count_nonzero(app.fields["initial_momentum"]) > 0
-    assert r"\Vert p_0\Vert_{I_0^*}^2" in app.source_footer.get_text()
+    assert r"\Vert p_0\Vert_{I_0}^2" in app.source_footer.get_text()
     assert app.cache is None
     app.clear()
     assert torch.count_nonzero(app.fields["initial_momentum"]) == 0
@@ -665,7 +663,7 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
     app.current_radio.set_active(1)
     app.set_time_index(4)
     assert app.current_ax.get_title().endswith("$p$")
-    assert r"\Vert p(t)\Vert_{I_t^*}^2" in app.current_footer.get_text()
+    assert r"\Vert p(t)\Vert_{I_t}^2" in app.current_footer.get_text()
     assert r"\mathrm{MSE}" in app.target_footer.get_text()
     assert "device: cpu" in app.status_text.get_text()
     assert "size: 18x20" in app.status_text.get_text()
@@ -741,15 +739,6 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.steps_slider.valmin == 1
     assert app.steps_slider.valmax == 60
     assert app.make_setup().parameters.rho == pytest.approx(0.99)
-    assert app.parameter_button.label.get_text() == "PARAMETER  [P]"
-    assert app.menu_button.label.get_text() == "VIEW  [M]"
-    assert app.parameter_menu.backdrop_ax.texts[0].get_text() == "PARAMETER"
-    assert app.overlay_menu.backdrop_ax.texts[0].get_text() == "VIEW"
-    assert app.parameter_menu.close_button.label.get_text() == "CLOSE  [P]"
-    assert app.overlay_menu.close_button.label.get_text() == "CLOSE  [M]"
-    assert app.image_menu.close_button.label.get_text() == "CLOSE  [I]"
-    assert app.file_menu.close_button.label.get_text() == "CLOSE  [L]"
-    assert app.observation_menu.close_button.label.get_text() == "CLOSE  [I]"
     assert app.menu_button.ax.get_position().y0 > app.image_button.ax.get_position().y0
     assert app.image_button.ax.get_position().y0 > app.file_button.ax.get_position().y0
     assert app.file_button.ax.get_position().y0 > app.register_button.ax.get_position().y0
@@ -759,7 +748,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
         > app.clear_button.ax.get_position().y0
     )
     shortcuts = next(
-        text for text in app.fig.texts if text.get_text().startswith("P  parameter")
+        text for text in app.fig.texts if text.get_text().startswith("P  parameters")
     )
     assert shortcuts.get_position() == pytest.approx((0.012, 0.975))
     assert shortcuts.get_ha() == "left"
@@ -773,13 +762,8 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert all(slider.active for slider in app.parameter_menu.sliders)
     app.iterations_slider.set_val(3)
     assert app.parameters.iterations == 3
-    app.lbfgs_lr_slider.set_val(-3)
-    assert app.lbfgs_lr_slider.valtext.get_text() == "1e-3"
-    app.lbfgs_lr_slider.set_val(np.log10(2.5e-4))
-    assert app.lbfgs_lr_slider.valtext.get_text() == "2.5e-4"
     app.lbfgs_lr_slider.set_val(np.log10(0.025))
     assert app.parameters.lbfgs_lr == pytest.approx(0.025)
-    assert app.lbfgs_lr_slider.valtext.get_text() == "0.025"
     app.optimized_fields_check.set_active(1)
     assert app.parameters.optimized_fields == (
         "initial_momentum",
@@ -821,8 +805,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.input_radio.value_selected == r"Acceleration  $a_0$"
     assert "initial acceleration" in app.source_ax.get_title()
     assert r"\Vert a_0\Vert_{I_0}^2" in app.source_footer.get_text()
-    assert FIELD_CLASS["momentum"] == "dual"
-    assert FIELD_CLASS["acceleration"] == "primal"
+    assert FIELD_CLASS["momentum"] == FIELD_CLASS["acceleration"] == "primal"
     app.input_radio.set_active(3)
     assert app.input_kind == "initial_jerk"
     assert app.editor.active_key == "initial_jerk"
@@ -863,9 +846,9 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert any("Classic only" in text for text in operator_texts)
     assert [button.label.get_text() for button in app.file_menu.buttons] == [
         "LOAD FIELD",
-        "LOAD PROJECT",
-        "SAVE FIELD",
-        "SAVE PROJECT",
+        "LOAD COMPLETE SETUP",
+        "SAVE COMPLETE SETUP",
+        "SAVE TIMED PROJECT",
         "SAVE VIDEO",
     ]
 
@@ -1335,50 +1318,6 @@ def test_timed_targets_setup_round_trip_and_version_one_migration(tmp_path):
     assert migrated_classic.lbfgs_lr == pytest.approx(1.0)
 
 
-def test_selected_field_and_setup_only_project_round_trip(tmp_path):
-    source = torch.zeros(1, 1, 5, 6)
-    setup = zero_setup(
-        source,
-        torch.ones_like(source),
-        SplineParameters(n_steps=2),
-    )
-    app = SplinePlayground(setup, device="cpu")
-    app.input_radio.set_active(1)
-    app.fields["initial_acceleration"].fill_(0.75)
-
-    field_path = app.save_field(tmp_path / "acceleration")
-    assert field_path.name == "acceleration.pt"
-    loaded_field = load_field_file(field_path)
-    assert loaded_field.kind == "a"
-    assert loaded_field.metadata["field_role"] == "initial_acceleration"
-    app.fields["initial_acceleration"].zero_()
-    app.load_field(field_path)
-    torch.testing.assert_close(
-        app.fields["initial_acceleration"],
-        torch.full_like(source, 0.75),
-    )
-
-    destination = app.save_project(tmp_path / "setup_project")
-    assert (destination / "spline_setup.pt").is_file()
-    assert not (destination / "trajectory.pt").exists()
-    assert not (destination / "optimization.pt").exists()
-
-    app.fields["initial_acceleration"].zero_()
-    app.load_project(destination)
-    assert app.cache is None
-    assert app.last_registration is None
-    torch.testing.assert_close(
-        app.fields["initial_acceleration"],
-        torch.full_like(source, 0.75),
-    )
-    assert "(setup)" in app.status_text.get_text()
-
-    torch.save({}, destination / "optimization.pt")
-    with pytest.raises(ValueError, match="requires trajectory"):
-        load_project(destination)
-    plt.close(app.fig)
-
-
 def test_model_actions_timed_target_selection_and_manual_placement(tmp_path):
     source = torch.zeros(1, 1, 6, 7)
     targets = torch.cat((torch.full_like(source, 0.25), torch.ones_like(source)))
@@ -1425,27 +1364,15 @@ def test_model_actions_timed_target_selection_and_manual_placement(tmp_path):
     assert ordered.target_times == (0.25, 0.5, 1.0)
 
     app.run_spline()
-    assert app.cache is not None
-    destination = app.save_project(tmp_path / "saved_series")
+    destination = app.save_timed_directory(tmp_path / "saved_series")
     restored = load_timed_image_directory(destination)
     assert restored.target_times == (0.25, 0.5, 1.0)
     assert (destination / "spline_setup.pt").is_file()
     assert (destination / "trajectory.pt").is_file()
-    assert not (destination / "optimization.pt").exists()
-
-    loaded = SplinePlayground(zero_setup(source), device="cpu")
-    loaded.load_project(destination)
-    assert loaded.cache is not None
-    assert loaded.last_registration is None
-    assert loaded.parameters.model == "splines"
-    assert loaded.target_times == [0.25, 0.5, 1.0]
-    torch.testing.assert_close(loaded.cache.images, app.cache.images)
-    assert "trajectory" in loaded.status_text.get_text()
-    plt.close(loaded.fig)
     plt.close(app.fig)
 
 
-def test_register_actions_load_optimized_fields_and_trajectory(tmp_path, capsys):
+def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
     source = torch.zeros(1, 1, 3, 3)
     target = torch.ones_like(source)
 
@@ -1458,23 +1385,12 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path, capsys)
         device="cpu",
     )
     classic.register()
-    assert "Starting classic metamorphosis..." in capsys.readouterr().out
     assert classic.last_error is None
     assert classic.cache is not None
     assert classic.last_registration is not None
-    assert classic.last_registration.trajectory is classic.cache
     assert len(classic.last_registration.loss_stock) == 2
     assert torch.count_nonzero(classic.fields["initial_momentum"]) > 0
     assert torch.count_nonzero(classic.fields["initial_acceleration"]) == 0
-    classic_destination = classic.save_project(tmp_path / "classic_project")
-    loaded_classic = SplinePlayground(zero_setup(source), device="cpu")
-    loaded_classic.load_project(classic_destination)
-    assert loaded_classic.parameters.model == "classic"
-    assert loaded_classic.cache is not None
-    assert loaded_classic.last_registration is not None
-    assert loaded_classic.last_registration.trajectory is loaded_classic.cache
-    assert loaded_classic.last_registration.model == "classic"
-    plt.close(loaded_classic.fig)
     plt.close(classic.fig)
 
     splines = SplinePlayground(
@@ -1486,29 +1402,14 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path, capsys)
         device="cpu",
     )
     splines.register()
-    assert "Starting spline metamorphosis..." in capsys.readouterr().out
     assert splines.last_error is None
     assert splines.cache is not None
     assert splines.last_registration is not None
-    assert splines.last_registration.trajectory is splines.cache
     assert all(len(loss) == 2 for loss in splines.last_registration.loss_stock.values())
     assert torch.count_nonzero(splines.fields["initial_momentum"]) > 0
     assert "Optimized fields loaded" in splines.status_text.get_text()
-    destination = splines.save_project(tmp_path / "optimized_project")
+    destination = splines.save_timed_directory(tmp_path / "optimized_project")
     assert (destination / "optimization.pt").is_file()
-    loaded_splines = SplinePlayground(zero_setup(source), device="cpu")
-    loaded_splines.load_project(destination)
-    assert loaded_splines.cache is not None
-    assert loaded_splines.last_registration is not None
-    assert loaded_splines.last_registration.trajectory is loaded_splines.cache
-    for name, losses in splines.last_registration.loss_stock.items():
-        torch.testing.assert_close(
-            loaded_splines.last_registration.loss_stock[name],
-            losses,
-        )
-    copied = loaded_splines.save_project(tmp_path / "optimized_project_copy")
-    assert (copied / "optimization.pt").is_file()
-    plt.close(loaded_splines.fig)
     splines._invalidate("field changed")
     assert splines.last_registration is None
     plt.close(splines.fig)

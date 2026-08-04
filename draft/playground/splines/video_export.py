@@ -1,4 +1,4 @@
-"""MP4 export for the spline playground's current trajectory panel."""
+"""MP4 export for the spline playground's current trajectory image."""
 
 from __future__ import annotations
 
@@ -15,9 +15,23 @@ from .core import SplineTrajectory
 from .rendering import SplineRenderer
 
 
-DEFAULT_VIDEO_FPS = 25
+DEFAULT_VIDEO_FPS = 30
 VIDEO_SECONDS = 4
 ENDPOINT_PADDING_SECONDS = 1
+VIDEO_LONG_EDGE_PIXELS = 720
+
+
+def trajectory_video_filename(
+    current_field: str | None,
+    show_image: bool,
+) -> str:
+    """Return a filename describing exactly what is displayed in the video."""
+    parts = ["images"] if show_image else []
+    if current_field is not None:
+        parts.append(current_field)
+    if not parts:
+        parts.append("empty")
+    return f"trajectory_{'_'.join(parts)}.mp4"
 
 
 def trajectory_frame_indices(
@@ -52,7 +66,7 @@ def save_current_panel_video(
     restore_index: int,
     fps: int = DEFAULT_VIDEO_FPS,
 ) -> Path:
-    """Save exactly the current-panel composition as a four-second H.264 MP4."""
+    """Save only the current image canvas as a four-second H.264 MP4."""
     destination = Path(destination).expanduser()
     if not destination.suffix:
         destination = destination.with_suffix(".mp4")
@@ -69,15 +83,7 @@ def save_current_panel_video(
     destination.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        crop = _current_panel_crop(
-            figure,
-            renderer,
-            source,
-            trajectory,
-            image_mode,
-            current_field,
-            show_image,
-        )
+        crop = _current_image_crop(figure, renderer)
         with tempfile.TemporaryDirectory(
             dir=destination.parent,
             prefix=f".{destination.stem}.video.",
@@ -144,36 +150,14 @@ def save_current_panel_video(
     return destination
 
 
-def _current_panel_crop(
+def _current_image_crop(
     figure: Any,
     renderer: SplineRenderer,
-    source: torch.Tensor,
-    trajectory: SplineTrajectory,
-    image_mode: str,
-    current_field: str | None,
-    show_image: bool,
 ) -> Bbox:
-    boxes = []
-    for index in range(trajectory.images.shape[0]):
-        renderer.render_current(
-            source,
-            trajectory,
-            image_mode,
-            current_field,
-            index,
-            show_image,
-        )
-        figure.canvas.draw()
-        boxes.append(renderer.current_ax.get_tightbbox(figure.canvas.get_renderer()))
-    union = Bbox.union(boxes)
-    padding = 8
-    union = Bbox.from_extents(
-        max(0, union.x0 - padding),
-        max(0, union.y0 - padding),
-        min(figure.bbox.width, union.x1 + padding),
-        min(figure.bbox.height, union.y1 + padding),
+    figure.canvas.draw()
+    return renderer.current_ax.get_window_extent().transformed(
+        figure.dpi_scale_trans.inverted()
     )
-    return union.transformed(figure.dpi_scale_trans.inverted())
 
 
 def _save_node_frames(
@@ -188,6 +172,7 @@ def _save_node_frames(
     crop: Bbox,
 ) -> tuple[Path, ...]:
     paths = []
+    frame_dpi = VIDEO_LONG_EDGE_PIXELS / max(crop.width, crop.height)
     for index in range(trajectory.images.shape[0]):
         renderer.render_current(
             source,
@@ -201,7 +186,7 @@ def _save_node_frames(
         figure.savefig(
             path,
             format="png",
-            dpi=figure.dpi,
+            dpi=frame_dpi,
             bbox_inches=crop,
             pad_inches=0,
             facecolor=figure.get_facecolor(),
