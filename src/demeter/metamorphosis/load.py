@@ -227,6 +227,9 @@ def  _load_light_optim(opti_dict, verbose):
             optimizer_method=opti_dict["optimizer_method_name"],
             lbfgs_max_iter=opti_dict["args"].get("lbfgs_max_iter", 20),
             lbfgs_history_size=opti_dict["args"].get("lbfgs_history_size", 100),
+            temporal_preconditioning=opti_dict["args"].get(
+                "temporal_preconditioning", True
+            ),
         )
     else:
         mr = optimizer(**opti_dict)
@@ -272,6 +275,9 @@ def _load_heavy_optim(opti_dict, verbose):
             optimizer_method=opti_dict["optimizer_method_name"],
             lbfgs_max_iter=opti_dict["args"].get("lbfgs_max_iter", 20),
             lbfgs_history_size=opti_dict["args"].get("lbfgs_history_size", 100),
+            temporal_preconditioning=opti_dict["args"].get(
+                "temporal_preconditioning", True
+            ),
         )
     else:
         new_optim = optimizer(

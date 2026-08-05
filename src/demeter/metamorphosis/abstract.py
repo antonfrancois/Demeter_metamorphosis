@@ -1319,9 +1319,22 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     #   Implemented OPTIMIZERS
+    def _prepare_optimization_parameter_(self, parameter, device):
+        """Map a physical shooting parameter to optimizer coordinates."""
+        return _momenta_to_device(parameter, device)
+
+    def _parameter_for_cost_(self, parameter):
+        """Map optimizer coordinates back to physical shooting variables."""
+        return parameter
+
+    def _optimization_cost_(self, parameter):
+        return self.cost(self._parameter_for_cost_(parameter))
+
     # GRADIENT DESCENT
     def _initialize_grad_descent_(self, dt_step, max_iter=20):
-        self.optimizer = GradientDescent(self.cost, self.parameter, lr=dt_step)
+        self.optimizer = GradientDescent(
+            self._optimization_cost_, self.parameter, lr=dt_step
+        )
 
     def _step_grad_descent_(self):
         self.optimizer.step(verbose=False)
@@ -1352,7 +1365,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         def closure():
             self.optimizer.zero_grad()
-            L = self.cost(self.parameter)
+            L = self._optimization_cost_(self.parameter)
             # save best cms
             # if(self._it_count >1 and L < self._loss_stock[:self._it_count].min()):
             #     cms_tosave.data = self.cms_ini.detach().data
@@ -1434,7 +1447,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         and LR scheduling.
         """
         self.optimizer.zero_grad()
-        L = self.cost(self.parameter)
+        L = self._optimization_cost_(self.parameter)
         L.backward(retain_graph=False)
         if self._adam_grad_clip is not None:
             all_params = [p for group in self.optimizer.param_groups
@@ -1457,7 +1470,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         def closure():
             self.optimizer.zero_grad()
-            L = self.cost(self.parameter)
+            L = self._optimization_cost_(self.parameter)
             # save best cms
             # if(self._it_count >1 and L < self._loss_stock[:self._it_count].min()):
             #     cms_tosave.data = self.cms_ini.detach().data
@@ -1557,7 +1570,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         # self.mp.kernelOperator.kernel = self.mp.kernelOperator.kernel.to(z_0.device)
         self.data_term.to_device(device)
 
-        self.parameter = _momenta_to_device(momenta_ini, device)
+        self.parameter = self._prepare_optimization_parameter_(momenta_ini, device)
 
         # self.parameter = self._build_parameter_dict_(momenta_ini)
         self.n_iter = n_iter  # must precede _initialize_optimizer_ (scheduler may read it)
@@ -1574,7 +1587,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             )
 
         self._iter_ = 0
-        self.cost(_detach(self.parameter))
+        self._optimization_cost_(_detach(self.parameter))
 
         loss_stock = self._cost_saving_(n_iter, None)  # initialisation
         loss_stock = self._cost_saving_(0, loss_stock)
@@ -1587,6 +1600,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         for i in range(1, n_iter):
             self._iter_ = i
             self._step_optimizer_()
+            self._optimization_cost_(_detach(self.parameter))
             loss_stock = self._cost_saving_(i, loss_stock)
 
             if verbose:
@@ -1640,13 +1654,14 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         # detached_param = _detach(self.parameter)
         # for future plots compute shooting with save = True
+        final_parameter = _detach(self._parameter_for_cost_(self.parameter))
         self.mp.forward(self.source.clone(),
-                        _detach(self.parameter),
+                        final_parameter,
                         save=True,
                         plot=0,
                         )
 
-        self.optimized_momenta = _detach(self.parameter)
+        self.optimized_momenta = final_parameter
         self.loss_stock = loss_stock
         self.to_device('cpu')
 

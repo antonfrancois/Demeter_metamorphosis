@@ -125,6 +125,45 @@ register_pytree_node(
 )
 
 
+def _temporal_parameter_scales(
+    n_step: int,
+    control_steps: tuple[int, ...],
+    target_steps: tuple[int, ...],
+    cost_cst: float,
+) -> Tensor:
+    """Diagonal temporal Hessian scale of the discrete flat spline."""
+    n_parameters = 3 + len(control_steps)
+    image = torch.zeros(n_parameters, dtype=torch.float64)
+    momentum = torch.zeros_like(image)
+    acceleration = torch.zeros_like(image)
+    jerk = torch.zeros_like(image)
+    momentum[0] = 1
+    acceleration[1] = 1
+    jerk[2] = 1
+    controls = {
+        step: 3 + index for index, step in enumerate(control_steps)
+    }
+    dt = 1 / n_step
+    images = [image.clone()]
+    acceleration_intervals = []
+    for step in range(1, n_step + 1):
+        acceleration_intervals.append(acceleration.clone())
+        image = image + dt * momentum
+        momentum = momentum + dt * acceleration
+        acceleration = acceleration + dt * jerk
+        control_index = controls.get(step)
+        if control_index is not None:
+            jerk = torch.zeros_like(jerk)
+            jerk[control_index] = 1
+        images.append(image.clone())
+
+    observation_basis = torch.stack(images)[list(target_steps)]
+    acceleration_basis = torch.stack(acceleration_intervals)
+    diagonal = observation_basis.square().sum(dim=0)
+    diagonal += cost_cst * dt * acceleration_basis.square().sum(dim=0)
+    return diagonal.sqrt()
+
+
 class MetamorphosisSplineIntegrator(Geodesic_integrator):
     r"""Integrate system (43) on the pixel torus.
 
@@ -679,6 +718,7 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
         optimizer_method: str = "LBFGS_torch",
         lbfgs_max_iter: int = 20,
         lbfgs_history_size: int = 100,
+        temporal_preconditioning: bool = True,
         hamiltonian_integration: bool = False,
         debug: bool = False,
         **kwargs,
@@ -690,6 +730,8 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
             )
         if optimizer_method != "LBFGS_torch":
             raise ValueError("spline optimization currently supports LBFGS_torch only")
+        if not isinstance(temporal_preconditioning, bool):
+            raise TypeError("temporal_preconditioning must be a boolean")
         if hamiltonian_integration:
             raise NotImplementedError(
                 "spline regularization uses the integrated acceleration energy"
@@ -715,6 +757,13 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
                     "each optimized control time must precede an observation "
                     "by at least three integration intervals"
                 )
+        self.temporal_preconditioning = temporal_preconditioning
+        self.temporal_parameter_scales = _temporal_parameter_scales(
+            geodesic.n_step,
+            geodesic.control_steps,
+            self.target_steps,
+            cost_cst,
+        )
         source = source.detach()
         target = target.detach()
         super().__init__(
@@ -731,6 +780,47 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
             **kwargs,
         )
         self._cost_saving_ = self._spline_cost_saving_
+
+    def _prepare_optimization_parameter_(self, parameter, device):
+        physical = super()._prepare_optimization_parameter_(parameter, device)
+        if not self.temporal_preconditioning:
+            return physical
+        if not isinstance(physical, SplinesVariables):
+            raise TypeError("spline optimizer parameters must be SplinesVariables")
+        scales = self.temporal_parameter_scales.to(
+            device=physical.initial_momentum.device,
+            dtype=physical.initial_momentum.dtype,
+        )
+        control_scales = scales[3:].reshape(-1, 1, 1, 1, 1)
+        scaled = SplinesVariables(
+            physical.initial_momentum * scales[0],
+            physical.initial_acceleration * scales[1],
+            physical.initial_jerk * scales[2],
+            physical.control_jerks * control_scales,
+        )
+        return SplinesVariables(
+            *(
+                value.detach().requires_grad_(physical_value.requires_grad)
+                for (_, value), (_, physical_value) in zip(scaled, physical)
+            )
+        )
+
+    def _parameter_for_cost_(self, parameter):
+        if not self.temporal_preconditioning:
+            return parameter
+        if not isinstance(parameter, SplinesVariables):
+            raise TypeError("spline optimizer parameters must be SplinesVariables")
+        scales = self.temporal_parameter_scales.to(
+            device=parameter.initial_momentum.device,
+            dtype=parameter.initial_momentum.dtype,
+        )
+        control_scales = scales[3:].reshape(-1, 1, 1, 1, 1)
+        return SplinesVariables(
+            parameter.initial_momentum / scales[0],
+            parameter.initial_acceleration / scales[1],
+            parameter.initial_jerk / scales[2],
+            parameter.control_jerks / control_scales,
+        )
 
     def _get_rho_(self) -> float:
         return float(self.mp.rho)
@@ -801,4 +891,5 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
             "cg_eps": self.mp.cg_eps,
             "lbfgs_max_iter": self.lbfgs_max_iter,
             "lbfgs_history_size": self.lbfgs_history_size,
+            "temporal_preconditioning": self.temporal_preconditioning,
         }

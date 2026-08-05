@@ -317,6 +317,7 @@ def MetamorphosisSplines(
     optimizer_method="LBFGS_torch",
     lbfgs_max_iter=20,
     lbfgs_history_size=100,
+    temporal_preconditioning=True,
     convergence_tol=None,
     convergence_patience=3,
     debug=False,
@@ -328,6 +329,8 @@ def MetamorphosisSplines(
     Both observation and control times must lie on the integration mesh.
     ``rho`` must satisfy ``0 <= rho < 1``, and ``cost_cst`` represents the
     observation variance ``sigma_I**2`` in equation (37).
+    ``temporal_preconditioning`` rescales the shooting blocks with the diagonal
+    of the corresponding flat discrete spline objective.
 
     ``source`` may also be a directory containing ``images.csv``. In that
     form the unique time-zero image is the source and later rows are targets.
@@ -388,6 +391,7 @@ def MetamorphosisSplines(
         optimizer_method=optimizer_method,
         lbfgs_max_iter=lbfgs_max_iter,
         lbfgs_history_size=lbfgs_history_size,
+        temporal_preconditioning=temporal_preconditioning,
         debug=debug,
     )
     if n_iter == 0:
