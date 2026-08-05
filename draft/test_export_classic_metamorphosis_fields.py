@@ -227,7 +227,7 @@ def test_saved_frames_are_loadable_by_playground(tmp_path):
         setup.initial_momentum,
         trajectory["image_momenta"][0:1],
     )
-    assert torch.count_nonzero(setup.initial_force) == 0
+    assert torch.count_nonzero(setup.initial_acceleration) == 0
     assert torch.count_nonzero(setup.initial_jerk) == 0
     assert setup.control_jerks.shape[0] == 0
     assert setup.parameters == spline_parameters

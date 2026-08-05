@@ -58,7 +58,8 @@ rejected.
 
 The two main actions follow the selected model. **Run** integrates the currently
 drawn or loaded fields. **Register** starts from the images and zero fields,
-optimizes with LBFGS, then loads the optimized fields and a normal replayed
+optimizes with temporally preconditioned LBFGS, then loads the optimized fields
+and a normal replayed
 trajectory into the same editor. Classic accepts Sobolev or Gaussian and uses
 one endpoint target. Spline requires Sobolev and uses every timed target.
 

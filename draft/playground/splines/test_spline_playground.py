@@ -277,7 +277,7 @@ def test_run_uses_initial_acceleration_and_aligns_interval_fields_to_nodes():
         (
             "momentum",
             trajectory.momentum[0:1],
-            initial_cometric.inverse(trajectory.momentum[0:1], eps=parameters.cg_eps),
+            initial_cometric(trajectory.momentum[0:1]),
         ),
         (
             "force",
@@ -825,7 +825,8 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.input_radio.value_selected == r"Acceleration  $a_0$"
     assert "initial acceleration" in app.source_ax.get_title()
     assert r"\Vert a_0\Vert_{I_0}^2" in app.source_footer.get_text()
-    assert FIELD_CLASS["momentum"] == FIELD_CLASS["acceleration"] == "primal"
+    assert FIELD_CLASS["momentum"] == "dual"
+    assert FIELD_CLASS["acceleration"] == "primal"
     app.input_radio.set_active(3)
     assert app.input_kind == "initial_jerk"
     assert app.editor.active_key == "initial_jerk"
