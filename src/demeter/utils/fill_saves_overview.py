@@ -7,7 +7,6 @@ import csv
 from .. import metamorphosis as mt
 from demeter.constants import *
 
-print(DEFAULT_OPTIM_CSV)
 DEFAULT_PATH = OPTIM_SAVE_DIR
 
 def rec(s):
