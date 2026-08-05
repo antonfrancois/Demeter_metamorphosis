@@ -163,7 +163,7 @@ class CometricOperator:
     def inverse(self, acceleration, eps=1e-6, return_info=False, *, x_0=None):
         """Solve ``A_I u = a`` with conjugate gradients.
 
-        The optional residual is ``||a - A_I u|| / max(||a||, 1)``.
+        The optional residual is ``||a - A_I u|| / ||a||`` for nonzero ``a``.
         ``x_0`` is a non-differentiable initial guess in physical force units.
         """
         if self.rho == 0:

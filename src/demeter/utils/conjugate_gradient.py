@@ -33,7 +33,10 @@ def conjugate_gradient(
         raise ValueError("max_iterations must be a strictly positive integer")
 
     rhs_norm = torch.linalg.vector_norm(rhs)
-    normalization = rhs_norm.clamp_min(1)
+    if rhs_norm == 0:
+        residual_value = 0.0 if return_residual else None
+        return torch.zeros_like(rhs), 0, residual_value
+    normalization = rhs_norm
     scaled_rhs = rhs / normalization
     if x_0 is None:
         solution = torch.zeros_like(rhs)
