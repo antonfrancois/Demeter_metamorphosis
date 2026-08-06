@@ -60,7 +60,7 @@ class _SelectedFieldSplineOptimizer(MetamorphosisSplineOptimizer):
     def _dict_or_torch_parameter_(self) -> list[torch.Tensor]:
         return [
             value
-            for _, value in self.parameter
+            for _, value in self._optimization_parameter
             if value.requires_grad and value.numel()
         ]
 

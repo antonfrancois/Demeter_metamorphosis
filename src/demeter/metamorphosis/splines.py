@@ -746,11 +746,6 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
         self.target_times, self.target_steps = self._validate_observations(
             source, target, target_times, geodesic.n_step
         )
-        if self.target_steps[-1] < 3:
-            raise ValueError(
-                "spline optimization requires an observation at least three "
-                "integration intervals after the initial state"
-            )
         self.temporal_preconditioning = temporal_preconditioning
         self.temporal_parameter_scales = _temporal_parameter_scales(
             geodesic.n_step,
@@ -775,46 +770,40 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
         )
         self._cost_saving_ = self._spline_cost_saving_
 
-    def _prepare_optimization_parameter_(self, parameter, device):
-        physical = super()._prepare_optimization_parameter_(parameter, device)
+    def _apply_temporal_scales(
+        self,
+        parameter: SplinesVariables,
+        *,
+        inverse: bool = False,
+    ) -> SplinesVariables:
+        scales = self.temporal_parameter_scales.to(parameter.initial_momentum)
+        if inverse:
+            scales = scales.reciprocal()
+        control_scales = scales[3:].reshape(-1, 1, 1, 1, 1)
+        return SplinesVariables(
+            parameter.initial_momentum * scales[0],
+            parameter.initial_acceleration * scales[1],
+            parameter.initial_jerk * scales[2],
+            parameter.control_jerks * control_scales,
+        )
+
+    def _prepare_optimization_parameter_(self, parameter):
+        physical = super()._prepare_optimization_parameter_(parameter)
         if not self.temporal_preconditioning:
             return physical
         if not isinstance(physical, SplinesVariables):
             raise TypeError("spline optimizer parameters must be SplinesVariables")
-        scales = self.temporal_parameter_scales.to(
-            device=physical.initial_momentum.device,
-            dtype=physical.initial_momentum.dtype,
-        )
-        control_scales = scales[3:].reshape(-1, 1, 1, 1, 1)
-        scaled = SplinesVariables(
-            physical.initial_momentum * scales[0],
-            physical.initial_acceleration * scales[1],
-            physical.initial_jerk * scales[2],
-            physical.control_jerks * control_scales,
-        )
-        return SplinesVariables(
-            *(
-                value.detach().requires_grad_(physical_value.requires_grad)
-                for (_, value), (_, physical_value) in zip(scaled, physical)
-            )
-        )
+        scaled = self._apply_temporal_scales(physical)
+        for name, value in scaled.detach():
+            value.requires_grad_(getattr(physical, name).requires_grad)
+        return scaled
 
     def _parameter_for_cost_(self, parameter):
         if not self.temporal_preconditioning:
             return parameter
         if not isinstance(parameter, SplinesVariables):
             raise TypeError("spline optimizer parameters must be SplinesVariables")
-        scales = self.temporal_parameter_scales.to(
-            device=parameter.initial_momentum.device,
-            dtype=parameter.initial_momentum.dtype,
-        )
-        control_scales = scales[3:].reshape(-1, 1, 1, 1, 1)
-        return SplinesVariables(
-            parameter.initial_momentum / scales[0],
-            parameter.initial_acceleration / scales[1],
-            parameter.initial_jerk / scales[2],
-            parameter.control_jerks / control_scales,
-        )
+        return self._apply_temporal_scales(parameter, inverse=True)
 
     def _get_rho_(self) -> float:
         return float(self.mp.rho)

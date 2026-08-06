@@ -1319,9 +1319,9 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     #   Implemented OPTIMIZERS
-    def _prepare_optimization_parameter_(self, parameter, device):
+    def _prepare_optimization_parameter_(self, parameter):
         """Map a physical shooting parameter to optimizer coordinates."""
-        return _momenta_to_device(parameter, device)
+        return parameter
 
     def _parameter_for_cost_(self, parameter):
         """Map optimizer coordinates back to physical shooting variables."""
@@ -1333,19 +1333,20 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
     # GRADIENT DESCENT
     def _initialize_grad_descent_(self, dt_step, max_iter=20):
         self.optimizer = GradientDescent(
-            self._optimization_cost_, self.parameter, lr=dt_step
+            self._optimization_cost_, self._optimization_parameter, lr=dt_step
         )
 
     def _step_grad_descent_(self):
         self.optimizer.step(verbose=False)
 
     def _dict_or_torch_parameter_(self):
-        if isinstance(self.parameter, TorchDataClass):
-            parameters = list(self.parameter.as_dict().values())
-        elif isinstance(self.parameter, torch.Tensor):
-            parameters = [self.parameter]
+        parameter = self._optimization_parameter
+        if isinstance(parameter, TorchDataClass):
+            parameters = list(parameter.as_dict().values())
+        elif isinstance(parameter, torch.Tensor):
+            parameters = [parameter]
         else:
-            raise TypeError(f"unsupported optimizer parameter {type(self.parameter)}")
+            raise TypeError(f"unsupported optimizer parameter {type(parameter)}")
         if len({id(parameter) for parameter in parameters}) != len(parameters):
             raise ValueError("optimizer parameter tensors must be distinct")
         if any(not parameter.is_leaf or not parameter.requires_grad for parameter in parameters):
@@ -1365,7 +1366,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         def closure():
             self.optimizer.zero_grad()
-            L = self._optimization_cost_(self.parameter)
+            L = self._optimization_cost_(self._optimization_parameter)
             # save best cms
             # if(self._it_count >1 and L < self._loss_stock[:self._it_count].min()):
             #     cms_tosave.data = self.cms_ini.detach().data
@@ -1447,7 +1448,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         and LR scheduling.
         """
         self.optimizer.zero_grad()
-        L = self._optimization_cost_(self.parameter)
+        L = self._optimization_cost_(self._optimization_parameter)
         L.backward(retain_graph=False)
         if self._adam_grad_clip is not None:
             all_params = [p for group in self.optimizer.param_groups
@@ -1470,7 +1471,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
 
         def closure():
             self.optimizer.zero_grad()
-            L = self._optimization_cost_(self.parameter)
+            L = self._optimization_cost_(self._optimization_parameter)
             # save best cms
             # if(self._it_count >1 and L < self._loss_stock[:self._it_count].min()):
             #     cms_tosave.data = self.cms_ini.detach().data
@@ -1570,9 +1571,10 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         # self.mp.kernelOperator.kernel = self.mp.kernelOperator.kernel.to(z_0.device)
         self.data_term.to_device(device)
 
-        self.parameter = self._prepare_optimization_parameter_(momenta_ini, device)
-
-        # self.parameter = self._build_parameter_dict_(momenta_ini)
+        self.parameter = _momenta_to_device(momenta_ini, device)
+        self._optimization_parameter = self._prepare_optimization_parameter_(
+            self.parameter
+        )
         self.n_iter = n_iter  # must precede _initialize_optimizer_ (scheduler may read it)
         self._initialize_optimizer_(grad_coef)
         # self.n_iter = n_iter
@@ -1587,7 +1589,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             )
 
         self._iter_ = 0
-        self._optimization_cost_(_detach(self.parameter))
+        self._optimization_cost_(_detach(self._optimization_parameter))
 
         loss_stock = self._cost_saving_(n_iter, None)  # initialisation
         loss_stock = self._cost_saving_(0, loss_stock)
@@ -1600,7 +1602,7 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         for i in range(1, n_iter):
             self._iter_ = i
             self._step_optimizer_()
-            self._optimization_cost_(_detach(self.parameter))
+            self._optimization_cost_(_detach(self._optimization_parameter))
             loss_stock = self._cost_saving_(i, loss_stock)
 
             if verbose:
@@ -1652,16 +1654,22 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             else:
                 loss_stock = loss_stock[:actual]
 
-        # detached_param = _detach(self.parameter)
         # for future plots compute shooting with save = True
-        final_parameter = _detach(self._parameter_for_cost_(self.parameter))
+        final_parameter = _detach(
+            self._parameter_for_cost_(self._optimization_parameter)
+        )
         self.mp.forward(self.source.clone(),
                         final_parameter,
                         save=True,
                         plot=0,
                         )
 
+        self.parameter = final_parameter
         self.optimized_momenta = final_parameter
+        self._optimization_parameter = None
+        self.optimizer = None
+        self.closure = None
+        self._lr_scheduler = None
         self.loss_stock = loss_stock
         self.to_device('cpu')
 
