@@ -161,7 +161,7 @@ def _temporal_parameter_scales(
     acceleration_basis = torch.stack(acceleration_intervals)
     diagonal = observation_basis.square().sum(dim=0)
     diagonal += cost_cst * dt * acceleration_basis.square().sum(dim=0)
-    return diagonal.sqrt()
+    return torch.where(diagonal > 0, diagonal.sqrt(), torch.ones_like(diagonal))
 
 
 class MetamorphosisSplineIntegrator(Geodesic_integrator):
@@ -751,12 +751,6 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
                 "spline optimization requires an observation at least three "
                 "integration intervals after the initial state"
             )
-        for control_step in geodesic.control_steps:
-            if not any(step >= control_step + 3 for step in self.target_steps):
-                raise ValueError(
-                    "each optimized control time must precede an observation "
-                    "by at least three integration intervals"
-                )
         self.temporal_preconditioning = temporal_preconditioning
         self.temporal_parameter_scales = _temporal_parameter_scales(
             geodesic.n_step,
