@@ -43,10 +43,13 @@ Press `P` or click **Parameter** for the categorized controls:
 - **Draw** contains brush size, amplitude, and vector-arrow spacing. Each
   editable field remembers its own amplitude, shown as `[x...]` in the
   source-panel title;
-- **Numerical** contains a Cold/Warm spline initialization choice, the
-  registration cost constant, integration `steps`, optimization `iterations`,
-  LBFGS learning rate, and the compute-device
-  selector. CUDA is selected by default when available; CPU is always
+- **Numerical** contains a Cold/Warm spline initialization choice, an On/Off
+  temporal-preconditioning choice, the registration cost constant, integration
+  `steps`, optimization `iterations`, LBFGS learning rate, and the compute-device
+  selector. Cold shows one spline parameter column. Warm splits the panel into
+  independent Spline and Geodesic Regression columns, each with its own cost,
+  steps, iterations, and LBFGS rate. Every observation time must lie on both
+  temporal meshes. CUDA is selected by default when available; CPU is always
   available. Registration defaults to 10 optimization iterations; the default
   learning rate is `0.1` for Spline and `1.0` for Classic. Rates at or below
   `1e-3` are displayed in scientific notation.
@@ -64,8 +67,11 @@ Cold or Warm initialization, optimizes with temporally preconditioned LBFGS,
 then loads the optimized fields and a normal replayed
 trajectory into the same editor. Classic accepts Sobolev or Gaussian and uses
 one endpoint target. Spline requires Sobolev and uses every timed target. Warm
-initialization first fits a classical geodesic regression with LBFGS rate 1.0,
+initialization first fits a classical geodesic regression with the selected
+regression cost, steps, iterations, and LBFGS rate, plus the shared `rho` and
+Sobolev operator parameters,
 then transfers its momentum with zero acceleration, jerk, and control fields.
+Temporal preconditioning applies only to the subsequent spline optimization.
 
 Press `M` or click **View** to open the three-column display. Its source
 column reuses the control-time line to select which control jerk field is

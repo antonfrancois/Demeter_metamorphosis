@@ -44,7 +44,16 @@ class ParameterMenu:
     iterations_slider: Slider
     cost_slider: Slider
     lbfgs_lr_slider: Slider
+    regression_steps_slider: Slider
+    regression_iterations_slider: Slider
+    regression_cost_slider: Slider
+    regression_lbfgs_lr_slider: Slider
+    spline_numerical_heading: Any
+    regression_numerical_heading: Any
+    numerical_row_labels: tuple[Any, ...]
+    numerical_split_line: Any
     spline_initialization_radio: RadioButtons
+    temporal_preconditioning_radio: RadioButtons
     device_radio: RadioButtons
     control_time_editor: ControlTimeEditor
     close_button: Button
@@ -64,7 +73,29 @@ class ParameterMenu:
             self.iterations_slider,
             self.cost_slider,
             self.lbfgs_lr_slider,
+            self.regression_steps_slider,
+            self.regression_iterations_slider,
+            self.regression_cost_slider,
+            self.regression_lbfgs_lr_slider,
         ]
+
+    @property
+    def spline_numerical_sliders(self) -> tuple[Slider, ...]:
+        return (
+            self.cost_slider,
+            self.steps_slider,
+            self.iterations_slider,
+            self.lbfgs_lr_slider,
+        )
+
+    @property
+    def regression_numerical_sliders(self) -> tuple[Slider, ...]:
+        return (
+            self.regression_cost_slider,
+            self.regression_steps_slider,
+            self.regression_iterations_slider,
+            self.regression_lbfgs_lr_slider,
+        )
 
     @property
     def axes(self) -> list[Any]:
@@ -76,6 +107,7 @@ class ParameterMenu:
             self.model_radio.ax,
             self.optimized_fields_check.ax,
             self.spline_initialization_radio.ax,
+            self.temporal_preconditioning_radio.ax,
             self.device_radio.ax,
             self.control_time_editor.axis,
             self.close_button.ax,
@@ -89,6 +121,7 @@ class ParameterMenu:
             self.model_radio,
             self.optimized_fields_check,
             self.spline_initialization_radio,
+            self.temporal_preconditioning_radio,
             self.device_radio,
             self.close_button,
         ]
@@ -101,8 +134,40 @@ class ParameterMenu:
         set_radio_visible(self.operator_radio, visible)
         set_radio_visible(self.model_radio, visible)
         set_radio_visible(self.spline_initialization_radio, visible)
+        set_radio_visible(self.temporal_preconditioning_radio, visible)
         set_radio_visible(self.device_radio, visible)
         self.control_time_editor.set_visible(visible)
+        self.set_warm_layout(
+            self.spline_initialization_radio.value_selected == "Warm",
+            visible=visible,
+        )
+
+    def set_warm_layout(self, warm: bool, *, visible: bool | None = None) -> None:
+        if visible is None:
+            visible = self.panel_axes["numerical"].get_visible()
+        y_positions = (0.35, 0.295, 0.24, 0.185)
+        if warm:
+            spline_x, regression_x, width = 0.67, 0.82, 0.09
+        else:
+            spline_x, regression_x, width = 0.70, 0.80, 0.17
+        for slider, y in zip(self.spline_numerical_sliders, y_positions):
+            slider.ax.set_position([spline_x, y, width, 0.025])
+            slider.ax.set_visible(bool(visible))
+            slider.active = bool(visible)
+            slider.label.set_visible(bool(visible and not warm))
+            slider.label.set_fontsize(8.5 if warm else 10)
+            slider.valtext.set_fontsize(8 if warm else 9.5)
+        for slider, y in zip(self.regression_numerical_sliders, y_positions):
+            slider.ax.set_position([regression_x, y, 0.09, 0.025])
+            slider.ax.set_visible(bool(visible and warm))
+            slider.active = bool(visible and warm)
+            slider.label.set_visible(False)
+            slider.valtext.set_fontsize(8)
+        self.spline_numerical_heading.set_visible(bool(visible and warm))
+        self.regression_numerical_heading.set_visible(bool(visible and warm))
+        for label in self.numerical_row_labels:
+            label.set_visible(bool(visible and warm))
+        self.numerical_split_line.set_visible(bool(visible and warm))
 
 
 def build_parameter_menu(
@@ -313,35 +378,132 @@ def build_parameter_menu(
         log_lbfgs_lr,
     )
     lbfgs_lr.valtext.set_text(format_lbfgs_learning_rate(parameters.lbfgs_lr))
+    assert parameters.regression_cost_cst is not None
+    log_regression_cost = float(np.log10(parameters.regression_cost_cst))
+    regression_cost = slider(
+        [0.80, 0.37, 0.11, 0.025],
+        r"$\log_{10}$ cost",
+        min(-8, np.floor(log_regression_cost) - 1),
+        max(2, np.ceil(log_regression_cost) + 1),
+        log_regression_cost,
+    )
+    regression_cost.valtext.set_text(f"{parameters.regression_cost_cst:.3g}")
+    assert parameters.regression_n_steps is not None
+    regression_steps = slider(
+        [0.80, 0.31, 0.11, 0.025],
+        "steps",
+        1,
+        MAX_STEPS,
+        parameters.regression_n_steps,
+        valstep=1,
+        valfmt="%0.0f",
+    )
+    assert parameters.regression_iterations is not None
+    regression_iterations = slider(
+        [0.80, 0.25, 0.11, 0.025],
+        "iterations",
+        1,
+        max(MAX_ITERATIONS, parameters.regression_iterations),
+        parameters.regression_iterations,
+        valstep=1,
+        valfmt="%0.0f",
+    )
+    assert parameters.regression_lbfgs_lr is not None
+    log_regression_lbfgs_lr = float(np.log10(parameters.regression_lbfgs_lr))
+    regression_lbfgs_lr = slider(
+        [0.80, 0.19, 0.11, 0.025],
+        r"$\log_{10}$ LBFGS lr",
+        min(-5, np.floor(log_regression_lbfgs_lr) - 1),
+        max(1, np.ceil(log_regression_lbfgs_lr) + 1),
+        log_regression_lbfgs_lr,
+    )
+    regression_lbfgs_lr.valtext.set_text(
+        format_lbfgs_learning_rate(parameters.regression_lbfgs_lr)
+    )
+    spline_numerical_heading = panels["numerical"].text(
+        0.34,
+        0.745,
+        "SPLINE",
+        transform=panels["numerical"].transAxes,
+        ha="center",
+        fontsize=8.5,
+        fontweight="bold",
+        color=INK_COLOR,
+    )
+    regression_numerical_heading = panels["numerical"].text(
+        0.78,
+        0.745,
+        "GEODESIC REGRESSION",
+        transform=panels["numerical"].transAxes,
+        ha="center",
+        fontsize=8.5,
+        fontweight="bold",
+        color=INK_COLOR,
+    )
+    numerical_row_labels = tuple(
+        panels["numerical"].text(
+            0.025,
+            y,
+            label,
+            transform=panels["numerical"].transAxes,
+            ha="left",
+            va="center",
+            fontsize=8,
+            color=INK_COLOR,
+        )
+        for y, label in zip(
+            (0.680, 0.552, 0.424, 0.297),
+            (r"$\log_{10}$ cost", "steps", "iterations", r"$\log_{10}$ lr"),
+        )
+    )
+    numerical_split_line = panels["numerical"].plot(
+        [0.56, 0.56],
+        [0.27, 0.72],
+        transform=panels["numerical"].transAxes,
+        color="#c2cccf",
+        linewidth=1,
+    )[0]
+
+    def configure_binary_radio(widget, title):
+        widget.ax.text(
+            0.5,
+            0.82,
+            title,
+            transform=widget.ax.transAxes,
+            ha="center",
+            va="center",
+            fontsize=7.5,
+            fontweight="bold",
+            color=INK_COLOR,
+        )
+        for index, label in enumerate(widget.labels):
+            label.set_fontsize(8.5)
+            label.set_position(((0.16, 0.70)[index], 0.31))
+        buttons = getattr(widget, "_buttons", None)
+        if buttons is not None:
+            buttons.set_offsets(((0.10, 0.31), (0.64, 0.31)))
+        else:
+            widget.circles[0].center = (0.10, 0.31)
+            widget.circles[1].center = (0.64, 0.31)
+
     spline_initialization_radio = RadioButtons(
-        fig.add_axes([0.70, 0.405, 0.17, 0.052], facecolor=PANEL_COLOR, zorder=102),
+        fig.add_axes([0.63, 0.405, 0.135, 0.052], facecolor=PANEL_COLOR, zorder=102),
         ("Cold", "Warm"),
         active=0 if parameters.spline_initialization == "cold" else 1,
         activecolor="#168a8a",
         layout=(1, 2),
     )
-    spline_initialization_radio.ax.text(
-        0.5,
-        0.82,
-        "SPLINE INITIALIZATION",
-        transform=spline_initialization_radio.ax.transAxes,
-        ha="center",
-        va="center",
-        fontsize=8.5,
-        fontweight="bold",
-        color=INK_COLOR,
+    configure_binary_radio(spline_initialization_radio, "INITIALIZATION")
+    temporal_preconditioning_radio = RadioButtons(
+        fig.add_axes([0.775, 0.405, 0.135, 0.052], facecolor=PANEL_COLOR, zorder=102),
+        ("Off", "On"),
+        active=1 if parameters.temporal_preconditioning else 0,
+        activecolor="#168a8a",
+        layout=(1, 2),
     )
-    for index, label in enumerate(spline_initialization_radio.labels):
-        label.set_fontsize(9)
-        label.set_position(((0.15, 0.68)[index], 0.31))
-    initialization_buttons = getattr(
-        spline_initialization_radio, "_buttons", None
+    configure_binary_radio(
+        temporal_preconditioning_radio, "TEMPORAL PRECONDITIONING"
     )
-    if initialization_buttons is not None:
-        initialization_buttons.set_offsets(((0.10, 0.31), (0.63, 0.31)))
-    else:
-        spline_initialization_radio.circles[0].center = (0.10, 0.31)
-        spline_initialization_radio.circles[1].center = (0.63, 0.31)
     panels["numerical"].text(
         0.5,
         0.17,
@@ -406,7 +568,16 @@ def build_parameter_menu(
         iterations,
         cost,
         lbfgs_lr,
+        regression_steps,
+        regression_iterations,
+        regression_cost,
+        regression_lbfgs_lr,
+        spline_numerical_heading,
+        regression_numerical_heading,
+        numerical_row_labels,
+        numerical_split_line,
         spline_initialization_radio,
+        temporal_preconditioning_radio,
         device_radio,
         control_editor,
         close,

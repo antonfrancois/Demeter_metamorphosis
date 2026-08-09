@@ -54,7 +54,6 @@ class RegistrationResult:
 
 LBFGS_MAX_ITER = 5
 LBFGS_HISTORY_SIZE = 10
-REGRESSION_LBFGS_LR = 1.0
 
 
 class _SelectedFieldSplineOptimizer(MetamorphosisSplineOptimizer):
@@ -172,16 +171,20 @@ def register_spline(
         requires_grad=False,
     )
     if setup.parameters.spline_initialization == "warm":
+        assert setup.parameters.regression_cost_cst is not None
+        assert setup.parameters.regression_n_steps is not None
+        assert setup.parameters.regression_iterations is not None
+        assert setup.parameters.regression_lbfgs_lr is not None
         regression = metamorphosis_regression(
             source=source,
             target=setup.target.to(run_device),
             target_times=setup.target_times,
             momentum_ini=0.0,
             rho=setup.parameters.rho,
-            cost_cst=setup.parameters.cost_cst,
-            integration_steps=setup.parameters.n_steps,
-            n_iter=setup.parameters.iterations,
-            grad_coef=REGRESSION_LBFGS_LR,
+            cost_cst=setup.parameters.regression_cost_cst,
+            integration_steps=setup.parameters.regression_n_steps,
+            n_iter=setup.parameters.regression_iterations,
+            grad_coef=setup.parameters.regression_lbfgs_lr,
             kernelOperator=_kernel_operator(setup.parameters),
             safe_mode=False,
             integration_method="semiLagrangian",
@@ -239,6 +242,7 @@ def register_spline(
         optimizer_method="LBFGS_torch",
         lbfgs_max_iter=LBFGS_MAX_ITER,
         lbfgs_history_size=LBFGS_HISTORY_SIZE,
+        temporal_preconditioning=setup.parameters.temporal_preconditioning,
     )
     optimizer.forward(
         variables_ini,

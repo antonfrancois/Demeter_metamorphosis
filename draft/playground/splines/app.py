@@ -82,7 +82,11 @@ class SplinePlayground:
         device: str = "auto",
         output_path: str | Path | None = None,
     ) -> None:
-        if setup.parameters.n_steps > MAX_STEPS:
+        assert setup.parameters.regression_n_steps is not None
+        if max(
+            setup.parameters.n_steps,
+            setup.parameters.regression_n_steps,
+        ) > MAX_STEPS:
             raise ValueError(
                 f"the interactive playground supports at most {MAX_STEPS} steps"
             )
@@ -252,14 +256,27 @@ class SplinePlayground:
         self.gamma_slider.on_changed(self._on_gamma_change)
         self.cost_slider.on_changed(self._on_cost_change)
         self.lbfgs_lr_slider.on_changed(self._on_lbfgs_lr_change)
+        self.regression_cost_slider.on_changed(
+            self._on_regression_cost_change
+        )
+        self.regression_lbfgs_lr_slider.on_changed(
+            self._on_regression_lbfgs_lr_change
+        )
         self.model_radio.on_clicked(self._on_model_change)
         self.operator_radio.on_clicked(self._on_operator_change)
         self.optimized_fields_check.on_clicked(self._on_optimized_fields_change)
         self.spline_initialization_radio.on_clicked(
             self._on_spline_initialization_change
         )
+        self.temporal_preconditioning_radio.on_clicked(
+            self._on_temporal_preconditioning_change
+        )
         self.steps_slider.on_changed(self._on_parameter_change)
         self.iterations_slider.on_changed(self._on_parameter_change)
+        self.regression_steps_slider.on_changed(self._on_parameter_change)
+        self.regression_iterations_slider.on_changed(
+            self._on_parameter_change
+        )
         self.amplitude_slider.on_changed(self._on_amplitude_change)
         self.spacing_slider.on_changed(self._on_spacing_change)
         self.device_radio.on_clicked(self._on_device_change)
@@ -304,8 +321,23 @@ class SplinePlayground:
         self.iterations_slider = self.parameter_menu.iterations_slider
         self.cost_slider = self.parameter_menu.cost_slider
         self.lbfgs_lr_slider = self.parameter_menu.lbfgs_lr_slider
+        self.regression_cost_slider = (
+            self.parameter_menu.regression_cost_slider
+        )
+        self.regression_steps_slider = (
+            self.parameter_menu.regression_steps_slider
+        )
+        self.regression_iterations_slider = (
+            self.parameter_menu.regression_iterations_slider
+        )
+        self.regression_lbfgs_lr_slider = (
+            self.parameter_menu.regression_lbfgs_lr_slider
+        )
         self.spline_initialization_radio = (
             self.parameter_menu.spline_initialization_radio
+        )
+        self.temporal_preconditioning_radio = (
+            self.parameter_menu.temporal_preconditioning_radio
         )
         self.device_radio = self.parameter_menu.device_radio
         self.control_time_editor = self.parameter_menu.control_time_editor
@@ -521,6 +553,21 @@ class SplinePlayground:
             spline_initialization=(
                 self.spline_initialization_radio.value_selected.lower()
             ),
+            temporal_preconditioning=(
+                self.temporal_preconditioning_radio.value_selected == "On"
+            ),
+            regression_cost_cst=(
+                10 ** float(self.regression_cost_slider.val)
+            ),
+            regression_n_steps=int(
+                round(self.regression_steps_slider.val)
+            ),
+            regression_iterations=int(
+                round(self.regression_iterations_slider.val)
+            ),
+            regression_lbfgs_lr=(
+                10 ** float(self.regression_lbfgs_lr_slider.val)
+            ),
         )
 
     def make_setup(
@@ -712,27 +759,49 @@ class SplinePlayground:
         self._apply_parameter_change()
 
     def _apply_parameter_change(self) -> None:
-        previous_steps = self.parameters.n_steps
+        previous = self.parameters
+        previous_steps = previous.n_steps
+        assert previous.regression_n_steps is not None
+
+        def restore_mesh_widgets() -> None:
+            self._syncing_widgets = True
+            try:
+                self.steps_slider.set_val(previous.n_steps)
+                self.regression_steps_slider.set_val(
+                    previous.regression_n_steps
+                )
+                self.spline_initialization_radio.set_active(
+                    0 if previous.spline_initialization == "cold" else 1
+                )
+            finally:
+                self._syncing_widgets = False
+            self.parameter_menu.set_warm_layout(
+                previous.spline_initialization == "warm",
+                visible=self.parameter_menu_open,
+            )
+
         try:
             parameters = self._current_parameters()
         except ValueError as error:
-            self._syncing_widgets = True
-            self.steps_slider.set_val(previous_steps)
-            self._syncing_widgets = False
+            restore_mesh_widgets()
             self._show_message(f"Invalid step count: {error}")
             return
-        for time in self.target_times:
-            if time is None:
-                continue
-            exact_step = time * parameters.n_steps
-            if abs(exact_step - round(exact_step)) > 1e-6:
-                self._syncing_widgets = True
-                self.steps_slider.set_val(previous_steps)
-                self._syncing_widgets = False
-                self._show_message(
-                    f"Target time {time:.3g} is not on the {parameters.n_steps}-step mesh."
-                )
-                return
+        meshes = [("spline", parameters.n_steps)]
+        if parameters.spline_initialization == "warm":
+            assert parameters.regression_n_steps is not None
+            meshes.append(("regression", parameters.regression_n_steps))
+        for mesh_name, n_steps in meshes:
+            for time in self.target_times:
+                if time is None:
+                    continue
+                exact_step = time * n_steps
+                if abs(exact_step - round(exact_step)) > 1e-6:
+                    restore_mesh_widgets()
+                    self._show_message(
+                        f"Target time {time:.3g} is not on the "
+                        f"{mesh_name} {n_steps}-step mesh."
+                    )
+                    return
         self.parameters = parameters
         if self.parameters.n_steps != previous_steps:
             self.time_slider.valmax = self.parameters.n_steps
@@ -753,10 +822,29 @@ class SplinePlayground:
         self.lbfgs_lr_slider.valtext.set_text(f"{10 ** float(value):.3g}")
         self._on_parameter_change(value)
 
+    def _on_regression_cost_change(self, value: float) -> None:
+        self.regression_cost_slider.valtext.set_text(
+            f"{10 ** float(value):.3g}"
+        )
+        self._on_parameter_change(value)
+
+    def _on_regression_lbfgs_lr_change(self, value: float) -> None:
+        self.regression_lbfgs_lr_slider.valtext.set_text(
+            f"{10 ** float(value):.3g}"
+        )
+        self._on_parameter_change(value)
+
     def _on_optimized_fields_change(self, _label: str) -> None:
         self._on_parameter_change(0.0)
 
-    def _on_spline_initialization_change(self, _label: str) -> None:
+    def _on_spline_initialization_change(self, label: str) -> None:
+        self.parameter_menu.set_warm_layout(
+            label == "Warm", visible=self.parameter_menu_open
+        )
+        self._on_parameter_change(0.0)
+        self.fig.canvas.draw_idle()
+
+    def _on_temporal_preconditioning_change(self, _label: str) -> None:
         self._on_parameter_change(0.0)
 
     def _on_model_change(self, label: str) -> None:
@@ -890,6 +978,15 @@ class SplinePlayground:
         self._refresh_observation_widgets()
 
     def _place_target(self, index: int, time: float) -> None:
+        if self.parameters.spline_initialization == "warm":
+            assert self.parameters.regression_n_steps is not None
+            exact_step = time * self.parameters.regression_n_steps
+            if abs(exact_step - round(exact_step)) > 1e-6:
+                self._show_message(
+                    f"Target time {time:.3g} is not on the regression "
+                    f"{self.parameters.regression_n_steps}-step mesh."
+                )
+                return
         for other_index, other_time in enumerate(self.target_times):
             if other_index != index and other_time is not None and abs(other_time - time) < 1e-8:
                 self._show_message("Another target already occupies that node.")
@@ -1694,7 +1791,11 @@ class SplinePlayground:
         return path
 
     def apply_setup(self, setup: SplineSetup) -> None:
-        if setup.parameters.n_steps > MAX_STEPS:
+        assert setup.parameters.regression_n_steps is not None
+        if max(
+            setup.parameters.n_steps,
+            setup.parameters.regression_n_steps,
+        ) > MAX_STEPS:
             raise ValueError(
                 f"the interactive playground supports at most {MAX_STEPS} steps"
             )
@@ -1759,6 +1860,9 @@ class SplinePlayground:
             self.spline_initialization_radio.set_active(
                 0 if self.parameters.spline_initialization == "cold" else 1
             )
+            self.temporal_preconditioning_radio.set_active(
+                1 if self.parameters.temporal_preconditioning else 0
+            )
             optimized_fields = set(self.parameters.optimized_fields)
             for index, (name, active) in enumerate(
                 zip(
@@ -1781,13 +1885,51 @@ class SplinePlayground:
             self.lbfgs_lr_slider.valtext.set_text(
                 f"{self.parameters.lbfgs_lr:.3g}"
             )
+            assert self.parameters.regression_cost_cst is not None
+            log_regression_cost = float(
+                np.log10(self.parameters.regression_cost_cst)
+            )
+            self._set_slider_value(
+                self.regression_cost_slider,
+                log_regression_cost,
+                padding=1,
+            )
+            self.regression_cost_slider.valtext.set_text(
+                f"{self.parameters.regression_cost_cst:.3g}"
+            )
+            assert self.parameters.regression_lbfgs_lr is not None
+            log_regression_lbfgs_lr = float(
+                np.log10(self.parameters.regression_lbfgs_lr)
+            )
+            self._set_slider_value(
+                self.regression_lbfgs_lr_slider,
+                log_regression_lbfgs_lr,
+                padding=1,
+            )
+            self.regression_lbfgs_lr_slider.valtext.set_text(
+                f"{self.parameters.regression_lbfgs_lr:.3g}"
+            )
             self.steps_slider.valmin = 1
             self.steps_slider.valmax = MAX_STEPS
             self.steps_slider.ax.set_xlim(1, MAX_STEPS)
             self.steps_slider.set_val(self.parameters.n_steps)
+            assert self.parameters.regression_n_steps is not None
+            self.regression_steps_slider.valmin = 1
+            self.regression_steps_slider.valmax = MAX_STEPS
+            self.regression_steps_slider.ax.set_xlim(1, MAX_STEPS)
+            self.regression_steps_slider.set_val(
+                self.parameters.regression_n_steps
+            )
             self._set_slider_value(
                 self.iterations_slider,
                 self.parameters.iterations,
+                padding=1,
+                lower_bound=1,
+            )
+            assert self.parameters.regression_iterations is not None
+            self._set_slider_value(
+                self.regression_iterations_slider,
+                self.parameters.regression_iterations,
                 padding=1,
                 lower_bound=1,
             )
@@ -1797,6 +1939,10 @@ class SplinePlayground:
             self.time_slider.set_val(0)
         finally:
             self._syncing_widgets = False
+        self.parameter_menu.set_warm_layout(
+            self.parameters.spline_initialization == "warm",
+            visible=self.parameter_menu_open,
+        )
         self.editor.set_active(self._active_field_key())
         self._sync_amplitude_slider()
         self.cache = None

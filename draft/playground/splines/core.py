@@ -86,6 +86,11 @@ class SplineParameters:
     lbfgs_lr: float | None = None
     optimized_fields: tuple[str, ...] = OPTIMIZABLE_INITIAL_FIELDS
     spline_initialization: str = "cold"
+    temporal_preconditioning: bool = True
+    regression_cost_cst: float | None = None
+    regression_n_steps: int | None = None
+    regression_iterations: int | None = None
+    regression_lbfgs_lr: float | None = None
 
     def __post_init__(self) -> None:
         for name in ("alpha", "beta", "gamma", "rho", "cg_eps"):
@@ -130,6 +135,8 @@ class SplineParameters:
         object.__setattr__(
             self, "spline_initialization", spline_initialization
         )
+        if not isinstance(self.temporal_preconditioning, bool):
+            raise TypeError("temporal_preconditioning must be a boolean")
         rho_upper_bound = self.rho <= 1 if model == "classic" else self.rho < 1
         if self.rho < 0 or not rho_upper_bound:
             bound = "0 <= rho <= 1" if model == "classic" else "0 <= rho < 1"
@@ -162,6 +169,62 @@ class SplineParameters:
             or self.n_steps < 1
         ):
             raise ValueError("n_steps must be a strictly positive integer")
+        regression_cost_cst = (
+            self.cost_cst
+            if self.regression_cost_cst is None
+            else float(self.regression_cost_cst)
+        )
+        if not isfinite(regression_cost_cst) or regression_cost_cst <= 0:
+            raise ValueError(
+                "regression_cost_cst must be finite and strictly positive"
+            )
+        regression_lbfgs_lr = (
+            self.lbfgs_lr
+            if self.regression_lbfgs_lr is None
+            else float(self.regression_lbfgs_lr)
+        )
+        if not isfinite(regression_lbfgs_lr) or regression_lbfgs_lr <= 0:
+            raise ValueError(
+                "regression_lbfgs_lr must be finite and strictly positive"
+            )
+        regression_n_steps = (
+            self.n_steps
+            if self.regression_n_steps is None
+            else self.regression_n_steps
+        )
+        if (
+            not isinstance(regression_n_steps, int)
+            or isinstance(regression_n_steps, bool)
+            or regression_n_steps < 1
+        ):
+            raise ValueError(
+                "regression_n_steps must be a strictly positive integer"
+            )
+        regression_iterations = (
+            self.iterations
+            if self.regression_iterations is None
+            else self.regression_iterations
+        )
+        if (
+            not isinstance(regression_iterations, int)
+            or isinstance(regression_iterations, bool)
+            or regression_iterations < 1
+        ):
+            raise ValueError(
+                "regression_iterations must be a strictly positive integer"
+            )
+        object.__setattr__(
+            self, "regression_cost_cst", regression_cost_cst
+        )
+        object.__setattr__(
+            self, "regression_n_steps", regression_n_steps
+        )
+        object.__setattr__(
+            self, "regression_iterations", regression_iterations
+        )
+        object.__setattr__(
+            self, "regression_lbfgs_lr", regression_lbfgs_lr
+        )
 
         if not self.control_times and self.control_steps:
             controls = tuple(self.control_steps)
@@ -225,6 +288,11 @@ class SplineParameters:
             "lbfgs_lr": self.lbfgs_lr,
             "optimized_fields": self.optimized_fields,
             "spline_initialization": self.spline_initialization,
+            "temporal_preconditioning": self.temporal_preconditioning,
+            "regression_cost_cst": self.regression_cost_cst,
+            "regression_n_steps": self.regression_n_steps,
+            "regression_iterations": self.regression_iterations,
+            "regression_lbfgs_lr": self.regression_lbfgs_lr,
         }
 
     @classmethod
@@ -252,6 +320,13 @@ class SplineParameters:
                 values.get("optimized_fields", OPTIMIZABLE_INITIAL_FIELDS)
             ),
             spline_initialization=values.get("spline_initialization", "cold"),
+            temporal_preconditioning=values.get(
+                "temporal_preconditioning", True
+            ),
+            regression_cost_cst=values.get("regression_cost_cst"),
+            regression_n_steps=values.get("regression_n_steps"),
+            regression_iterations=values.get("regression_iterations"),
+            regression_lbfgs_lr=values.get("regression_lbfgs_lr"),
         )
 
 
@@ -326,18 +401,31 @@ class SplineSetup:
             raise ValueError("target times must be finite and lie in (0, 1]")
         if any(right <= left for left, right in zip(times, times[1:])):
             raise ValueError("target times must be strictly increasing")
-        target_steps = tuple(round(time * self.parameters.n_steps) for time in times)
-        if any(not 1 <= step <= self.parameters.n_steps for step in target_steps):
-            raise ValueError("target times must map to nonzero temporal mesh nodes")
-        if any(
-            abs(time * self.parameters.n_steps - step) > 1e-6
-            for time, step in zip(times, target_steps)
-        ):
-            raise ValueError("target times must lie on the temporal mesh")
-        if any(
-            right <= left for left, right in zip(target_steps, target_steps[1:])
-        ):
-            raise ValueError("target times must map to distinct temporal nodes")
+        def validate_temporal_mesh(n_steps: int, name: str) -> None:
+            target_steps = tuple(round(time * n_steps) for time in times)
+            if any(not 1 <= step <= n_steps for step in target_steps):
+                raise ValueError(
+                    f"target times must map to nonzero {name} temporal nodes"
+                )
+            if any(
+                abs(time * n_steps - step) > 1e-6
+                for time, step in zip(times, target_steps)
+            ):
+                raise ValueError(f"target times must lie on the {name} mesh")
+            if any(
+                right <= left
+                for left, right in zip(target_steps, target_steps[1:])
+            ):
+                raise ValueError(
+                    f"target times must map to distinct {name} temporal nodes"
+                )
+
+        validate_temporal_mesh(self.parameters.n_steps, "spline")
+        if self.parameters.spline_initialization == "warm":
+            assert self.parameters.regression_n_steps is not None
+            validate_temporal_mesh(
+                self.parameters.regression_n_steps, "regression"
+            )
 
         paths = tuple(str(path) for path in self.target_paths)
         if not paths:

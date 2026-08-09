@@ -70,11 +70,30 @@ def test_parameters_require_ordered_interior_control_nodes():
         "initial_jerk",
     )
     assert parameters.spline_initialization == "cold"
+    assert parameters.temporal_preconditioning
+    assert parameters.regression_cost_cst == parameters.cost_cst
+    assert parameters.regression_n_steps == parameters.n_steps
+    assert parameters.regression_iterations == parameters.iterations
+    assert parameters.regression_lbfgs_lr == parameters.lbfgs_lr
     assert (
         SplineParameters(spline_initialization="WARM").spline_initialization
         == "warm"
     )
     assert SplineParameters.from_dict({}).spline_initialization == "cold"
+    assert SplineParameters.from_dict({}).temporal_preconditioning
+    assert not SplineParameters(
+        temporal_preconditioning=False
+    ).temporal_preconditioning
+    independent_regression = SplineParameters(
+        regression_cost_cst=0.2,
+        regression_n_steps=8,
+        regression_iterations=3,
+        regression_lbfgs_lr=0.4,
+    )
+    assert independent_regression.regression_cost_cst == pytest.approx(0.2)
+    assert independent_regression.regression_n_steps == 8
+    assert independent_regression.regression_iterations == 3
+    assert independent_regression.regression_lbfgs_lr == pytest.approx(0.4)
     assert SplineParameters(model="classic").lbfgs_lr == pytest.approx(1.0)
 
     midpoint = SplineParameters(n_steps=16, control_steps=(8,))
@@ -96,6 +115,16 @@ def test_parameters_require_ordered_interior_control_nodes():
         SplineParameters(lbfgs_lr=0)
     with pytest.raises(ValueError, match="spline_initialization"):
         SplineParameters(spline_initialization="previous")
+    with pytest.raises(TypeError, match="temporal_preconditioning"):
+        SplineParameters(temporal_preconditioning=1)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="regression_cost_cst"):
+        SplineParameters(regression_cost_cst=0)
+    with pytest.raises(ValueError, match="regression_n_steps"):
+        SplineParameters(regression_n_steps=0)
+    with pytest.raises(ValueError, match="regression_iterations"):
+        SplineParameters(regression_iterations=0)
+    with pytest.raises(ValueError, match="regression_lbfgs_lr"):
+        SplineParameters(regression_lbfgs_lr=0)
     with pytest.raises(ValueError, match="unsupported optimized fields"):
         SplineParameters(optimized_fields=("control_jerks",))
     with pytest.raises(ValueError, match="duplicates"):
@@ -527,6 +556,12 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
         control_steps=(2,),
         lbfgs_lr=0.03,
         optimized_fields=("initial_momentum", "initial_jerk"),
+        spline_initialization="warm",
+        temporal_preconditioning=False,
+        regression_cost_cst=0.04,
+        regression_n_steps=8,
+        regression_iterations=7,
+        regression_lbfgs_lr=0.5,
     )
     setup = zero_setup(source, source, parameters)
     setup.initial_jerk.fill_(1)
@@ -565,6 +600,12 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
     del legacy["parameters"]["sigma"]
     del legacy["parameters"]["lbfgs_lr"]
     del legacy["parameters"]["optimized_fields"]
+    del legacy["parameters"]["spline_initialization"]
+    del legacy["parameters"]["temporal_preconditioning"]
+    del legacy["parameters"]["regression_cost_cst"]
+    del legacy["parameters"]["regression_n_steps"]
+    del legacy["parameters"]["regression_iterations"]
+    del legacy["parameters"]["regression_lbfgs_lr"]
     legacy_path = tmp_path / "legacy.pt"
     torch.save(legacy, legacy_path)
     legacy_parameters = load_setup(legacy_path).parameters
@@ -575,6 +616,15 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
         "initial_acceleration",
         "initial_jerk",
     )
+    assert legacy_parameters.spline_initialization == "cold"
+    assert legacy_parameters.temporal_preconditioning
+    assert legacy_parameters.regression_cost_cst == legacy_parameters.cost_cst
+    assert legacy_parameters.regression_n_steps == legacy_parameters.n_steps
+    assert (
+        legacy_parameters.regression_iterations
+        == legacy_parameters.iterations
+    )
+    assert legacy_parameters.regression_lbfgs_lr == legacy_parameters.lbfgs_lr
 
     mismatched = setup.payload()
     mismatched["parameters"]["control_steps"] = (1,)
@@ -765,6 +815,15 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert [
         label.get_text() for label in app.spline_initialization_radio.labels
     ] == ["Cold", "Warm"]
+    assert app.temporal_preconditioning_radio.value_selected == "On"
+    assert [
+        label.get_text() for label in app.temporal_preconditioning_radio.labels
+    ] == ["Off", "On"]
+    assert all(
+        not slider.ax.get_visible()
+        for slider in app.parameter_menu.regression_numerical_sliders
+    )
+    cold_cost_position = app.cost_slider.ax.get_position()
     assert [label.get_text() for label in app.optimized_fields_check.labels] == [
         "Momentum",
         "Acceleration",
@@ -793,12 +852,41 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     app._on_key_press(SimpleNamespace(key="p"))
     assert app.parameter_menu_open
     assert app.parameter_menu.backdrop_ax.get_visible()
-    assert all(slider.active for slider in app.parameter_menu.sliders)
+    assert all(
+        slider.active
+        for slider in app.parameter_menu.sliders
+        if slider not in app.parameter_menu.regression_numerical_sliders
+    )
     assert app.spline_initialization_radio.active
+    assert app.temporal_preconditioning_radio.active
     app.spline_initialization_radio.set_active(1)
     assert app.parameters.spline_initialization == "warm"
+    assert all(
+        slider.ax.get_visible() and slider.active
+        for slider in app.parameter_menu.regression_numerical_sliders
+    )
+    assert app.cost_slider.ax.get_position().width < cold_cost_position.width
+    app.regression_cost_slider.set_val(np.log10(0.03))
+    app.regression_steps_slider.set_val(5)
+    app.regression_iterations_slider.set_val(4)
+    app.regression_lbfgs_lr_slider.set_val(np.log10(0.2))
+    assert app.parameters.regression_cost_cst == pytest.approx(0.03)
+    assert app.parameters.regression_n_steps == 5
+    assert app.parameters.regression_iterations == 4
+    assert app.parameters.regression_lbfgs_lr == pytest.approx(0.2)
     app.spline_initialization_radio.set_active(0)
     assert app.parameters.spline_initialization == "cold"
+    assert all(
+        not slider.ax.get_visible() and not slider.active
+        for slider in app.parameter_menu.regression_numerical_sliders
+    )
+    assert app.cost_slider.ax.get_position().width == pytest.approx(
+        cold_cost_position.width
+    )
+    app.temporal_preconditioning_radio.set_active(0)
+    assert not app.parameters.temporal_preconditioning
+    app.temporal_preconditioning_radio.set_active(1)
+    assert app.parameters.temporal_preconditioning
     app.iterations_slider.set_val(3)
     assert app.parameters.iterations == 3
     app.lbfgs_lr_slider.set_val(np.log10(0.025))
@@ -814,7 +902,11 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     ]
     app.operator_radio.set_active(1)
     assert app.parameters.kernel == "gaussian"
-    assert all(slider.active for slider in app.parameter_menu.sliders)
+    assert all(
+        slider.active
+        for slider in app.parameter_menu.sliders
+        if slider not in app.parameter_menu.regression_numerical_sliders
+    )
     app.sigma_slider.set_val(2.5)
     assert app.parameters.sigma == pytest.approx(2.5)
     app.operator_radio.set_active(0)
@@ -837,6 +929,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert not app.parameter_menu_open
     assert not app.device_radio.active
     assert not app.spline_initialization_radio.active
+    assert not app.temporal_preconditioning_radio.active
     assert app.source_ax.get_visible()
     assert not app._workspace_dirty
 
@@ -863,6 +956,11 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
             lbfgs_lr=0.04,
             optimized_fields=("initial_acceleration",),
             spline_initialization="warm",
+            temporal_preconditioning=False,
+            regression_cost_cst=0.02,
+            regression_n_steps=6,
+            regression_iterations=5,
+            regression_lbfgs_lr=0.3,
         ),
     )
     app.apply_setup(replacement)
@@ -878,6 +976,12 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.optimized_fields_check.get_status() == [False, True, False]
     assert app.spline_initialization_radio.value_selected == "Warm"
     assert app.parameters.spline_initialization == "warm"
+    assert app.temporal_preconditioning_radio.value_selected == "Off"
+    assert not app.parameters.temporal_preconditioning
+    assert app.regression_cost_slider.val == pytest.approx(np.log10(0.02))
+    assert app.regression_steps_slider.val == 6
+    assert app.regression_iterations_slider.val == 5
+    assert app.regression_lbfgs_lr_slider.val == pytest.approx(np.log10(0.3))
     assert len(app._control_markers) == 4
     controls_heading = next(
         text for text in app.fig.texts if text.get_text() == "CONTROLS"
@@ -938,11 +1042,19 @@ def test_only_operator_choice_changes_the_operator():
     assert app.operator_radio.value_selected == "Sobolev"
     assert app.parameters.kernel == "sobolev"
     assert app.sigma_slider.val != original_sigma
-    assert all(slider.active for slider in app.parameter_menu.sliders)
+    assert all(
+        slider.active
+        for slider in app.parameter_menu.sliders
+        if slider not in app.parameter_menu.regression_numerical_sliders
+    )
 
     click(app.operator_radio.ax, (0.70, 0.5))
     assert app.parameters.kernel == "gaussian"
-    assert all(slider.active for slider in app.parameter_menu.sliders)
+    assert all(
+        slider.active
+        for slider in app.parameter_menu.sliders
+        if slider not in app.parameter_menu.regression_numerical_sliders
+    )
 
     original_alpha = app.alpha_slider.val
     click(app.alpha_slider.ax)
@@ -952,7 +1064,11 @@ def test_only_operator_choice_changes_the_operator():
 
     click(app.operator_radio.ax, (0.08, 0.5))
     assert app.parameters.kernel == "sobolev"
-    assert all(slider.active for slider in app.parameter_menu.sliders)
+    assert all(
+        slider.active
+        for slider in app.parameter_menu.sliders
+        if slider not in app.parameter_menu.regression_numerical_sliders
+    )
     for slider in (
         app.alpha_slider,
         app.beta_slider,
@@ -961,6 +1077,63 @@ def test_only_operator_choice_changes_the_operator():
     ):
         assert slider.track.get_alpha() in (None, 1)
     plt.close(app.fig)
+
+
+def test_warm_initialization_rejects_off_mesh_regression_observations():
+    source = torch.zeros(1, 1, 5, 6)
+    with pytest.raises(ValueError, match="regression mesh"):
+        zero_setup(
+            source,
+            torch.ones_like(source),
+            SplineParameters(
+                n_steps=4,
+                regression_n_steps=3,
+                spline_initialization="warm",
+            ),
+            target_times=(0.5,),
+        )
+    app = SplinePlayground(
+        zero_setup(
+            source,
+            torch.ones_like(source),
+            SplineParameters(
+                n_steps=4,
+                regression_n_steps=3,
+                spline_initialization="cold",
+            ),
+            target_times=(0.5,),
+        ),
+        device="cpu",
+    )
+    app.set_parameter_menu_visible(True)
+
+    app.spline_initialization_radio.set_active(1)
+
+    assert app.parameters.spline_initialization == "cold"
+    assert app.spline_initialization_radio.value_selected == "Cold"
+    assert "regression 3-step mesh" in app.status_text.get_text()
+    assert all(
+        not slider.ax.get_visible()
+        for slider in app.parameter_menu.regression_numerical_sliders
+    )
+    plt.close(app.fig)
+
+    warm_app = SplinePlayground(
+        zero_setup(
+            source,
+            torch.ones_like(source),
+            SplineParameters(
+                n_steps=4,
+                regression_n_steps=2,
+                spline_initialization="warm",
+            ),
+        ),
+        device="cpu",
+    )
+    warm_app._place_target(0, 0.25)
+    assert warm_app.target_times == [1.0]
+    assert "regression 2-step mesh" in warm_app.status_text.get_text()
+    plt.close(warm_app.fig)
 
 
 def test_control_times_rescale_and_can_be_edited_on_the_parameter_timeline():
@@ -1586,6 +1759,7 @@ def test_registration_forwards_setup_lbfgs_learning_rate(monkeypatch):
         def __init__(self, **kwargs):
             self.mp = kwargs["geodesic"]
             self.loss_stock = {}
+            captured["optimizer_init"] = kwargs
 
         def forward(self, variables_ini, **kwargs):
             captured.update(kwargs)
@@ -1605,6 +1779,7 @@ def test_registration_forwards_setup_lbfgs_learning_rate(monkeypatch):
     result = registration_module.register_spline(setup, device="cpu")
 
     assert captured["grad_coef"] == pytest.approx(0.025)
+    assert captured["optimizer_init"]["temporal_preconditioning"]
     assert result.trajectory is trajectory
 
     classic_setup = zero_setup(
@@ -1650,11 +1825,21 @@ def test_register_spline_uses_geodesic_regression_for_warm_start(monkeypatch):
         source,
         target,
         SplineParameters(
+            alpha=0.4,
+            beta=0.3,
+            gamma=0.2,
             rho=0,
             n_steps=4,
             iterations=1,
+            cost_cst=0.05,
+            lbfgs_lr=0.025,
             optimized_fields=("initial_acceleration",),
             spline_initialization="warm",
+            temporal_preconditioning=False,
+            regression_cost_cst=0.07,
+            regression_n_steps=8,
+            regression_iterations=3,
+            regression_lbfgs_lr=0.4,
         ),
         target_times=(0.5, 1.0),
     )
@@ -1670,6 +1855,7 @@ def test_register_spline_uses_geodesic_regression_for_warm_start(monkeypatch):
     class FakeOptimizer:
         def __init__(self, **kwargs):
             captured["optimizer_calls"] += 1
+            captured["optimizer_init"] = kwargs
             self.mp = kwargs["geodesic"]
             self.loss_stock = {}
 
@@ -1696,12 +1882,20 @@ def test_register_spline_uses_geodesic_regression_for_warm_start(monkeypatch):
     assert regression["target_times"] == (0.5, 1.0)
     torch.testing.assert_close(regression["target"], setup.target)
     assert regression["rho"] == 0
-    assert regression["integration_steps"] == 4
-    assert regression["n_iter"] == 1
-    assert regression["grad_coef"] == pytest.approx(
-        registration_module.REGRESSION_LBFGS_LR
+    assert regression["integration_steps"] == 8
+    assert regression["n_iter"] == 3
+    assert regression["cost_cst"] == pytest.approx(0.07)
+    assert regression["grad_coef"] == pytest.approx(0.4)
+    assert regression["lbfgs_max_iter"] == registration_module.LBFGS_MAX_ITER
+    assert (
+        regression["lbfgs_history_size"]
+        == registration_module.LBFGS_HISTORY_SIZE
     )
     assert regression["boundary"] == "periodic"
+    assert regression["kernelOperator"].alpha == pytest.approx(0.4)
+    assert regression["kernelOperator"].beta == pytest.approx(0.3)
+    assert regression["kernelOperator"].gamma == pytest.approx(0.2)
+    assert not captured["optimizer_init"]["temporal_preconditioning"]
     variables = captured["variables"]
     torch.testing.assert_close(variables.initial_momentum, seed)
     assert not variables.initial_momentum.requires_grad
