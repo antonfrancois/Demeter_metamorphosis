@@ -19,6 +19,7 @@ from .joined import (
 from .simplex import Simplex_sqrt_Metamorphosis_integrator, Simplex_sqrt_Shooting
 from .affine import Affine_Metamorphosis_integrator, Affine_Metamorphosis_Optimizer
 from .affine_decoupled import Affine_Decoupled_Metamorphosis_integrator, Affine_Decoupled_Metamorphosis_Optimizer
+from .regression import MetamorphosisRegression
 from .splines import MetamorphosisSplineIntegrator, MetamorphosisSplineOptimizer
 from ..utils.reproducing_kernels import (
     GaussianRKHS,
@@ -30,6 +31,8 @@ from ..utils.reproducing_kernels import (
 def _find_meta_optimiser_from_repr_(repr_str):
     if "MetamorphosisSplineOptimizer" in repr_str:
         return MetamorphosisSplineIntegrator, MetamorphosisSplineOptimizer
+    if "MetamorphosisRegression" in repr_str:
+        return Metamorphosis_integrator, MetamorphosisRegression
     if "ConstrainedMetamorphosis_Shooting" in repr_str:
         return ConstrainedMetamorphosis_integrator, ConstrainedMetamorphosis_Shooting
     if "Metamorphosis_Shooting" in repr_str:
@@ -231,9 +234,29 @@ def  _load_light_optim(opti_dict, verbose):
                 "temporal_preconditioning", True
             ),
         )
+    elif optimizer is MetamorphosisRegression:
+        mr = optimizer(
+            source=opti_dict["source"],
+            target=opti_dict["target"],
+            target_times=opti_dict["args"]["target_times"],
+            geodesic=mp,
+            cost_cst=opti_dict["cost_cst"],
+            optimizer_method=opti_dict["optimizer_method_name"],
+            lbfgs_max_iter=opti_dict["args"].get("lbfgs_max_iter", 20),
+            lbfgs_history_size=opti_dict["args"].get("lbfgs_history_size", 100),
+            hamiltonian_integration=opti_dict["args"]["hamiltonian_integration"],
+            adam_scheduler=opti_dict["args"].get("adam_scheduler"),
+            adam_grad_clip=opti_dict["args"].get("adam_grad_clip"),
+        )
     else:
         mr = optimizer(**opti_dict)
+    if optimizer is MetamorphosisRegression:
+        for key in FIELD_TO_SAVE[5:]:
+            if key != "data_term" and key in opti_dict:
+                mr.__dict__[key] = opti_dict[key]
     mr.optimized_momenta, mr.loss_stock, mr.integration_diverged = _extract_analysis_results(opti_dict)
+    if optimizer is MetamorphosisRegression:
+        mr.id_grid = mp.id_grid
 
     return mr
 
@@ -279,6 +302,20 @@ def _load_heavy_optim(opti_dict, verbose):
                 "temporal_preconditioning", True
             ),
         )
+    elif optimizer is MetamorphosisRegression:
+        new_optim = optimizer(
+            source=opti_dict["source"],
+            target=opti_dict["target"],
+            target_times=opti_dict["args"]["target_times"],
+            geodesic=opti_dict["mp"],
+            cost_cst=opti_dict["cost_cst"],
+            optimizer_method=opti_dict["optimizer_method_name"],
+            lbfgs_max_iter=opti_dict["args"].get("lbfgs_max_iter", 20),
+            lbfgs_history_size=opti_dict["args"].get("lbfgs_history_size", 100),
+            hamiltonian_integration=opti_dict["args"]["hamiltonian_integration"],
+            adam_scheduler=opti_dict["args"].get("adam_scheduler"),
+            adam_grad_clip=opti_dict["args"].get("adam_grad_clip"),
+        )
     else:
         new_optim = optimizer(
             source=opti_dict["source"],
@@ -290,7 +327,7 @@ def _load_heavy_optim(opti_dict, verbose):
         )
 
     for k in FIELD_TO_SAVE[5:]:
-        if optimizer is MetamorphosisSplineOptimizer and k == "data_term":
+        if optimizer in (MetamorphosisSplineOptimizer, MetamorphosisRegression) and k == "data_term":
             continue
         if k in opti_dict:
             new_optim.__dict__[k] = opti_dict[k]
@@ -301,5 +338,7 @@ def _load_heavy_optim(opti_dict, verbose):
     if getattr(new_optim, "loss_stock", None) is None:
         new_optim.loss_stock = loss_stock
     new_optim.integration_diverged = getattr(new_optim, "integration_diverged", False) or integration_diverged
+    if optimizer is MetamorphosisRegression:
+        new_optim.id_grid = new_optim.mp.id_grid
 
     return new_optim

@@ -9,7 +9,7 @@ from typing import Any
 
 import torch
 
-from demeter.metamorphosis import metamorphosis
+from demeter.metamorphosis import metamorphosis, metamorphosis_regression
 from demeter.metamorphosis.splines import (
     MetamorphosisSplineIntegrator,
     MetamorphosisSplineOptimizer,
@@ -54,6 +54,7 @@ class RegistrationResult:
 
 LBFGS_MAX_ITER = 5
 LBFGS_HISTORY_SIZE = 10
+REGRESSION_LBFGS_LR = 1.0
 
 
 class _SelectedFieldSplineOptimizer(MetamorphosisSplineOptimizer):
@@ -159,7 +160,7 @@ def register_spline(
     device: str | torch.device = "auto",
     progress_callback: Callable[[int, int], None] | None = None,
 ) -> RegistrationResult:
-    """Optimize all spline shooting fields from zero initial fields."""
+    """Optimize selected spline fields from a cold or geodesic-regression start."""
     if setup.parameters.kernel != "sobolev":
         raise ValueError("spline registration requires the Sobolev operator")
     run_device = resolve_device(device)
@@ -170,11 +171,42 @@ def register_spline(
         n_controls=setup.n_controls,
         requires_grad=False,
     )
+    if setup.parameters.spline_initialization == "warm":
+        regression = metamorphosis_regression(
+            source=source,
+            target=setup.target.to(run_device),
+            target_times=setup.target_times,
+            momentum_ini=0.0,
+            rho=setup.parameters.rho,
+            cost_cst=setup.parameters.cost_cst,
+            integration_steps=setup.parameters.n_steps,
+            n_iter=setup.parameters.iterations,
+            grad_coef=REGRESSION_LBFGS_LR,
+            kernelOperator=_kernel_operator(setup.parameters),
+            safe_mode=False,
+            integration_method="semiLagrangian",
+            optimizer_method="LBFGS_torch",
+            dx_convention="pixel",
+            lbfgs_max_iter=LBFGS_MAX_ITER,
+            lbfgs_history_size=LBFGS_HISTORY_SIZE,
+            boundary="periodic",
+        )
+        momenta = regression.optimized_momenta
+        if not isinstance(momenta, Momenta) or momenta.momentum_I is None:
+            raise RuntimeError(
+                "geodesic regression initialization produced no momentum"
+            )
+        variables_ini.initial_momentum.copy_(
+            momenta.momentum_I.detach().to(source)
+        )
     selected_fields = set(setup.parameters.optimized_fields)
     for name, value in variables_ini:
         value.requires_grad_(name == "control_jerks" or name in selected_fields)
     if not any(value.requires_grad and value.numel() for _, value in variables_ini):
-        optimized_setup = _zeroed_setup(setup)
+        optimized_setup = replace(
+            _zeroed_setup(setup),
+            initial_momentum=variables_ini.initial_momentum.detach().cpu(),
+        )
         return RegistrationResult(
             optimized_setup,
             run_spline(

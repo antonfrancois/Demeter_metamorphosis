@@ -12,6 +12,7 @@ from . import simplex as sp
 from . import joined as jn
 from . import affine as aff
 from . import affine_decoupled as ad
+from . import regression as reg
 from . import splines as spl
 from ..utils.spline_data import load_timed_image_directory
 
@@ -297,6 +298,101 @@ def metamorphosis(
     mr = _commun_after(mr, momentum_ini, safe_mode, n_iter, grad_coef,
                       convergence_tol=convergence_tol, convergence_patience=convergence_patience)
     return mr
+
+
+@time_it
+def metamorphosis_regression(
+    source,
+    target=None,
+    target_times=None,
+    momentum_ini=0.0,
+    rho=None,
+    cost_cst=None,
+    integration_steps=None,
+    n_iter=None,
+    grad_coef=None,
+    kernelOperator=None,
+    safe_mode=False,
+    integration_method="semiLagrangian",
+    optimizer_method="LBFGS_torch",
+    dx_convention="pixel",
+    hamiltonian_integration=False,
+    lbfgs_max_iter=20,
+    lbfgs_history_size=100,
+    save_gpu_memory=False,
+    convergence_tol=None,
+    convergence_patience=3,
+    adam_scheduler="reduce_on_plateau",
+    adam_grad_clip=None,
+    boundary="legacy",
+):
+    """Fit one classical metamorphosis geodesic to timed observations.
+
+    ``source`` is fixed at time zero. ``target`` has shape ``[N, 1, H, W]``
+    and ``target_times`` contains its strictly increasing observation times.
+    Observation times must lie on the integration mesh. ``source`` may instead
+    be a directory containing the same ``images.csv`` format used by
+    :func:`MetamorphosisSplines`.
+    """
+    if isinstance(source, (str, Path)):
+        if target is not None or target_times is not None:
+            raise ValueError(
+                "target and target_times must be omitted when source is a directory"
+            )
+        batch = load_timed_image_directory(source)
+        source, target, target_times = (
+            batch.source,
+            batch.target,
+            batch.target_times,
+        )
+    if target is None or target_times is None:
+        raise ValueError("target and target_times are required for tensor input")
+    required = {
+        "rho": rho,
+        "cost_cst": cost_cst,
+        "integration_steps": integration_steps,
+        "n_iter": n_iter,
+        "grad_coef": grad_coef,
+        "kernelOperator": kernelOperator,
+    }
+    missing = [name for name, value in required.items() if value is None]
+    if missing:
+        raise TypeError(f"missing required arguments: {', '.join(missing)}")
+    if not isinstance(n_iter, int) or isinstance(n_iter, bool) or n_iter < 0:
+        raise ValueError("n_iter must be a non-negative integer")
+
+    momentum_ini = _commun_before(momentum_ini, source)
+    integrator = cl.Metamorphosis_integrator(
+        method=integration_method,
+        rho=rho,
+        kernelOperator=kernelOperator,
+        n_step=integration_steps,
+        dx_convention=dx_convention,
+        save_gpu_memory=save_gpu_memory,
+        boundary=boundary,
+    )
+    optimizer = reg.MetamorphosisRegression(
+        source=source,
+        target=target,
+        target_times=target_times,
+        geodesic=integrator,
+        cost_cst=cost_cst,
+        optimizer_method=optimizer_method,
+        lbfgs_max_iter=lbfgs_max_iter,
+        lbfgs_history_size=lbfgs_history_size,
+        hamiltonian_integration=hamiltonian_integration,
+        adam_scheduler=adam_scheduler,
+        adam_grad_clip=adam_grad_clip,
+    )
+    return _commun_after(
+        optimizer,
+        momentum_ini,
+        safe_mode,
+        n_iter,
+        grad_coef,
+        convergence_tol=convergence_tol,
+        convergence_patience=convergence_patience,
+    )
 
 
 @time_it

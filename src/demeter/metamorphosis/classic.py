@@ -272,6 +272,16 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
             params_spe["boundary"] = self.mp.boundary
         return {**params_all, **params_spe}
 
+    def _forward_and_data_loss(self, momentum_ini: Momenta) -> torch.Tensor:
+        self.mp.forward(
+            self.source,
+            momentum_ini,
+            save=False,
+            plot=0,
+            hamiltonian_integration=self.flag_hamiltonian_integration,
+        )
+        return self.data_term()
+
     # @monitor_gpu
     def cost(self, momentum_ini: Momenta) -> torch.Tensor:
         r"""
@@ -283,15 +293,10 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
         # print_gpumemory("In cost; Before forward")
 
         lamb = self.cost_cst
-        self.mp.forward(self.source, momentum_ini,
-                        save=False,
-                        plot=0,
-                        hamiltonian_integration=self.flag_hamiltonian_integration,
-                        )
 #         print_gpumemory("In cost; After forward")
 
         # Compute the data_term. Default is the Ssd
-        self.data_loss = self.data_term()
+        self.data_loss = self._forward_and_data_loss(momentum_ini)
 #         print_gpumemory("In cost; After data_term")
 
         # norm_2 on z

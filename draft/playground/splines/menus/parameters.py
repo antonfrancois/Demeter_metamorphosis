@@ -44,6 +44,7 @@ class ParameterMenu:
     iterations_slider: Slider
     cost_slider: Slider
     lbfgs_lr_slider: Slider
+    spline_initialization_radio: RadioButtons
     device_radio: RadioButtons
     control_time_editor: ControlTimeEditor
     close_button: Button
@@ -74,6 +75,7 @@ class ParameterMenu:
             self.operator_radio.ax,
             self.model_radio.ax,
             self.optimized_fields_check.ax,
+            self.spline_initialization_radio.ax,
             self.device_radio.ax,
             self.control_time_editor.axis,
             self.close_button.ax,
@@ -86,6 +88,7 @@ class ParameterMenu:
             self.operator_radio,
             self.model_radio,
             self.optimized_fields_check,
+            self.spline_initialization_radio,
             self.device_radio,
             self.close_button,
         ]
@@ -97,6 +100,7 @@ class ParameterMenu:
             widget.active = visible
         set_radio_visible(self.operator_radio, visible)
         set_radio_visible(self.model_radio, visible)
+        set_radio_visible(self.spline_initialization_radio, visible)
         set_radio_visible(self.device_radio, visible)
         self.control_time_editor.set_visible(visible)
 
@@ -120,7 +124,7 @@ def build_parameter_menu(
     panels = {
         "model": build_panel(fig, [0.06, 0.14, 0.50, 0.70], "MODEL"),
         "draw": build_panel(fig, [0.60, 0.52, 0.34, 0.32], "DRAW"),
-        "numerical": build_panel(fig, [0.60, 0.07, 0.34, 0.40], "NUMERICAL"),
+        "numerical": build_panel(fig, [0.60, 0.07, 0.34, 0.43], "NUMERICAL"),
     }
     panels["model"].text(
         0.25,
@@ -242,7 +246,7 @@ def build_parameter_menu(
     panels["model"].text(
         0.5,
         0.305,
-        "OPTIMIZED INITIAL FIELDS\n(unchecking sets to 0)",
+        "OPTIMIZED INITIAL FIELDS\n(unchecked fields stay fixed)",
         transform=panels["model"].transAxes,
         ha="center",
         va="center",
@@ -309,6 +313,35 @@ def build_parameter_menu(
         log_lbfgs_lr,
     )
     lbfgs_lr.valtext.set_text(format_lbfgs_learning_rate(parameters.lbfgs_lr))
+    spline_initialization_radio = RadioButtons(
+        fig.add_axes([0.70, 0.405, 0.17, 0.052], facecolor=PANEL_COLOR, zorder=102),
+        ("Cold", "Warm"),
+        active=0 if parameters.spline_initialization == "cold" else 1,
+        activecolor="#168a8a",
+        layout=(1, 2),
+    )
+    spline_initialization_radio.ax.text(
+        0.5,
+        0.82,
+        "SPLINE INITIALIZATION",
+        transform=spline_initialization_radio.ax.transAxes,
+        ha="center",
+        va="center",
+        fontsize=8.5,
+        fontweight="bold",
+        color=INK_COLOR,
+    )
+    for index, label in enumerate(spline_initialization_radio.labels):
+        label.set_fontsize(9)
+        label.set_position(((0.15, 0.68)[index], 0.31))
+    initialization_buttons = getattr(
+        spline_initialization_radio, "_buttons", None
+    )
+    if initialization_buttons is not None:
+        initialization_buttons.set_offsets(((0.10, 0.31), (0.63, 0.31)))
+    else:
+        spline_initialization_radio.circles[0].center = (0.10, 0.31)
+        spline_initialization_radio.circles[1].center = (0.63, 0.31)
     panels["numerical"].text(
         0.5,
         0.17,
@@ -373,6 +406,7 @@ def build_parameter_menu(
         iterations,
         cost,
         lbfgs_lr,
+        spline_initialization_radio,
         device_radio,
         control_editor,
         close,

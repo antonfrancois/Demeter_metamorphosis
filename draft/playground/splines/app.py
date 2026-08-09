@@ -255,6 +255,9 @@ class SplinePlayground:
         self.model_radio.on_clicked(self._on_model_change)
         self.operator_radio.on_clicked(self._on_operator_change)
         self.optimized_fields_check.on_clicked(self._on_optimized_fields_change)
+        self.spline_initialization_radio.on_clicked(
+            self._on_spline_initialization_change
+        )
         self.steps_slider.on_changed(self._on_parameter_change)
         self.iterations_slider.on_changed(self._on_parameter_change)
         self.amplitude_slider.on_changed(self._on_amplitude_change)
@@ -301,6 +304,9 @@ class SplinePlayground:
         self.iterations_slider = self.parameter_menu.iterations_slider
         self.cost_slider = self.parameter_menu.cost_slider
         self.lbfgs_lr_slider = self.parameter_menu.lbfgs_lr_slider
+        self.spline_initialization_radio = (
+            self.parameter_menu.spline_initialization_radio
+        )
         self.device_radio = self.parameter_menu.device_radio
         self.control_time_editor = self.parameter_menu.control_time_editor
         self.parameter_menu_close_button = self.parameter_menu.close_button
@@ -511,6 +517,9 @@ class SplinePlayground:
                     self.optimized_fields_check.get_status(),
                 )
                 if active
+            ),
+            spline_initialization=(
+                self.spline_initialization_radio.value_selected.lower()
             ),
         )
 
@@ -745,6 +754,9 @@ class SplinePlayground:
         self._on_parameter_change(value)
 
     def _on_optimized_fields_change(self, _label: str) -> None:
+        self._on_parameter_change(0.0)
+
+    def _on_spline_initialization_change(self, _label: str) -> None:
         self._on_parameter_change(0.0)
 
     def _on_model_change(self, label: str) -> None:
@@ -1339,7 +1351,10 @@ class SplinePlayground:
         self._running = True
         self.editor.cancel()
         self._set_workspace_active(False)
-        model_label = "spline" if model == "splines" else model
+        model_label = model
+        if model == "splines":
+            initialization = self._current_parameters().spline_initialization
+            model_label = f"{initialization} spline"
         self._set_status(f"Optimizing {model_label} from the images...")
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
@@ -1740,6 +1755,9 @@ class SplinePlayground:
             )
             self.model_radio.set_active(
                 0 if self.parameters.model == "classic" else 1
+            )
+            self.spline_initialization_radio.set_active(
+                0 if self.parameters.spline_initialization == "cold" else 1
             )
             optimized_fields = set(self.parameters.optimized_fields)
             for index, (name, active) in enumerate(

@@ -476,10 +476,16 @@ class Geodesic_integrator(torch.nn.Module, ABC):
             T = self.n_step
             shape_image = self.image.shape[1:]
             shape_field = self.field.shape[1:]
-            self.image_stock = torch.zeros((T,) + shape_image)
-            self.field_stock = torch.zeros((T,) + shape_field)
+            self.image_stock = torch.zeros(
+                (T,) + shape_image, dtype=self.image.dtype
+            )
+            self.field_stock = torch.zeros(
+                (T,) + shape_field, dtype=self.field.dtype
+            )
             self.momentum_stock = [_zero_like_momenta(momenta, device="cpu") for _ in range(T)]
-            self.residuals_stock = torch.zeros((T,) + shape_image)
+            self.residuals_stock = torch.zeros(
+                (T,) + shape_image, dtype=self.image.dtype
+            )
 
         if self.flag_hamiltonian_integration:
             self.norm_v = 0

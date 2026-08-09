@@ -69,6 +69,12 @@ def test_parameters_require_ordered_interior_control_nodes():
         "initial_acceleration",
         "initial_jerk",
     )
+    assert parameters.spline_initialization == "cold"
+    assert (
+        SplineParameters(spline_initialization="WARM").spline_initialization
+        == "warm"
+    )
+    assert SplineParameters.from_dict({}).spline_initialization == "cold"
     assert SplineParameters(model="classic").lbfgs_lr == pytest.approx(1.0)
 
     midpoint = SplineParameters(n_steps=16, control_steps=(8,))
@@ -88,6 +94,8 @@ def test_parameters_require_ordered_interior_control_nodes():
         SplineParameters(rho=1, model="splines")
     with pytest.raises(ValueError, match="lbfgs_lr"):
         SplineParameters(lbfgs_lr=0)
+    with pytest.raises(ValueError, match="spline_initialization"):
+        SplineParameters(spline_initialization="previous")
     with pytest.raises(ValueError, match="unsupported optimized fields"):
         SplineParameters(optimized_fields=("control_jerks",))
     with pytest.raises(ValueError, match="duplicates"):
@@ -753,6 +761,10 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.lbfgs_lr_slider.val == pytest.approx(-1)
     assert app.lbfgs_lr_slider.valtext.get_text() == "0.1"
     assert app.optimized_fields_check.get_status() == [True, True, True]
+    assert app.spline_initialization_radio.value_selected == "Cold"
+    assert [
+        label.get_text() for label in app.spline_initialization_radio.labels
+    ] == ["Cold", "Warm"]
     assert [label.get_text() for label in app.optimized_fields_check.labels] == [
         "Momentum",
         "Acceleration",
@@ -782,6 +794,11 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.parameter_menu_open
     assert app.parameter_menu.backdrop_ax.get_visible()
     assert all(slider.active for slider in app.parameter_menu.sliders)
+    assert app.spline_initialization_radio.active
+    app.spline_initialization_radio.set_active(1)
+    assert app.parameters.spline_initialization == "warm"
+    app.spline_initialization_radio.set_active(0)
+    assert app.parameters.spline_initialization == "cold"
     app.iterations_slider.set_val(3)
     assert app.parameters.iterations == 3
     app.lbfgs_lr_slider.set_val(np.log10(0.025))
@@ -819,6 +836,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     app._on_key_press(SimpleNamespace(key="p"))
     assert not app.parameter_menu_open
     assert not app.device_radio.active
+    assert not app.spline_initialization_radio.active
     assert app.source_ax.get_visible()
     assert not app._workspace_dirty
 
@@ -844,6 +862,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
             control_steps=(1, 2),
             lbfgs_lr=0.04,
             optimized_fields=("initial_acceleration",),
+            spline_initialization="warm",
         ),
     )
     app.apply_setup(replacement)
@@ -857,6 +876,8 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.lbfgs_lr_slider.val == pytest.approx(np.log10(0.04))
     assert app.lbfgs_lr_slider.valtext.get_text() == "0.04"
     assert app.optimized_fields_check.get_status() == [False, True, False]
+    assert app.spline_initialization_radio.value_selected == "Warm"
+    assert app.parameters.spline_initialization == "warm"
     assert len(app._control_markers) == 4
     controls_heading = next(
         text for text in app.fig.texts if text.get_text() == "CONTROLS"
@@ -1616,6 +1637,102 @@ def test_registration_forwards_setup_lbfgs_learning_rate(monkeypatch):
 
     assert classic_captured["grad_coef"] == pytest.approx(0.4)
     assert result.trajectory is trajectory
+
+
+def test_register_spline_uses_geodesic_regression_for_warm_start(monkeypatch):
+    from demeter.metamorphosis.var_classes import Momenta
+    from draft.playground.splines import registration as registration_module
+
+    source = torch.zeros(1, 1, 3, 3)
+    target = torch.cat((torch.ones_like(source), 2 * torch.ones_like(source)))
+    seed = torch.full_like(source, 0.25)
+    setup = zero_setup(
+        source,
+        target,
+        SplineParameters(
+            rho=0,
+            n_steps=4,
+            iterations=1,
+            optimized_fields=("initial_acceleration",),
+            spline_initialization="warm",
+        ),
+        target_times=(0.5, 1.0),
+    )
+    captured = {"optimizer_calls": 0}
+    trajectory = object()
+
+    def fake_regression(**kwargs):
+        captured["regression"] = kwargs
+        return SimpleNamespace(
+            optimized_momenta=Momenta(momentum_I=seed.clone())
+        )
+
+    class FakeOptimizer:
+        def __init__(self, **kwargs):
+            captured["optimizer_calls"] += 1
+            self.mp = kwargs["geodesic"]
+            self.loss_stock = {}
+
+        def forward(self, variables_ini, **kwargs):
+            captured["variables"] = variables_ini
+            captured["spline_forward"] = kwargs
+            self.optimized_variables = variables_ini
+
+    monkeypatch.setattr(
+        registration_module, "metamorphosis_regression", fake_regression
+    )
+    monkeypatch.setattr(
+        registration_module, "_SelectedFieldSplineOptimizer", FakeOptimizer
+    )
+    monkeypatch.setattr(
+        registration_module,
+        "_trajectory_from_final_spline_integration",
+        lambda *_args, **_kwargs: trajectory,
+    )
+
+    result = registration_module.register_spline(setup, device="cpu")
+
+    regression = captured["regression"]
+    assert regression["target_times"] == (0.5, 1.0)
+    torch.testing.assert_close(regression["target"], setup.target)
+    assert regression["rho"] == 0
+    assert regression["integration_steps"] == 4
+    assert regression["n_iter"] == 1
+    assert regression["grad_coef"] == pytest.approx(
+        registration_module.REGRESSION_LBFGS_LR
+    )
+    assert regression["boundary"] == "periodic"
+    variables = captured["variables"]
+    torch.testing.assert_close(variables.initial_momentum, seed)
+    assert not variables.initial_momentum.requires_grad
+    assert variables.initial_acceleration.requires_grad
+    assert not variables.initial_jerk.requires_grad
+    assert torch.count_nonzero(variables.initial_acceleration) == 0
+    assert torch.count_nonzero(variables.initial_jerk) == 0
+    torch.testing.assert_close(result.setup.initial_momentum, seed)
+    assert result.trajectory is trajectory
+
+    no_fields = replace(
+        setup,
+        parameters=replace(setup.parameters, optimized_fields=()),
+    )
+    captured["replay_setup"] = None
+    monkeypatch.setattr(
+        registration_module,
+        "run_spline",
+        lambda replay_setup, **_kwargs: captured.update(
+            replay_setup=replay_setup
+        ) or trajectory,
+    )
+
+    result = registration_module.register_spline(no_fields, device="cpu")
+
+    assert captured["optimizer_calls"] == 1
+    torch.testing.assert_close(result.setup.initial_momentum, seed)
+    torch.testing.assert_close(
+        captured["replay_setup"].initial_momentum,
+        seed,
+    )
 
 
 def test_register_spline_optimizes_only_selected_fields_and_always_controls():

@@ -85,6 +85,7 @@ class SplineParameters:
     iterations: int = 10
     lbfgs_lr: float | None = None
     optimized_fields: tuple[str, ...] = OPTIMIZABLE_INITIAL_FIELDS
+    spline_initialization: str = "cold"
 
     def __post_init__(self) -> None:
         for name in ("alpha", "beta", "gamma", "rho", "cg_eps"):
@@ -122,6 +123,12 @@ class SplineParameters:
                 for name in OPTIMIZABLE_INITIAL_FIELDS
                 if name in optimized_fields
             ),
+        )
+        spline_initialization = str(self.spline_initialization).lower()
+        if spline_initialization not in ("cold", "warm"):
+            raise ValueError("spline_initialization must be 'cold' or 'warm'")
+        object.__setattr__(
+            self, "spline_initialization", spline_initialization
         )
         rho_upper_bound = self.rho <= 1 if model == "classic" else self.rho < 1
         if self.rho < 0 or not rho_upper_bound:
@@ -217,6 +224,7 @@ class SplineParameters:
             "iterations": self.iterations,
             "lbfgs_lr": self.lbfgs_lr,
             "optimized_fields": self.optimized_fields,
+            "spline_initialization": self.spline_initialization,
         }
 
     @classmethod
@@ -243,6 +251,7 @@ class SplineParameters:
             optimized_fields=tuple(
                 values.get("optimized_fields", OPTIMIZABLE_INITIAL_FIELDS)
             ),
+            spline_initialization=values.get("spline_initialization", "cold"),
         )
 
 

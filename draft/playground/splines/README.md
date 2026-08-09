@@ -36,14 +36,16 @@ Press `P` or click **Parameter** for the categorized controls:
 
 - **Model** selects Classic or Spline and contains `rho`, the operator, its
   parameters, the optimized-initial-field checkboxes, and an interactive
-  normalized control-time line. Unchecked initial fields are fixed to zero;
-  control jerks remain optimized. Gaussian automatically selects Classic
+  normalized control-time line. Unchecked initial fields remain fixed;
+  with a cold start they are zero, while a warm momentum remains at its
+  regression value. Control jerks remain optimized. Gaussian automatically selects Classic
   because spline cometric inversion is Sobolev-only;
 - **Draw** contains brush size, amplitude, and vector-arrow spacing. Each
   editable field remembers its own amplitude, shown as `[x...]` in the
   source-panel title;
-- **Numerical** contains the registration cost constant, integration `steps`,
-  optimization `iterations`, LBFGS learning rate, and the compute-device
+- **Numerical** contains a Cold/Warm spline initialization choice, the
+  registration cost constant, integration `steps`, optimization `iterations`,
+  LBFGS learning rate, and the compute-device
   selector. CUDA is selected by default when available; CPU is always
   available. Registration defaults to 10 optimization iterations; the default
   learning rate is `0.1` for Spline and `1.0` for Classic. Rates at or below
@@ -57,11 +59,13 @@ control at step 8 of 16 steps moves to step 30 when the resolution changes to
 rejected.
 
 The two main actions follow the selected model. **Run** integrates the currently
-drawn or loaded fields. **Register** starts from the images and zero fields,
-optimizes with temporally preconditioned LBFGS, then loads the optimized fields
-and a normal replayed
+drawn or loaded fields. **Register** starts from the images using the selected
+Cold or Warm initialization, optimizes with temporally preconditioned LBFGS,
+then loads the optimized fields and a normal replayed
 trajectory into the same editor. Classic accepts Sobolev or Gaussian and uses
-one endpoint target. Spline requires Sobolev and uses every timed target.
+one endpoint target. Spline requires Sobolev and uses every timed target. Warm
+initialization first fits a classical geodesic regression with LBFGS rate 1.0,
+then transfers its momentum with zero acceleration, jerk, and control fields.
 
 Press `M` or click **View** to open the three-column display. Its source
 column reuses the control-time line to select which control jerk field is

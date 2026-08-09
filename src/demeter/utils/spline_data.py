@@ -1,10 +1,11 @@
-"""Timed image-series I/O for metamorphosis spline regression."""
+"""Timed image-series validation and I/O for metamorphosis regression."""
 
 from __future__ import annotations
 
 import csv
+from collections.abc import Sequence
 from dataclasses import dataclass
-from math import isfinite
+from math import isclose, isfinite
 from pathlib import Path
 import shutil
 import tempfile
@@ -16,6 +17,82 @@ from torch import Tensor
 
 
 MANIFEST_NAME = "images.csv"
+
+
+def validate_timed_observations(
+    source: Tensor,
+    target: Tensor,
+    target_times: Sequence[float] | Tensor,
+    n_step: int,
+) -> tuple[tuple[float, ...], tuple[int, ...]]:
+    """Validate timed 2D observations and map their times to mesh nodes."""
+    if not isinstance(n_step, int) or isinstance(n_step, bool) or n_step < 1:
+        raise ValueError("n_step must be a strictly positive integer")
+    if source.ndim != 4 or source.shape[:2] != (1, 1):
+        raise ValueError(
+            "source must have shape [1, 1, H, W], "
+            f"got {tuple(source.shape)}"
+        )
+    if target.ndim != 4 or tuple(target.shape[1:]) != tuple(source.shape[1:]):
+        raise ValueError(
+            "target must have shape [N, 1, H, W] matching source, "
+            f"got {tuple(target.shape)}"
+        )
+    if target.shape[0] == 0:
+        raise ValueError("target must contain at least one observation")
+    if not torch.is_floating_point(source) or not torch.is_floating_point(target):
+        raise TypeError("source and target must be floating point")
+    if source.dtype != target.dtype:
+        raise ValueError("source and target must share one dtype")
+    if source.device != target.device:
+        raise ValueError("source and target must share one device")
+    if not torch.isfinite(source).all() or not torch.isfinite(target).all():
+        raise ValueError("source and target must contain only finite values")
+
+    if isinstance(target_times, Tensor):
+        if target_times.ndim != 1:
+            raise ValueError("target_times must be one-dimensional")
+        values = target_times.detach().cpu().tolist()
+    else:
+        try:
+            values = list(target_times)
+        except TypeError as error:
+            raise TypeError(
+                "target_times must be a sequence of real numbers"
+            ) from error
+    if len(values) != target.shape[0]:
+        raise ValueError(
+            "target_times must contain one time per target, "
+            f"got {len(values)} times and {target.shape[0]} targets"
+        )
+
+    times = []
+    steps = []
+    for value in values:
+        if isinstance(value, bool):
+            raise TypeError("target times must be real numbers, not booleans")
+        try:
+            time = float(value)
+        except (TypeError, ValueError) as error:
+            raise TypeError("target times must be real numbers") from error
+        if not isfinite(time) or not 0 < time <= 1:
+            raise ValueError("target times must be finite and lie in (0, 1]")
+        exact_step = time * n_step
+        step = round(exact_step)
+        if not isclose(exact_step, step, rel_tol=0, abs_tol=1e-6):
+            raise ValueError(
+                f"target time {time} is not on the {n_step}-step temporal mesh"
+            )
+        if not 1 <= step <= n_step:
+            raise ValueError("target times must map to nonzero temporal mesh nodes")
+        times.append(time)
+        steps.append(step)
+
+    if any(right <= left for left, right in zip(times, times[1:])):
+        raise ValueError("target times must be strictly increasing")
+    if any(right <= left for left, right in zip(steps, steps[1:])):
+        raise ValueError("target times must map to distinct mesh nodes")
+    return tuple(times), tuple(steps)
 
 
 def _load_grayscale(path: Path) -> Tensor:
