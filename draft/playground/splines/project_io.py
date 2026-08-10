@@ -19,9 +19,11 @@ from demeter.utils.spline_data import (
 
 from .core import (
     TRAJECTORY_FIELDS,
+    SplineParameters,
     SplineSetup,
     SplineTrajectory,
     load_setup,
+    zero_setup,
 )
 from .registration import RegistrationResult
 
@@ -78,17 +80,35 @@ def save_project(
     return destination
 
 
-def load_project(directory: str | Path) -> LoadedProject:
-    """Load every artifact present in one spline project directory."""
+def load_project(
+    directory: str | Path,
+    fallback_parameters: SplineParameters | None = None,
+) -> LoadedProject:
+    """Load saved artifacts, creating a zero-field setup when it is absent."""
     directory = Path(directory).expanduser()
     if not directory.is_dir():
         raise FileNotFoundError(f"project directory does not exist: {directory}")
 
-    setup_path = directory / SETUP_FILENAME
-    if not setup_path.is_file():
-        raise FileNotFoundError(f"project is missing {SETUP_FILENAME}: {directory}")
-    setup = load_setup(setup_path)
     image_batch = load_timed_image_directory(directory)
+    setup_path = directory / SETUP_FILENAME
+    trajectory_path = directory / TRAJECTORY_FILENAME
+    optimization_path = directory / OPTIMIZATION_FILENAME
+    if setup_path.is_file():
+        setup = load_setup(setup_path)
+    else:
+        if trajectory_path.exists() or optimization_path.exists():
+            raise ValueError(
+                "trajectory and optimization artifacts require spline_setup.pt"
+            )
+        setup = zero_setup(
+            image_batch.source,
+            image_batch.target,
+            fallback_parameters or SplineParameters(),
+            source_path=image_batch.source_path,
+            target_path=image_batch.target_paths[-1],
+            target_times=image_batch.target_times,
+            target_paths=image_batch.target_paths,
+        )
     if (
         image_batch.source.shape != setup.source.shape
         or image_batch.target.shape != setup.target.shape
@@ -103,8 +123,6 @@ def load_project(directory: str | Path) -> LoadedProject:
     ):
         raise ValueError("project images.csv does not match spline_setup.pt")
 
-    trajectory_path = directory / TRAJECTORY_FILENAME
-    optimization_path = directory / OPTIMIZATION_FILENAME
     trajectory = (
         _load_trajectory(trajectory_path, setup)
         if trajectory_path.is_file()

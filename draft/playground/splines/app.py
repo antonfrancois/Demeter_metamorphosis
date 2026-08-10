@@ -1728,7 +1728,10 @@ class SplinePlayground:
         return destination
 
     def load_project(self, path: str | Path) -> None:
-        project = load_project_directory(path)
+        project = load_project_directory(
+            path,
+            fallback_parameters=self._current_parameters(),
+        )
         self.apply_setup(project.setup)
         self.cache = project.trajectory
         self.last_registration = project.registration

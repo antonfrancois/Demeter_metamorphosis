@@ -1579,6 +1579,48 @@ def test_selected_field_and_setup_only_project_round_trip(tmp_path):
     plt.close(app.fig)
 
 
+def test_project_without_setup_loads_with_zero_fields(tmp_path):
+    source = torch.zeros(1, 1, 5, 6)
+    targets = torch.cat((torch.full_like(source, 0.25), torch.ones_like(source)))
+    destination = tmp_path / "unregistered_project"
+    save_timed_image_directory(
+        TimedImageBatch(
+            source,
+            targets,
+            (0.5, 1.0),
+            "source.png",
+            ("half.png", "final.png"),
+        ),
+        destination,
+    )
+    parameters = SplineParameters(
+        n_steps=4,
+        control_steps=(1, 3),
+        alpha=0.5,
+        rho=0.25,
+    )
+    app = SplinePlayground(zero_setup(source, parameters=parameters), device="cpu")
+    for field in app.fields.values():
+        field.fill_(1)
+
+    app.load_project(destination)
+
+    assert app.last_error is None
+    assert app.cache is None
+    assert app.last_registration is None
+    assert app.parameters == parameters
+    assert app.target_times == [0.5, 1.0]
+    restored = load_timed_image_directory(destination)
+    torch.testing.assert_close(app._targets, restored.target)
+    for field in app.fields.values():
+        assert torch.count_nonzero(field) == 0
+    assert tuple(key for key in app.fields if key.startswith("control_jerk:")) == (
+        "control_jerk:0",
+        "control_jerk:1",
+    )
+    plt.close(app.fig)
+
+
 def test_model_actions_timed_target_selection_and_manual_placement(tmp_path):
     source = torch.zeros(1, 1, 6, 7)
     targets = torch.cat((torch.full_like(source, 0.25), torch.ones_like(source)))

@@ -147,7 +147,9 @@ project/
 writes one atomic directory. **Load project** needs only that directory; it
 restores the setup, any computed trajectory, and optimization history when
 present. The exact image tensors come from `spline_setup.pt`; PNG files provide
-the portable timed-image representation.
+the portable timed-image representation. If `spline_setup.pt` is absent,
+**Load project** uses the currently selected parameters and initializes every
+shooting field to zero.
 
 **Save video** requires a computed or loaded trajectory and exports an H.264
 MP4 of exactly the current panel: the selected full/deformation/photometric
