@@ -196,16 +196,16 @@ class ControlTimeEditor:
         return index if distances[index] <= 12 else None
 
     def _snapped_step(self, xdata: float | None) -> int | None:
-        if xdata is None or self.n_steps < 2:
+        if xdata is None or self.n_steps < 3:
             return None
-        return min(max(round(float(xdata) * self.n_steps), 1), self.n_steps - 1)
+        return min(max(round(float(xdata) * self.n_steps), 1), self.n_steps - 2)
 
     def _bounded_drag_step(self, index: int, step: int) -> int:
         lower = self.control_steps[index - 1] + 1 if index else 1
         upper = (
             self.control_steps[index + 1] - 1
             if index + 1 < len(self.control_steps)
-            else self.n_steps - 1
+            else self.n_steps - 2
         )
         return min(max(step, lower), upper)
 
@@ -232,7 +232,7 @@ class ControlTimeEditor:
         step = self._snapped_step(event.xdata)
         if step is None:
             if self.on_message is not None:
-                self.on_message("At least two steps are required for a control time.")
+                self.on_message("At least three steps are required for a control time.")
         elif step in self.control_steps:
             self.on_select(self.control_steps.index(step))
         elif self.on_add is not None:

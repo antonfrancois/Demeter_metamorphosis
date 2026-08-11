@@ -233,8 +233,10 @@ class SplineParameters:
                 for step in controls
             ):
                 raise TypeError("control_steps must contain integers")
-            if any(not 1 <= step < self.n_steps for step in controls):
-                raise ValueError("control_steps must be interior temporal mesh nodes")
+            if any(not 1 <= step < self.n_steps - 1 for step in controls):
+                raise ValueError(
+                    "control_steps must occur before the final interior mesh node"
+                )
             if any(right <= left for left, right in zip(controls, controls[1:])):
                 raise ValueError("control_steps must be strictly increasing")
             times = tuple(step / self.n_steps for step in controls)
@@ -256,9 +258,9 @@ class SplineParameters:
         n_steps: int,
     ) -> tuple[int, ...]:
         controls = tuple(round(time * n_steps) for time in control_times)
-        if any(not 1 <= step < n_steps for step in controls):
+        if any(not 1 <= step < n_steps - 1 for step in controls):
             raise ValueError(
-                "control times must project to interior temporal mesh nodes"
+                "control times must project before the final interior mesh node"
             )
         if any(right <= left for left, right in zip(controls, controls[1:])):
             raise ValueError(

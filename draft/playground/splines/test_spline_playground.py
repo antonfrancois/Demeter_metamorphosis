@@ -104,6 +104,8 @@ def test_parameters_require_ordered_interior_control_nodes():
 
     with pytest.raises(ValueError, match="interior"):
         SplineParameters(n_steps=8, control_steps=(0,))
+    with pytest.raises(ValueError, match="final interior"):
+        SplineParameters(n_steps=8, control_steps=(7,))
     with pytest.raises(ValueError, match="strictly increasing"):
         SplineParameters(n_steps=8, control_steps=(5, 2))
     with pytest.raises(ValueError, match="Sobolev"):
@@ -438,7 +440,7 @@ def test_classic_run_matches_geodesic_spline_and_zeroes_spline_fields():
 def test_classic_run_rejects_drawn_non_momentum_fields():
     setup = zero_setup(
         torch.zeros(1, 1, 5, 6),
-        parameters=SplineParameters(n_steps=2, control_steps=(1,)),
+        parameters=SplineParameters(n_steps=3, control_steps=(1,)),
     )
     for field, message in (
         (setup.initial_acceleration, "initial acceleration"),
@@ -951,7 +953,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     replacement = zero_setup(
         torch.zeros(1, 1, 6, 9),
         parameters=SplineParameters(
-            n_steps=3,
+            n_steps=4,
             control_steps=(1, 2),
             lbfgs_lr=0.04,
             optimized_fields=("initial_acceleration",),
@@ -967,8 +969,8 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     expected_extent = [-0.5, 8.5, -0.5, 5.5]
     for image in (app.source_image, app.current_image, app.target_image):
         assert list(image.get_extent()) == expected_extent
-    assert app.time_slider.valmax == 3
-    assert app.steps_slider.val == 3
+    assert app.time_slider.valmax == 4
+    assert app.steps_slider.val == 4
     assert app.steps_slider.valmin == 1
     assert app.steps_slider.valmax == 60
     assert app.lbfgs_lr_slider.val == pytest.approx(np.log10(0.04))
@@ -1007,7 +1009,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.overlay_control_selector.axis.get_visible()
     app.fig.canvas.draw()
     axis = app.overlay_control_selector.axis
-    x, y = axis.transData.transform((2 / 3, 0.55))
+    x, y = axis.transData.transform((0.5, 0.55))
     for event_name in ("button_press_event", "button_release_event"):
         event = MouseEvent(event_name, app.fig.canvas, x, y, button=1)
         app.fig.canvas.callbacks.process(event_name, event)
@@ -1243,7 +1245,7 @@ def test_overlay_menu_and_current_image_modes():
     setup = zero_setup(
         source,
         source,
-        SplineParameters(rho=0.25, n_steps=2, control_steps=(1,)),
+        SplineParameters(rho=0.25, n_steps=3, control_steps=(1,)),
     )
     setup.initial_momentum.fill_(0.1)
     app = SplinePlayground(setup, device="cpu")
@@ -1444,7 +1446,7 @@ def test_input_and_current_image_switches_are_independent():
 def test_drawing_amplitude_is_remembered_per_editable_field():
     setup = zero_setup(
         torch.zeros(1, 1, 10, 12),
-        parameters=SplineParameters(n_steps=4, control_steps=(1, 3)),
+        parameters=SplineParameters(n_steps=5, control_steps=(1, 3)),
     )
     app = SplinePlayground(setup, device="cpu")
 
@@ -1595,7 +1597,7 @@ def test_project_without_setup_loads_with_zero_fields(tmp_path):
     )
     parameters = SplineParameters(
         n_steps=4,
-        control_steps=(1, 3),
+        control_steps=(1, 2),
         alpha=0.5,
         rho=0.25,
     )
