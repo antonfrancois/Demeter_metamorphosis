@@ -9,22 +9,10 @@ import torch
 from torch import Tensor
 
 from .classic import Metamorphosis_Shooting, Metamorphosis_integrator
-from .data_cost import SplineSsd
+from .data_cost import TimedSsd
 from .var_classes import Momenta
 from ..utils import torchbox as tb
 from ..utils.spline_data import validate_timed_observations
-
-
-class _RegressionSsd(SplineSsd):
-    """SSD over the differentiable observation images captured while shooting."""
-
-    def __call__(self, at_step=None, **kwargs):
-        if not hasattr(self, "optimizer"):
-            raise AttributeError(
-                "optimizer has not been initialized; call set_optimizer first"
-            )
-        images = torch.cat(self.optimizer._observation_images, dim=0)
-        return 0.5 * (images - self.target).square().sum()
 
 
 class MetamorphosisRegression(Metamorphosis_Shooting):
@@ -68,9 +56,14 @@ class MetamorphosisRegression(Metamorphosis_Shooting):
             source,
             target,
             geodesic,
-            data_term=_RegressionSsd(target, self.target_steps),
+            data_term=TimedSsd(target, self.target_steps),
             **kwargs,
         )
+
+    def _timed_observation_images(self, target_steps) -> Tensor:
+        if tuple(target_steps) != self.target_steps:
+            raise ValueError("timed SSD steps do not match regression observations")
+        return torch.cat(self._observation_images, dim=0)
 
     def _forward_and_data_loss(self, momentum_ini: Momenta) -> Tensor:
         self._observation_images = []

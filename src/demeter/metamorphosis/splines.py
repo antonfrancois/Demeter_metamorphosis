@@ -21,7 +21,7 @@ from torch import Tensor
 from torch.utils._pytree import register_pytree_node
 
 from .abstract import Geodesic_integrator, Optimize_geodesicShooting
-from .data_cost import SplineSsd
+from .data_cost import TimedSsd
 from .var_classes import TorchDataClass
 from ..utils import torchbox as tb
 from ..utils.cometric_inversion import CometricOperator
@@ -225,8 +225,10 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
                 raise ValueError(
                     f"control time {time} is not on the {n_step}-step temporal mesh"
                 )
-            if not 1 <= step < n_step:
-                raise ValueError("control times must map to interior mesh nodes")
+            if not 1 <= step < n_step - 1:
+                raise ValueError(
+                    "control times must map before the final interior mesh node"
+                )
             control_steps.append(step)
         if any(
             right <= left
@@ -699,7 +701,7 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
             target=target,
             geodesic=geodesic,
             cost_cst=cost_cst,
-            data_term=SplineSsd(target, self.target_steps),
+            data_term=TimedSsd(target, self.target_steps),
             optimizer_method=optimizer_method,
             lbfgs_max_iter=lbfgs_max_iter,
             lbfgs_history_size=lbfgs_history_size,
@@ -753,6 +755,14 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
             for value in super()._dict_or_torch_parameter_()
             if value.numel() > 0
         ]
+
+    def _timed_observation_images(self, target_steps) -> Tensor:
+        if tuple(target_steps) != self.target_steps:
+            raise ValueError("timed SSD steps do not match spline observations")
+        return torch.cat(
+            [self.mp.trajectory[step][0] for step in target_steps],
+            dim=0,
+        )
 
     def cost(self, variables: SplinesVariables, **kwargs) -> Tensor:
         for name in ("data_loss", "acceleration_energy", "total_cost"):

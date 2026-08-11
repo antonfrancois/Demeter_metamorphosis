@@ -2,7 +2,8 @@
 This module contains the classes used to compute the data attachment term
 in the metamorphosis optimization. All data attachment terms must herit from
 the abstract class `DataCost`. The module contains the following classes:
-`Ssd`, `Ssd_normalized`, `Cfm`, `SimiliSegs`, `Mutlimodal_ssd_cfm`, `Longitudinal_DataCost`.
+`Ssd`, `TimedSsd`, `Ssd_normalized`, `Cfm`, `SimiliSegs`,
+`Mutlimodal_ssd_cfm`, `Longitudinal_DataCost`.
 """
 from mailbox import Error
 from pathlib import Path
@@ -356,8 +357,8 @@ class Mutual_Information(DataCost):
         self.target = self.target.to(device)
 
 
-class SplineSsd(DataCost):
-    """SSD evaluated on differentiable spline trajectory nodes."""
+class TimedSsd(DataCost):
+    """SSD evaluated on differentiable images at specified trajectory nodes."""
 
     def __init__(self, target, target_steps):
         self.target_steps = tuple(target_steps)
@@ -368,72 +369,31 @@ class SplineSsd(DataCost):
 
     def __call__(self, at_step=None, **kwargs):
         super().__call__()
-        images = torch.cat(
-            [self.optimizer.mp.trajectory[step][0] for step in self.target_steps],
-            dim=0,
-        )
+        images = self.optimizer._timed_observation_images(self.target_steps)
         return 0.5 * (images - self.target).square().sum()
 
 
+SplineSsd = TimedSsd
 
-class Longitudinal_DataCost(DataCost):
-    """This class is used to compute the data
-        attachment term for longitudinal data. It takes
-         as a parameter an object inherited from `DataCost'
-         and apply the sum of the data attachment term over
-          the list of target images.
 
-    Parameters
-    ----------
-    target_dict
-        List of dict of target images.  Each dict must contain the key `time` with an integer value corresponding to the time of the data acquisition. The rest of the keys must by the one required by the provided data_cost object. (see example)
-    data_cost
-        DataCost object (default : Ssd)
-
-    Example
-    -------
-        >>> from demeter.metamorphosis.data_cost import Cfm,Longitudinal_DataCost
-        >>> data_cost = Cfm
-        >>> target_dict = [
-        >>>         {'time':0,'target':torch.rand(1,1,100,100),'mask':torch.rand(1,1,100,100)},
-        >>>         {'time':6,'target':torch.rand(1,1,100,100),'mask':torch.rand(1,1,100,100)},
-        >>>         {'time':10,'target':torch.rand(1,1,100,100),'mask':torch.rand(1,1,100,100)}
-        >>>     ]
-        >>> ldc = Longitudinal_DataCost(target_dict,data_cost)
-    """
+class Longitudinal_DataCost(TimedSsd):
+    """Compatibility adapter for the former dictionary-based longitudinal SSD."""
 
     def __init__(self, target_dict, data_cost: DataCost = Ssd, **kwargs):
-
-        super(Longitudinal_DataCost, self).__init__(None)
-        self.target_dict = target_dict
-        self.target_len = len(target_dict)
-        self.baseline_dataCost_list = []
-        for td in target_dict:
-            bdc = data_cost(**td)
-            self.baseline_dataCost_list.append(bdc)
-
-    def __call__(self, at_step=None):
-        """ """
-        super().__call__()
-        cost = 0
-        for td, bdc in zip(self.target_dict, self.baseline_dataCost_list):
-            cost += bdc(at_step=td["time"])
-            # image_t  = self.optimizer.mp.image_stock[td['time']]
-        return cost
+        if data_cost is not Ssd:
+            raise ValueError(
+                "Longitudinal_DataCost now supports SSD only; use TimedSsd"
+            )
+        if not target_dict:
+            raise ValueError("target_dict must contain at least one observation")
+        targets = torch.cat([item["target"] for item in target_dict], dim=0)
+        target_steps = tuple(item["time"] for item in target_dict)
+        super().__init__(targets, target_steps)
 
     def set_optimizer(self, optimizer):
-        super(Longitudinal_DataCost, self).set_optimizer(optimizer)
+        super().set_optimizer(optimizer)
         self.optimizer.mp._force_save = True
         self.optimizer.mp._detach_image = False
-        for bdc in self.baseline_dataCost_list:
-            bdc.set_optimizer(self.optimizer)
-
-    def to_device(self, device):
-        for td in self.target_dict:
-            for key in td.keys():
-                if key == "time":
-                    continue
-                td[key] = td[key].to(device)
 
 
 import matplotlib.pyplot as plt
