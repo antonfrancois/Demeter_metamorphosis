@@ -123,7 +123,12 @@ class Metamorphosis_integrator(Geodesic_integrator):
         image_source = (1 - self.rho) * momentum.momentum_I
         self.norm_z_i = None
         if self.flag_hamiltonian_integration:
-            self.norm_z_i = .5 * image_source.pow(2).sum()
+            self.norm_z_i = (
+                .5
+                * (1 - self.rho)
+                * momentum.momentum_I.pow(2).sum()
+                / prod(image.shape[2:])
+            )
         image = tb.imgDeform(
             image + image_source / self.n_step,
             deformation,
@@ -306,12 +311,21 @@ class Metamorphosis_Shooting(Optimize_geodesicShooting):
             # self.total_cost = self.data_loss + lamb * (self.norm_v_2 + self.norm_l2_on_z)
         else:
             # Norm V
-            self.norm_v_2 = .5 * self._compute_V_norm_(momentum_ini, self.source)
+            self.norm_v_2 = (
+                .5
+                * self._get_rho_()
+                * self._compute_V_norm_(momentum_ini, self.source)
+            )
 #             print_gpumemory("In cost; After norm_v")
 
 
             # # Norm on the residuals only
-            self.norm_l2_on_z = .5 * (momentum_ini.momentum_I ** 2).sum() / prod(self.source.shape[2:])
+            self.norm_l2_on_z = (
+                .5
+                * (1 - self._get_rho_())
+                * momentum_ini.momentum_I.pow(2).sum()
+                / prod(self.source.shape[2:])
+            )
 #             print_gpumemory("In cost; After norm_z")
 
         self.total_cost = self.data_loss + \
