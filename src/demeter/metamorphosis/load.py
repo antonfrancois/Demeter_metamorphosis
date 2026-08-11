@@ -90,6 +90,47 @@ def _extract_analysis_results(opti_dict):
     return optimized_momenta, loss_stock, integration_diverged
 
 
+def _restore_optimizer_state(new_optim, opti_dict):
+    for key in FIELD_TO_SAVE[5:]:
+        if key == "data_term":
+            continue
+        value = opti_dict.get(key)
+        if value is not None:
+            setattr(new_optim, key, value)
+
+    optimized_momenta, loss_stock, integration_diverged = _extract_analysis_results(
+        opti_dict
+    )
+    if optimized_momenta is not None:
+        new_optim.optimized_momenta = optimized_momenta
+        new_optim.parameter = optimized_momenta
+    if loss_stock is not None:
+        new_optim.loss_stock = loss_stock
+    if hasattr(new_optim.mp, "id_grid"):
+        new_optim.id_grid = new_optim.mp.id_grid
+    new_optim.integration_diverged = (
+        getattr(new_optim, "integration_diverged", False)
+        or integration_diverged
+    )
+    return new_optim
+
+
+def _classic_integrator_arguments(args):
+    arguments = {
+        name: args[name]
+        for name in (
+            "method",
+            "rho",
+            "kernelOperator",
+            "n_step",
+            "dx_convention",
+        )
+    }
+    if "boundary" in args:
+        arguments["boundary"] = args["boundary"]
+    return arguments
+
+
 def load_optimize_geodesicShooting(file_name, path=None, verbose=True):
     """
     load previously saved optimisation. Usually the file will be saved in the
@@ -145,8 +186,8 @@ def load_optimize_geodesicShooting(file_name, path=None, verbose=True):
     if path is None:
         path = OPTIM_SAVE_DIR
     if not file_name in os.listdir(path):
-        raise FileNotFoundError("File " + file_name + " does not exist in " + path)
-    with open(path + file_name, "rb") as f:
+        raise FileNotFoundError(f"File {file_name} does not exist in {path}")
+    with open(os.path.join(path, file_name), "rb") as f:
         opti_dict = CPU_Unpickler(f).load()
 
     if opti_dict["light_save"]:
@@ -175,7 +216,10 @@ def load_optimize_geodesicShooting(file_name, path=None, verbose=True):
 def  _load_light_optim(opti_dict, verbose):
 
     ## Find with which class we are dealing with
-    integrator, optimizer = _find_meta_optimiser_from_repr_(opti_dict["__repr__"])
+    optimizer_identifier = opti_dict.get(
+        "optimizer_class", opti_dict["__repr__"]
+    )
+    integrator, optimizer = _find_meta_optimiser_from_repr_(optimizer_identifier)
 
     # Reinitialize the kernelOperator
     kernel_arguments = dict(opti_dict["args"]["kernelOperator"])
@@ -204,15 +248,27 @@ def  _load_light_optim(opti_dict, verbose):
             )
         }
         mp = integrator(**integrator_arguments)
+    elif optimizer in (Metamorphosis_Shooting, MetamorphosisRegression):
+        mp = integrator(**_classic_integrator_arguments(opti_dict["args"]))
     else:
         mp = integrator(**opti_dict["args"])
+    optimized_momenta, _, _ = _extract_analysis_results(opti_dict)
+    shooting_parameter = (
+        optimized_momenta
+        if optimized_momenta is not None
+        else opti_dict.get("parameter")
+    )
+    if shooting_parameter is None:
+        raise ValueError("saved optimization has no shooting parameter")
     print("Light save loaded : Reshooting integrator ...")
     mp.forward(
         opti_dict["source"],
-        opti_dict["parameter"],
+        shooting_parameter,
         save=True,
         plot=0,
-        hamiltonian_integration = opti_dict["args"]["hamiltonian_integration"]
+        hamiltonian_integration=opti_dict["args"].get(
+            "hamiltonian_integration", False
+        ),
     )
     # print(mp)
 
@@ -248,24 +304,39 @@ def  _load_light_optim(opti_dict, verbose):
             adam_scheduler=opti_dict["args"].get("adam_scheduler"),
             adam_grad_clip=opti_dict["args"].get("adam_grad_clip"),
         )
+    elif optimizer is Metamorphosis_Shooting:
+        mr = optimizer(
+            source=opti_dict["source"],
+            target=opti_dict["target"],
+            geodesic=mp,
+            cost_cst=opti_dict["cost_cst"],
+            optimizer_method=opti_dict.get(
+                "optimizer_method_name", "LBFGS_torch"
+            ),
+            lbfgs_max_iter=opti_dict["args"].get("lbfgs_max_iter", 20),
+            lbfgs_history_size=opti_dict["args"].get(
+                "lbfgs_history_size", 100
+            ),
+            hamiltonian_integration=opti_dict["args"].get(
+                "hamiltonian_integration", False
+            ),
+            adam_scheduler=opti_dict["args"].get("adam_scheduler"),
+            adam_grad_clip=opti_dict["args"].get("adam_grad_clip"),
+        )
     else:
         mr = optimizer(**opti_dict)
-    if optimizer is MetamorphosisRegression:
-        for key in FIELD_TO_SAVE[5:]:
-            if key != "data_term" and key in opti_dict:
-                mr.__dict__[key] = opti_dict[key]
-    mr.optimized_momenta, mr.loss_stock, mr.integration_diverged = _extract_analysis_results(opti_dict)
-    if optimizer is MetamorphosisRegression:
-        mr.id_grid = mp.id_grid
-
-    return mr
+    opti_dict["parameter"] = shooting_parameter
+    return _restore_optimizer_state(mr, opti_dict)
 
 
 def _load_heavy_optim(opti_dict, verbose):
 
     flag_JM = False
 
-    _, optimizer = _find_meta_optimiser_from_repr_(opti_dict["__repr__"])
+    optimizer_identifier = opti_dict.get(
+        "optimizer_class", opti_dict["__repr__"]
+    )
+    _, optimizer = _find_meta_optimiser_from_repr_(optimizer_identifier)
     if isinstance(optimizer, Weighted_joinedMask_Metamorphosis_Shooting):
         flag_JM = True
 
@@ -316,6 +387,25 @@ def _load_heavy_optim(opti_dict, verbose):
             adam_scheduler=opti_dict["args"].get("adam_scheduler"),
             adam_grad_clip=opti_dict["args"].get("adam_grad_clip"),
         )
+    elif optimizer is Metamorphosis_Shooting:
+        new_optim = optimizer(
+            source=opti_dict["source"],
+            target=opti_dict["target"],
+            geodesic=opti_dict["mp"],
+            cost_cst=opti_dict["cost_cst"],
+            optimizer_method=opti_dict.get(
+                "optimizer_method_name", "LBFGS_torch"
+            ),
+            lbfgs_max_iter=opti_dict["args"].get("lbfgs_max_iter", 20),
+            lbfgs_history_size=opti_dict["args"].get(
+                "lbfgs_history_size", 100
+            ),
+            hamiltonian_integration=opti_dict["args"].get(
+                "hamiltonian_integration", False
+            ),
+            adam_scheduler=opti_dict["args"].get("adam_scheduler"),
+            adam_grad_clip=opti_dict["args"].get("adam_grad_clip"),
+        )
     else:
         new_optim = optimizer(
             source=opti_dict["source"],
@@ -326,19 +416,4 @@ def _load_heavy_optim(opti_dict, verbose):
             hamiltonian_integration=opti_dict["args"]["hamiltonian_integration"],
         )
 
-    for k in FIELD_TO_SAVE[5:]:
-        if optimizer in (MetamorphosisSplineOptimizer, MetamorphosisRegression) and k == "data_term":
-            continue
-        if k in opti_dict:
-            new_optim.__dict__[k] = opti_dict[k]
-
-    optimized_momenta, loss_stock, integration_diverged = _extract_analysis_results(opti_dict)
-    if getattr(new_optim, "optimized_momenta", None) is None:
-        new_optim.optimized_momenta = optimized_momenta
-    if getattr(new_optim, "loss_stock", None) is None:
-        new_optim.loss_stock = loss_stock
-    new_optim.integration_diverged = getattr(new_optim, "integration_diverged", False) or integration_diverged
-    if optimizer is MetamorphosisRegression:
-        new_optim.id_grid = new_optim.mp.id_grid
-
-    return new_optim
+    return _restore_optimizer_state(new_optim, opti_dict)
