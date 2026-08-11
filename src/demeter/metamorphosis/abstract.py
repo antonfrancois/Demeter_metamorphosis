@@ -1276,6 +1276,15 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
                           f" kernel_reach in kernelOperator might help")
         return norm_v
 
+    def _timed_observation_images(self, target_steps):
+        images = []
+        for step in target_steps:
+            if step == 0:
+                images.append(self.source)
+            else:
+                images.append(self.mp.image_stock[step - 1][None])
+        return torch.cat(images, dim=0)
+
     @abstractmethod
     def cost(self, **kwargs):
         pass
@@ -1962,18 +1971,31 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
         # save the data
         # copy and clean dictionary containing all values
         dict_copy = {}
+        dict_copy["format_version"] = 2
+        dict_copy["optimizer_class"] = self.__class__.__name__
         dict_copy["light_save"] = light_save
         dict_copy["__repr__"] = self.__repr__()
         for k in FIELD_TO_SAVE:
-            dict_copy[k] = self.__dict__.get(k)
+            if k in ("mp", "data_term"):
+                dict_copy[k] = None
+            else:
+                dict_copy[k] = getattr(self, k, None)
             if torch.is_tensor(dict_copy[k]):
                 dict_copy[k] = dict_copy[k].cpu().detach()
 
         dict_copy["args"] = self.get_all_arguments()
+        dict_copy["args"].update(
+            {
+                "lbfgs_max_iter": self.lbfgs_max_iter,
+                "lbfgs_history_size": self.lbfgs_history_size,
+                "adam_scheduler": self._adam_scheduler_type,
+                "adam_grad_clip": self._adam_grad_clip,
+            }
+        )
         if not light_save:
             dict_copy["mp"] = self.mp  # For some reason 'mp' wasn't showing in __dict__
 
-        if not isinstance(self.data_term, (dt.Ssd, dt.SplineSsd)):
+        if not isinstance(self.data_term, (dt.Ssd, dt.TimedSsd)):
             print(
                 "\nBUG WARNING : An other data term than Ssd was detected"
                 "For now our method can't save it, it is ok to visualise"
@@ -2188,11 +2210,8 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
     def get_total_cost(self):
         data_loss, norm_v_2, norm_l2_on_z = self._get_loss_components()
         total_cost = data_loss + self.cost_cst * norm_v_2
-
-        rho = self._get_rho_()
-        rho_val = rho[0] if isinstance(rho, tuple) else rho
-        if isinstance(rho_val, (float, int)) and rho_val < 1 and norm_l2_on_z is not None:
-            total_cost += self.cost_cst * rho_val * norm_l2_on_z
+        if norm_l2_on_z is not None:
+            total_cost += self.cost_cst * norm_l2_on_z
         return total_cost
 
     def plot_cost(self, y_log=False):
