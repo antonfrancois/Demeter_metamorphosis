@@ -153,8 +153,11 @@ def choose_directory(purpose: str = "load_timed_images") -> Path | None:
                     None, title, str(initial / "spline_project"), "Directory name (*)"
                 )
             else:
-                filename = QtWidgets.QFileDialog.getExistingDirectory(
-                    None, title, str(initial)
+                filename, _ = QtWidgets.QFileDialog.getOpenFileName(
+                    None,
+                    title,
+                    str(initial),
+                    "Spline project (images.csv spline_setup.pt);;All files (*)",
                 )
             return Path(filename) if filename else None
         except Exception:
@@ -174,9 +177,13 @@ def choose_directory(purpose: str = "load_timed_images") -> Path | None:
                         initialfile="spline_project",
                     )
                 else:
-                    filename = filedialog.askdirectory(
+                    filename = filedialog.askopenfilename(
                         title=title,
                         initialdir=str(initial),
+                        filetypes=(
+                            ("Spline project", "images.csv spline_setup.pt"),
+                            ("All files", "*"),
+                        ),
                     )
             finally:
                 root.destroy()

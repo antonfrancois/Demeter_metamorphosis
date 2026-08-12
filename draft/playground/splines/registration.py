@@ -51,6 +51,45 @@ class RegistrationResult:
             "loss_stock": losses,
         }
 
+    def loss_curves(self) -> dict[str, torch.Tensor]:
+        """Return comparable displayed components for one optimization run."""
+        cost_cst = self.setup.parameters.cost_cst
+        if self.model == "splines":
+            if not isinstance(self.loss_stock, dict):
+                raise ValueError("spline loss history must be a dictionary")
+            data = torch.as_tensor(self.loss_stock["data_loss"])
+            regularized = cost_cst * torch.as_tensor(
+                self.loss_stock["acceleration_energy"]
+            )
+            full = torch.as_tensor(self.loss_stock["total_cost"])
+        else:
+            losses = torch.as_tensor(self.loss_stock)
+            if losses.numel() == 0:
+                empty = torch.empty(0)
+                return {
+                    "full": empty,
+                    "data": empty.clone(),
+                    "regularized": empty.clone(),
+                }
+            if losses.ndim != 2 or losses.shape[1] < 2:
+                raise ValueError("classic loss history must have component columns")
+            data = losses[:, 0]
+            regularized = cost_cst * losses[:, 1:].sum(dim=1)
+            full = data + regularized
+        return {
+            "full": full.detach().cpu(),
+            "data": data.detach().cpu(),
+            "regularized": regularized.detach().cpu(),
+        }
+
+    @property
+    def regularized_loss_label(self) -> str:
+        return (
+            "Regularized acceleration cost"
+            if self.model == "splines"
+            else "Regularized momentum cost"
+        )
+
 
 LBFGS_MAX_ITER = 5
 LBFGS_HISTORY_SIZE = 10

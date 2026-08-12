@@ -2,8 +2,8 @@
 This module contains the classes used to compute the data attachment term
 in the metamorphosis optimization. All data attachment terms must herit from
 the abstract class `DataCost`. The module contains the following classes:
-`Ssd`, `TimedSsd`, `Ssd_normalized`, `Cfm`, `SimiliSegs`,
-`Mutlimodal_ssd_cfm`, `Longitudinal_DataCost`.
+`Ssd`, `TimedSsd`, `Ssd_normalized`, `Cfm`, `SimiliSegs`, and
+`Mutlimodal_ssd_cfm`.
 """
 from mailbox import Error
 from pathlib import Path
@@ -371,30 +371,6 @@ class TimedSsd(DataCost):
         super().__call__()
         images = self.optimizer._timed_observation_images(self.target_steps)
         return 0.5 * (images - self.target).square().sum()
-
-
-SplineSsd = TimedSsd
-
-
-class Longitudinal_DataCost(TimedSsd):
-    """Compatibility adapter for the former dictionary-based longitudinal SSD."""
-
-    def __init__(self, target_dict, data_cost: DataCost = Ssd, **kwargs):
-        if data_cost is not Ssd:
-            raise ValueError(
-                "Longitudinal_DataCost now supports SSD only; use TimedSsd"
-            )
-        if not target_dict:
-            raise ValueError("target_dict must contain at least one observation")
-        targets = torch.cat([item["target"] for item in target_dict], dim=0)
-        target_steps = tuple(item["time"] for item in target_dict)
-        super().__init__(targets, target_steps)
-
-    def set_optimizer(self, optimizer):
-        super().set_optimizer(optimizer)
-        self.optimizer.mp._force_save = True
-        self.optimizer.mp._detach_image = False
-
 
 import matplotlib.pyplot as plt
 from demeter.utils.image_3d_plotter import get_orthogonal_views_concatenated

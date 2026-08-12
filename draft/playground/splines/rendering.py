@@ -24,8 +24,16 @@ from .styles import (
     FIELD_CLASS,
     FIELD_SYMBOL,
     INK_COLOR,
+    PANEL_COLOR,
     PRIMAL_COLOR,
 )
+
+
+LOSS_CURVE_COLORS = {
+    "full": "#20323a",
+    "data": "#4267ac",
+    "regularized": "#ef8354",
+}
 
 
 def _signed_cmap(name: str, color: str) -> LinearSegmentedColormap:
@@ -333,9 +341,84 @@ class SplineRenderer:
         target_index: int,
         target_count: int,
         target_time: float | None,
+        loss_curves: dict[str, torch.Tensor] | None = None,
+        shown_loss_curves: tuple[bool, bool, bool] = (True, True, True),
+        regularized_loss_label: str = "Regularized cost",
     ) -> None:
         self.clear_dynamic(self.target_ax)
         displayed = self.current_image_tensor(source, cache, image_mode, index)
+        if target_mode == "Loss curves":
+            self.target_image.set_visible(False)
+            self.target_ax.set_axis_on()
+            self.target_ax.set_facecolor(PANEL_COLOR)
+            self.target_ax.grid(False)
+            self.target_ax.set_aspect("auto")
+            self.target_ax.set_yscale("linear")
+            labels = {
+                "full": "Full loss",
+                "data": "Data loss",
+                "regularized": regularized_loss_label,
+            }
+            if loss_curves is None:
+                message = self.target_ax.text(
+                    0.5,
+                    0.5,
+                    "Register a model to show loss curves",
+                    transform=self.target_ax.transAxes,
+                    ha="center",
+                    va="center",
+                    color=INK_COLOR,
+                    fontsize=11,
+                )
+                self.dynamic_artists[self.target_ax].append(message)
+            else:
+                displayed_values = []
+                for (name, values), shown in zip(
+                    loss_curves.items(), shown_loss_curves
+                ):
+                    if not shown:
+                        continue
+                    values = torch.as_tensor(values).detach().cpu()
+                    displayed_values.append(values)
+                    line, = self.target_ax.plot(
+                        np.arange(len(values)),
+                        values.numpy(),
+                        color=LOSS_CURVE_COLORS[name],
+                        linewidth=2,
+                        label=labels[name],
+                    )
+                    self.dynamic_artists[self.target_ax].append(line)
+                if self.target_ax.lines:
+                    finite = torch.cat(displayed_values)
+                    finite = finite[torch.isfinite(finite)]
+                    positive = finite[finite > 0]
+                    if (
+                        len(positive) == len(finite)
+                        and len(positive)
+                        and float(positive.max() / positive.min()) >= 100
+                    ):
+                        self.target_ax.set_yscale("log")
+                    legend = self.target_ax.legend(frameon=False, fontsize=9)
+                    self.dynamic_artists[self.target_ax].append(legend)
+                    self.target_ax.relim()
+                    self.target_ax.autoscale_view()
+                    self.target_ax.margins(x=0.03, y=0.08)
+                else:
+                    self.target_ax.set_xlim(0, 1)
+                    self.target_ax.set_ylim(0, 1)
+            self.target_ax.set_xlabel("Outer iteration", color=INK_COLOR)
+            self.target_ax.set_ylabel("Objective value", color=INK_COLOR)
+            self.target_ax.tick_params(colors=INK_COLOR, labelsize=8)
+            self.target_ax.set_title(
+                "Optimization loss", color=INK_COLOR, fontsize=11, pad=9
+            )
+            self.target_footer.set_text("")
+            return
+
+        self.target_image.set_visible(True)
+        self.target_ax.set_facecolor("#11191d")
+        self.target_ax.set_axis_off()
+        self.target_ax.set_aspect("equal")
         if target_mode == "Target":
             self.target_image.set_data(target[0, 0])
             self.target_image.set_cmap("gray")

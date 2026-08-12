@@ -80,8 +80,7 @@ def test_parameters_require_ordered_interior_control_nodes():
         SplineParameters(spline_initialization="WARM").spline_initialization
         == "warm"
     )
-    assert SplineParameters.from_dict({}).spline_initialization == "cold"
-    assert SplineParameters.from_dict({}).temporal_preconditioning
+    assert SplineParameters.from_dict(parameters.as_dict()) == parameters
     assert not SplineParameters(
         temporal_preconditioning=False
     ).temporal_preconditioning
@@ -600,37 +599,6 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
     )
 
     assert setup.payload()["parameters"]["control_times"] == (0.5,)
-    legacy = setup.payload()
-    del legacy["parameters"]["control_times"]
-    del legacy["parameters"]["kernel"]
-    del legacy["parameters"]["sigma"]
-    del legacy["parameters"]["lbfgs_lr"]
-    del legacy["parameters"]["optimized_fields"]
-    del legacy["parameters"]["spline_initialization"]
-    del legacy["parameters"]["temporal_preconditioning"]
-    del legacy["parameters"]["regression_cost_cst"]
-    del legacy["parameters"]["regression_n_steps"]
-    del legacy["parameters"]["regression_iterations"]
-    del legacy["parameters"]["regression_lbfgs_lr"]
-    legacy_path = tmp_path / "legacy.pt"
-    torch.save(legacy, legacy_path)
-    legacy_parameters = load_setup(legacy_path).parameters
-    assert legacy_parameters.control_times == (0.5,)
-    assert legacy_parameters.lbfgs_lr == pytest.approx(0.1)
-    assert legacy_parameters.optimized_fields == (
-        "initial_momentum",
-        "initial_acceleration",
-        "initial_jerk",
-    )
-    assert legacy_parameters.spline_initialization == "cold"
-    assert legacy_parameters.temporal_preconditioning
-    assert legacy_parameters.regression_cost_cst == legacy_parameters.cost_cst
-    assert legacy_parameters.regression_n_steps == legacy_parameters.n_steps
-    assert (
-        legacy_parameters.regression_iterations
-        == legacy_parameters.iterations
-    )
-    assert legacy_parameters.regression_lbfgs_lr == legacy_parameters.lbfgs_lr
 
     mismatched = setup.payload()
     mismatched["parameters"]["control_steps"] = (1,)
@@ -645,42 +613,6 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
     torch.save(malformed, malformed_path)
     with pytest.raises(ValueError, match="missing parameters: rho"):
         load_setup(malformed_path)
-
-
-@pytest.mark.parametrize("version", (1, 2))
-def test_legacy_setup_force_is_converted_to_initial_acceleration(tmp_path, version):
-    torch.manual_seed(version)
-    source = torch.rand(1, 1, 6, 7)
-    parameters = SplineParameters(
-        alpha=0.4,
-        beta=0.3,
-        gamma=0.2,
-        rho=0.25,
-        n_steps=2,
-    )
-    setup = zero_setup(source, source, parameters)
-    initial_force = torch.randn_like(source)
-    payload = setup.payload()
-    payload["format_version"] = version
-    payload["initial_force"] = initial_force
-    del payload["initial_acceleration"]
-    path = tmp_path / f"version-{version}.pt"
-    torch.save(payload, path)
-
-    restored = load_setup(path)
-    expected = CometricOperator(
-        source,
-        parameters.rho,
-        SobolevFluidOperator(
-            alpha=parameters.alpha,
-            beta=parameters.beta,
-            gamma=parameters.gamma,
-            boundary="periodic",
-        ),
-        dx_convention="pixel",
-    )(initial_force)
-
-    torch.testing.assert_close(restored.initial_acceleration, expected)
 
 
 def test_headless_editor_run_timeline_and_control_markers(tmp_path):
@@ -1490,7 +1422,7 @@ def test_drawing_amplitude_is_remembered_per_editable_field():
     plt.close(app.fig)
 
 
-def test_timed_targets_setup_round_trip_and_version_one_migration(tmp_path):
+def test_timed_targets_setup_round_trip_and_rejects_old_versions(tmp_path):
     source = torch.zeros(1, 1, 5, 6)
     targets = torch.cat((torch.full_like(source, 0.25), torch.ones_like(source)))
     setup = zero_setup(
@@ -1506,31 +1438,12 @@ def test_timed_targets_setup_round_trip_and_version_one_migration(tmp_path):
     assert restored.target_steps == (2, 4)
     assert restored.target_paths == ("half.png", "final.png")
 
-    legacy = zero_setup(source, source).payload()
-    legacy["format_version"] = 1
-    legacy["parameters"].pop("lbfgs_lr")
-    legacy["parameters"].pop("optimized_fields")
-    legacy["initial_force"] = legacy.pop("initial_acceleration")
-    legacy.pop("target_times")
-    legacy.pop("target_paths")
-    legacy_path = tmp_path / "version_one.pt"
-    torch.save(legacy, legacy_path)
-    migrated = load_setup(legacy_path)
-    assert migrated.target_times == (1.0,)
-    assert migrated.target_paths == ("",)
-    assert migrated.parameters.lbfgs_lr == pytest.approx(0.1)
-    assert migrated.parameters.optimized_fields == (
-        "initial_momentum",
-        "initial_acceleration",
-        "initial_jerk",
-    )
-
-    legacy["parameters"].pop("model")
-    legacy["parameters"]["kernel"] = "gaussian"
-    torch.save(legacy, legacy_path)
-    migrated_classic = load_setup(legacy_path).parameters
-    assert migrated_classic.model == "classic"
-    assert migrated_classic.lbfgs_lr == pytest.approx(1.0)
+    old = setup.payload()
+    old["format_version"] = 2
+    old_path = tmp_path / "version_two.pt"
+    torch.save(old, old_path)
+    with pytest.raises(ValueError, match="expected 3"):
+        load_setup(old_path)
 
 
 def test_selected_field_and_setup_only_project_round_trip(tmp_path):
@@ -1562,7 +1475,7 @@ def test_selected_field_and_setup_only_project_round_trip(tmp_path):
     assert not (destination / "optimization.pt").exists()
 
     app.fields["initial_acceleration"].zero_()
-    app.load_project(destination)
+    app.load_project(destination / "images.csv")
     assert app.cache is None
     assert app.last_registration is None
     torch.testing.assert_close(
@@ -1570,6 +1483,14 @@ def test_selected_field_and_setup_only_project_round_trip(tmp_path):
         torch.full_like(source, 0.75),
     )
     assert "(setup)" in app.status_text.get_text()
+
+    container = tmp_path / "project_container"
+    container.mkdir()
+    nested = container / destination.name
+    destination.rename(nested)
+    resolved = load_project(container)
+    torch.testing.assert_close(resolved.setup.source, source)
+    destination = nested
 
     torch.save({}, destination / "optimization.pt")
     with pytest.raises(ValueError, match="requires trajectory"):
@@ -1703,6 +1624,32 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
     assert classic.last_registration is not None
     assert classic.last_registration.trajectory is classic.cache
     assert len(classic.last_registration.loss_stock) == 2
+    classic_curves = classic.last_registration.loss_curves()
+    classic_losses = torch.as_tensor(classic.last_registration.loss_stock)
+    torch.testing.assert_close(classic_curves["data"], classic_losses[:, 0])
+    torch.testing.assert_close(
+        classic_curves["regularized"],
+        classic.parameters.cost_cst * classic_losses[:, 1:].sum(dim=1),
+    )
+    torch.testing.assert_close(
+        classic_curves["full"],
+        classic_curves["data"] + classic_curves["regularized"],
+    )
+    classic.target_radio.set_active(2)
+    assert classic.target_mode == "Loss curves"
+    assert not classic.target_image.get_visible()
+    assert not classic.target_ax.xaxis._major_tick_kw["gridOn"]
+    assert [line.get_label() for line in classic.target_ax.lines] == [
+        "Full loss",
+        "Data loss",
+        "Regularized momentum cost",
+    ]
+    assert classic.target_loss_check.get_status() == [True, True, True]
+    classic.target_loss_check.set_active(1)
+    assert [line.get_label() for line in classic.target_ax.lines] == [
+        "Full loss",
+        "Regularized momentum cost",
+    ]
     assert torch.count_nonzero(classic.fields["initial_momentum"]) > 0
     assert torch.count_nonzero(classic.fields["initial_acceleration"]) == 0
     classic_destination = classic.save_project(tmp_path / "classic_project")
@@ -1730,6 +1677,20 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
     assert splines.last_registration is not None
     assert splines.last_registration.trajectory is splines.cache
     assert all(len(loss) == 2 for loss in splines.last_registration.loss_stock.values())
+    spline_curves = splines.last_registration.loss_curves()
+    spline_losses = splines.last_registration.loss_stock
+    torch.testing.assert_close(spline_curves["data"], spline_losses["data_loss"])
+    torch.testing.assert_close(
+        spline_curves["regularized"],
+        splines.parameters.cost_cst * spline_losses["acceleration_energy"],
+    )
+    torch.testing.assert_close(spline_curves["full"], spline_losses["total_cost"])
+    splines.target_radio.set_active(2)
+    assert [line.get_label() for line in splines.target_ax.lines] == [
+        "Full loss",
+        "Data loss",
+        "Regularized acceleration cost",
+    ]
     assert torch.count_nonzero(splines.fields["initial_momentum"]) > 0
     assert "Optimized fields loaded" in splines.status_text.get_text()
     destination = splines.save_project(tmp_path / "optimized_project")

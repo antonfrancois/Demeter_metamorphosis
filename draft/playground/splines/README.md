@@ -160,10 +160,7 @@ the system `PATH` and fails with a clear error when it is unavailable.
 
 The standalone `Ctrl+S` setup shortcut stores source, all timed targets,
 editable fields, model and numerical parameters, and normalized control times
-in one `.pt` file; `Ctrl+O` reloads it. Version-1 and version-2 setups remain
-loadable; their saved initial force is converted to initial acceleration.
-Version-1 single-target setups remain endpoint observations. Reopen a setup on
-launch:
+in one `.pt` file; `Ctrl+O` reloads it. Reopen a setup on launch:
 
 ```bash
 .venv/bin/python -m draft.playground.splines --setup draft/spline_setup.pt

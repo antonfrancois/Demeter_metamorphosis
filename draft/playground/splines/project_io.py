@@ -40,6 +40,27 @@ class LoadedProject:
     registration: RegistrationResult | None
 
 
+def resolve_project_directory(path: str | Path) -> Path:
+    """Resolve a project directory from a project folder or one of its files."""
+    candidate = Path(path).expanduser()
+    if candidate.is_file():
+        if not (candidate.parent / "images.csv").is_file():
+            raise FileNotFoundError(f"not a spline project artifact: {candidate}")
+        candidate = candidate.parent
+    if not candidate.is_dir():
+        raise FileNotFoundError(f"project directory does not exist: {candidate}")
+    if (candidate / "images.csv").is_file():
+        return candidate
+    projects = [
+        child
+        for child in candidate.iterdir()
+        if child.is_dir() and (child / "images.csv").is_file()
+    ]
+    if len(projects) == 1:
+        return projects[0]
+    raise FileNotFoundError(f"expected {candidate / 'images.csv'}")
+
+
 def save_project(
     setup: SplineSetup,
     destination: str | Path,
@@ -85,9 +106,7 @@ def load_project(
     fallback_parameters: SplineParameters | None = None,
 ) -> LoadedProject:
     """Load saved artifacts, creating a zero-field setup when it is absent."""
-    directory = Path(directory).expanduser()
-    if not directory.is_dir():
-        raise FileNotFoundError(f"project directory does not exist: {directory}")
+    directory = resolve_project_directory(directory)
 
     image_batch = load_timed_image_directory(directory)
     setup_path = directory / SETUP_FILENAME

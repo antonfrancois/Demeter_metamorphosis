@@ -31,6 +31,7 @@ class OverlayMenu:
     current_image_radio: RadioButtons
     current_radio: RadioButtons
     target_radio: RadioButtons
+    target_loss_check: CheckButtons
     close_button: Button
 
     @property
@@ -45,6 +46,7 @@ class OverlayMenu:
             self.current_image_radio.ax,
             self.current_radio.ax,
             self.target_radio.ax,
+            self.target_loss_check.ax,
             self.close_button.ax,
         ]
 
@@ -66,6 +68,7 @@ class OverlayMenu:
             self.current_image_radio,
             self.current_radio,
             self.target_radio,
+            self.target_loss_check,
             self.close_button,
         ]
 
@@ -144,6 +147,15 @@ def build_overlay_menu(
         fontweight="bold",
         color=INK_COLOR,
     )
+    columns["target"].text(
+        0.10,
+        0.48,
+        "Loss curves",
+        transform=columns["target"].transAxes,
+        fontsize=9,
+        fontweight="bold",
+        color=INK_COLOR,
+    )
 
     input_radio = RadioButtons(
         fig.add_axes([0.07, 0.44, 0.22, 0.18], facecolor=PANEL_COLOR, zorder=102),
@@ -183,11 +195,18 @@ def build_overlay_menu(
         activecolor=PRIMAL_COLOR,
     )
     target_radio = RadioButtons(
-        fig.add_axes([0.71, 0.52, 0.22, 0.13], facecolor=PANEL_COLOR, zorder=102),
-        ("Target", "Absolute error"),
+        fig.add_axes([0.71, 0.55, 0.22, 0.15], facecolor=PANEL_COLOR, zorder=102),
+        ("Target", "Absolute error", "Loss curves"),
         active=0,
         activecolor="#168a8a",
     )
+    target_loss_check = CheckButtons(
+        fig.add_axes([0.71, 0.29, 0.22, 0.16], facecolor=PANEL_COLOR, zorder=102),
+        ("Full loss", "Data loss", "Regularized cost"),
+        (True, True, True),
+    )
+    for label in target_loss_check.labels:
+        label.set_fontsize(9)
     close = Button(
         fig.add_axes([0.42, 0.06, 0.16, 0.055], zorder=102),
         "CLOSE  [M]",
@@ -206,6 +225,7 @@ def build_overlay_menu(
         current_image_radio,
         current_radio,
         target_radio,
+        target_loss_check,
         close,
     )
     menu.set_visible(False, show_control_selector=False)

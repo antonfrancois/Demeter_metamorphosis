@@ -220,6 +220,7 @@ class SplinePlayground:
         self.current_image_radio.on_clicked(self._on_current_image_mode)
         self.current_radio.on_clicked(self._on_current_field)
         self.target_radio.on_clicked(self._on_target_mode)
+        self.target_loss_check.on_clicked(self._on_target_loss_change)
         self.time_slider.on_changed(self._on_time)
         self.run_button.on_clicked(lambda _event: self.run())
         self.register_button.on_clicked(lambda _event: self.register())
@@ -357,6 +358,7 @@ class SplinePlayground:
         self.current_image_radio = self.overlay_menu.current_image_radio
         self.current_radio = self.overlay_menu.current_radio
         self.target_radio = self.overlay_menu.target_radio
+        self.target_loss_check = self.overlay_menu.target_loss_check
         self.menu_close_button = self.overlay_menu.close_button
 
     def _build_file_menu(self) -> None:
@@ -747,6 +749,12 @@ class SplinePlayground:
         if self._syncing_widgets:
             return
         self.target_mode = label
+        self._render_panels(self._render_target)
+        self.fig.canvas.draw_idle()
+
+    def _on_target_loss_change(self, _label: str) -> None:
+        if self._syncing_widgets:
+            return
         self._render_panels(self._render_target)
         self.fig.canvas.draw_idle()
 
@@ -1578,6 +1586,13 @@ class SplinePlayground:
 
     def _render_target(self) -> None:
         time = self.target_times[self.target_index]
+        loss_curves = None
+        regularized_loss_label = "Regularized cost"
+        if self.last_registration is not None:
+            loss_curves = self.last_registration.loss_curves()
+            regularized_loss_label = (
+                self.last_registration.regularized_loss_label
+            )
         self.renderer.render_target(
             self.source,
             self.target,
@@ -1588,6 +1603,9 @@ class SplinePlayground:
             self.target_index,
             len(self._targets),
             time,
+            loss_curves,
+            self.target_loss_check.get_status(),
+            regularized_loss_label,
         )
 
     def _render_metrics(self) -> None:

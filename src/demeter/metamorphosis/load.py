@@ -131,6 +131,18 @@ def _classic_integrator_arguments(args):
     return arguments
 
 
+def _saved_optimizer_type(opti_dict):
+    optimizer_class = opti_dict.get("optimizer_class")
+    if optimizer_class is not None:
+        return _find_meta_optimiser_from_repr_(optimizer_class)
+    integrator, optimizer = _find_meta_optimiser_from_repr_(opti_dict["__repr__"])
+    if optimizer in (MetamorphosisSplineOptimizer, MetamorphosisRegression):
+        raise ValueError(
+            "spline and regression saves must use the current versioned format"
+        )
+    return integrator, optimizer
+
+
 def load_optimize_geodesicShooting(file_name, path=None, verbose=True):
     """
     load previously saved optimisation. Usually the file will be saved in the
@@ -216,10 +228,7 @@ def load_optimize_geodesicShooting(file_name, path=None, verbose=True):
 def  _load_light_optim(opti_dict, verbose):
 
     ## Find with which class we are dealing with
-    optimizer_identifier = opti_dict.get(
-        "optimizer_class", opti_dict["__repr__"]
-    )
-    integrator, optimizer = _find_meta_optimiser_from_repr_(optimizer_identifier)
+    integrator, optimizer = _saved_optimizer_type(opti_dict)
 
     # Reinitialize the kernelOperator
     kernel_arguments = dict(opti_dict["args"]["kernelOperator"])
@@ -253,6 +262,13 @@ def  _load_light_optim(opti_dict, verbose):
     else:
         mp = integrator(**opti_dict["args"])
     optimized_momenta, _, _ = _extract_analysis_results(opti_dict)
+    if (
+        optimizer in (MetamorphosisSplineOptimizer, MetamorphosisRegression)
+        and optimized_momenta is None
+    ):
+        raise ValueError(
+            "spline and regression saves must contain optimized_momenta"
+        )
     shooting_parameter = (
         optimized_momenta
         if optimized_momenta is not None
@@ -284,11 +300,11 @@ def  _load_light_optim(opti_dict, verbose):
             geodesic=mp,
             cost_cst=opti_dict["cost_cst"],
             optimizer_method=opti_dict["optimizer_method_name"],
-            lbfgs_max_iter=opti_dict["args"].get("lbfgs_max_iter", 20),
-            lbfgs_history_size=opti_dict["args"].get("lbfgs_history_size", 100),
-            temporal_preconditioning=opti_dict["args"].get(
-                "temporal_preconditioning", True
-            ),
+            lbfgs_max_iter=opti_dict["args"]["lbfgs_max_iter"],
+            lbfgs_history_size=opti_dict["args"]["lbfgs_history_size"],
+            temporal_preconditioning=opti_dict["args"][
+                "temporal_preconditioning"
+            ],
         )
     elif optimizer is MetamorphosisRegression:
         mr = optimizer(
@@ -298,11 +314,11 @@ def  _load_light_optim(opti_dict, verbose):
             geodesic=mp,
             cost_cst=opti_dict["cost_cst"],
             optimizer_method=opti_dict["optimizer_method_name"],
-            lbfgs_max_iter=opti_dict["args"].get("lbfgs_max_iter", 20),
-            lbfgs_history_size=opti_dict["args"].get("lbfgs_history_size", 100),
+            lbfgs_max_iter=opti_dict["args"]["lbfgs_max_iter"],
+            lbfgs_history_size=opti_dict["args"]["lbfgs_history_size"],
             hamiltonian_integration=opti_dict["args"]["hamiltonian_integration"],
-            adam_scheduler=opti_dict["args"].get("adam_scheduler"),
-            adam_grad_clip=opti_dict["args"].get("adam_grad_clip"),
+            adam_scheduler=opti_dict["args"]["adam_scheduler"],
+            adam_grad_clip=opti_dict["args"]["adam_grad_clip"],
         )
     elif optimizer is Metamorphosis_Shooting:
         mr = optimizer(
@@ -333,10 +349,7 @@ def _load_heavy_optim(opti_dict, verbose):
 
     flag_JM = False
 
-    optimizer_identifier = opti_dict.get(
-        "optimizer_class", opti_dict["__repr__"]
-    )
-    _, optimizer = _find_meta_optimiser_from_repr_(optimizer_identifier)
+    _, optimizer = _saved_optimizer_type(opti_dict)
     if isinstance(optimizer, Weighted_joinedMask_Metamorphosis_Shooting):
         flag_JM = True
 
@@ -367,11 +380,11 @@ def _load_heavy_optim(opti_dict, verbose):
             geodesic=opti_dict["mp"],
             cost_cst=opti_dict["cost_cst"],
             optimizer_method=opti_dict["optimizer_method_name"],
-            lbfgs_max_iter=opti_dict["args"].get("lbfgs_max_iter", 20),
-            lbfgs_history_size=opti_dict["args"].get("lbfgs_history_size", 100),
-            temporal_preconditioning=opti_dict["args"].get(
-                "temporal_preconditioning", True
-            ),
+            lbfgs_max_iter=opti_dict["args"]["lbfgs_max_iter"],
+            lbfgs_history_size=opti_dict["args"]["lbfgs_history_size"],
+            temporal_preconditioning=opti_dict["args"][
+                "temporal_preconditioning"
+            ],
         )
     elif optimizer is MetamorphosisRegression:
         new_optim = optimizer(
@@ -381,11 +394,11 @@ def _load_heavy_optim(opti_dict, verbose):
             geodesic=opti_dict["mp"],
             cost_cst=opti_dict["cost_cst"],
             optimizer_method=opti_dict["optimizer_method_name"],
-            lbfgs_max_iter=opti_dict["args"].get("lbfgs_max_iter", 20),
-            lbfgs_history_size=opti_dict["args"].get("lbfgs_history_size", 100),
+            lbfgs_max_iter=opti_dict["args"]["lbfgs_max_iter"],
+            lbfgs_history_size=opti_dict["args"]["lbfgs_history_size"],
             hamiltonian_integration=opti_dict["args"]["hamiltonian_integration"],
-            adam_scheduler=opti_dict["args"].get("adam_scheduler"),
-            adam_grad_clip=opti_dict["args"].get("adam_grad_clip"),
+            adam_scheduler=opti_dict["args"]["adam_scheduler"],
+            adam_grad_clip=opti_dict["args"]["adam_grad_clip"],
         )
     elif optimizer is Metamorphosis_Shooting:
         new_optim = optimizer(

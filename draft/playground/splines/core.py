@@ -317,35 +317,27 @@ class SplineParameters:
     @classmethod
     def from_dict(cls, values: dict[str, Any]) -> "SplineParameters":
         return cls(
-            alpha=values.get("alpha", 0.2),
-            beta=values.get("beta", 0.2),
-            gamma=values.get("gamma", 0.001),
-            rho=values.get("rho", 0.5),
-            cg_eps=values.get("cg_eps", 1e-5),
-            n_steps=values.get("n_steps", 16),
-            control_steps=tuple(values.get("control_steps", ())),
-            control_times=(
-                tuple(values["control_times"])
-                if "control_times" in values
-                else ()
-            ),
-            kernel=values.get("kernel", "sobolev"),
-            sigma=values.get("sigma", 3.0),
-            model=values.get("model", "splines"),
-            cost_cst=values.get("cost_cst", 0.01),
-            iterations=values.get("iterations", 10),
-            lbfgs_lr=values.get("lbfgs_lr"),
-            optimized_fields=tuple(
-                values.get("optimized_fields", OPTIMIZABLE_INITIAL_FIELDS)
-            ),
-            spline_initialization=values.get("spline_initialization", "cold"),
-            temporal_preconditioning=values.get(
-                "temporal_preconditioning", True
-            ),
-            regression_cost_cst=values.get("regression_cost_cst"),
-            regression_n_steps=values.get("regression_n_steps"),
-            regression_iterations=values.get("regression_iterations"),
-            regression_lbfgs_lr=values.get("regression_lbfgs_lr"),
+            alpha=values["alpha"],
+            beta=values["beta"],
+            gamma=values["gamma"],
+            rho=values["rho"],
+            cg_eps=values["cg_eps"],
+            n_steps=values["n_steps"],
+            control_steps=tuple(values["control_steps"]),
+            control_times=tuple(values["control_times"]),
+            kernel=values["kernel"],
+            sigma=values["sigma"],
+            model=values["model"],
+            cost_cst=values["cost_cst"],
+            iterations=values["iterations"],
+            lbfgs_lr=values["lbfgs_lr"],
+            optimized_fields=tuple(values["optimized_fields"]),
+            spline_initialization=values["spline_initialization"],
+            temporal_preconditioning=values["temporal_preconditioning"],
+            regression_cost_cst=values["regression_cost_cst"],
+            regression_n_steps=values["regression_n_steps"],
+            regression_iterations=values["regression_iterations"],
+            regression_lbfgs_lr=values["regression_lbfgs_lr"],
         )
 
 
@@ -585,10 +577,10 @@ def load_setup(path: str | Path) -> SplineSetup:
     if not isinstance(payload, dict) or payload.get("kind") != SETUP_KIND:
         raise ValueError(f"{path} is not a spline playground setup")
     version = payload.get("format_version")
-    if version not in (1, 2, FORMAT_VERSION):
+    if version != FORMAT_VERSION:
         raise ValueError(
-            f"unsupported spline setup format {version!r}; expected 1, 2, "
-            f"or {FORMAT_VERSION}"
+            f"unsupported spline setup format {version!r}; "
+            f"expected {FORMAT_VERSION}"
         )
     required_parameters = {
         "alpha",
@@ -598,59 +590,44 @@ def load_setup(path: str | Path) -> SplineSetup:
         "cg_eps",
         "n_steps",
         "control_steps",
+        "control_times",
+        "kernel",
+        "sigma",
+        "model",
+        "cost_cst",
+        "iterations",
+        "lbfgs_lr",
+        "optimized_fields",
+        "spline_initialization",
+        "temporal_preconditioning",
+        "regression_cost_cst",
+        "regression_n_steps",
+        "regression_iterations",
+        "regression_lbfgs_lr",
     }
     missing = required_parameters.difference(payload.get("parameters", {}))
     if missing:
         names = ", ".join(sorted(missing))
         raise ValueError(f"spline setup is missing parameters: {names}")
-    parameter_values = dict(payload["parameters"])
-    if (
-        version == 1
-        and "model" not in parameter_values
-        and parameter_values.get("kernel", "sobolev") == "gaussian"
-    ):
-        parameter_values["model"] = "classic"
+    parameter_values = payload["parameters"]
     parameters = SplineParameters.from_dict(parameter_values)
     if (
-        "control_times" in parameter_values
-        and (
-            tuple(parameter_values["control_times"]) != parameters.control_times
-            or tuple(parameter_values["control_steps"]) != parameters.control_steps
-        )
+        tuple(parameter_values["control_times"]) != parameters.control_times
+        or tuple(parameter_values["control_steps"]) != parameters.control_steps
     ):
         raise ValueError("saved control_steps do not match control_times")
-    if version in (1, 2):
-        source = coerce_image(payload["source"])
-        force = _scalar_field(
-            payload["initial_force"],
-            tuple(source.shape[-2:]),
-            dtype=source.dtype,
-            name="initial_force",
-        )
-        if torch.count_nonzero(force) == 0:
-            initial_acceleration = force.clone()
-        else:
-            with torch.no_grad():
-                initial_acceleration = CometricOperator(
-                    source,
-                    parameters.rho,
-                    _kernel_operator(parameters),
-                    dx_convention="pixel",
-                )(force)
-    else:
-        initial_acceleration = payload["initial_acceleration"]
     return SplineSetup(
         source=payload["source"],
         target=payload["target"],
         initial_momentum=payload["initial_momentum"],
-        initial_acceleration=initial_acceleration,
+        initial_acceleration=payload["initial_acceleration"],
         initial_jerk=payload["initial_jerk"],
         control_jerks=payload["control_jerks"],
         parameters=parameters,
-        source_path=payload.get("source_path", ""),
-        target_path=payload.get("target_path", ""),
-        target_times=tuple(payload.get("target_times", (1.0,))),
-        target_paths=tuple(payload.get("target_paths", ())),
+        source_path=payload["source_path"],
+        target_path=payload["target_path"],
+        target_times=tuple(payload["target_times"]),
+        target_paths=tuple(payload["target_paths"]),
     )
 
 
