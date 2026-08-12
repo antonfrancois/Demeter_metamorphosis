@@ -398,7 +398,12 @@ class SplineRenderer:
         self.target_ax.set_facecolor("#11191d")
         self.target_ax.set_axis_off()
         self.target_ax.set_box_aspect(None)
-        self.target_ax.set_aspect("equal")
+        self.target_ax.set_aspect("equal", adjustable="box")
+        height, width = source.shape[-2:]
+        self.target_ax.set_xlim(-0.5, width - 0.5)
+        self.target_ax.set_ylim(-0.5, height - 0.5)
+        self.target_ax.set_autoscalex_on(False)
+        self.target_ax.set_autoscaley_on(False)
         if target_mode == "Target":
             self.target_image.set_data(target[0, 0])
             self.target_image.set_cmap("gray")

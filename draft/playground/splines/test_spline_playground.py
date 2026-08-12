@@ -1739,6 +1739,12 @@ def test_loss_plot_limits_ignore_large_image_extent():
 
     assert app.target_ax.get_xlim()[1] < 3
     assert app.target_ax.get_ylim()[1] < 350
+    app.target_radio.set_active(0)
+    assert app.target_image.get_visible()
+    assert app.target_ax.get_xlim() == pytest.approx((-0.5, 511.5))
+    assert app.target_ax.get_ylim() == pytest.approx((-0.5, 511.5))
+    assert not app.target_ax.get_autoscalex_on()
+    assert not app.target_ax.get_autoscaley_on()
     plt.close(app.fig)
 
 
