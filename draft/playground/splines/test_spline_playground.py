@@ -56,7 +56,7 @@ from draft.playground.splines.main import (
 )
 from draft.playground.splines.menus.observations import ObservationTimeEditor
 from draft.playground.splines.project_io import load_project
-from draft.playground.splines.registration import register_spline
+from draft.playground.splines.registration import RegistrationResult, register_spline
 from draft.playground.splines.styles import FIELD_CLASS, INK_COLOR
 
 
@@ -1639,6 +1639,11 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
     assert classic.target_mode == "Loss curves"
     assert not classic.target_image.get_visible()
     assert not classic.target_ax.xaxis._major_tick_kw["gridOn"]
+    assert classic.target_ax.get_box_aspect() == pytest.approx(1.0)
+    assert classic.target_ax.get_xlim()[1] < len(classic_losses) + 1
+    assert classic.target_ax.get_ylim()[1] < 2 * max(
+        float(curve.max()) for curve in classic_curves.values()
+    )
     assert [line.get_label() for line in classic.target_ax.lines] == [
         "Full loss",
         "Data loss",
@@ -1686,6 +1691,8 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
     )
     torch.testing.assert_close(spline_curves["full"], spline_losses["total_cost"])
     splines.target_radio.set_active(2)
+    assert splines.target_ax.get_box_aspect() == pytest.approx(1.0)
+    assert splines.target_ax.get_xlim()[1] < len(spline_losses["data_loss"]) + 1
     assert [line.get_label() for line in splines.target_ax.lines] == [
         "Full loss",
         "Data loss",
@@ -1711,6 +1718,28 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
     splines._invalidate("field changed")
     assert splines.last_registration is None
     plt.close(splines.fig)
+
+
+def test_loss_plot_limits_ignore_large_image_extent():
+    source = torch.zeros(1, 1, 512, 512)
+    app = SplinePlayground(zero_setup(source), device="cpu")
+    app.last_registration = RegistrationResult(
+        setup=app.make_setup("splines"),
+        trajectory=None,  # type: ignore[arg-type]
+        loss_stock={
+            "data_loss": torch.tensor([300.0, 200.0, 180.0]),
+            "acceleration_energy": torch.tensor([0.0, 20.0, 10.0]),
+            "total_cost": torch.tensor([300.0, 200.2, 180.1]),
+        },
+        elapsed_seconds=0.0,
+        model="splines",
+    )
+
+    app.target_radio.set_active(2)
+
+    assert app.target_ax.get_xlim()[1] < 3
+    assert app.target_ax.get_ylim()[1] < 350
+    plt.close(app.fig)
 
 
 def test_register_spline_reuses_saved_final_integration(monkeypatch):
