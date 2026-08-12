@@ -51,6 +51,23 @@ OPTIMIZABLE_INITIAL_FIELDS = (
 )
 
 
+def minimum_compatible_mesh_steps(
+    times: tuple[float, ...],
+    *,
+    max_steps: int,
+) -> int:
+    """Return the smallest temporal mesh containing every normalized time."""
+    for n_steps in range(1, max_steps + 1):
+        if all(
+            abs(time * n_steps - round(time * n_steps)) <= 1e-6
+            for time in times
+        ):
+            return n_steps
+    raise ValueError(
+        f"no temporal mesh with at most {max_steps} steps contains all times"
+    )
+
+
 def resolve_device(device: str | torch.device | None = "auto") -> torch.device:
     """Resolve ``auto`` to CUDA when available and CPU otherwise."""
     if device is None or str(device).lower() == "auto":

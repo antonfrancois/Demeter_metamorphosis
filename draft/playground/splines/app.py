@@ -26,6 +26,7 @@ from .core import (
     SplineTrajectory,
     load_scalar_field,
     load_setup,
+    minimum_compatible_mesh_steps,
     resolve_device,
     run_classic,
     run_spline,
@@ -570,6 +571,25 @@ class SplinePlayground:
             ),
         )
 
+    def _minimum_regression_steps(self) -> int:
+        times = self.parameters.mesh_control_times + tuple(
+            float(time) for time in self.target_times if time is not None
+        )
+        return minimum_compatible_mesh_steps(times, max_steps=MAX_STEPS)
+
+    def _use_minimum_regression_mesh(self) -> None:
+        n_steps = self._minimum_regression_steps()
+        self.parameters = replace(
+            self.parameters,
+            regression_n_steps=n_steps,
+        )
+        syncing = self._syncing_widgets
+        self._syncing_widgets = True
+        try:
+            self.regression_steps_slider.set_val(n_steps)
+        finally:
+            self._syncing_widgets = syncing
+
     def make_setup(
         self,
         model: str | None = None,
@@ -838,6 +858,14 @@ class SplinePlayground:
         self._on_parameter_change(0.0)
 
     def _on_spline_initialization_change(self, label: str) -> None:
+        if self._syncing_widgets:
+            return
+        if label == "Warm":
+            try:
+                self._use_minimum_regression_mesh()
+            except ValueError as error:
+                self._show_message(f"Cannot build regression mesh: {error}")
+                return
         self.parameter_menu.set_warm_layout(
             label == "Warm", visible=self.parameter_menu_open
         )
@@ -978,20 +1006,13 @@ class SplinePlayground:
         self._refresh_observation_widgets()
 
     def _place_target(self, index: int, time: float) -> None:
-        if self.parameters.spline_initialization == "warm":
-            assert self.parameters.regression_n_steps is not None
-            exact_step = time * self.parameters.regression_n_steps
-            if abs(exact_step - round(exact_step)) > 1e-6:
-                self._show_message(
-                    f"Target time {time:.3g} is not on the regression "
-                    f"{self.parameters.regression_n_steps}-step mesh."
-                )
-                return
         for other_index, other_time in enumerate(self.target_times):
             if other_index != index and other_time is not None and abs(other_time - time) < 1e-8:
                 self._show_message("Another target already occupies that node.")
                 return
         self.target_times[index] = float(time)
+        if self.parameters.spline_initialization == "warm":
+            self._use_minimum_regression_mesh()
         self.target_index = index
         self.image_index = index + 1
         self.last_registration = None
@@ -1004,6 +1025,8 @@ class SplinePlayground:
         if not 0 <= index < len(self.target_times):
             return
         self.target_times[index] = None
+        if self.parameters.spline_initialization == "warm":
+            self._use_minimum_regression_mesh()
         self.last_registration = None
         self._refresh_observation_widgets()
         self._set_status(f"Target {index + 1} is now unplaced.")
@@ -1120,6 +1143,8 @@ class SplinePlayground:
             self._show_message(f"Cannot add control time: {error}")
             return
         self.parameters = parameters
+        if self.parameters.spline_initialization == "warm":
+            self._use_minimum_regression_mesh()
         self._replace_control_fields(fields, amplitudes)
         self.control_index = index
         self._refresh_control_widgets()
@@ -1138,6 +1163,8 @@ class SplinePlayground:
                 self.parameters,
                 control_times=tuple(times),
             )
+            if self.parameters.spline_initialization == "warm":
+                self._use_minimum_regression_mesh()
         except ValueError as error:
             self._show_message(f"Cannot move control time: {error}")
             self._refresh_control_widgets()
@@ -1160,6 +1187,8 @@ class SplinePlayground:
             control_steps=(),
             control_times=tuple(times),
         )
+        if self.parameters.spline_initialization == "warm":
+            self._use_minimum_regression_mesh()
         self._replace_control_fields(fields, amplitudes)
         self.control_index = min(index, max(0, len(times) - 1))
         if not times and self.input_kind == "control_jerk":

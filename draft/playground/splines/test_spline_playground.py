@@ -41,6 +41,7 @@ from draft.playground.splines.core import (
     SplineParameters,
     SplineSetup,
     load_setup,
+    minimum_compatible_mesh_steps,
     resolve_device,
     run_classic,
     run_spline,
@@ -95,6 +96,9 @@ def test_parameters_require_ordered_interior_control_nodes():
     assert independent_regression.regression_iterations == 3
     assert independent_regression.regression_lbfgs_lr == pytest.approx(0.4)
     assert SplineParameters(model="classic").lbfgs_lr == pytest.approx(1.0)
+    assert minimum_compatible_mesh_steps(
+        (0.25, 0.375, 1.0), max_steps=60
+    ) == 8
 
     midpoint = SplineParameters(n_steps=16, control_steps=(8,))
     refined = replace(midpoint, n_steps=40)
@@ -1081,7 +1085,7 @@ def test_only_operator_choice_changes_the_operator():
     plt.close(app.fig)
 
 
-def test_warm_initialization_rejects_off_mesh_regression_observations():
+def test_warm_initialization_uses_minimum_mesh_for_controls_and_observations():
     source = torch.zeros(1, 1, 5, 6)
     with pytest.raises(ValueError, match="regression mesh"):
         zero_setup(
@@ -1097,13 +1101,14 @@ def test_warm_initialization_rejects_off_mesh_regression_observations():
     app = SplinePlayground(
         zero_setup(
             source,
-            torch.ones_like(source),
+            torch.cat((torch.ones_like(source), 2 * torch.ones_like(source))),
             SplineParameters(
-                n_steps=4,
+                n_steps=16,
+                control_steps=(4,),
                 regression_n_steps=3,
                 spline_initialization="cold",
             ),
-            target_times=(0.5,),
+            target_times=(0.375, 1.0),
         ),
         device="cpu",
     )
@@ -1111,31 +1116,22 @@ def test_warm_initialization_rejects_off_mesh_regression_observations():
 
     app.spline_initialization_radio.set_active(1)
 
-    assert app.parameters.spline_initialization == "cold"
-    assert app.spline_initialization_radio.value_selected == "Cold"
-    assert "regression 3-step mesh" in app.status_text.get_text()
+    assert app.parameters.spline_initialization == "warm"
+    assert app.spline_initialization_radio.value_selected == "Warm"
+    assert app.parameters.regression_n_steps == 8
+    assert app.regression_steps_slider.val == 8
     assert all(
-        not slider.ax.get_visible()
+        slider.ax.get_visible() and slider.active
         for slider in app.parameter_menu.regression_numerical_sliders
     )
-    plt.close(app.fig)
 
-    warm_app = SplinePlayground(
-        zero_setup(
-            source,
-            torch.ones_like(source),
-            SplineParameters(
-                n_steps=4,
-                regression_n_steps=2,
-                spline_initialization="warm",
-            ),
-        ),
-        device="cpu",
-    )
-    warm_app._place_target(0, 0.25)
-    assert warm_app.target_times == [1.0]
-    assert "regression 2-step mesh" in warm_app.status_text.get_text()
-    plt.close(warm_app.fig)
+    app._move_control_time(0, 0.5)
+    assert app.parameters.regression_n_steps == 8
+    app._place_target(0, 0.25)
+    assert app.target_times == [0.25, 1.0]
+    assert app.parameters.regression_n_steps == 4
+    assert app.regression_steps_slider.val == 4
+    plt.close(app.fig)
 
 
 def test_control_times_rescale_and_can_be_edited_on_the_parameter_timeline():
