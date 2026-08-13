@@ -781,6 +781,8 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     shortcuts = next(
         text for text in app.fig.texts if text.get_text().startswith("P  parameters")
     )
+    assert app.menu_button.label.get_text() == "VIEW MENU  [V]"
+    assert "V  view menu" in shortcuts.get_text()
     assert shortcuts.get_position() == pytest.approx((0.012, 0.975))
     assert shortcuts.get_ha() == "left"
     assert shortcuts.get_va() == "top"
@@ -1212,7 +1214,7 @@ def test_overlay_menu_and_current_image_modes():
     assert not app.menu_open
     app.fig.canvas.release_mouse(app.rho_slider.ax)
 
-    app._on_key_press(SimpleNamespace(key="m"))
+    app._on_key_press(SimpleNamespace(key="v"))
     assert app.menu_open
     assert app.overlay_menu.backdrop_ax.get_visible()
     assert all(axis.get_visible() for axis in app.overlay_menu.column_axes.values())
@@ -1739,6 +1741,21 @@ def test_loss_plot_limits_ignore_large_image_extent():
 
     assert app.target_ax.get_xlim()[1] < 3
     assert app.target_ax.get_ylim()[1] < 350
+    assert all(float(tick).is_integer() for tick in app.target_ax.get_xticks())
+    colors = {line.get_label(): line.get_color() for line in app.target_ax.lines}
+    app.set_time_index(1)
+    assert {
+        line.get_label(): line.get_color() for line in app.target_ax.lines
+    } == colors
+    app.target_loss_check.set_active(1)
+    assert {
+        line.get_label(): line.get_color() for line in app.target_ax.lines
+    } == {
+        "Full loss": colors["Full loss"],
+        "Regularized acceleration cost": colors[
+            "Regularized acceleration cost"
+        ],
+    }
     app.target_radio.set_active(0)
     assert app.target_image.get_visible()
     assert app.target_ax.get_xlim() == pytest.approx((-0.5, 511.5))

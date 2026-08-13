@@ -1228,7 +1228,7 @@ class SplinePlayground:
         if key == "p":
             self.set_parameter_menu_visible(not self.parameter_menu_open)
             return
-        if key == "m":
+        if key == "v":
             self.set_menu_visible(not self.menu_open)
             return
         if key == "l":

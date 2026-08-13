@@ -3,6 +3,7 @@
 from typing import Any
 
 from matplotlib.colors import LinearSegmentedColormap, to_rgba
+from matplotlib.ticker import MaxNLocator
 import numpy as np
 import torch
 
@@ -348,10 +349,16 @@ class SplineRenderer:
             self.target_ax.set_aspect("auto")
             self.target_ax.set_box_aspect(source.shape[-2] / source.shape[-1])
             self.target_ax.set_yscale("linear")
+            self.target_ax.xaxis.set_major_locator(MaxNLocator(integer=True))
             labels = {
                 "full": "Full loss",
                 "data": "Data loss",
                 "regularized": regularized_loss_label,
+            }
+            colors = {
+                "full": "C0",
+                "data": "C1",
+                "regularized": "C2",
             }
             if loss_curves is None:
                 message = self.target_ax.text(
@@ -376,6 +383,7 @@ class SplineRenderer:
                         np.arange(len(values)),
                         values.numpy(),
                         label=labels[name],
+                        color=colors[name],
                     )
                     self.dynamic_artists[self.target_ax].append(line)
                 if self.target_ax.lines:

@@ -73,7 +73,7 @@ Sobolev operator parameters,
 then transfers its momentum with zero acceleration, jerk, and control fields.
 Temporal preconditioning applies only to the subsequent spline optimization.
 
-Press `M` or click **View** to open the three-column display. Its source
+Press `V` or click **View menu** to open the three-column display. Its source
 column reuses the control-time line to select which control jerk field is
 displayed, without changing the control topology. That selector
 is shown only while **Control jerk** is the selected editable field. The current panel
@@ -88,7 +88,7 @@ The deformation-only image replays the same periodic semi-Lagrangian transport
 as the spline integrator. The photometric-only image starts at the source and
 accumulates `dt * residuals_stock[k]` at fixed pixels. Dual `p`, `u`, `r`, and
 vector momentum `m` overlays are orange; primal `a = A_I u` and `v = K m`
-overlays are yellow. The force is shown as `u = A_I^-1 a`. Press `M` or `Esc`
+overlays are yellow. The force is shown as `u = A_I^-1 a`. Press `V` or `Esc`
 to close the menu. The source and current columns each have an independent
 image switch; hiding an image leaves its field on a black background without
 changing any image mode or field selection.
