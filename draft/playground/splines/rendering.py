@@ -85,6 +85,20 @@ class SplineRenderer:
                 pass
         self.dynamic_artists[axis].clear()
 
+    @staticmethod
+    def configure_image_axis(axis: Any, image: torch.Tensor) -> None:
+        height, width = image.shape[-2:]
+        axis.set_xscale("linear")
+        axis.set_yscale("linear")
+        axis.set_box_aspect(None)
+        axis.set_aspect("equal", adjustable="box")
+        axis.set_xlim(-0.5, width - 0.5)
+        axis.set_ylim(-0.5, height - 0.5)
+        axis.set_autoscalex_on(False)
+        axis.set_autoscaley_on(False)
+        axis.set_facecolor("#11191d")
+        axis.set_axis_off()
+
     def plot_scalar_overlay(
         self,
         axis: Any,
@@ -195,6 +209,7 @@ class SplineRenderer:
         show_image: bool,
     ) -> None:
         self.clear_dynamic(self.source_ax)
+        self.configure_image_axis(self.source_ax, source)
         self.source_image.set_data(
             source[0, 0] if show_image else torch.zeros_like(source[0, 0])
         )
@@ -247,6 +262,7 @@ class SplineRenderer:
         show_image: bool,
     ) -> None:
         self.clear_dynamic(self.current_ax)
+        self.configure_image_axis(self.current_ax, source)
         current = self.current_image_tensor(source, cache, image_mode, index)
         self.current_image.set_data(
             current[0] if show_image else torch.zeros_like(current[0])
@@ -403,15 +419,7 @@ class SplineRenderer:
             return
 
         self.target_image.set_visible(True)
-        self.target_ax.set_facecolor("#11191d")
-        self.target_ax.set_axis_off()
-        self.target_ax.set_box_aspect(None)
-        self.target_ax.set_aspect("equal", adjustable="box")
-        height, width = source.shape[-2:]
-        self.target_ax.set_xlim(-0.5, width - 0.5)
-        self.target_ax.set_ylim(-0.5, height - 0.5)
-        self.target_ax.set_autoscalex_on(False)
-        self.target_ax.set_autoscaley_on(False)
+        self.configure_image_axis(self.target_ax, source)
         if target_mode == "Target":
             self.target_image.set_data(target[0, 0])
             self.target_image.set_cmap("gray")

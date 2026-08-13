@@ -16,7 +16,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
-from matplotlib.backend_bases import MouseEvent
+from matplotlib.backend_bases import KeyEvent, MouseEvent
 import numpy as np
 import pytest
 import torch
@@ -1323,6 +1323,61 @@ def test_overlay_menu_and_current_image_modes():
     assert app.file_menu.backdrop_ax.get_visible()
     app._on_key_press(SimpleNamespace(key="l"))
     assert not app.file_menu_open
+    plt.close(app.fig)
+
+
+@pytest.mark.parametrize(
+    ("key", "model", "modal"),
+    (
+        ("p", "splines", "parameters"),
+        ("v", "splines", "view"),
+        ("i", "classic", "images"),
+        ("i", "splines", "observations"),
+        ("l", "splines", "files"),
+    ),
+)
+def test_menu_shortcuts_preserve_image_panel_geometry(key, model, modal):
+    source = torch.zeros(1, 1, 64, 96)
+    app = SplinePlayground(
+        zero_setup(source, parameters=SplineParameters(n_steps=2, model=model)),
+        device="cpu",
+    )
+    app.fig.canvas.draw()
+    x, y = app.current_ax.transAxes.transform((0.5, 0.5))
+
+    def geometry(axis):
+        return (
+            axis.get_position().bounds,
+            axis.get_xlim(),
+            axis.get_ylim(),
+            axis.get_aspect(),
+            axis.get_adjustable(),
+            axis.get_box_aspect(),
+            axis.get_xscale(),
+            axis.get_yscale(),
+            axis.get_autoscalex_on(),
+            axis.get_autoscaley_on(),
+        )
+
+    expected = tuple(geometry(axis) for axis in app.axes)
+    for _ in range(3):
+        app.fig.canvas.callbacks.process(
+            "key_press_event",
+            KeyEvent("key_press_event", app.fig.canvas, key, x=x, y=y),
+        )
+        assert app.active_modal == modal
+        app.fig.canvas.draw()
+        app.fig.canvas.callbacks.process(
+            "key_press_event",
+            KeyEvent("key_press_event", app.fig.canvas, key, x=x, y=y),
+        )
+        assert app.active_modal is None
+        app.fig.canvas.draw()
+        for actual, wanted in zip(map(geometry, app.axes), expected):
+            assert actual[0] == pytest.approx(wanted[0])
+            assert actual[1] == pytest.approx(wanted[1])
+            assert actual[2] == pytest.approx(wanted[2])
+            assert actual[3:] == wanted[3:]
     plt.close(app.fig)
 
 

@@ -11,7 +11,6 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 
-import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 import numpy as np
 import torch
@@ -163,21 +162,6 @@ class SplinePlayground:
             self.fields[f"control_jerk:{index}"] = field.clone()
 
     def _build_figure(self) -> None:
-        reserved_keymaps = {
-            "keymap.save": {"s", "ctrl+s"},
-            "keymap.home": {"r"},
-            "keymap.back": {"c", "left"},
-            "keymap.forward": {"r", "right"},
-            "keymap.pan": {"p"},
-        }
-        self._original_keymaps = {
-            setting: list(plt.rcParams[setting]) for setting in reserved_keymaps
-        }
-        for setting, reserved in reserved_keymaps.items():
-            plt.rcParams[setting] = [
-                key for key in plt.rcParams[setting] if key not in reserved
-            ]
-
         workspace = build_workspace(
             self.source,
             self.target,
@@ -419,15 +403,13 @@ class SplinePlayground:
 
     def _connect_events(self) -> None:
         canvas = self.fig.canvas
+        default_key_handler = getattr(canvas.manager, "key_press_handler_id", None)
+        if default_key_handler is not None:
+            canvas.mpl_disconnect(default_key_handler)
         canvas.mpl_connect("key_press_event", self._on_key_press)
         canvas.mpl_connect("pick_event", self._on_pick)
         canvas.mpl_connect("button_release_event", self._on_button_release)
         canvas.mpl_connect("resize_event", lambda _event: self.editor.cancel())
-        canvas.mpl_connect("close_event", self._restore_keymaps)
-
-    def _restore_keymaps(self, _event=None) -> None:
-        for setting, values in self._original_keymaps.items():
-            plt.rcParams[setting] = values
 
     def set_menu_visible(self, visible: bool) -> None:
         self._set_modal("view" if visible else None)
