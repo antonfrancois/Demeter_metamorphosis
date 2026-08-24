@@ -19,7 +19,7 @@ MAX_ITERATIONS = 50
 
 
 def format_lbfgs_learning_rate(value: float) -> str:
-    if value > 1e-3:
+    if value >= 1e-1:
         return f"{value:.3g}"
     mantissa, exponent = f"{value:.3e}".split("e")
     return f"{mantissa.rstrip('0').rstrip('.')}e{int(exponent):+d}"

@@ -54,6 +54,7 @@ from draft.playground.splines.main import (
     _replace_parameters,
     main as launch_playground,
 )
+from draft.playground.splines.menus import format_lbfgs_learning_rate
 from draft.playground.splines.menus.observations import ObservationTimeEditor
 from draft.playground.splines.project_io import load_project
 from draft.playground.splines.registration import RegistrationResult, register_spline
@@ -103,6 +104,8 @@ def test_parameters_require_ordered_interior_control_nodes():
 
     with pytest.raises(ValueError, match="interior"):
         SplineParameters(n_steps=8, control_steps=(0,))
+
+
     with pytest.raises(ValueError, match="final interior"):
         SplineParameters(n_steps=8, control_steps=(7,))
     with pytest.raises(ValueError, match="strictly increasing"):
@@ -145,6 +148,16 @@ def test_parameters_require_ordered_interior_control_nodes():
             device="cpu",
             progress_callback=object(),  # type: ignore[arg-type]
         )
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    ((1.0, "1"), (0.1, "0.1"), (0.09, "9e-2"), (0.025, "2.5e-2")),
+)
+def test_learning_rate_display_uses_scientific_notation_below_point_one(
+    value, expected
+):
+    assert format_lbfgs_learning_rate(value) == expected
 
 
 def test_new_playground_defaults_to_no_control_times(tmp_path):
@@ -797,11 +810,12 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     app.regression_cost_slider.set_val(np.log10(0.03))
     app.regression_steps_slider.set_val(5)
     app.regression_iterations_slider.set_val(4)
-    app.regression_lbfgs_lr_slider.set_val(np.log10(0.2))
+    app.regression_lbfgs_lr_slider.set_val(np.log10(0.09))
     assert app.parameters.regression_cost_cst == pytest.approx(0.03)
     assert app.parameters.regression_n_steps == 5
     assert app.parameters.regression_iterations == 4
-    assert app.parameters.regression_lbfgs_lr == pytest.approx(0.2)
+    assert app.parameters.regression_lbfgs_lr == pytest.approx(0.09)
+    assert app.regression_lbfgs_lr_slider.valtext.get_text() == "9e-2"
     app.spline_initialization_radio.set_active(0)
     assert app.parameters.spline_initialization == "cold"
     assert all(
@@ -815,6 +829,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.parameters.iterations == 3
     app.lbfgs_lr_slider.set_val(np.log10(0.025))
     assert app.parameters.lbfgs_lr == pytest.approx(0.025)
+    assert app.lbfgs_lr_slider.valtext.get_text() == "2.5e-2"
     app.optimized_fields_check.set_active(1)
     assert app.parameters.optimized_fields == (
         "initial_momentum",
@@ -894,7 +909,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.steps_slider.valmin == 1
     assert app.steps_slider.valmax == 60
     assert app.lbfgs_lr_slider.val == pytest.approx(np.log10(0.04))
-    assert app.lbfgs_lr_slider.valtext.get_text() == "0.04"
+    assert app.lbfgs_lr_slider.valtext.get_text() == "4e-2"
     assert app.optimized_fields_check.get_status() == [False, True, False]
     assert app.spline_initialization_radio.value_selected == "Warm"
     assert app.parameters.spline_initialization == "warm"

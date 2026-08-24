@@ -40,6 +40,7 @@ from .menus import (
     build_observation_menu,
     build_overlay_menu,
     build_parameter_menu,
+    format_lbfgs_learning_rate,
 )
 from .menus.common import set_radio_active_color
 from .menus.dialogs import choose_directory, choose_file, choose_files
@@ -822,7 +823,9 @@ class SplinePlayground:
         self._on_parameter_change(value)
 
     def _on_lbfgs_lr_change(self, value: float) -> None:
-        self.lbfgs_lr_slider.valtext.set_text(f"{10 ** float(value):.3g}")
+        self.lbfgs_lr_slider.valtext.set_text(
+            format_lbfgs_learning_rate(10 ** float(value))
+        )
         self._on_parameter_change(value)
 
     def _on_regression_cost_change(self, value: float) -> None:
@@ -833,7 +836,7 @@ class SplinePlayground:
 
     def _on_regression_lbfgs_lr_change(self, value: float) -> None:
         self.regression_lbfgs_lr_slider.valtext.set_text(
-            f"{10 ** float(value):.3g}"
+            format_lbfgs_learning_rate(10 ** float(value))
         )
         self._on_parameter_change(value)
 
@@ -1902,7 +1905,7 @@ class SplinePlayground:
                 padding=1,
             )
             self.lbfgs_lr_slider.valtext.set_text(
-                f"{self.parameters.lbfgs_lr:.3g}"
+                format_lbfgs_learning_rate(self.parameters.lbfgs_lr)
             )
             assert self.parameters.regression_cost_cst is not None
             log_regression_cost = float(
@@ -1926,7 +1929,9 @@ class SplinePlayground:
                 padding=1,
             )
             self.regression_lbfgs_lr_slider.valtext.set_text(
-                f"{self.parameters.regression_lbfgs_lr:.3g}"
+                format_lbfgs_learning_rate(
+                    self.parameters.regression_lbfgs_lr
+                )
             )
             self.steps_slider.valmin = 1
             self.steps_slider.valmax = MAX_STEPS
