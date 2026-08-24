@@ -302,9 +302,6 @@ def  _load_light_optim(opti_dict, verbose):
             optimizer_method=opti_dict["optimizer_method_name"],
             lbfgs_max_iter=opti_dict["args"]["lbfgs_max_iter"],
             lbfgs_history_size=opti_dict["args"]["lbfgs_history_size"],
-            temporal_preconditioning=opti_dict["args"][
-                "temporal_preconditioning"
-            ],
         )
     elif optimizer is MetamorphosisRegression:
         mr = optimizer(
@@ -382,9 +379,6 @@ def _load_heavy_optim(opti_dict, verbose):
             optimizer_method=opti_dict["optimizer_method_name"],
             lbfgs_max_iter=opti_dict["args"]["lbfgs_max_iter"],
             lbfgs_history_size=opti_dict["args"]["lbfgs_history_size"],
-            temporal_preconditioning=opti_dict["args"][
-                "temporal_preconditioning"
-            ],
         )
     elif optimizer is MetamorphosisRegression:
         new_optim = optimizer(

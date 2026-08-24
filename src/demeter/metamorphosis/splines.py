@@ -27,6 +27,10 @@ from ..utils import torchbox as tb
 from ..utils.cometric_inversion import CometricOperator
 from ..utils.reproducing_kernels import SobolevFluidOperator
 from ..utils.spline_data import validate_timed_observations
+from ..utils.temporal_preconditioning import (
+    TemporalTransform,
+    cometric_temporal_metric,
+)
 
 
 @dataclass
@@ -124,45 +128,6 @@ register_pytree_node(
     _splines_variables_flatten,
     _splines_variables_unflatten,
 )
-
-
-def _temporal_parameter_scales(
-    n_step: int,
-    control_steps: tuple[int, ...],
-    target_steps: tuple[int, ...],
-    cost_cst: float,
-) -> Tensor:
-    """Diagonal temporal Hessian scale of the discrete flat spline."""
-    n_parameters = 3 + len(control_steps)
-    image = torch.zeros(n_parameters, dtype=torch.float64)
-    momentum = torch.zeros_like(image)
-    acceleration = torch.zeros_like(image)
-    jerk = torch.zeros_like(image)
-    momentum[0] = 1
-    acceleration[1] = 1
-    jerk[2] = 1
-    controls = {
-        step: 3 + index for index, step in enumerate(control_steps)
-    }
-    dt = 1 / n_step
-    images = [image.clone()]
-    acceleration_intervals = []
-    for step in range(1, n_step + 1):
-        acceleration_intervals.append(acceleration.clone())
-        image = image + dt * momentum
-        momentum = momentum + dt * acceleration
-        acceleration = acceleration + dt * jerk
-        control_index = controls.get(step)
-        if control_index is not None:
-            jerk = torch.zeros_like(jerk)
-            jerk[control_index] = 1
-        images.append(image.clone())
-
-    observation_basis = torch.stack(images)[list(target_steps)]
-    acceleration_basis = torch.stack(acceleration_intervals)
-    diagonal = observation_basis.square().sum(dim=0)
-    diagonal += cost_cst * dt * acceleration_basis.square().sum(dim=0)
-    return torch.where(diagonal > 0, diagonal.sqrt(), torch.ones_like(diagonal))
 
 
 class MetamorphosisSplineIntegrator(Geodesic_integrator):
@@ -659,10 +624,8 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
         optimizer_method: str = "LBFGS_torch",
         lbfgs_max_iter: int = 20,
         lbfgs_history_size: int = 100,
-        temporal_preconditioning: bool = True,
         hamiltonian_integration: bool = False,
         debug: bool = False,
-        **kwargs,
     ) -> None:
         if not isinstance(geodesic, MetamorphosisSplineIntegrator):
             raise TypeError(
@@ -671,8 +634,6 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
             )
         if optimizer_method != "LBFGS_torch":
             raise ValueError("spline optimization currently supports LBFGS_torch only")
-        if not isinstance(temporal_preconditioning, bool):
-            raise TypeError("temporal_preconditioning must be a boolean")
         if hamiltonian_integration:
             raise NotImplementedError(
                 "spline regularization uses the integrated acceleration energy"
@@ -687,13 +648,8 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
         self.target_times, self.target_steps = self._validate_observations(
             source, target, target_times, geodesic.n_step
         )
-        self.temporal_preconditioning = temporal_preconditioning
-        self.temporal_parameter_scales = _temporal_parameter_scales(
-            geodesic.n_step,
-            geodesic.control_steps,
-            self.target_steps,
-            cost_cst,
-        )
+        self.temporal_parameter_metric: Tensor | None = None
+        self._temporal_transform: TemporalTransform | None = None
         source = source.detach()
         target = target.detach()
         super().__init__(
@@ -707,54 +663,107 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
             lbfgs_history_size=lbfgs_history_size,
             hamiltonian_integration=False,
             debug=debug,
-            **kwargs,
         )
         self._cost_saving_ = self._spline_cost_saving_
 
-    def _apply_temporal_scales(
+    @staticmethod
+    def _stack_temporal_parameters(parameter: SplinesVariables) -> Tensor:
+        return torch.cat(
+            (
+                parameter.initial_momentum.unsqueeze(0),
+                parameter.initial_acceleration.unsqueeze(0),
+                parameter.initial_jerk.unsqueeze(0),
+                parameter.control_jerks,
+            ),
+            dim=0,
+        )
+
+    @staticmethod
+    def _unstack_temporal_parameters(values: Tensor) -> SplinesVariables:
+        return SplinesVariables(values[0], values[1], values[2], values[3:])
+
+    def _apply_temporal_transform(
         self,
         parameter: SplinesVariables,
         *,
         inverse: bool = False,
     ) -> SplinesVariables:
-        scales = self.temporal_parameter_scales.to(parameter.initial_momentum)
-        if inverse:
-            scales = scales.reciprocal()
-        control_scales = scales[3:].reshape(-1, 1, 1, 1, 1)
-        return SplinesVariables(
-            parameter.initial_momentum * scales[0],
-            parameter.initial_acceleration * scales[1],
-            parameter.initial_jerk * scales[2],
-            parameter.control_jerks * control_scales,
+        if self._temporal_transform is None:
+            raise RuntimeError("the temporal block transform is not initialized")
+        values = self._temporal_transform.apply(
+            self._stack_temporal_parameters(parameter),
+            inverse=inverse,
         )
+        return self._unstack_temporal_parameters(values)
 
     def _prepare_optimization_parameter_(self, parameter):
         physical = super()._prepare_optimization_parameter_(parameter)
-        if not self.temporal_preconditioning:
-            return physical
         if not isinstance(physical, SplinesVariables):
             raise TypeError("spline optimizer parameters must be SplinesVariables")
-        scaled = self._apply_temporal_scales(physical)
-        for name, value in scaled.detach():
-            value.requires_grad_(getattr(physical, name).requires_grad)
-        return scaled
+        active_indices = tuple(
+            index
+            for index, value in enumerate(
+                (
+                    physical.initial_momentum,
+                    physical.initial_acceleration,
+                    physical.initial_jerk,
+                )
+            )
+            if value.requires_grad
+        )
+        if physical.control_jerks.requires_grad:
+            active_indices += tuple(range(3, 3 + physical.n_controls))
+        if not active_indices:
+            return physical
+        if self.temporal_parameter_metric is None:
+            self.temporal_parameter_metric = cometric_temporal_metric(
+                self.source,
+                self.mp.rho,
+                self.mp.kernelOperator,
+                self.mp.cg_eps,
+                self.mp.n_step,
+                self.mp.control_steps,
+                self.target_steps,
+                self.cost_cst,
+            )
+        self._temporal_transform = TemporalTransform.from_metric(
+            self.temporal_parameter_metric,
+            active_indices,
+        ).to(physical.initial_momentum)
+        scaled = self._apply_temporal_transform(physical)
+        return SplinesVariables(
+            *(
+                value.detach().clone().requires_grad_(
+                    getattr(physical, name).requires_grad
+                )
+                for name, value in scaled
+            )
+        )
 
     def _parameter_for_cost_(self, parameter):
-        if not self.temporal_preconditioning:
-            return parameter
         if not isinstance(parameter, SplinesVariables):
             raise TypeError("spline optimizer parameters must be SplinesVariables")
-        return self._apply_temporal_scales(parameter, inverse=True)
+        return self._apply_temporal_transform(parameter, inverse=True)
 
     def _get_rho_(self) -> float:
         return float(self.mp.rho)
 
     def _dict_or_torch_parameter_(self) -> list[Tensor]:
-        return [
+        parameters = [
             value
-            for value in super()._dict_or_torch_parameter_()
-            if value.numel() > 0
+            for _, value in self._optimization_parameter
+            if value.requires_grad and value.numel()
         ]
+        if len({id(parameter) for parameter in parameters}) != len(parameters):
+            raise ValueError("optimizer parameter tensors must be distinct")
+        if any(not parameter.is_leaf for parameter in parameters):
+            raise ValueError("optimizer parameters must be leaf tensors")
+        return parameters
+
+    def to_device(self, device) -> None:
+        super().to_device(device)
+        if self._temporal_transform is not None:
+            self._temporal_transform = self._temporal_transform.to(self.source)
 
     def _timed_observation_images(self, target_steps) -> Tensor:
         if tuple(target_steps) != self.target_steps:
@@ -823,5 +832,4 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
             "cg_eps": self.mp.cg_eps,
             "lbfgs_max_iter": self.lbfgs_max_iter,
             "lbfgs_history_size": self.lbfgs_history_size,
-            "temporal_preconditioning": self.temporal_preconditioning,
         }
