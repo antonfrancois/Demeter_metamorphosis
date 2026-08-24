@@ -357,7 +357,7 @@ class SplineRenderer:
     ) -> None:
         self.clear_dynamic(self.target_ax)
         displayed = self.current_image_tensor(source, cache, image_mode, index)
-        if target_mode == "Loss curves":
+        if target_mode == "Global loss":
             self.target_image.set_visible(False)
             self.target_ax.set_axis_on()
             self.target_ax.set_facecolor(PANEL_COLOR)

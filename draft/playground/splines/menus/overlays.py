@@ -31,6 +31,7 @@ class OverlayMenu:
     current_image_radio: RadioButtons
     current_radio: RadioButtons
     target_radio: RadioButtons
+    target_options_label: Any
     target_loss_check: CheckButtons
     close_button: Button
 
@@ -72,7 +73,13 @@ class OverlayMenu:
             self.close_button,
         ]
 
-    def set_visible(self, visible: bool, *, show_control_selector: bool) -> None:
+    def set_visible(
+        self,
+        visible: bool,
+        *,
+        show_control_selector: bool,
+        target_mode: str,
+    ) -> None:
         for axis in self.axes:
             axis.set_visible(visible)
         for radio in self.radios:
@@ -80,10 +87,17 @@ class OverlayMenu:
         for widget in self.widgets:
             widget.active = visible
         self.set_control_selector_visible(visible and show_control_selector)
+        self.set_target_controls_visible(visible, target_mode)
 
     def set_control_selector_visible(self, visible: bool) -> None:
         self.control_time_label.set_visible(visible)
         self.control_time_selector.set_visible(visible)
+
+    def set_target_controls_visible(self, visible: bool, target_mode: str) -> None:
+        global_loss = visible and target_mode == "Global loss"
+        self.target_options_label.set_visible(global_loss)
+        self.target_loss_check.ax.set_visible(global_loss)
+        self.target_loss_check.active = global_loss
 
 
 def build_overlay_menu(
@@ -147,10 +161,10 @@ def build_overlay_menu(
         fontweight="bold",
         color=INK_COLOR,
     )
-    columns["target"].text(
+    target_options_label = columns["target"].text(
         0.10,
         0.48,
-        "Loss curves",
+        "Global loss curves",
         transform=columns["target"].transAxes,
         fontsize=9,
         fontweight="bold",
@@ -196,7 +210,7 @@ def build_overlay_menu(
     )
     target_radio = RadioButtons(
         fig.add_axes([0.71, 0.55, 0.22, 0.15], facecolor=PANEL_COLOR, zorder=102),
-        ("Target", "Absolute error", "Loss curves"),
+        ("Target", "Absolute error", "Global loss"),
         active=0,
         activecolor="#168a8a",
     )
@@ -225,8 +239,9 @@ def build_overlay_menu(
         current_image_radio,
         current_radio,
         target_radio,
+        target_options_label,
         target_loss_check,
         close,
     )
-    menu.set_visible(False, show_control_selector=False)
+    menu.set_visible(False, show_control_selector=False, target_mode="Target")
     return menu

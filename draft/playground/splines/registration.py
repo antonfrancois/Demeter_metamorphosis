@@ -95,15 +95,6 @@ LBFGS_MAX_ITER = 5
 LBFGS_HISTORY_SIZE = 10
 
 
-class _SelectedFieldSplineOptimizer(MetamorphosisSplineOptimizer):
-    def _dict_or_torch_parameter_(self) -> list[torch.Tensor]:
-        return [
-            value
-            for _, value in self._optimization_parameter
-            if value.requires_grad and value.numel()
-        ]
-
-
 def _zeroed_setup(setup: SplineSetup) -> SplineSetup:
     zero = torch.zeros_like(setup.source)
     return replace(
@@ -272,7 +263,7 @@ def register_spline(
         cg_eps=setup.parameters.cg_eps,
         dx_convention="pixel",
     )
-    optimizer = _SelectedFieldSplineOptimizer(
+    optimizer = MetamorphosisSplineOptimizer(
         source=source,
         target=setup.target.to(run_device),
         target_times=setup.target_times,
@@ -281,7 +272,6 @@ def register_spline(
         optimizer_method="LBFGS_torch",
         lbfgs_max_iter=LBFGS_MAX_ITER,
         lbfgs_history_size=LBFGS_HISTORY_SIZE,
-        temporal_preconditioning=setup.parameters.temporal_preconditioning,
     )
     optimizer.forward(
         variables_ini,

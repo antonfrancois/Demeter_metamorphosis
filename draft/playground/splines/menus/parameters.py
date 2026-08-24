@@ -53,7 +53,6 @@ class ParameterMenu:
     numerical_row_labels: tuple[Any, ...]
     numerical_split_line: Any
     spline_initialization_radio: RadioButtons
-    temporal_preconditioning_radio: RadioButtons
     device_radio: RadioButtons
     control_time_editor: ControlTimeEditor
     close_button: Button
@@ -107,7 +106,6 @@ class ParameterMenu:
             self.model_radio.ax,
             self.optimized_fields_check.ax,
             self.spline_initialization_radio.ax,
-            self.temporal_preconditioning_radio.ax,
             self.device_radio.ax,
             self.control_time_editor.axis,
             self.close_button.ax,
@@ -121,7 +119,6 @@ class ParameterMenu:
             self.model_radio,
             self.optimized_fields_check,
             self.spline_initialization_radio,
-            self.temporal_preconditioning_radio,
             self.device_radio,
             self.close_button,
         ]
@@ -134,7 +131,6 @@ class ParameterMenu:
         set_radio_visible(self.operator_radio, visible)
         set_radio_visible(self.model_radio, visible)
         set_radio_visible(self.spline_initialization_radio, visible)
-        set_radio_visible(self.temporal_preconditioning_radio, visible)
         set_radio_visible(self.device_radio, visible)
         self.control_time_editor.set_visible(visible)
         self.set_warm_layout(
@@ -494,16 +490,6 @@ def build_parameter_menu(
         layout=(1, 2),
     )
     configure_binary_radio(spline_initialization_radio, "INITIALIZATION")
-    temporal_preconditioning_radio = RadioButtons(
-        fig.add_axes([0.775, 0.405, 0.135, 0.052], facecolor=PANEL_COLOR, zorder=102),
-        ("Off", "On"),
-        active=1 if parameters.temporal_preconditioning else 0,
-        activecolor="#168a8a",
-        layout=(1, 2),
-    )
-    configure_binary_radio(
-        temporal_preconditioning_radio, "TEMPORAL PRECONDITIONING"
-    )
     panels["numerical"].text(
         0.5,
         0.17,
@@ -577,7 +563,6 @@ def build_parameter_menu(
         numerical_row_labels,
         numerical_split_line,
         spline_initialization_radio,
-        temporal_preconditioning_radio,
         device_radio,
         control_editor,
         close,

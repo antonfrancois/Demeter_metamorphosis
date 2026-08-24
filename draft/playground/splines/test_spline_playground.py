@@ -64,14 +64,13 @@ def test_parameters_require_ordered_interior_control_nodes():
     parameters = SplineParameters(n_steps=8, control_steps=(2, 5))
     assert parameters.control_times == (0.25, 0.625)
     assert parameters.mesh_control_times == (0.25, 0.625)
-    assert parameters.lbfgs_lr == pytest.approx(0.1)
+    assert parameters.lbfgs_lr == pytest.approx(1.0)
     assert parameters.optimized_fields == (
         "initial_momentum",
         "initial_acceleration",
         "initial_jerk",
     )
     assert parameters.spline_initialization == "cold"
-    assert parameters.temporal_preconditioning
     assert parameters.regression_cost_cst == parameters.cost_cst
     assert parameters.regression_n_steps == parameters.n_steps
     assert parameters.regression_iterations == parameters.iterations
@@ -81,9 +80,6 @@ def test_parameters_require_ordered_interior_control_nodes():
         == "warm"
     )
     assert SplineParameters.from_dict(parameters.as_dict()) == parameters
-    assert not SplineParameters(
-        temporal_preconditioning=False
-    ).temporal_preconditioning
     independent_regression = SplineParameters(
         regression_cost_cst=0.2,
         regression_n_steps=8,
@@ -120,8 +116,6 @@ def test_parameters_require_ordered_interior_control_nodes():
         SplineParameters(lbfgs_lr=0)
     with pytest.raises(ValueError, match="spline_initialization"):
         SplineParameters(spline_initialization="previous")
-    with pytest.raises(TypeError, match="temporal_preconditioning"):
-        SplineParameters(temporal_preconditioning=1)  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="regression_cost_cst"):
         SplineParameters(regression_cost_cst=0)
     with pytest.raises(ValueError, match="regression_n_steps"):
@@ -562,7 +556,6 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
         lbfgs_lr=0.03,
         optimized_fields=("initial_momentum", "initial_jerk"),
         spline_initialization="warm",
-        temporal_preconditioning=False,
         regression_cost_cst=0.04,
         regression_n_steps=8,
         regression_iterations=7,
@@ -746,17 +739,13 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.rho_slider.val == pytest.approx(0.99)
     assert app.steps_slider.val == 2
     assert app.iterations_slider.val == 10
-    assert app.lbfgs_lr_slider.val == pytest.approx(-1)
-    assert app.lbfgs_lr_slider.valtext.get_text() == "0.1"
+    assert app.lbfgs_lr_slider.val == pytest.approx(0)
+    assert app.lbfgs_lr_slider.valtext.get_text() == "1"
     assert app.optimized_fields_check.get_status() == [True, True, True]
     assert app.spline_initialization_radio.value_selected == "Cold"
     assert [
         label.get_text() for label in app.spline_initialization_radio.labels
     ] == ["Cold", "Warm"]
-    assert app.temporal_preconditioning_radio.value_selected == "On"
-    assert [
-        label.get_text() for label in app.temporal_preconditioning_radio.labels
-    ] == ["Off", "On"]
     assert all(
         not slider.ax.get_visible()
         for slider in app.parameter_menu.regression_numerical_sliders
@@ -798,7 +787,6 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
         if slider not in app.parameter_menu.regression_numerical_sliders
     )
     assert app.spline_initialization_radio.active
-    assert app.temporal_preconditioning_radio.active
     app.spline_initialization_radio.set_active(1)
     assert app.parameters.spline_initialization == "warm"
     assert all(
@@ -823,10 +811,6 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.cost_slider.ax.get_position().width == pytest.approx(
         cold_cost_position.width
     )
-    app.temporal_preconditioning_radio.set_active(0)
-    assert not app.parameters.temporal_preconditioning
-    app.temporal_preconditioning_radio.set_active(1)
-    assert app.parameters.temporal_preconditioning
     app.iterations_slider.set_val(3)
     assert app.parameters.iterations == 3
     app.lbfgs_lr_slider.set_val(np.log10(0.025))
@@ -869,7 +853,6 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert not app.parameter_menu_open
     assert not app.device_radio.active
     assert not app.spline_initialization_radio.active
-    assert not app.temporal_preconditioning_radio.active
     assert app.source_ax.get_visible()
     assert not app._workspace_dirty
 
@@ -896,7 +879,6 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
             lbfgs_lr=0.04,
             optimized_fields=("initial_acceleration",),
             spline_initialization="warm",
-            temporal_preconditioning=False,
             regression_cost_cst=0.02,
             regression_n_steps=6,
             regression_iterations=5,
@@ -916,8 +898,6 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.optimized_fields_check.get_status() == [False, True, False]
     assert app.spline_initialization_radio.value_selected == "Warm"
     assert app.parameters.spline_initialization == "warm"
-    assert app.temporal_preconditioning_radio.value_selected == "Off"
-    assert not app.parameters.temporal_preconditioning
     assert app.regression_cost_slider.val == pytest.approx(np.log10(0.02))
     assert app.regression_steps_slider.val == 6
     assert app.regression_iterations_slider.val == 5
@@ -1693,7 +1673,7 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
         classic_curves["data"] + classic_curves["regularized"],
     )
     classic.target_radio.set_active(2)
-    assert classic.target_mode == "Loss curves"
+    assert classic.target_mode == "Global loss"
     assert not classic.target_image.get_visible()
     assert not classic.target_ax.xaxis._major_tick_kw["gridOn"]
     assert classic.target_ax.get_box_aspect() == pytest.approx(1.0)
@@ -1875,7 +1855,7 @@ def test_registration_forwards_setup_lbfgs_learning_rate(monkeypatch):
 
     monkeypatch.setattr(
         registration_module,
-        "_SelectedFieldSplineOptimizer",
+        "MetamorphosisSplineOptimizer",
         FakeOptimizer,
     )
     monkeypatch.setattr(
@@ -1887,7 +1867,6 @@ def test_registration_forwards_setup_lbfgs_learning_rate(monkeypatch):
     result = registration_module.register_spline(setup, device="cpu")
 
     assert captured["grad_coef"] == pytest.approx(0.025)
-    assert captured["optimizer_init"]["temporal_preconditioning"]
     assert result.trajectory is trajectory
 
     classic_setup = zero_setup(
@@ -1943,7 +1922,6 @@ def test_register_spline_uses_geodesic_regression_for_warm_start(monkeypatch):
             lbfgs_lr=0.025,
             optimized_fields=("initial_acceleration",),
             spline_initialization="warm",
-            temporal_preconditioning=False,
             regression_cost_cst=0.07,
             regression_n_steps=8,
             regression_iterations=3,
@@ -1976,7 +1954,7 @@ def test_register_spline_uses_geodesic_regression_for_warm_start(monkeypatch):
         registration_module, "metamorphosis_regression", fake_regression
     )
     monkeypatch.setattr(
-        registration_module, "_SelectedFieldSplineOptimizer", FakeOptimizer
+        registration_module, "MetamorphosisSplineOptimizer", FakeOptimizer
     )
     monkeypatch.setattr(
         registration_module,
@@ -2003,7 +1981,6 @@ def test_register_spline_uses_geodesic_regression_for_warm_start(monkeypatch):
     assert regression["kernelOperator"].alpha == pytest.approx(0.4)
     assert regression["kernelOperator"].beta == pytest.approx(0.3)
     assert regression["kernelOperator"].gamma == pytest.approx(0.2)
-    assert not captured["optimizer_init"]["temporal_preconditioning"]
     variables = captured["variables"]
     torch.testing.assert_close(variables.initial_momentum, seed)
     assert not variables.initial_momentum.requires_grad

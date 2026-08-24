@@ -254,9 +254,6 @@ class SplinePlayground:
         self.spline_initialization_radio.on_clicked(
             self._on_spline_initialization_change
         )
-        self.temporal_preconditioning_radio.on_clicked(
-            self._on_temporal_preconditioning_change
-        )
         self.steps_slider.on_changed(self._on_parameter_change)
         self.iterations_slider.on_changed(self._on_parameter_change)
         self.regression_steps_slider.on_changed(self._on_parameter_change)
@@ -321,9 +318,6 @@ class SplinePlayground:
         )
         self.spline_initialization_radio = (
             self.parameter_menu.spline_initialization_radio
-        )
-        self.temporal_preconditioning_radio = (
-            self.parameter_menu.temporal_preconditioning_radio
         )
         self.device_radio = self.parameter_menu.device_radio
         self.control_time_editor = self.parameter_menu.control_time_editor
@@ -461,6 +455,7 @@ class SplinePlayground:
                 self.input_kind == "control_jerk"
                 and bool(self.parameters.control_steps)
             ),
+            target_mode=self.target_mode,
         )
         self.file_menu.set_visible(self.file_menu_open)
         self.image_menu.set_visible(self.image_menu_open, self.parameters.model)
@@ -537,9 +532,6 @@ class SplinePlayground:
             ),
             spline_initialization=(
                 self.spline_initialization_radio.value_selected.lower()
-            ),
-            temporal_preconditioning=(
-                self.temporal_preconditioning_radio.value_selected == "On"
             ),
             regression_cost_cst=(
                 10 ** float(self.regression_cost_slider.val)
@@ -731,6 +723,7 @@ class SplinePlayground:
         if self._syncing_widgets:
             return
         self.target_mode = label
+        self.overlay_menu.set_target_controls_visible(self.menu_open, label)
         self._render_panels(self._render_target)
         self.fig.canvas.draw_idle()
 
@@ -861,9 +854,6 @@ class SplinePlayground:
         )
         self._on_parameter_change(0.0)
         self.fig.canvas.draw_idle()
-
-    def _on_temporal_preconditioning_change(self, _label: str) -> None:
-        self._on_parameter_change(0.0)
 
     def _on_model_change(self, label: str) -> None:
         if self._syncing_widgets or self._running:
@@ -1891,9 +1881,6 @@ class SplinePlayground:
             )
             self.spline_initialization_radio.set_active(
                 0 if self.parameters.spline_initialization == "cold" else 1
-            )
-            self.temporal_preconditioning_radio.set_active(
-                1 if self.parameters.temporal_preconditioning else 0
             )
             optimized_fields = set(self.parameters.optimized_fields)
             for index, (name, active) in enumerate(

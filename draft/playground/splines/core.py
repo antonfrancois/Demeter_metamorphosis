@@ -103,7 +103,6 @@ class SplineParameters:
     lbfgs_lr: float | None = None
     optimized_fields: tuple[str, ...] = OPTIMIZABLE_INITIAL_FIELDS
     spline_initialization: str = "cold"
-    temporal_preconditioning: bool = True
     regression_cost_cst: float | None = None
     regression_n_steps: int | None = None
     regression_iterations: int | None = None
@@ -125,7 +124,7 @@ class SplineParameters:
         object.__setattr__(self, "model", model)
         lbfgs_lr = self.lbfgs_lr
         if lbfgs_lr is None:
-            lbfgs_lr = 1.0 if model == "classic" else 0.1
+            lbfgs_lr = 1.0
         lbfgs_lr = float(lbfgs_lr)
         if not isfinite(lbfgs_lr) or lbfgs_lr <= 0:
             raise ValueError("lbfgs_lr must be finite and strictly positive")
@@ -152,8 +151,6 @@ class SplineParameters:
         object.__setattr__(
             self, "spline_initialization", spline_initialization
         )
-        if not isinstance(self.temporal_preconditioning, bool):
-            raise TypeError("temporal_preconditioning must be a boolean")
         rho_upper_bound = self.rho <= 1 if model == "classic" else self.rho < 1
         if self.rho < 0 or not rho_upper_bound:
             bound = "0 <= rho <= 1" if model == "classic" else "0 <= rho < 1"
@@ -307,7 +304,6 @@ class SplineParameters:
             "lbfgs_lr": self.lbfgs_lr,
             "optimized_fields": self.optimized_fields,
             "spline_initialization": self.spline_initialization,
-            "temporal_preconditioning": self.temporal_preconditioning,
             "regression_cost_cst": self.regression_cost_cst,
             "regression_n_steps": self.regression_n_steps,
             "regression_iterations": self.regression_iterations,
@@ -333,7 +329,6 @@ class SplineParameters:
             lbfgs_lr=values["lbfgs_lr"],
             optimized_fields=tuple(values["optimized_fields"]),
             spline_initialization=values["spline_initialization"],
-            temporal_preconditioning=values["temporal_preconditioning"],
             regression_cost_cst=values["regression_cost_cst"],
             regression_n_steps=values["regression_n_steps"],
             regression_iterations=values["regression_iterations"],
@@ -599,7 +594,6 @@ def load_setup(path: str | Path) -> SplineSetup:
         "lbfgs_lr",
         "optimized_fields",
         "spline_initialization",
-        "temporal_preconditioning",
         "regression_cost_cst",
         "regression_n_steps",
         "regression_iterations",
