@@ -1211,6 +1211,19 @@ def get_sigma_from_img_ratio(img_shape,subdiv,c=.1):
         return sigma
 
 
+class _SobolevInverse(torch.autograd.Function):
+    """Memory-free reverse rule for the fixed self-adjoint Sobolev inverse."""
+
+    @staticmethod
+    def forward(ctx, field, operator):
+        ctx.operator = operator
+        return operator._apply_inverse_impl(field)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        return ctx.operator._apply_inverse_impl(grad_output), None
+
+
 class SobolevFluidOperator(torch.nn.Module):
     r"""Periodic finite-difference Sobolev operator on 2D pixel fields.
 
@@ -1355,8 +1368,7 @@ class SobolevFluidOperator(torch.nn.Module):
         )
         return torch.fft.irfft2(result_hat, s=field.shape[-2:])
 
-    def apply_inverse(self, field):
-        """Apply the exact spectral inverse ``K = L^-1``."""
+    def _apply_inverse_impl(self, field):
         field_hat = torch.fft.rfft2(field)
         k_xx, k_xy, k_yy = self._inverse_symbol(field)
         result_hat = torch.stack(
@@ -1367,6 +1379,17 @@ class SobolevFluidOperator(torch.nn.Module):
             dim=1,
         )
         return torch.fft.irfft2(result_hat, s=field.shape[-2:])
+
+    def apply_inverse(self, field):
+        """Apply the exact spectral inverse ``K = L^-1``.
+
+        ``K`` is self-adjoint because its periodic frequency symbol is real and
+        symmetric. Its exact reverse rule is therefore another application of
+        ``K`` and does not need to retain the input or FFT intermediates.
+        """
+        if torch.is_grad_enabled() and field.requires_grad:
+            return _SobolevInverse.apply(field, self)
+        return self._apply_inverse_impl(field)
 
     def forward(self, field):
         return self.apply_inverse(field)
