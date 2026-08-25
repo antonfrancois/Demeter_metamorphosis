@@ -963,8 +963,9 @@ def _trajectory_from_final_spline_integration(
     targets: torch.Tensor,
     progress_callback: Callable[[int, int], None] | None = None,
 ) -> SplineTrajectory:
-    """Build playground data from an optimizer's finalized CPU integration."""
+    """Build playground data from an optimizer's retained final integration."""
     start = perf_counter()
+    integrator.materialize_diagnostic_stocks()
     kernel = integrator.kernelOperator
     with torch.no_grad():
         endpoint_force, endpoint_velocity = _endpoint_fields(

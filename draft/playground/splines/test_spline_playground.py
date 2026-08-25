@@ -1815,14 +1815,17 @@ def test_loss_plot_limits_ignore_large_image_extent():
     plt.close(app.fig)
 
 
-def test_register_spline_reuses_saved_final_integration(monkeypatch):
+def test_register_spline_materializes_final_diagnostics_without_replay(monkeypatch):
     saved_runs = 0
+    retained_runs = 0
     original_forward = MetamorphosisSplineIntegrator.forward
 
     def counting_forward(self, *args, **kwargs):
-        nonlocal saved_runs
+        nonlocal saved_runs, retained_runs
         if kwargs.get("save", True):
             saved_runs += 1
+        if kwargs.get("retain_diagnostics", False):
+            retained_runs += 1
         return original_forward(self, *args, **kwargs)
 
     monkeypatch.setattr(MetamorphosisSplineIntegrator, "forward", counting_forward)
@@ -1836,7 +1839,8 @@ def test_register_spline_reuses_saved_final_integration(monkeypatch):
         device="cpu",
     )
 
-    assert saved_runs == 1
+    assert saved_runs == 0
+    assert retained_runs == 1
     assert result.trajectory.images.shape == (4, 1, 3, 3)
 
 
