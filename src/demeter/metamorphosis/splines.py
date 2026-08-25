@@ -144,6 +144,18 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
     no numerical step crosses a jerk discontinuity.
     """
 
+    _DIAGNOSTIC_STOCK_NAMES = (
+        "time_stock",
+        "image_stock",
+        "momentum_stock",
+        "acceleration_stock",
+        "jerk_stock",
+        "field_stock",
+        "residuals_stock",
+        "force_stock",
+        "velocity_stock",
+    )
+
     def __init__(
         self,
         rho: float,
@@ -401,12 +413,14 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
         sharp=None,
         hamiltonian_integration: bool = False,
         progress_callback: Callable[[int, int], None] | None = None,
+        retain_diagnostics: bool = False,
     ) -> None:
-        """Integrate from 0 to 1 and optionally save the complete trajectory.
+        """Integrate from 0 to 1 and optionally retain detached diagnostics.
 
         Saved node states include both endpoints. At a control node, ``jerk_stock``
         stores the right-limit value after the reset; the other three states are
-        continuous.
+        continuous. ``retain_diagnostics`` keeps one unstacked final record for
+        later materialization without duplicating it into public stocks.
         """
         if plot:
             raise NotImplementedError("spline trajectory plotting is not implemented")
@@ -420,22 +434,19 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             )
         if progress_callback is not None and not callable(progress_callback):
             raise TypeError("progress_callback must be callable")
+        if not isinstance(retain_diagnostics, bool):
+            raise TypeError("retain_diagnostics must be a boolean")
+        if save and retain_diagnostics:
+            raise ValueError("save and retain_diagnostics are mutually exclusive")
         variables = self._validate_inputs(image, momenta)
         if hasattr(self.kernelOperator, "init_kernel"):
             self.kernelOperator.init_kernel(image)
 
-        stock_names = (
-            "time_stock",
-            "image_stock",
-            "momentum_stock",
-            "acceleration_stock",
-            "jerk_stock",
-            "field_stock",
-            "residuals_stock",
-            "force_stock",
-            "velocity_stock",
-        )
-        for name in ("trajectory", *stock_names):
+        for name in (
+            "trajectory",
+            "_diagnostic_intervals",
+            *self._DIAGNOSTIC_STOCK_NAMES,
+        ):
             if hasattr(self, name):
                 delattr(self, name)
 
@@ -460,9 +471,10 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             ).to(dtype=image.dtype)
         self.save = bool(save)
         self.acceleration_energy = image.new_zeros(())
-        trajectory = [
+        trajectory = None if self.save else [
             (self.image, self.momentum, self.acceleration, self.jerk)
         ]
+        diagnostic_intervals = []
 
         images = []
         momenta = []
@@ -513,9 +525,10 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             )
             if self.rho > 0:
                 force_x_0 = self.force.detach()
-            trajectory.append(
-                (self.image, self.momentum, self.acceleration, self.jerk)
-            )
+            if trajectory is not None:
+                trajectory.append(
+                    (self.image, self.momentum, self.acceleration, self.jerk)
+                )
             if self.save:
                 images.append(self.image[0].detach().cpu())
                 momenta.append(self.momentum[0].detach().cpu())
@@ -525,6 +538,10 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
                 residuals.append(self.residuals[0].detach().cpu())
                 forces.append(self.force[0].detach().cpu())
                 velocities.append(self.velocity[0].detach().cpu())
+            elif retain_diagnostics:
+                diagnostic_intervals.append(
+                    (self.field, self.residuals, self.force, self.velocity)
+                )
             if progress_callback is not None:
                 progress_callback(index + 1, self.n_step)
             if verbose:
@@ -532,8 +549,6 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
 
         if verbose:
             print()
-
-        self.trajectory = tuple(trajectory)
 
         if self.save:
             self.time_stock = torch.linspace(0, 1, self.n_step + 1)
@@ -546,9 +561,53 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             self.force_stock = torch.stack(forces)
             self.velocity_stock = torch.stack(velocities)
         else:
-            for name in stock_names:
+            assert trajectory is not None
+            self.trajectory = tuple(trajectory)
+            if retain_diagnostics:
+                self._diagnostic_intervals = tuple(diagnostic_intervals)
+            for name in self._DIAGNOSTIC_STOCK_NAMES:
                 if hasattr(self, name):
                     delattr(self, name)
+
+    def materialize_diagnostic_stocks(self) -> None:
+        """Build detached CPU diagnostics and release their node trajectory."""
+        if hasattr(self, "image_stock"):
+            return
+        trajectory = getattr(self, "trajectory", None)
+        intervals = getattr(self, "_diagnostic_intervals", None)
+        if trajectory is None or intervals is None:
+            raise RuntimeError("no retained spline diagnostics are available")
+        if len(trajectory) != self.n_step + 1 or len(intervals) != self.n_step:
+            raise RuntimeError("retained spline diagnostics are incomplete")
+
+        node_stocks = tuple(
+            torch.stack(
+                [state[index][0].detach().cpu() for state in trajectory]
+            )
+            for index in range(4)
+        )
+        interval_stocks = tuple(
+            torch.stack(
+                [state[index][0].detach().cpu() for state in intervals]
+            )
+            for index in range(4)
+        )
+        (
+            self.image_stock,
+            self.momentum_stock,
+            self.acceleration_stock,
+            self.jerk_stock,
+        ) = node_stocks
+        (
+            self.field_stock,
+            self.residuals_stock,
+            self.force_stock,
+            self.velocity_stock,
+        ) = interval_stocks
+        self.time_stock = torch.linspace(0, 1, self.n_step + 1)
+        del self.trajectory
+        del self._diagnostic_intervals
+        self.save = True
 
     def to_device(self, device) -> None:
         super().to_device(device)
@@ -572,6 +631,11 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             self.trajectory = tuple(
                 tuple(value.to(device) for value in state)
                 for state in self.trajectory
+            )
+        if hasattr(self, "_diagnostic_intervals"):
+            self._diagnostic_intervals = tuple(
+                tuple(value.to(device) for value in state)
+                for state in self._diagnostic_intervals
             )
 
     def plot(self, n_figs=5):
@@ -602,6 +666,8 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
     This is equation (37) multiplied by ``sigma_I**2``, so ``cost_cst``
     corresponds to ``sigma_I**2``.
     """
+
+    _OPTIMIZATION_CG_EPS = 1e-4
 
     @staticmethod
     def _validate_observations(
@@ -745,6 +811,37 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
             raise TypeError("spline optimizer parameters must be SplinesVariables")
         return self._apply_temporal_transform(parameter, inverse=True)
 
+    def _optimization_cost_(self, parameter):
+        physical = self._parameter_for_cost_(parameter)
+        final_cg_eps = self.mp.cg_eps
+        final_iteration = self._iter_ == self.n_iter - 1
+        active_cg_eps = (
+            final_cg_eps
+            if final_iteration
+            else max(self._OPTIMIZATION_CG_EPS, final_cg_eps)
+        )
+        retain_diagnostics = final_iteration and not any(
+            value.requires_grad for _, value in physical if value.numel()
+        )
+        self.mp.cg_eps = active_cg_eps
+        try:
+            return self.cost(
+                physical,
+                retain_diagnostics=retain_diagnostics,
+            )
+        finally:
+            self.mp.cg_eps = final_cg_eps
+
+    def _finalize_integrator_(self, final_parameter):
+        if not hasattr(self.mp, "_diagnostic_intervals"):
+            self.mp.forward(
+                self.source.clone(),
+                final_parameter,
+                save=False,
+                plot=0,
+                retain_diagnostics=True,
+            )
+
     def _get_rho_(self) -> float:
         return float(self.mp.rho)
 
@@ -768,16 +865,30 @@ class MetamorphosisSplineOptimizer(Optimize_geodesicShooting):
     def _timed_observation_images(self, target_steps) -> Tensor:
         if tuple(target_steps) != self.target_steps:
             raise ValueError("timed SSD steps do not match spline observations")
-        return torch.cat(
-            [self.mp.trajectory[step][0] for step in target_steps],
-            dim=0,
-        )
+        if hasattr(self.mp, "trajectory"):
+            return torch.cat(
+                [self.mp.trajectory[step][0] for step in target_steps],
+                dim=0,
+            )
+        return self.mp.image_stock[list(target_steps)]
 
-    def cost(self, variables: SplinesVariables, **kwargs) -> Tensor:
+    def cost(
+        self,
+        variables: SplinesVariables,
+        *,
+        retain_diagnostics: bool = False,
+        **kwargs,
+    ) -> Tensor:
         for name in ("data_loss", "acceleration_energy", "total_cost"):
             if hasattr(self, name):
                 delattr(self, name)
-        self.mp.forward(self.source, variables, save=False, plot=0)
+        self.mp.forward(
+            self.source,
+            variables,
+            save=False,
+            plot=0,
+            retain_diagnostics=retain_diagnostics,
+        )
         self.data_loss = self.data_term()
         self.acceleration_energy = self.mp.acceleration_energy
         self.total_cost = (

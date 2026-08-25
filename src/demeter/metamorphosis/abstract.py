@@ -1345,6 +1345,14 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
     def _optimization_cost_(self, parameter):
         return self.cost(self._parameter_for_cost_(parameter))
 
+    def _finalize_integrator_(self, final_parameter):
+        self.mp.forward(
+            self.source.clone(),
+            final_parameter,
+            save=True,
+            plot=0,
+        )
+
     # GRADIENT DESCENT
     def _initialize_grad_descent_(self, dt_step, max_iter=20):
         self.optimizer = GradientDescent(
@@ -1669,15 +1677,11 @@ class Optimize_geodesicShooting(torch.nn.Module, ABC):
             else:
                 loss_stock = loss_stock[:actual]
 
-        # for future plots compute shooting with save = True
+        # Prepare the finalized integration data used by plots and diagnostics.
         final_parameter = _detach(
             self._parameter_for_cost_(self._optimization_parameter)
         )
-        self.mp.forward(self.source.clone(),
-                        final_parameter,
-                        save=True,
-                        plot=0,
-                        )
+        self._finalize_integrator_(final_parameter)
 
         self.parameter = final_parameter
         self.optimized_momenta = final_parameter
