@@ -71,7 +71,7 @@ def _solve(
 
 
 class _CometricInverse(torch.autograd.Function):
-    """Implicit backward around the in-place CG implementation."""
+    """Implicit backward with adjacent adjoint warm starts around CG."""
 
     @staticmethod
     def forward(
@@ -83,6 +83,7 @@ class _CometricInverse(torch.autograd.Function):
         eps,
         stats,
         x_0,
+        adjoint_warm_starts,
     ):
         solution = _solve(
             image_gradient,
@@ -97,11 +98,21 @@ class _CometricInverse(torch.autograd.Function):
         ctx.rho = rho
         ctx.kernel_operator = kernel_operator
         ctx.eps = eps
+        ctx.adjoint_warm_starts = adjoint_warm_starts
+        if adjoint_warm_starts is not None:
+            ctx.adjoint_index = len(adjoint_warm_starts)
+            adjoint_warm_starts.append(None)
         return solution
 
     @staticmethod
     def backward(ctx, grad_output):
         image_gradient, solution = ctx.saved_tensors
+        adjoint_x_0 = None
+        if ctx.adjoint_warm_starts is not None:
+            # The next solve in time has already populated this slot because
+            # autograd traverses the trajectory in reverse.
+            adjoint_x_0 = ctx.adjoint_warm_starts[ctx.adjoint_index]
+            ctx.adjoint_warm_starts[ctx.adjoint_index] = None
         with torch.no_grad():
             adjoint = _solve(
                 image_gradient,
@@ -109,7 +120,10 @@ class _CometricInverse(torch.autograd.Function):
                 ctx.rho,
                 ctx.kernel_operator,
                 ctx.eps,
+                x_0=adjoint_x_0,
             )
+        if ctx.adjoint_warm_starts is not None and ctx.adjoint_index > 0:
+            ctx.adjoint_warm_starts[ctx.adjoint_index - 1] = adjoint.detach()
 
         grad_image_gradient = None
         if ctx.needs_input_grad[0]:
@@ -126,7 +140,16 @@ class _CometricInverse(torch.autograd.Function):
                 )[0]
 
         grad_acceleration = adjoint if ctx.needs_input_grad[1] else None
-        return grad_image_gradient, grad_acceleration, None, None, None, None, None
+        return (
+            grad_image_gradient,
+            grad_acceleration,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
 
 
 class CometricOperator:
@@ -160,7 +183,15 @@ class CometricOperator:
             self.image_gradient, covector, self.rho, self.kernel_operator
         )
 
-    def inverse(self, acceleration, eps=1e-6, return_info=False, *, x_0=None):
+    def inverse(
+        self,
+        acceleration,
+        eps=1e-6,
+        return_info=False,
+        *,
+        x_0=None,
+        _adjoint_warm_starts=None,
+    ):
         """Solve ``A_I u = a`` with conjugate gradients.
 
         The optional residual is ``||a - A_I u|| / ||a||`` for nonzero ``a``.
@@ -188,6 +219,7 @@ class CometricOperator:
             eps,
             stats,
             x_0,
+            _adjoint_warm_starts,
         )
         if return_info:
             assert stats is not None

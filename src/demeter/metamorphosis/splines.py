@@ -323,6 +323,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
         momentum,
         *,
         force_x_0: Tensor | None = None,
+        adjoint_warm_starts: list[Tensor | None] | None = None,
     ):
         """Integrate the interior equations over one control-free interval."""
         momentum, acceleration, jerk = momentum
@@ -338,6 +339,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
                 acceleration,
                 eps=self.cg_eps,
                 x_0=force_x_0,
+                _adjoint_warm_starts=adjoint_warm_starts,
             )
             gradient_image = cometric.image_gradient[:, 0]
             gradient_acceleration = self._gradient(acceleration)
@@ -491,6 +493,9 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             jerks.append(self.jerk[0].detach().cpu())
 
         force_x_0 = None
+        # Reverse-mode visits adjacent cometric solves in reverse time, allowing
+        # each adjoint solution to initialize its immediate predecessor.
+        adjoint_warm_starts = [] if torch.is_grad_enabled() else None
         for index in range(self.n_step):
             self._i = index
             old_acceleration = self.acceleration
@@ -506,6 +511,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
                 self.image,
                 (self.momentum, self.acceleration, self.jerk),
                 force_x_0=force_x_0,
+                adjoint_warm_starts=adjoint_warm_starts,
             )
             self.momentum, self.acceleration, self.jerk = next_state
             self.acceleration_energy = self.acceleration_energy + (
