@@ -7,6 +7,9 @@ from . import torchbox as tb
 from .conjugate_gradient import conjugate_gradient, jacobi_preconditioner
 
 
+_CG_CONVERGENCE_CHECK_INTERVAL = 2
+
+
 def _apply_cometric(image_gradient, covector, rho, kernel_operator):
     if rho == 0:
         return covector
@@ -59,6 +62,7 @@ def _solve(
             image_gradient, rho, kernel_operator
         ),
         return_residual=stats is not None,
+        convergence_check_interval=_CG_CONVERGENCE_CHECK_INTERVAL,
     )
     if stats is not None:
         if image_gradient.is_cuda:
@@ -71,7 +75,7 @@ def _solve(
 
 
 class _CometricInverse(torch.autograd.Function):
-    """Implicit backward with adjacent adjoint warm starts around CG."""
+    """Implicit backward with extrapolated adjacent warm starts around CG."""
 
     @staticmethod
     def forward(
@@ -108,11 +112,12 @@ class _CometricInverse(torch.autograd.Function):
     def backward(ctx, grad_output):
         image_gradient, solution = ctx.saved_tensors
         adjoint_x_0 = None
+        next_adjoint = None
         if ctx.adjoint_warm_starts is not None:
-            # The next solve in time has already populated this slot because
-            # autograd traverses the trajectory in reverse.
-            adjoint_x_0 = ctx.adjoint_warm_starts[ctx.adjoint_index]
+            entry = ctx.adjoint_warm_starts[ctx.adjoint_index]
             ctx.adjoint_warm_starts[ctx.adjoint_index] = None
+            if entry is not None:
+                adjoint_x_0, next_adjoint = entry
         with torch.no_grad():
             adjoint = _solve(
                 image_gradient,
@@ -123,7 +128,16 @@ class _CometricInverse(torch.autograd.Function):
                 x_0=adjoint_x_0,
             )
         if ctx.adjoint_warm_starts is not None and ctx.adjoint_index > 0:
-            ctx.adjoint_warm_starts[ctx.adjoint_index - 1] = adjoint.detach()
+            current_adjoint = adjoint.detach()
+            extrapolated = (
+                current_adjoint
+                if next_adjoint is None
+                else 2 * current_adjoint - next_adjoint
+            )
+            ctx.adjoint_warm_starts[ctx.adjoint_index - 1] = (
+                extrapolated,
+                current_adjoint,
+            )
 
         grad_image_gradient = None
         if ctx.needs_input_grad[0]:

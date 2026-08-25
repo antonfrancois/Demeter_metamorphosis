@@ -18,8 +18,9 @@ def conjugate_gradient(
     x_0=None,
     preconditioner=None,
     return_residual=True,
+    convergence_check_interval=1,
 ):
-    """Solve an SPD system, optionally using an inverse preconditioner."""
+    """Solve an SPD system, optionally checking convergence in intervals."""
     tolerance = float(tolerance)
     if not isfinite(tolerance) or tolerance <= 0:
         raise ValueError("tolerance must be finite and strictly positive")
@@ -31,6 +32,14 @@ def conjugate_gradient(
         or max_iterations < 1
     ):
         raise ValueError("max_iterations must be a strictly positive integer")
+    if (
+        not isinstance(convergence_check_interval, int)
+        or isinstance(convergence_check_interval, bool)
+        or convergence_check_interval < 1
+    ):
+        raise ValueError(
+            "convergence_check_interval must be a strictly positive integer"
+        )
 
     rhs_norm = torch.linalg.vector_norm(rhs)
     if rhs_norm == 0:
@@ -62,11 +71,35 @@ def conjugate_gradient(
     for iteration in range(1, max_iterations + 1):
         applied = linear_operator(direction)
         curvature = (direction * applied).sum()
-        step = residual_product / curvature
+        previous_iteration_checked = (
+            iteration == 1
+            or (iteration - 1) % convergence_check_interval == 0
+        )
+        if previous_iteration_checked:
+            step = residual_product / curvature
+        else:
+            # Exact convergence may be hidden until the next scheduled check.
+            step = torch.where(
+                curvature != 0,
+                residual_product / curvature,
+                torch.zeros_like(curvature),
+            )
         solution += step * direction
         residual -= step * applied
-        next_residual_norm_sq = residual.square().sum()
-        if next_residual_norm_sq <= threshold:
+        check_convergence = (
+            iteration % convergence_check_interval == 0
+            or iteration == max_iterations
+        )
+        next_residual_norm_sq = (
+            residual.square().sum()
+            if preconditioner is None or check_convergence
+            else None
+        )
+        if (
+            check_convergence
+            and next_residual_norm_sq is not None
+            and next_residual_norm_sq <= threshold
+        ):
             candidate_solution = solution * normalization
             true_residual = (
                 rhs - linear_operator(candidate_solution)
@@ -95,14 +128,22 @@ def conjugate_gradient(
             continue
         if preconditioner is None:
             preconditioned_residual = residual
+            assert next_residual_norm_sq is not None
             next_residual_product = next_residual_norm_sq
         else:
             preconditioned_residual = preconditioner(residual)
             next_residual_product = (residual * preconditioned_residual).sum()
-        direction = preconditioned_residual + (
-            next_residual_product / residual_product
-        ) * direction
-        residual_norm_sq = next_residual_norm_sq
+        if previous_iteration_checked or check_convergence:
+            beta = next_residual_product / residual_product
+        else:
+            beta = torch.where(
+                residual_product != 0,
+                next_residual_product / residual_product,
+                torch.zeros_like(residual_product),
+            )
+        direction = preconditioned_residual + beta * direction
+        if next_residual_norm_sq is not None:
+            residual_norm_sq = next_residual_norm_sq
         residual_product = next_residual_product
 
     true_residual = (

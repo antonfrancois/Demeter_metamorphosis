@@ -323,7 +323,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
         momentum,
         *,
         force_x_0: Tensor | None = None,
-        adjoint_warm_starts: list[Tensor | None] | None = None,
+        adjoint_warm_starts: list[tuple[Tensor, Tensor] | None] | None = None,
     ):
         """Integrate the interior equations over one control-free interval."""
         momentum, acceleration, jerk = momentum
@@ -492,13 +492,24 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             accelerations.append(self.acceleration[0].detach().cpu())
             jerks.append(self.jerk[0].detach().cpu())
 
-        force_x_0 = None
-        # Reverse-mode visits adjacent cometric solves in reverse time, allowing
-        # each adjoint solution to initialize its immediate predecessor.
-        adjoint_warm_starts = [] if torch.is_grad_enabled() else None
+        previous_force = None
+        older_force = None
+        # Reverse-mode visits adjacent solves in reverse time, so two solved
+        # adjoints can extrapolate the next initial guess.
+        adjoint_warm_starts = (
+            [] if self.rho > 0 and torch.is_grad_enabled() else None
+        )
+        adjoint_forces = [] if adjoint_warm_starts is not None else None
         for index in range(self.n_step):
             self._i = index
             old_acceleration = self.acceleration
+            force_x_0 = None
+            if previous_force is not None:
+                force_x_0 = (
+                    previous_force
+                    if older_force is None
+                    else 2 * previous_force - older_force
+                )
 
             (
                 next_state,
@@ -513,6 +524,8 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
                 force_x_0=force_x_0,
                 adjoint_warm_starts=adjoint_warm_starts,
             )
+            if adjoint_forces is not None and self.force.requires_grad:
+                adjoint_forces.append(self.force)
             self.momentum, self.acceleration, self.jerk = next_state
             self.acceleration_energy = self.acceleration_energy + (
                 0.5 * self.dt * (self.force * old_acceleration).sum()
@@ -530,7 +543,8 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
                 acceleration_energy=self.acceleration_energy,
             )
             if self.rho > 0:
-                force_x_0 = self.force.detach()
+                older_force = previous_force
+                previous_force = self.force.detach()
             if trajectory is not None:
                 trajectory.append(
                     (self.image, self.momentum, self.acceleration, self.jerk)
@@ -555,6 +569,19 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
 
         if verbose:
             print()
+
+        if adjoint_forces:
+            assert adjoint_warm_starts is not None
+            warm_start_state = adjoint_warm_starts
+
+            def reset_adjoint_warm_starts(_gradient):
+                warm_start_state[:] = [None] * len(warm_start_state)
+
+            torch.autograd.graph.register_multi_grad_hook(
+                tuple(adjoint_forces),
+                reset_adjoint_warm_starts,
+                mode="any",
+            )
 
         if self.save:
             self.time_stock = torch.linspace(0, 1, self.n_step + 1)
