@@ -174,6 +174,12 @@ class SplinePlayground:
         self.axes = workspace.axes
         self.source_ax, self.current_ax, self.target_ax = self.axes
         self.source_image, self.current_image, self.target_image = workspace.images
+        self.colorbar_axes = workspace.colorbar_axes
+        (
+            self.source_colorbar_ax,
+            self.current_colorbar_ax,
+            self.target_colorbar_ax,
+        ) = self.colorbar_axes
         self.source_footer, self.current_footer, self.target_footer = (
             workspace.footers
         )
@@ -190,6 +196,7 @@ class SplinePlayground:
         self.renderer = SplineRenderer(
             self.axes,
             (self.source_image, self.current_image, self.target_image),
+            self.colorbar_axes,
             (self.source_footer, self.current_footer, self.target_footer),
             self._dynamic_artists,
         )
@@ -482,6 +489,7 @@ class SplinePlayground:
             *(widget.ax for widget in self._workspace_widgets),
         ):
             axis.set_visible(visible)
+        self.renderer.set_colorbars_visible(visible)
 
     def _active_field_key(self) -> str:
         if self.input_kind != "control_jerk":

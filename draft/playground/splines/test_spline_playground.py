@@ -58,6 +58,7 @@ from draft.playground.splines.menus import format_lbfgs_learning_rate
 from draft.playground.splines.menus.observations import ObservationTimeEditor
 from draft.playground.splines.project_io import load_project
 from draft.playground.splines.registration import RegistrationResult, register_spline
+from draft.playground.splines.rendering import DUAL_CMAP, PRIMAL_CMAP
 from draft.playground.splines.styles import FIELD_CLASS, INK_COLOR
 
 
@@ -687,6 +688,12 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
     app.current_radio.set_active(1)
     app.set_time_index(4)
     assert app.current_ax.get_title().endswith("$p$")
+    assert app.current_colorbar_ax.get_visible()
+    assert app.renderer.colorbars[app.current_ax].orientation == "horizontal"
+    assert (
+        app.renderer.colorbars[app.current_ax].mappable.get_cmap().name
+        == DUAL_CMAP.name
+    )
     assert r"\Vert p(t)\Vert_{I_t}^2" in app.current_footer.get_text()
     assert r"\mathrm{MSE}" in app.target_footer.get_text()
     assert "device: cpu" in app.status_text.get_text()
@@ -741,6 +748,75 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
     assert spline_app._targets.shape[-2:] == (64, 64)
     assert "size: 64x64" in spline_app.status_text.get_text()
     plt.close(spline_app.fig)
+
+
+def test_scalar_and_error_colorbars_precede_panel_footers():
+    source = torch.zeros(1, 1, 12, 14)
+    target = torch.ones_like(source)
+    setup = zero_setup(
+        source,
+        target,
+        SplineParameters(rho=0, n_steps=2),
+    )
+    setup.initial_momentum.copy_(
+        torch.linspace(-0.1, 0.1, source.numel()).reshape_as(source)
+    )
+    setup.initial_acceleration.fill_(0.1)
+    app = SplinePlayground(setup, device="cpu")
+
+    for cmap in (DUAL_CMAP, PRIMAL_CMAP):
+        assert cmap(0.5)[3] == pytest.approx(0)
+        assert cmap(0)[3] > 0.9
+        assert cmap(1.0)[3] > 0.9
+        assert cmap(0)[:3] != pytest.approx(cmap(1.0)[:3])
+        assert cmap(0)[:3] == pytest.approx(
+            matplotlib.colormaps["cool"](0.25)[:3]
+        )
+        assert cmap(1.0)[:3] == pytest.approx(
+            matplotlib.colormaps["cool"](0.75)[:3]
+        )
+
+    source_colorbar = app.renderer.colorbars[app.source_ax]
+    assert app.source_colorbar_ax.get_visible()
+    assert source_colorbar.orientation == "horizontal"
+    assert source_colorbar.mappable.get_cmap().name == DUAL_CMAP.name
+
+    app.input_radio.set_active(1)
+    source_colorbar = app.renderer.colorbars[app.source_ax]
+    assert app.source_colorbar_ax.get_visible()
+    assert source_colorbar.mappable.get_cmap().name == PRIMAL_CMAP.name
+
+    app.target_radio.set_active(1)
+    target_colorbar = app.renderer.colorbars[app.target_ax]
+    assert app.target_colorbar_ax.get_visible()
+    assert target_colorbar.orientation == "horizontal"
+    assert target_colorbar.mappable.get_cmap().name == "magma"
+    assert target_colorbar.mappable.get_clim()[0] == 0
+
+    app.fig.canvas.draw()
+    figure_renderer = app.fig.canvas.get_renderer()
+    for panel_axis, colorbar_axis, footer in (
+        (app.source_ax, app.source_colorbar_ax, app.source_footer),
+        (app.target_ax, app.target_colorbar_ax, app.target_footer),
+    ):
+        panel_bounds = panel_axis.get_window_extent(figure_renderer)
+        colorbar_bounds = colorbar_axis.get_window_extent(figure_renderer)
+        footer_bounds = footer.get_window_extent(figure_renderer)
+        assert colorbar_bounds.y1 < panel_bounds.y0
+        assert footer_bounds.y1 < colorbar_bounds.y0
+
+    app.set_menu_visible(True)
+    assert not app.source_colorbar_ax.get_visible()
+    assert not app.target_colorbar_ax.get_visible()
+    app.set_menu_visible(False)
+    assert app.source_colorbar_ax.get_visible()
+    assert app.target_colorbar_ax.get_visible()
+
+    app.target_radio.set_active(0)
+    assert not app.target_colorbar_ax.get_visible()
+    app.target_radio.set_active(2)
+    assert not app.target_colorbar_ax.get_visible()
+    plt.close(app.fig)
 
 
 def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
@@ -1292,6 +1368,7 @@ def test_overlay_menu_and_current_image_modes():
         if artist.__class__.__name__ == "Quiver"
     ]
     assert len(quivers) == 1
+    assert not app.current_colorbar_ax.get_visible()
     assert quivers[0].get_facecolor()[0] == pytest.approx(
         matplotlib.colors.to_rgba(DUAL_COLOR)
     )

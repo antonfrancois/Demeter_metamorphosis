@@ -15,6 +15,7 @@ class Workspace:
     fig: Any
     axes: tuple[Any, Any, Any]
     images: tuple[Any, Any, Any]
+    colorbar_axes: tuple[Any, Any, Any]
     footers: tuple[Any, Any, Any]
     controls_heading: Any
     parameter_button: Button
@@ -42,7 +43,7 @@ def build_workspace(
         3,
         left=0.04,
         right=0.77,
-        bottom=0.19,
+        bottom=0.24,
         top=0.79,
         wspace=0.13,
     )
@@ -62,11 +63,17 @@ def build_workspace(
         current_ax.imshow(source[0, 0], cmap="gray", origin="lower", vmin=0, vmax=1),
         target_ax.imshow(target[0, 0], cmap="gray", origin="lower", vmin=0, vmax=1),
     )
+    colorbar_axes = tuple(
+        axis.inset_axes((0.12, -0.085, 0.76, 0.025))
+        for axis in axes
+    )
+    for axis in colorbar_axes:
+        axis.set_visible(False)
 
     def panel_footer(axis):
         return axis.text(
             0.5,
-            -0.075,
+            -0.14,
             "",
             transform=axis.transAxes,
             ha="center",
@@ -192,6 +199,7 @@ def build_workspace(
         fig,
         axes,
         images,
+        colorbar_axes,
         footers,
         controls_heading,
         parameter_button,

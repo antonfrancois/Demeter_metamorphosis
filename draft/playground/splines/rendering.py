@@ -2,7 +2,8 @@
 
 from typing import Any
 
-from matplotlib.colors import LinearSegmentedColormap, to_rgba
+from matplotlib import colormaps
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.ticker import MaxNLocator
 import numpy as np
 import torch
@@ -30,20 +31,26 @@ from .styles import (
 )
 
 
-def _signed_cmap(name: str, color: str) -> LinearSegmentedColormap:
-    red, green, blue, _ = to_rgba(color)
-    dark = (0.32 * red, 0.32 * green, 0.32 * blue, 0.92)
-    bright = (red, green, blue, 0.92)
-    transparent = (red, green, blue, 0.0)
+def _signed_cmap(name: str) -> LinearSegmentedColormap:
+    base = colormaps["cool"]
+    negative = (*base(0.25)[:3], 0.92)
+    positive = (*base(0.75)[:3], 0.92)
+    transparent_negative = (*negative[:3], 0.0)
+    transparent_positive = (*positive[:3], 0.0)
     return LinearSegmentedColormap.from_list(
         name,
-        ((0.0, dark), (0.49, transparent), (0.51, transparent), (1.0, bright)),
+        (
+            (0.0, negative),
+            (0.49, transparent_negative),
+            (0.51, transparent_positive),
+            (1.0, positive),
+        ),
         N=257,
     )
 
 
-DUAL_CMAP = _signed_cmap("spline_dual", DUAL_COLOR)
-PRIMAL_CMAP = _signed_cmap("spline_primal", PRIMAL_COLOR)
+DUAL_CMAP = _signed_cmap("spline_dual")
+PRIMAL_CMAP = _signed_cmap("spline_primal")
 
 
 def field_color(field_class: str) -> str:
@@ -68,22 +75,61 @@ class SplineRenderer:
         self,
         axes: tuple[Any, Any, Any],
         images: tuple[Any, Any, Any],
+        colorbar_axes: tuple[Any, Any, Any],
         footers: tuple[Any, Any, Any],
         dynamic_artists: dict[Any, list[Any]],
     ) -> None:
         self.source_ax, self.current_ax, self.target_ax = axes
         self.source_image, self.current_image, self.target_image = images
+        self.colorbar_axes = dict(zip(axes, colorbar_axes, strict=True))
+        self.colorbars: dict[Any, Any] = {}
+        self.colorbar_visibility = dict.fromkeys(axes, False)
         self.source_footer, self.current_footer, self.target_footer = footers
         self.dynamic_artists = dynamic_artists
         self.vector_spacing = DEFAULT_VECTOR_DISPLAY_SPACING
 
     def clear_dynamic(self, axis: Any) -> None:
+        self.hide_colorbar(axis)
         for artist in self.dynamic_artists[axis]:
             try:
                 artist.remove()
             except ValueError:
                 pass
         self.dynamic_artists[axis].clear()
+
+    def hide_colorbar(self, axis: Any) -> None:
+        self.colorbar_visibility[axis] = False
+        self.colorbar_axes[axis].set_visible(False)
+
+    def show_colorbar(self, axis: Any, mappable: Any) -> None:
+        colorbar = self.colorbars.get(axis)
+        if colorbar is None:
+            colorbar = axis.figure.colorbar(
+                mappable,
+                cax=self.colorbar_axes[axis],
+                orientation="horizontal",
+            )
+            self.colorbars[axis] = colorbar
+        else:
+            colorbar.update_normal(mappable)
+        colorbar.locator = MaxNLocator(nbins=5)
+        colorbar.update_ticks()
+        colorbar.ax.tick_params(
+            axis="x",
+            colors=INK_COLOR,
+            labelsize=8,
+            length=2,
+            pad=2,
+        )
+        colorbar.outline.set_edgecolor(INK_COLOR)
+        self.colorbar_visibility[axis] = True
+        self.colorbar_axes[axis].set_visible(True)
+
+    def set_colorbars_visible(self, visible: bool) -> None:
+        for axis, colorbar_axis in self.colorbar_axes.items():
+            colorbar_axis.set_visible(
+                visible and self.colorbar_visibility[axis]
+            )
 
     @staticmethod
     def configure_image_axis(axis: Any, image: torch.Tensor) -> None:
@@ -118,6 +164,7 @@ class SplineRenderer:
             interpolation="bilinear",
         )
         self.dynamic_artists[axis].append(artist)
+        self.show_colorbar(axis, artist)
         return 1.0
 
     def plot_vector_overlay(
@@ -215,9 +262,7 @@ class SplineRenderer:
         )
         self.source_image.set_clim(0, 1)
         field_class = (
-            "primal"
-            if input_kind in ("initial_momentum", "initial_acceleration")
-            else "dual"
+            "primal" if input_kind == "initial_acceleration" else "dual"
         )
         self.plot_field(self.source_ax, field, field_class)
         title = self.input_title(input_kind, control_index, parameters)
@@ -432,6 +477,7 @@ class SplineRenderer:
             self.target_image.set_data(error)
             self.target_image.set_cmap("magma")
             self.target_image.set_clim(0, maximum)
+            self.show_colorbar(self.target_ax, self.target_image)
             symbol = self.displayed_image_symbol(cache, image_mode)
             title = (
                 rf"Absolute error $|{symbol}-I_{{{target_index + 1}}}|$"

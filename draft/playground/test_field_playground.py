@@ -385,6 +385,50 @@ def test_conjugate_gradient_accepts_jacobi_preconditioner():
     assert residual <= 1e-12
 
 
+def test_conjugate_gradient_checks_convergence_in_intervals():
+    diagonal = torch.logspace(0, 2, 9, dtype=torch.float64)
+    rhs = torch.ones_like(diagonal)
+
+    solution, iterations, residual = conjugate_gradient(
+        diagonal.mul,
+        rhs,
+        0.1,
+        convergence_check_interval=3,
+    )
+
+    assert iterations == 9
+    assert residual <= 0.1
+    torch.testing.assert_close(
+        diagonal * solution,
+        rhs,
+        atol=0.1,
+        rtol=0.1,
+    )
+
+    exact_solution, exact_iterations, exact_residual = conjugate_gradient(
+        lambda value: 4 * value,
+        rhs,
+        1e-12,
+        preconditioner=lambda value: 0.25 * value,
+        convergence_check_interval=3,
+    )
+    assert exact_iterations == 3
+    assert exact_residual <= 1e-12
+    torch.testing.assert_close(exact_solution, rhs / 4)
+
+    for interval in (0, True):
+        with pytest.raises(
+            ValueError,
+            match="convergence_check_interval must be a strictly positive integer",
+        ):
+            conjugate_gradient(
+                diagonal.mul,
+                rhs,
+                0.1,
+                convergence_check_interval=interval,
+            )
+
+
 @pytest.mark.parametrize("size", ((7, 8), (8, 7)))
 def test_sobolev_inverse_kernel_at_zero_matches_impulse_response(size):
     operator = SobolevFluidOperator(alpha=0.4, beta=0.2, gamma=0.3)
