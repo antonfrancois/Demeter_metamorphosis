@@ -1299,21 +1299,20 @@ class SobolevFluidOperator(torch.nn.Module):
             sin_x[:, -1] = 0
 
         diagonal = self.gamma + self.alpha * (laplace_x + laplace_y)
-        symbol = (
-            diagonal + self.beta * laplace_x,
-            self.beta * sin_x * sin_y,
-            diagonal + self.beta * laplace_y,
-        )
-        l_xx, l_xy, l_yy = symbol
+        l_xx = diagonal + self.beta * laplace_x
+        l_xy = self.beta * sin_x * sin_y
+        l_yy = diagonal + self.beta * laplace_y
+        symbol = (l_xx, l_xy, l_yy)
         scale = torch.maximum(torch.maximum(l_xx.abs(), l_xy.abs()), l_yy.abs())
         scaled_xx = l_xx / scale
         scaled_xy = l_xy / scale
         scaled_yy = l_yy / scale
         scaled_determinant = scaled_xx * scaled_yy - scaled_xy.square()
+        determinant = scale * scaled_determinant
         inverse_symbol = (
-            scaled_yy / (scale * scaled_determinant),
-            -scaled_xy / (scale * scaled_determinant),
-            scaled_xx / (scale * scaled_determinant),
+            scaled_yy / determinant,
+            -scaled_xy / determinant,
+            scaled_xx / determinant,
         )
         self._symbol_cache = key, symbol, inverse_symbol
         return symbol
@@ -1344,41 +1343,33 @@ class SobolevFluidOperator(torch.nn.Module):
         weights[0] = 1
         if width % 2 == 0:
             weights[-1] = 1
-        values = (torch.stack(inverse_symbol) * weights).sum(dim=(-2, -1))
+        values = torch.matmul(torch.stack(inverse_symbol), weights).sum(dim=-1)
         values = values / (field.shape[-2] * width)
         block = torch.stack(
-            (
-                torch.stack((values[0], values[1])),
-                torch.stack((values[1], values[2])),
-            )
-        )
+            (values[0], values[1], values[1], values[2])
+        ).reshape(2, 2)
         self._inverse_kernel_at_zero_cache = key, block
         return block
 
-    def apply_operator(self, field):
-        """Apply the periodic finite-difference operator ``L``."""
-        field_hat = torch.fft.rfft2(field)
-        l_xx, l_xy, l_yy = self._symbol(field)
+    @staticmethod
+    def _apply_symbol(field, symbol):
+        field_x, field_y = torch.fft.rfft2(field).unbind(dim=1)
+        xx, xy, yy = symbol
         result_hat = torch.stack(
             (
-                l_xx * field_hat[:, 0] + l_xy * field_hat[:, 1],
-                l_xy * field_hat[:, 0] + l_yy * field_hat[:, 1],
+                torch.addcmul(xy * field_y, xx, field_x),
+                torch.addcmul(xy * field_x, yy, field_y),
             ),
             dim=1,
         )
         return torch.fft.irfft2(result_hat, s=field.shape[-2:])
 
+    def apply_operator(self, field):
+        """Apply the periodic finite-difference operator ``L``."""
+        return self._apply_symbol(field, self._symbol(field))
+
     def _apply_inverse_impl(self, field):
-        field_hat = torch.fft.rfft2(field)
-        k_xx, k_xy, k_yy = self._inverse_symbol(field)
-        result_hat = torch.stack(
-            (
-                k_xx * field_hat[:, 0] + k_xy * field_hat[:, 1],
-                k_xy * field_hat[:, 0] + k_yy * field_hat[:, 1],
-            ),
-            dim=1,
-        )
-        return torch.fft.irfft2(result_hat, s=field.shape[-2:])
+        return self._apply_symbol(field, self._inverse_symbol(field))
 
     def apply_inverse(self, field):
         """Apply the exact spectral inverse ``K = L^-1``.

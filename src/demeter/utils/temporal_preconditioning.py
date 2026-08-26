@@ -55,13 +55,12 @@ def source_cometric_moments(
     if rho == 0:
         return torch.ones(3, dtype=torch.float64)
 
-    generator = torch.Generator().manual_seed(0)
-    probe = torch.empty(source.shape, dtype=torch.float64).bernoulli_(
+    generator = torch.Generator(device=source.device).manual_seed(0)
+    probe = torch.empty_like(source).bernoulli_(
         0.5,
         generator=generator,
     )
     probe.mul_(2).sub_(1)
-    probe = probe.to(source)
     operator = CometricOperator(
         source.detach(),
         rho,
@@ -73,9 +72,9 @@ def source_cometric_moments(
         inverse = operator.inverse(probe, eps=cg_eps)
         moments = torch.stack(
             (
-                (probe * inverse).sum(),
-                (probe * applied).sum(),
-                applied.square().sum(),
+                torch.dot(probe.reshape(-1), inverse.reshape(-1)),
+                torch.dot(probe.reshape(-1), applied.reshape(-1)),
+                torch.dot(applied.reshape(-1), applied.reshape(-1)),
             )
         )
     return moments.to(device="cpu", dtype=torch.float64) / probe.numel()
@@ -123,9 +122,10 @@ def cometric_temporal_metric(
 class TemporalTransform:
     """Damped square-root coordinate transform on active temporal blocks."""
 
-    active_indices: tuple[int, ...]
+    active_indices: Tensor
     factor: Tensor
     inverse_factor: Tensor
+    all_active: bool
 
     @classmethod
     def from_metric(
@@ -135,35 +135,35 @@ class TemporalTransform:
     ) -> "TemporalTransform":
         if not active_indices:
             raise ValueError("at least one temporal block must be active")
+        all_active = active_indices == tuple(range(metric.shape[0]))
         indices = torch.tensor(active_indices, dtype=torch.long)
         active_metric = metric.index_select(0, indices).index_select(1, indices)
         eigenvalues, eigenvectors = torch.linalg.eigh(active_metric.double())
         largest = float(eigenvalues[-1])
         if largest <= 0:
             factor = torch.eye(len(active_indices), dtype=torch.float64)
-            return cls(active_indices, factor, factor)
+            return cls(indices, factor, factor, all_active)
         eigenvalues = eigenvalues.clamp_min(
             largest * _RELATIVE_EIGENVALUE_FLOOR
         )
-        factor = eigenvectors @ torch.diag(eigenvalues.sqrt()) @ eigenvectors.T
-        inverse = (
-            eigenvectors @ torch.diag(eigenvalues.rsqrt()) @ eigenvectors.T
-        )
-        return cls(active_indices, factor, inverse)
+        factor = (eigenvectors * eigenvalues.sqrt()) @ eigenvectors.T
+        inverse = (eigenvectors * eigenvalues.rsqrt()) @ eigenvectors.T
+        return cls(indices, factor, inverse, all_active)
 
     def apply(self, values: Tensor, *, inverse: bool = False) -> Tensor:
-        indices = torch.tensor(self.active_indices, device=values.device)
         factor = self.inverse_factor if inverse else self.factor
-        transformed = torch.einsum(
-            "ij,j...->i...",
-            factor.to(values),
-            values.index_select(0, indices),
+        selected = values.index_select(0, self.active_indices)
+        transformed = (factor.to(values) @ selected.flatten(1)).view_as(selected)
+        return (
+            transformed
+            if self.all_active
+            else values.index_copy(0, self.active_indices, transformed)
         )
-        return values.index_copy(0, indices, transformed)
 
     def to(self, reference: Tensor) -> "TemporalTransform":
         return TemporalTransform(
-            self.active_indices,
+            self.active_indices.to(device=reference.device),
             self.factor.to(reference),
             self.inverse_factor.to(reference),
+            self.all_active,
         )

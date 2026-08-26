@@ -3,6 +3,22 @@ from math import isfinite
 import torch
 
 
+def _validate_positive_integer(value, name):
+    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+        raise ValueError(f"{name} must be a strictly positive integer")
+
+
+def _precondition_residual(residual, residual_norm_sq, preconditioner):
+    if preconditioner is None:
+        return residual, residual_norm_sq
+    preconditioned = preconditioner(residual)
+    return preconditioned, (residual * preconditioned).sum()
+
+
+def _optional_residual(value, return_residual):
+    return float(value) if return_residual else None
+
+
 def jacobi_preconditioner(diagonal):
     """Return a callable that applies the inverse of ``diagonal``."""
     inverse_diagonal = diagonal.reciprocal()
@@ -26,25 +42,15 @@ def conjugate_gradient(
         raise ValueError("tolerance must be finite and strictly positive")
     if max_iterations is None:
         max_iterations = max(64, min(4 * rhs.numel(), 10_000))
-    if (
-        not isinstance(max_iterations, int)
-        or isinstance(max_iterations, bool)
-        or max_iterations < 1
-    ):
-        raise ValueError("max_iterations must be a strictly positive integer")
-    if (
-        not isinstance(convergence_check_interval, int)
-        or isinstance(convergence_check_interval, bool)
-        or convergence_check_interval < 1
-    ):
-        raise ValueError(
-            "convergence_check_interval must be a strictly positive integer"
-        )
+    _validate_positive_integer(max_iterations, "max_iterations")
+    _validate_positive_integer(
+        convergence_check_interval,
+        "convergence_check_interval",
+    )
 
     rhs_norm = torch.linalg.vector_norm(rhs)
     if rhs_norm == 0:
-        residual_value = 0.0 if return_residual else None
-        return torch.zeros_like(rhs), 0, residual_value
+        return torch.zeros_like(rhs), 0, _optional_residual(0.0, return_residual)
     normalization = rhs_norm
     scaled_rhs = rhs / normalization
     if x_0 is None:
@@ -56,17 +62,17 @@ def conjugate_gradient(
     residual_norm_sq = residual.square().sum()
     threshold = tolerance**2
     if residual_norm_sq <= threshold:
-        residual_value = (
-            float(residual_norm_sq.sqrt()) if return_residual else None
+        return (
+            solution * normalization,
+            0,
+            _optional_residual(residual_norm_sq.sqrt(), return_residual),
         )
-        return solution * normalization, 0, residual_value
 
-    if preconditioner is None:
-        preconditioned_residual = residual
-        residual_product = residual_norm_sq
-    else:
-        preconditioned_residual = preconditioner(residual)
-        residual_product = (residual * preconditioned_residual).sum()
+    preconditioned_residual, residual_product = _precondition_residual(
+        residual,
+        residual_norm_sq,
+        preconditioner,
+    )
     direction = preconditioned_residual.clone()
     for iteration in range(1, max_iterations + 1):
         applied = linear_operator(direction)
@@ -95,37 +101,32 @@ def conjugate_gradient(
             if preconditioner is None or check_convergence
             else None
         )
-        if (
-            check_convergence
-            and next_residual_norm_sq is not None
-            and next_residual_norm_sq <= threshold
-        ):
-            candidate_solution = solution * normalization
-            true_residual = (
-                rhs - linear_operator(candidate_solution)
-            ) / normalization
-            true_residual_norm_sq = true_residual.square().sum()
-            if true_residual_norm_sq <= threshold:
-                residual_value = (
-                    float(true_residual_norm_sq.sqrt())
-                    if return_residual
-                    else None
+        if check_convergence:
+            assert next_residual_norm_sq is not None
+            if next_residual_norm_sq <= threshold:
+                candidate_solution = solution * normalization
+                true_residual = (
+                    rhs - linear_operator(candidate_solution)
+                ) / normalization
+                true_residual_norm_sq = true_residual.square().sum()
+                if true_residual_norm_sq <= threshold:
+                    return (
+                        candidate_solution,
+                        iteration,
+                        _optional_residual(
+                            true_residual_norm_sq.sqrt(),
+                            return_residual,
+                        ),
+                    )
+                residual = true_residual
+                residual_norm_sq = true_residual_norm_sq
+                preconditioned_residual, residual_product = _precondition_residual(
+                    residual,
+                    residual_norm_sq,
+                    preconditioner,
                 )
-                return (
-                    candidate_solution,
-                    iteration,
-                    residual_value,
-                )
-            residual = true_residual
-            residual_norm_sq = true_residual_norm_sq
-            if preconditioner is None:
-                preconditioned_residual = residual
-                residual_product = residual_norm_sq
-            else:
-                preconditioned_residual = preconditioner(residual)
-                residual_product = (residual * preconditioned_residual).sum()
-            direction = preconditioned_residual.clone()
-            continue
+                direction = preconditioned_residual.clone()
+                continue
         if preconditioner is None:
             preconditioned_residual = residual
             assert next_residual_norm_sq is not None

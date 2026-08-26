@@ -33,6 +33,42 @@ from ..utils.temporal_preconditioning import (
 )
 
 
+def _has_scalar_image_shape(tensor: Tensor) -> bool:
+    return (
+        tensor.ndim == 4
+        and tensor.shape[:2] == (1, 1)
+        and min(tensor.shape[-2:]) >= 2
+    )
+
+
+def _control_mesh(
+    control_times: Sequence[float],
+    n_step: int,
+) -> tuple[tuple[float, ...], tuple[int, ...]]:
+    controls = tuple(float(time) for time in control_times)
+    if any(not isfinite(time) or not 0 < time < 1 for time in controls):
+        raise ValueError("control times must be finite and lie strictly in (0, 1)")
+    if any(right <= left for left, right in zip(controls, controls[1:])):
+        raise ValueError("control times must be strictly increasing")
+
+    control_steps = []
+    for time in controls:
+        exact_step = time * n_step
+        step = round(exact_step)
+        if not isclose(exact_step, step, rel_tol=0, abs_tol=1e-6):
+            raise ValueError(
+                f"control time {time} is not on the {n_step}-step temporal mesh"
+            )
+        if not 1 <= step < n_step - 1:
+            raise ValueError(
+                "control times must map before the final interior mesh node"
+            )
+        control_steps.append(step)
+    if len(set(control_steps)) != len(control_steps):
+        raise ValueError("control times must map to distinct mesh nodes")
+    return controls, tuple(control_steps)
+
+
 @dataclass
 class SplinesVariables(TorchDataClass):
     """Optimized shooting variables for a 2D metamorphosis spline.
@@ -50,11 +86,7 @@ class SplinesVariables(TorchDataClass):
     def __post_init__(self) -> None:
         super().__post_init__()
         reference = self.initial_momentum
-        if (
-            reference.ndim != 4
-            or reference.shape[:2] != (1, 1)
-            or min(reference.shape[-2:]) < 2
-        ):
+        if not _has_scalar_image_shape(reference):
             raise ValueError(
                 "initial_momentum must have shape [1, 1, H, W] with H,W >= 2, "
                 f"got {tuple(reference.shape)}"
@@ -69,15 +101,10 @@ class SplinesVariables(TorchDataClass):
                     f"got {tuple(tensor.shape)}"
                 )
 
-        if self.control_jerks.ndim != 5:
-            raise ValueError(
-                "control_jerks must have shape [C, 1, 1, H, W], "
-                f"got {tuple(self.control_jerks.shape)}"
-            )
-        expected_control_shape = (self.control_jerks.shape[0],) + tuple(
-            reference.shape
-        )
-        if tuple(self.control_jerks.shape) != expected_control_shape:
+        if (
+            self.control_jerks.ndim != 5
+            or tuple(self.control_jerks.shape[1:]) != tuple(reference.shape)
+        ):
             raise ValueError(
                 "control_jerks must have shape [C, 1, 1, H, W], "
                 f"got {tuple(self.control_jerks.shape)}"
@@ -188,30 +215,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             raise TypeError(
                 "kernelOperator must be a SobolevFluidOperator with matched L/K"
             )
-        controls = tuple(float(time) for time in control_times)
-        if any(not isfinite(time) or not 0 < time < 1 for time in controls):
-            raise ValueError("control times must be finite and lie strictly in (0, 1)")
-        if any(right <= left for left, right in zip(controls, controls[1:])):
-            raise ValueError("control times must be strictly increasing")
-
-        control_steps = []
-        for time in controls:
-            exact_step = time * n_step
-            step = round(exact_step)
-            if not isclose(exact_step, step, rel_tol=0, abs_tol=1e-6):
-                raise ValueError(
-                    f"control time {time} is not on the {n_step}-step temporal mesh"
-                )
-            if not 1 <= step < n_step - 1:
-                raise ValueError(
-                    "control times must map before the final interior mesh node"
-                )
-            control_steps.append(step)
-        if any(
-            right <= left
-            for left, right in zip(control_steps, control_steps[1:])
-        ):
-            raise ValueError("control times must map to distinct mesh nodes")
+        controls, control_steps = _control_mesh(control_times, n_step)
 
         super().__init__(
             kernelOperator=kernelOperator,
@@ -223,7 +227,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
         self.rho = rho
         self.cg_eps = cg_eps
         self.control_times = controls
-        self.control_steps = tuple(control_steps)
+        self.control_steps = control_steps
         self._control_by_step = {
             step: index for index, step in enumerate(self.control_steps)
         }
@@ -261,24 +265,19 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
         )
 
     def _cometric(self, image: Tensor) -> CometricOperator:
-        cometric = CometricOperator(
+        return CometricOperator(
             image,
             self.rho,
             self.kernelOperator,
             dx_convention=self.dx_convention,
         )
-        return cometric
 
     def _validate_inputs(self, image: Tensor, variables) -> SplinesVariables:
         if not isinstance(variables, SplinesVariables):
             raise TypeError(
                 f"variables must be SplinesVariables, got {type(variables)}"
             )
-        if (
-            image.ndim != 4
-            or image.shape[:2] != (1, 1)
-            or min(image.shape[-2:]) < 2
-        ):
+        if not _has_scalar_image_shape(image):
             raise ValueError(
                 "image must have shape [1, 1, H, W] with H,W >= 2, "
                 f"got {tuple(image.shape)}"
@@ -295,9 +294,9 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
                 f"got {variables.n_controls}"
             )
         if (
-            variables.initial_momentum.device != image.device
-            or variables.initial_momentum.dtype != image.dtype
-        ):
+            variables.initial_momentum.device,
+            variables.initial_momentum.dtype,
+        ) != (image.device, image.dtype):
             raise ValueError("image and spline variables must share device and dtype")
         finite = torch.stack(
             [torch.isfinite(image).all()]
@@ -317,6 +316,42 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             if not is_finite:
                 raise OverflowError(f"non-finite values in spline state '{name}'")
 
+    def _initialize_forward_state(
+        self,
+        image: Tensor,
+        variables: SplinesVariables,
+        saving: bool,
+    ) -> None:
+        for name in (
+            "trajectory",
+            "_diagnostic_intervals",
+            *self._DIAGNOSTIC_STOCK_NAMES,
+        ):
+            if hasattr(self, name):
+                delattr(self, name)
+
+        self.source = image.detach()
+        self.initial_variables = variables
+        self.image = image.clone()
+        self.momentum = variables.initial_momentum.clone()
+        self.acceleration = variables.initial_acceleration.clone()
+        self.jerk = variables.initial_jerk.clone()
+        id_grid = getattr(self, "id_grid", None)
+        expected_grid_shape = (1, *image.shape[-2:], 2)
+        if (
+            not isinstance(id_grid, Tensor)
+            or tuple(id_grid.shape) != expected_grid_shape
+            or id_grid.device != image.device
+            or id_grid.dtype != image.dtype
+        ):
+            self.id_grid = tb.make_regular_grid(
+                image.shape[-2:],
+                dx_convention=self.dx_convention,
+                device=image.device,
+            ).to(dtype=image.dtype)
+        self.save = saving
+        self.acceleration_energy = image.new_zeros(())
+
     def step(  # type: ignore[override]
         self,
         image: Tensor,
@@ -327,55 +362,67 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
     ):
         """Integrate the interior equations over one control-free interval."""
         momentum, acceleration, jerk = momentum
-        gradient_image = None
         if self.rho == 0:
-            force = acceleration
-            kernel_momentum = image.new_zeros((1, 2) + image.shape[-2:])
-            kernel_force = torch.zeros_like(kernel_momentum)
-            kernel_linearization = torch.zeros_like(kernel_momentum)
-        else:
-            cometric = self._cometric(image)
-            force = cometric.inverse(
-                acceleration,
-                eps=self.cg_eps,
-                x_0=force_x_0,
-                _adjoint_warm_starts=adjoint_warm_starts,
+            velocity = image.new_zeros((1, 2) + image.shape[-2:])
+            field = tb.im2grid(velocity)
+            zero_source = torch.zeros_like(image)
+            next_momentum, next_acceleration, next_jerk, next_image = self._advect(
+                torch.cat((momentum, acceleration, jerk, image), dim=1),
+                torch.cat((acceleration, jerk, zero_source, momentum), dim=1),
+                self.id_grid,
+            ).split(1, dim=1)
+            return (
+                (next_momentum, next_acceleration, next_jerk), next_image, field,
+                momentum, acceleration, velocity,
             )
-            gradient_image = cometric.image_gradient[:, 0]
-            gradient_acceleration = self._gradient(acceleration)
-            kernel_momentum, kernel_force, kernel_linearization = self.kernelOperator(
-                torch.cat(
-                    (
-                        momentum * gradient_image,
-                        force * gradient_image,
-                        jerk * gradient_image + momentum * gradient_acceleration,
-                    ),
-                    dim=0,
-                )
-            ).split(1, dim=0)
+
+        cometric = self._cometric(image)
+        force = cometric.inverse(
+            acceleration,
+            eps=self.cg_eps,
+            x_0=force_x_0,
+            _adjoint_warm_starts=adjoint_warm_starts,
+        )
+        gradient_image = cometric.image_gradient[:, 0]
+        gradient_acceleration = self._gradient(acceleration)
+        kernel_linearization_input = torch.addcmul(
+            jerk * gradient_image,
+            momentum,
+            gradient_acceleration,
+        )
+        kernel_momentum, kernel_force, kernel_linearization = self.kernelOperator(
+            torch.cat(
+                (
+                    momentum * gradient_image,
+                    force * gradient_image,
+                    kernel_linearization_input,
+                ),
+                dim=0,
+            )
+        ).split(1, dim=0)
 
         physical_velocity = -sqrt(self.rho) * kernel_momentum
         transport = sqrt(self.rho) * physical_velocity
         field = tb.im2grid(transport)
         divergence_transport = self._divergence(transport)
 
-        if self.rho == 0:
-            acceleration_coupling = torch.zeros_like(image)
-            jerk_flux_divergence = torch.zeros_like(image)
-        else:
-            assert gradient_image is not None
-            acceleration_coupling = self.rho * self._dot(
-                kernel_linearization, gradient_image
-            )
-            jerk_flux_divergence = self.rho * self._divergence(
-                force * kernel_force + momentum * kernel_linearization
-            )
+        acceleration_coupling = self.rho * self._dot(
+            kernel_linearization, gradient_image
+        )
+        jerk_flux = torch.addcmul(
+            force * kernel_force,
+            momentum,
+            kernel_linearization,
+        )
+        jerk_flux_divergence = self.rho * self._divergence(jerk_flux)
 
         image_source = (1 - self.rho) * momentum
-        momentum_source = force - momentum * divergence_transport
-        acceleration_source = (1 - self.rho) * jerk + acceleration_coupling
-        jerk_source = jerk_flux_divergence - jerk * divergence_transport
-        departure = self.id_grid - self.dt * field
+        momentum_source = torch.addcmul(force, momentum, divergence_transport, value=-1)
+        acceleration_source = torch.add(acceleration_coupling, jerk, alpha=1 - self.rho)
+        jerk_source = torch.addcmul(
+            jerk_flux_divergence, jerk, divergence_transport, value=-1
+        )
+        departure = torch.add(self.id_grid, field, alpha=-self.dt)
 
         next_momentum, next_acceleration, next_jerk, next_image = self._advect(
             torch.cat((momentum, acceleration, jerk, image), dim=1),
@@ -441,52 +488,18 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
         if save and retain_diagnostics:
             raise ValueError("save and retain_diagnostics are mutually exclusive")
         variables = self._validate_inputs(image, momenta)
-        if hasattr(self.kernelOperator, "init_kernel"):
-            self.kernelOperator.init_kernel(image)
+        self.kernelOperator.init_kernel(image)
 
-        for name in (
-            "trajectory",
-            "_diagnostic_intervals",
-            *self._DIAGNOSTIC_STOCK_NAMES,
-        ):
-            if hasattr(self, name):
-                delattr(self, name)
-
-        self.source = image.detach()
-        self.initial_variables = variables
-        self.image = image.clone()
-        self.momentum = variables.initial_momentum.clone()
-        self.acceleration = variables.initial_acceleration.clone()
-        self.jerk = variables.initial_jerk.clone()
-        id_grid = getattr(self, "id_grid", None)
-        expected_grid_shape = (1, *image.shape[-2:], 2)
-        if (
-            not isinstance(id_grid, Tensor)
-            or tuple(id_grid.shape) != expected_grid_shape
-            or id_grid.device != image.device
-            or id_grid.dtype != image.dtype
-        ):
-            self.id_grid = tb.make_regular_grid(
-                image.shape[-2:],
-                dx_convention=self.dx_convention,
-                device=image.device,
-            ).to(dtype=image.dtype)
-        self.save = bool(save)
-        self.acceleration_energy = image.new_zeros(())
-        trajectory = None if self.save else [
+        saving = bool(save)
+        self._initialize_forward_state(image, variables, saving)
+        trajectory = [] if saving else [
             (self.image, self.momentum, self.acceleration, self.jerk)
         ]
         diagnostic_intervals = []
 
-        images = []
-        momenta = []
-        accelerations = []
-        jerks = []
-        fields = []
-        residuals = []
-        forces = []
-        velocities = []
-        if self.save:
+        images, momenta, accelerations, jerks = [], [], [], []
+        fields, residuals, forces, velocities = [], [], [], []
+        if saving:
             images.append(self.image[0].detach().cpu())
             momenta.append(self.momentum[0].detach().cpu())
             accelerations.append(self.acceleration[0].detach().cpu())
@@ -527,8 +540,11 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             if adjoint_forces is not None and self.force.requires_grad:
                 adjoint_forces.append(self.force)
             self.momentum, self.acceleration, self.jerk = next_state
+            force_acceleration = torch.dot(
+                self.force.reshape(-1), old_acceleration.reshape(-1)
+            )
             self.acceleration_energy = self.acceleration_energy + (
-                0.5 * self.dt * (self.force * old_acceleration).sum()
+                0.5 * self.dt * force_acceleration
             )
 
             control_index = self._control_by_step.get(index + 1)
@@ -545,11 +561,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             if self.rho > 0:
                 older_force = previous_force
                 previous_force = self.force.detach()
-            if trajectory is not None:
-                trajectory.append(
-                    (self.image, self.momentum, self.acceleration, self.jerk)
-                )
-            if self.save:
+            if saving:
                 images.append(self.image[0].detach().cpu())
                 momenta.append(self.momentum[0].detach().cpu())
                 accelerations.append(self.acceleration[0].detach().cpu())
@@ -558,10 +570,14 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
                 residuals.append(self.residuals[0].detach().cpu())
                 forces.append(self.force[0].detach().cpu())
                 velocities.append(self.velocity[0].detach().cpu())
-            elif retain_diagnostics:
-                diagnostic_intervals.append(
-                    (self.field, self.residuals, self.force, self.velocity)
+            else:
+                trajectory.append(
+                    (self.image, self.momentum, self.acceleration, self.jerk)
                 )
+                if retain_diagnostics:
+                    diagnostic_intervals.append(
+                        (self.field, self.residuals, self.force, self.velocity)
+                    )
             if progress_callback is not None:
                 progress_callback(index + 1, self.n_step)
             if verbose:
@@ -583,7 +599,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
                 mode="any",
             )
 
-        if self.save:
+        if saving:
             self.time_stock = torch.linspace(0, 1, self.n_step + 1)
             self.image_stock = torch.stack(images)
             self.momentum_stock = torch.stack(momenta)
@@ -594,13 +610,9 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
             self.force_stock = torch.stack(forces)
             self.velocity_stock = torch.stack(velocities)
         else:
-            assert trajectory is not None
             self.trajectory = tuple(trajectory)
             if retain_diagnostics:
                 self._diagnostic_intervals = tuple(diagnostic_intervals)
-            for name in self._DIAGNOSTIC_STOCK_NAMES:
-                if hasattr(self, name):
-                    delattr(self, name)
 
     def materialize_diagnostic_stocks(self) -> None:
         """Build detached CPU diagnostics and release their node trajectory."""
