@@ -257,7 +257,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
 
     def _advect(self, value: Tensor, source: Tensor, departure: Tensor) -> Tensor:
         return tb.imgDeform(
-            value + self.dt * source,
+            torch.add(value, source, alpha=self.dt),
             departure,
             dx_convention=self.dx_convention,
             clamp=False,

@@ -8,11 +8,15 @@ def _validate_positive_integer(value, name):
         raise ValueError(f"{name} must be a strictly positive integer")
 
 
+def _dot(left, right):
+    return torch.dot(left.reshape(-1), right.reshape(-1))
+
+
 def _precondition_residual(residual, residual_norm_sq, preconditioner):
     if preconditioner is None:
         return residual, residual_norm_sq
     preconditioned = preconditioner(residual)
-    return preconditioned, (residual * preconditioned).sum()
+    return preconditioned, _dot(residual, preconditioned)
 
 
 def _optional_residual(value, return_residual):
@@ -59,7 +63,7 @@ def conjugate_gradient(
     else:
         solution = x_0 / normalization
         residual = scaled_rhs - linear_operator(solution)
-    residual_norm_sq = residual.square().sum()
+    residual_norm_sq = _dot(residual, residual)
     threshold = tolerance**2
     if residual_norm_sq <= threshold:
         return (
@@ -76,7 +80,7 @@ def conjugate_gradient(
     direction = preconditioned_residual.clone()
     for iteration in range(1, max_iterations + 1):
         applied = linear_operator(direction)
-        curvature = (direction * applied).sum()
+        curvature = _dot(direction, applied)
         previous_iteration_checked = (
             iteration == 1
             or (iteration - 1) % convergence_check_interval == 0
@@ -97,7 +101,7 @@ def conjugate_gradient(
             or iteration == max_iterations
         )
         next_residual_norm_sq = (
-            residual.square().sum()
+            _dot(residual, residual)
             if preconditioner is None or check_convergence
             else None
         )
@@ -108,7 +112,7 @@ def conjugate_gradient(
                 true_residual = (
                     rhs - linear_operator(candidate_solution)
                 ) / normalization
-                true_residual_norm_sq = true_residual.square().sum()
+                true_residual_norm_sq = _dot(true_residual, true_residual)
                 if true_residual_norm_sq <= threshold:
                     return (
                         candidate_solution,
@@ -133,7 +137,7 @@ def conjugate_gradient(
             next_residual_product = next_residual_norm_sq
         else:
             preconditioned_residual = preconditioner(residual)
-            next_residual_product = (residual * preconditioned_residual).sum()
+            next_residual_product = _dot(residual, preconditioned_residual)
         if previous_iteration_checked or check_convergence:
             beta = next_residual_product / residual_product
         else:

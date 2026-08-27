@@ -152,7 +152,11 @@ class TemporalTransform:
 
     def apply(self, values: Tensor, *, inverse: bool = False) -> Tensor:
         factor = self.inverse_factor if inverse else self.factor
-        selected = values.index_select(0, self.active_indices)
+        selected = (
+            values
+            if self.all_active
+            else values.index_select(0, self.active_indices)
+        )
         transformed = (factor.to(values) @ selected.flatten(1)).view_as(selected)
         return (
             transformed
