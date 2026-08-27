@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from math import isclose, isfinite, sqrt
+from math import isfinite, sqrt
 
 import torch
 from torch import Tensor
@@ -26,47 +26,15 @@ from .var_classes import TorchDataClass
 from ..utils import torchbox as tb
 from ..utils.cometric_inversion import CometricOperator
 from ..utils.reproducing_kernels import SobolevFluidOperator
-from ..utils.spline_data import validate_timed_observations
+from ..utils.spline_data import (
+    _control_mesh,
+    _has_scalar_image_shape,
+    validate_timed_observations,
+)
 from ..utils.temporal_preconditioning import (
     TemporalTransform,
     cometric_temporal_metric,
 )
-
-
-def _has_scalar_image_shape(tensor: Tensor) -> bool:
-    return (
-        tensor.ndim == 4
-        and tensor.shape[:2] == (1, 1)
-        and min(tensor.shape[-2:]) >= 2
-    )
-
-
-def _control_mesh(
-    control_times: Sequence[float],
-    n_step: int,
-) -> tuple[tuple[float, ...], tuple[int, ...]]:
-    controls = tuple(float(time) for time in control_times)
-    if any(not isfinite(time) or not 0 < time < 1 for time in controls):
-        raise ValueError("control times must be finite and lie strictly in (0, 1)")
-    if any(right <= left for left, right in zip(controls, controls[1:])):
-        raise ValueError("control times must be strictly increasing")
-
-    control_steps = []
-    for time in controls:
-        exact_step = time * n_step
-        step = round(exact_step)
-        if not isclose(exact_step, step, rel_tol=0, abs_tol=1e-6):
-            raise ValueError(
-                f"control time {time} is not on the {n_step}-step temporal mesh"
-            )
-        if not 1 <= step < n_step - 1:
-            raise ValueError(
-                "control times must map before the final interior mesh node"
-            )
-        control_steps.append(step)
-    if len(set(control_steps)) != len(control_steps):
-        raise ValueError("control times must map to distinct mesh nodes")
-    return controls, tuple(control_steps)
 
 
 @dataclass
