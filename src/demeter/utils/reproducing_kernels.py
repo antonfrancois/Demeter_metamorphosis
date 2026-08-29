@@ -1211,17 +1211,21 @@ def get_sigma_from_img_ratio(img_shape,subdiv,c=.1):
         return sigma
 
 
-class _SobolevInverse(torch.autograd.Function):
-    """Memory-free reverse rule for the fixed self-adjoint Sobolev inverse."""
+class _SelfAdjointLinear(torch.autograd.Function):
+    """Memory-free reverse rule for a fixed self-adjoint linear operation."""
 
     @staticmethod
-    def forward(ctx, field, operator):
-        ctx.operator = operator
-        return operator._apply_inverse_impl(field)
+    def forward(ctx, field, application):
+        ctx.application = application
+        return application(field)
 
     @staticmethod
     def backward(ctx, grad_output):
-        return ctx.operator._apply_inverse_impl(grad_output), None
+        if torch.is_grad_enabled() and grad_output.requires_grad:
+            grad_input = _SelfAdjointLinear.apply(grad_output, ctx.application)
+        else:
+            grad_input = ctx.application(grad_output)
+        return grad_input, None
 
 
 class SobolevFluidOperator(torch.nn.Module):
@@ -1353,20 +1357,27 @@ class SobolevFluidOperator(torch.nn.Module):
 
     @staticmethod
     def _apply_symbol(field, symbol):
-        field_x, field_y = torch.fft.rfft2(field).unbind(dim=1)
+        field_hat = torch.fft.rfft2(field)
+        field_x, field_y = field_hat.unbind(dim=1)
         xx, xy, yy = symbol
-        result_hat = torch.stack(
-            (
-                torch.addcmul(xy * field_y, xx, field_x),
-                torch.addcmul(xy * field_x, yy, field_y),
-            ),
-            dim=1,
-        )
+        result_hat = torch.empty_like(field_hat)
+        torch.mul(field_x, xx, out=result_hat[:, 0])
+        result_hat[:, 0].addcmul_(field_y, xy)
+        torch.mul(field_y, yy, out=result_hat[:, 1])
+        result_hat[:, 1].addcmul_(field_x, xy)
+
+        # The component views otherwise keep the forward spectrum alive here.
+        del field_hat, field_x, field_y
         return torch.fft.irfft2(result_hat, s=field.shape[-2:])
+
+    def _apply_operator_impl(self, field):
+        return self._apply_symbol(field, self._symbol(field))
 
     def apply_operator(self, field):
         """Apply the periodic finite-difference operator ``L``."""
-        return self._apply_symbol(field, self._symbol(field))
+        if torch.is_grad_enabled() and field.requires_grad:
+            return _SelfAdjointLinear.apply(field, self._apply_operator_impl)
+        return self._apply_operator_impl(field)
 
     def _apply_inverse_impl(self, field):
         return self._apply_symbol(field, self._inverse_symbol(field))
@@ -1379,7 +1390,7 @@ class SobolevFluidOperator(torch.nn.Module):
         ``K`` and does not need to retain the input or FFT intermediates.
         """
         if torch.is_grad_enabled() and field.requires_grad:
-            return _SobolevInverse.apply(field, self)
+            return _SelfAdjointLinear.apply(field, self._apply_inverse_impl)
         return self._apply_inverse_impl(field)
 
     def forward(self, field):
