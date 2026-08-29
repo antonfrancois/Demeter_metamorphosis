@@ -1361,10 +1361,10 @@ class SobolevFluidOperator(torch.nn.Module):
         field_x, field_y = field_hat.unbind(dim=1)
         xx, xy, yy = symbol
         result_hat = torch.empty_like(field_hat)
-        torch.mul(field_x, xx, out=result_hat[:, 0])
-        result_hat[:, 0].addcmul_(field_y, xy)
-        torch.mul(field_y, yy, out=result_hat[:, 1])
-        result_hat[:, 1].addcmul_(field_x, xy)
+        torch.mul(xy, field_y, out=result_hat[:, 0])
+        result_hat[:, 0].addcmul_(xx, field_x)
+        torch.mul(xy, field_x, out=result_hat[:, 1])
+        result_hat[:, 1].addcmul_(yy, field_y)
 
         # The component views otherwise keep the forward spectrum alive here.
         del field_hat, field_x, field_y
