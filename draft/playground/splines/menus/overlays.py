@@ -1,4 +1,4 @@
-"""Three-column image and field-overlay menu."""
+"""Image and field display controls."""
 
 from dataclasses import dataclass
 from typing import Any
@@ -15,63 +15,63 @@ from ..styles import (
     PANEL_COLOR,
     PRIMAL_COLOR,
 )
-from .common import build_modal_backdrop, build_panel, set_radio_visible
+from .common import (
+    build_close_button,
+    build_modal_backdrop,
+    build_panel,
+    set_radio_visible,
+    set_widgets_visible,
+)
 from .control_times import ControlTimeEditor
 
 
 @dataclass
 class OverlayMenu:
     backdrop_ax: Any
-    column_axes: dict[str, Any]
-    input_radio: RadioButtons
-    control_time_label: Any
-    control_time_selector: ControlTimeEditor
-    input_image_toggle: CheckButtons
-    current_image_toggle: CheckButtons
-    current_image_radio: RadioButtons
-    current_radio: RadioButtons
-    target_radio: RadioButtons
-    target_options_label: Any
-    target_loss_check: CheckButtons
+    panels: dict[str, Any]
+    radios: dict[str, RadioButtons]
+    checks: dict[str, CheckButtons]
+    labels: dict[str, Any]
+    control_times: ControlTimeEditor
     close_button: Button
 
     @property
-    def axes(self) -> list[Any]:
-        return [
-            self.backdrop_ax,
-            *self.column_axes.values(),
-            self.input_radio.ax,
-            self.control_time_selector.axis,
-            self.input_image_toggle.ax,
-            self.current_image_toggle.ax,
-            self.current_image_radio.ax,
-            self.current_radio.ax,
-            self.target_radio.ax,
-            self.target_loss_check.ax,
-            self.close_button.ax,
-        ]
-
-    @property
-    def radios(self) -> tuple[RadioButtons, ...]:
+    def axes(self) -> tuple[Any, ...]:
         return (
-            self.input_radio,
-            self.current_image_radio,
-            self.current_radio,
-            self.target_radio,
+            self.backdrop_ax,
+            *self.panels.values(),
+            *(radio.ax for radio in self.radios.values()),
+            *(check.ax for check in self.checks.values()),
+            self.control_times.axis,
+            self.close_button.ax,
         )
 
     @property
-    def widgets(self) -> list[Any]:
-        return [
-            self.input_radio,
-            self.input_image_toggle,
-            self.current_image_toggle,
-            self.current_image_radio,
-            self.current_radio,
-            self.target_radio,
-            self.target_loss_check,
-            self.close_button,
-        ]
+    def widgets(self) -> tuple[Any, ...]:
+        return (*self.radios.values(), *self.checks.values(), self.close_button)
+
+    def bind(
+        self,
+        *,
+        on_input,
+        on_input_image,
+        on_current_image,
+        on_image_mode,
+        on_current_field,
+        on_target_mode,
+        on_target_loss,
+    ) -> None:
+        callbacks = {
+            "input": on_input,
+            "image_mode": on_image_mode,
+            "current_field": on_current_field,
+            "target_mode": on_target_mode,
+        }
+        for name, callback in callbacks.items():
+            self.radios[name].on_clicked(callback)
+        self.checks["input_image"].on_clicked(on_input_image)
+        self.checks["current_image"].on_clicked(on_current_image)
+        self.checks["target_loss"].on_clicked(on_target_loss)
 
     def set_visible(
         self,
@@ -80,24 +80,53 @@ class OverlayMenu:
         show_control_selector: bool,
         target_mode: str,
     ) -> None:
-        for axis in self.axes:
-            axis.set_visible(visible)
-        for radio in self.radios:
+        set_widgets_visible(self.axes, self.widgets, visible)
+        for radio in self.radios.values():
             set_radio_visible(radio, visible)
-        for widget in self.widgets:
-            widget.active = visible
         self.set_control_selector_visible(visible and show_control_selector)
         self.set_target_controls_visible(visible, target_mode)
 
     def set_control_selector_visible(self, visible: bool) -> None:
-        self.control_time_label.set_visible(visible)
-        self.control_time_selector.set_visible(visible)
+        self.labels["control_time"].set_visible(visible)
+        self.control_times.set_visible(visible)
 
     def set_target_controls_visible(self, visible: bool, target_mode: str) -> None:
-        global_loss = visible and target_mode == "Global loss"
-        self.target_options_label.set_visible(global_loss)
-        self.target_loss_check.ax.set_visible(global_loss)
-        self.target_loss_check.active = global_loss
+        show = visible and target_mode == "Global loss"
+        self.labels["target_options"].set_visible(show)
+        self.checks["target_loss"].ax.set_visible(show)
+        self.checks["target_loss"].active = show
+
+
+def _heading(axis, x: float, y: float, text: str, color: str = INK_COLOR):
+    return axis.text(
+        x,
+        y,
+        text,
+        transform=axis.transAxes,
+        fontsize=9,
+        fontweight="bold",
+        color=color,
+    )
+
+
+def _radio(fig, position, labels, active, color) -> RadioButtons:
+    return RadioButtons(
+        fig.add_axes(position, facecolor=PANEL_COLOR, zorder=102),
+        labels,
+        active=active,
+        activecolor=color,
+    )
+
+
+def _check(fig, position, labels, active) -> CheckButtons:
+    check = CheckButtons(
+        fig.add_axes(position, facecolor=PANEL_COLOR, zorder=102),
+        labels,
+        active,
+    )
+    for label in check.labels:
+        label.set_fontsize(9)
+    return check
 
 
 def build_overlay_menu(
@@ -106,142 +135,50 @@ def build_overlay_menu(
     *,
     on_control_select,
 ) -> OverlayMenu:
-    backdrop = build_modal_backdrop(
-        fig,
-        "VIEW MENU",
-        "Choose the base image and field shown in each panel.  Press V or Esc to close.",
-    )
-    columns = {
+    panels = {
         "source": build_panel(fig, [0.04, 0.15, 0.28, 0.68], "SOURCE"),
         "current": build_panel(fig, [0.36, 0.15, 0.28, 0.68], "CURRENT"),
         "target": build_panel(fig, [0.68, 0.15, 0.28, 0.68], "TARGET / ERROR"),
     }
-    columns["source"].text(
-        0.10,
-        0.72,
-        "Editable field",
-        transform=columns["source"].transAxes,
-        fontsize=9,
-        fontweight="bold",
-        color=DUAL_COLOR,
+    _heading(panels["source"], 0.10, 0.72, "Editable field", DUAL_COLOR)
+    control_label = _heading(
+        panels["source"], 0.10, 0.40, r"Control field time  $\tau_c$"
     )
-    control_time_label = columns["source"].text(
-        0.10,
-        0.40,
-        r"Control field time  $\tau_c$",
-        transform=columns["source"].transAxes,
-        fontsize=9,
-        fontweight="bold",
-        color=INK_COLOR,
-    )
-    columns["current"].text(
-        0.10,
-        0.72,
-        "Base image",
-        transform=columns["current"].transAxes,
-        fontsize=9,
-        fontweight="bold",
-        color=INK_COLOR,
-    )
-    columns["current"].text(
-        0.10,
-        0.45,
-        "Field overlay",
-        transform=columns["current"].transAxes,
-        fontsize=9,
-        fontweight="bold",
-        color=INK_COLOR,
-    )
-    columns["target"].text(
-        0.10,
-        0.85,
-        "Display",
-        transform=columns["target"].transAxes,
-        fontsize=9,
-        fontweight="bold",
-        color=INK_COLOR,
-    )
-    target_options_label = columns["target"].text(
-        0.10,
-        0.48,
-        "Global loss curves",
-        transform=columns["target"].transAxes,
-        fontsize=9,
-        fontweight="bold",
-        color=INK_COLOR,
-    )
+    _heading(panels["current"], 0.10, 0.72, "Base image")
+    _heading(panels["current"], 0.10, 0.45, "Field overlay")
+    _heading(panels["target"], 0.10, 0.85, "Display")
+    target_options = _heading(panels["target"], 0.10, 0.48, "Global loss curves")
 
-    input_radio = RadioButtons(
-        fig.add_axes([0.07, 0.44, 0.22, 0.18], facecolor=PANEL_COLOR, zorder=102),
-        INPUT_LABELS,
-        active=0,
-        activecolor=DUAL_COLOR,
-    )
-    input_image_toggle = CheckButtons(
-        fig.add_axes([0.07, 0.68, 0.22, 0.055], facecolor=PANEL_COLOR, zorder=102),
-        ("Show input image",),
-        (True,),
-    )
-    input_image_toggle.labels[0].set_fontsize(9)
-    control_time_selector = ControlTimeEditor(
+    radios = {
+        "input": _radio(fig, [0.07, 0.44, 0.22, 0.18], INPUT_LABELS, 0, DUAL_COLOR),
+        "image_mode": _radio(fig, [0.39, 0.49, 0.22, 0.13], CURRENT_IMAGE_LABELS, 0, "#168a8a"),
+        "current_field": _radio(fig, [0.39, 0.18, 0.22, 0.25], CURRENT_LABELS, 5, PRIMAL_COLOR),
+        "target_mode": _radio(fig, [0.71, 0.55, 0.22, 0.15], ("Target", "Absolute error", "Global loss"), 0, "#168a8a"),
+    }
+    checks = {
+        "input_image": _check(fig, [0.07, 0.68, 0.22, 0.055], ("Show input image",), (True,)),
+        "current_image": _check(fig, [0.39, 0.68, 0.22, 0.055], ("Show current image",), (True,)),
+        "target_loss": _check(fig, [0.71, 0.29, 0.22, 0.16], ("Full loss", "Data loss", "Regularized cost"), (True, True, True)),
+    }
+    control_times = ControlTimeEditor(
         fig.add_axes([0.07, 0.27, 0.22, 0.105], facecolor=PANEL_COLOR, zorder=102),
-        n_steps=parameters.n_steps,
-        control_steps=parameters.control_steps,
+        n_steps=parameters.spline.steps,
+        control_steps=parameters.control_nodes,
         on_select=on_control_select,
         editable=False,
     )
-    current_image_radio = RadioButtons(
-        fig.add_axes([0.39, 0.49, 0.22, 0.13], facecolor=PANEL_COLOR, zorder=102),
-        CURRENT_IMAGE_LABELS,
-        active=0,
-        activecolor="#168a8a",
-    )
-    current_image_toggle = CheckButtons(
-        fig.add_axes([0.39, 0.68, 0.22, 0.055], facecolor=PANEL_COLOR, zorder=102),
-        ("Show current image",),
-        (True,),
-    )
-    current_image_toggle.labels[0].set_fontsize(9)
-    current_radio = RadioButtons(
-        fig.add_axes([0.39, 0.18, 0.22, 0.25], facecolor=PANEL_COLOR, zorder=102),
-        CURRENT_LABELS,
-        active=5,
-        activecolor=PRIMAL_COLOR,
-    )
-    target_radio = RadioButtons(
-        fig.add_axes([0.71, 0.55, 0.22, 0.15], facecolor=PANEL_COLOR, zorder=102),
-        ("Target", "Absolute error", "Global loss"),
-        active=0,
-        activecolor="#168a8a",
-    )
-    target_loss_check = CheckButtons(
-        fig.add_axes([0.71, 0.29, 0.22, 0.16], facecolor=PANEL_COLOR, zorder=102),
-        ("Full loss", "Data loss", "Regularized cost"),
-        (True, True, True),
-    )
-    for label in target_loss_check.labels:
-        label.set_fontsize(9)
-    close = Button(
-        fig.add_axes([0.42, 0.06, 0.16, 0.055], zorder=102),
-        "CLOSE  [V]",
-        color="#168a8a",
-        hovercolor="#20a3a3",
-    )
-    close.label.set_color("white")
     menu = OverlayMenu(
-        backdrop,
-        columns,
-        input_radio,
-        control_time_label,
-        control_time_selector,
-        input_image_toggle,
-        current_image_toggle,
-        current_image_radio,
-        current_radio,
-        target_radio,
-        target_options_label,
-        target_loss_check,
-        close,
+        build_modal_backdrop(
+            fig,
+            "VIEW MENU",
+            "Choose the image and field shown in each panel. Press V or Esc to close.",
+        ),
+        panels,
+        radios,
+        checks,
+        {"control_time": control_label, "target_options": target_options},
+        control_times,
+        build_close_button(fig, [0.42, 0.06, 0.16, 0.055], "CLOSE  [V]"),
     )
     menu.set_visible(False, show_control_selector=False, target_mode="Target")
     return menu

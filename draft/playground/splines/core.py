@@ -6,11 +6,9 @@ Version: July 23, 2026.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field as dataclass_field
 from math import isfinite, sqrt
-import os
 from pathlib import Path
-import tempfile
 from time import perf_counter
 from typing import Any
 
@@ -26,6 +24,7 @@ from demeter.metamorphosis.var_classes import Momenta
 from demeter.utils import torchbox as tb
 from demeter.utils.cometric_inversion import CometricOperator
 from demeter.utils.reproducing_kernels import GaussianRKHS, SobolevFluidOperator
+from demeter.utils.spline_data import TimedImageBatch
 from ..field_playground_core import (
     coerce_field,
     coerce_image,
@@ -34,8 +33,6 @@ from ..field_playground_core import (
 )
 
 
-FORMAT_VERSION = 3
-SETUP_KIND = "demeter_spline_playground"
 TRAJECTORY_FIELDS = (
     "momentum",
     "force",
@@ -49,9 +46,7 @@ OPTIMIZABLE_INITIAL_FIELDS = (
     "initial_acceleration",
     "initial_jerk",
 )
-
-
-def minimum_compatible_mesh_steps(
+def minimum_mesh_steps(
     times: tuple[float, ...],
     *,
     max_steps: int,
@@ -83,256 +78,142 @@ def _require_finite_input(value: Any, name: str) -> None:
         raise ValueError(f"{name} must contain only finite values")
 
 
+def _finite_float(value: Any, name: str) -> float:
+    value = float(value)
+    if not isfinite(value):
+        raise ValueError(f"{name} must be finite")
+    return value
+
+
+def _positive_float(value: Any, name: str) -> float:
+    value = float(value)
+    if not isfinite(value) or value <= 0:
+        raise ValueError(f"{name} must be finite and strictly positive")
+    return value
+
+
+def _positive_int(value: Any, name: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+        raise ValueError(f"{name} must be a strictly positive integer")
+    return value
+
+
+def _choice(value: Any, name: str, choices: tuple[str, str]) -> str:
+    value = str(value).lower()
+    if value not in choices:
+        raise ValueError(f"{name} must be {choices[0]!r} or {choices[1]!r}")
+    return value
+
+
+def _strictly_increasing(values: tuple[int, ...] | tuple[float, ...]) -> bool:
+    return all(left < right for left, right in zip(values, values[1:]))
+
+
+def _control_nodes(times: tuple[float, ...], steps: int) -> tuple[int, ...]:
+    nodes = tuple(round(time * steps) for time in times)
+    if any(not 1 <= node < steps - 1 for node in nodes):
+        raise ValueError("control times must be before the final interior mesh node")
+    if not _strictly_increasing(nodes):
+        raise ValueError("control times must map to distinct ordered mesh nodes")
+    return nodes
+
+
+def _control_times(values: tuple[float, ...], steps: int) -> tuple[float, ...]:
+    times = tuple(float(time) for time in values)
+    if any(not isfinite(time) or not 0 < time < 1 for time in times):
+        raise ValueError("control_times must be finite and lie strictly in (0, 1)")
+    if not _strictly_increasing(times):
+        raise ValueError("control_times must be strictly increasing")
+    _control_nodes(times, steps)
+    return times
+
+
+def _optimized_fields(values: tuple[str, ...]) -> tuple[str, ...]:
+    selected = set(values)
+    if not selected <= set(OPTIMIZABLE_INITIAL_FIELDS):
+        raise ValueError("optimized_fields contains an unknown field")
+    return tuple(name for name in OPTIMIZABLE_INITIAL_FIELDS if name in selected)
+
+
+def _validate_model(parameters: "SplineParameters") -> None:
+    if parameters.alpha < 0 or parameters.beta < 0 or parameters.gamma <= 0:
+        raise ValueError(
+            "alpha and beta must be non-negative, and gamma must be positive"
+        )
+    upper_bound = parameters.rho <= 1 if parameters.model == "classic" else parameters.rho < 1
+    if parameters.rho < 0 or not upper_bound:
+        bound = "0 <= rho <= 1" if parameters.model == "classic" else "0 <= rho < 1"
+        raise ValueError(f"rho must satisfy {bound}")
+    if parameters.model == "splines" and parameters.kernel != "sobolev":
+        raise ValueError("spline runs require the Sobolev operator")
+
+
+@dataclass(frozen=True)
+class SolverSettings:
+    """One optimization mesh and its LBFGS controls."""
+
+    cost: float = 0.01
+    steps: int = 16
+    iterations: int = 10
+    learning_rate: float = 1.0
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "cost", _positive_float(self.cost, "cost"))
+        object.__setattr__(self, "steps", _positive_int(self.steps, "steps"))
+        object.__setattr__(
+            self, "iterations", _positive_int(self.iterations, "iterations")
+        )
+        object.__setattr__(
+            self,
+            "learning_rate",
+            _positive_float(self.learning_rate, "learning_rate"),
+        )
+
+
 @dataclass(frozen=True)
 class SplineParameters:
-    """Numerical parameters and control-node topology for one spline run."""
+    """Physical model, control times, and optimization settings."""
 
     alpha: float = 0.2
     beta: float = 0.2
     gamma: float = 0.001
     rho: float = 0.5
-    cg_eps: float = 1e-5
-    n_steps: int = 16
-    control_steps: tuple[int, ...] = ()
-    control_times: tuple[float, ...] = ()
+    cg_tolerance: float = 1e-5
     kernel: str = "sobolev"
     sigma: float = 3.0
     model: str = "splines"
-    cost_cst: float = 0.01
-    iterations: int = 10
-    lbfgs_lr: float | None = None
+    control_times: tuple[float, ...] = ()
     optimized_fields: tuple[str, ...] = OPTIMIZABLE_INITIAL_FIELDS
-    spline_initialization: str = "cold"
-    regression_cost_cst: float | None = None
-    regression_n_steps: int | None = None
-    regression_iterations: int | None = None
-    regression_lbfgs_lr: float | None = None
+    initialization: str = "cold"
+    spline: SolverSettings = dataclass_field(default_factory=SolverSettings)
+    regression: SolverSettings = dataclass_field(default_factory=SolverSettings)
 
     def __post_init__(self) -> None:
-        for name in ("alpha", "beta", "gamma", "rho", "cg_eps"):
-            value = float(getattr(self, name))
-            if not isfinite(value):
-                raise ValueError(f"{name} must be finite")
-            object.__setattr__(self, name, value)
-        if self.alpha < 0 or self.beta < 0 or self.gamma <= 0:
-            raise ValueError(
-                "alpha and beta must be non-negative, and gamma must be positive"
-            )
-        model = str(self.model).lower()
-        if model not in ("classic", "splines"):
-            raise ValueError("model must be 'classic' or 'splines'")
-        object.__setattr__(self, "model", model)
-        lbfgs_lr = self.lbfgs_lr
-        if lbfgs_lr is None:
-            lbfgs_lr = 1.0
-        lbfgs_lr = float(lbfgs_lr)
-        if not isfinite(lbfgs_lr) or lbfgs_lr <= 0:
-            raise ValueError("lbfgs_lr must be finite and strictly positive")
-        object.__setattr__(self, "lbfgs_lr", lbfgs_lr)
-        optimized_fields = tuple(self.optimized_fields)
-        if len(set(optimized_fields)) != len(optimized_fields):
-            raise ValueError("optimized_fields must not contain duplicates")
-        unknown_fields = set(optimized_fields).difference(OPTIMIZABLE_INITIAL_FIELDS)
-        if unknown_fields:
-            names = ", ".join(sorted(unknown_fields))
-            raise ValueError(f"unsupported optimized fields: {names}")
-        object.__setattr__(
-            self,
-            "optimized_fields",
-            tuple(
-                name
-                for name in OPTIMIZABLE_INITIAL_FIELDS
-                if name in optimized_fields
+        for name in ("alpha", "beta", "gamma", "rho"):
+            object.__setattr__(self, name, _finite_float(getattr(self, name), name))
+        normalized = {
+            "cg_tolerance": _positive_float(self.cg_tolerance, "cg_tolerance"),
+            "sigma": _positive_float(self.sigma, "sigma"),
+            "model": _choice(self.model, "model", ("classic", "splines")),
+            "kernel": _choice(self.kernel, "kernel", ("sobolev", "gaussian")),
+            "initialization": _choice(
+                self.initialization, "initialization", ("cold", "warm")
             ),
-        )
-        spline_initialization = str(self.spline_initialization).lower()
-        if spline_initialization not in ("cold", "warm"):
-            raise ValueError("spline_initialization must be 'cold' or 'warm'")
-        object.__setattr__(
-            self, "spline_initialization", spline_initialization
-        )
-        rho_upper_bound = self.rho <= 1 if model == "classic" else self.rho < 1
-        if self.rho < 0 or not rho_upper_bound:
-            bound = "0 <= rho <= 1" if model == "classic" else "0 <= rho < 1"
-            raise ValueError(f"rho must satisfy {bound}")
-        if self.cg_eps <= 0:
-            raise ValueError("cg_eps must be strictly positive")
-        kernel = str(self.kernel).lower()
-        if kernel not in ("sobolev", "gaussian"):
-            raise ValueError("kernel must be 'sobolev' or 'gaussian'")
-        object.__setattr__(self, "kernel", kernel)
-        sigma = float(self.sigma)
-        if not isfinite(sigma) or sigma <= 0:
-            raise ValueError("sigma must be finite and strictly positive")
-        object.__setattr__(self, "sigma", sigma)
-        if model == "splines" and kernel != "sobolev":
-            raise ValueError("spline runs require the Sobolev operator")
-        cost_cst = float(self.cost_cst)
-        if not isfinite(cost_cst) or cost_cst <= 0:
-            raise ValueError("cost_cst must be finite and strictly positive")
-        object.__setattr__(self, "cost_cst", cost_cst)
-        if (
-            not isinstance(self.iterations, int)
-            or isinstance(self.iterations, bool)
-            or self.iterations < 1
-        ):
-            raise ValueError("iterations must be a strictly positive integer")
-        if (
-            not isinstance(self.n_steps, int)
-            or isinstance(self.n_steps, bool)
-            or self.n_steps < 1
-        ):
-            raise ValueError("n_steps must be a strictly positive integer")
-        regression_cost_cst = (
-            self.cost_cst
-            if self.regression_cost_cst is None
-            else float(self.regression_cost_cst)
-        )
-        if not isfinite(regression_cost_cst) or regression_cost_cst <= 0:
-            raise ValueError(
-                "regression_cost_cst must be finite and strictly positive"
-            )
-        regression_lbfgs_lr = (
-            self.lbfgs_lr
-            if self.regression_lbfgs_lr is None
-            else float(self.regression_lbfgs_lr)
-        )
-        if not isfinite(regression_lbfgs_lr) or regression_lbfgs_lr <= 0:
-            raise ValueError(
-                "regression_lbfgs_lr must be finite and strictly positive"
-            )
-        regression_n_steps = (
-            self.n_steps
-            if self.regression_n_steps is None
-            else self.regression_n_steps
-        )
-        if (
-            not isinstance(regression_n_steps, int)
-            or isinstance(regression_n_steps, bool)
-            or regression_n_steps < 1
-        ):
-            raise ValueError(
-                "regression_n_steps must be a strictly positive integer"
-            )
-        regression_iterations = (
-            self.iterations
-            if self.regression_iterations is None
-            else self.regression_iterations
-        )
-        if (
-            not isinstance(regression_iterations, int)
-            or isinstance(regression_iterations, bool)
-            or regression_iterations < 1
-        ):
-            raise ValueError(
-                "regression_iterations must be a strictly positive integer"
-            )
-        object.__setattr__(
-            self, "regression_cost_cst", regression_cost_cst
-        )
-        object.__setattr__(
-            self, "regression_n_steps", regression_n_steps
-        )
-        object.__setattr__(
-            self, "regression_iterations", regression_iterations
-        )
-        object.__setattr__(
-            self, "regression_lbfgs_lr", regression_lbfgs_lr
-        )
-
-        if not self.control_times and self.control_steps:
-            controls = tuple(self.control_steps)
-            if any(
-                not isinstance(step, int) or isinstance(step, bool)
-                for step in controls
-            ):
-                raise TypeError("control_steps must contain integers")
-            if any(not 1 <= step < self.n_steps - 1 for step in controls):
-                raise ValueError(
-                    "control_steps must occur before the final interior mesh node"
-                )
-            if any(right <= left for left, right in zip(controls, controls[1:])):
-                raise ValueError("control_steps must be strictly increasing")
-            times = tuple(step / self.n_steps for step in controls)
-        else:
-            times = tuple(float(time) for time in self.control_times)
-            if any(not isfinite(time) or not 0 < time < 1 for time in times):
-                raise ValueError(
-                    "control_times must be finite and lie strictly in (0, 1)"
-                )
-            if any(right <= left for left, right in zip(times, times[1:])):
-                raise ValueError("control_times must be strictly increasing")
-            controls = self.project_control_times(times, self.n_steps)
-        object.__setattr__(self, "control_steps", controls)
-        object.__setattr__(self, "control_times", times)
-
-    @staticmethod
-    def project_control_times(
-        control_times: tuple[float, ...],
-        n_steps: int,
-    ) -> tuple[int, ...]:
-        controls = tuple(round(time * n_steps) for time in control_times)
-        if any(not 1 <= step < n_steps - 1 for step in controls):
-            raise ValueError(
-                "control times must project before the final interior mesh node"
-            )
-        if any(right <= left for left, right in zip(controls, controls[1:])):
-            raise ValueError(
-                "control times must project to distinct temporal mesh nodes"
-            )
-        return controls
+            "control_times": _control_times(self.control_times, self.spline.steps),
+            "optimized_fields": _optimized_fields(self.optimized_fields),
+        }
+        for name, value in normalized.items():
+            object.__setattr__(self, name, value)
+        _validate_model(self)
 
     @property
-    def mesh_control_times(self) -> tuple[float, ...]:
-        return tuple(step / self.n_steps for step in self.control_steps)
+    def control_nodes(self) -> tuple[int, ...]:
+        return _control_nodes(self.control_times, self.spline.steps)
 
-    def as_dict(self) -> dict[str, Any]:
-        return {
-            "alpha": self.alpha,
-            "beta": self.beta,
-            "gamma": self.gamma,
-            "rho": self.rho,
-            "cg_eps": self.cg_eps,
-            "n_steps": self.n_steps,
-            "control_steps": self.control_steps,
-            "control_times": self.control_times,
-            "kernel": self.kernel,
-            "sigma": self.sigma,
-            "model": self.model,
-            "cost_cst": self.cost_cst,
-            "iterations": self.iterations,
-            "lbfgs_lr": self.lbfgs_lr,
-            "optimized_fields": self.optimized_fields,
-            "spline_initialization": self.spline_initialization,
-            "regression_cost_cst": self.regression_cost_cst,
-            "regression_n_steps": self.regression_n_steps,
-            "regression_iterations": self.regression_iterations,
-            "regression_lbfgs_lr": self.regression_lbfgs_lr,
-        }
-
-    @classmethod
-    def from_dict(cls, values: dict[str, Any]) -> "SplineParameters":
-        return cls(
-            alpha=values["alpha"],
-            beta=values["beta"],
-            gamma=values["gamma"],
-            rho=values["rho"],
-            cg_eps=values["cg_eps"],
-            n_steps=values["n_steps"],
-            control_steps=tuple(values["control_steps"]),
-            control_times=tuple(values["control_times"]),
-            kernel=values["kernel"],
-            sigma=values["sigma"],
-            model=values["model"],
-            cost_cst=values["cost_cst"],
-            iterations=values["iterations"],
-            lbfgs_lr=values["lbfgs_lr"],
-            optimized_fields=tuple(values["optimized_fields"]),
-            spline_initialization=values["spline_initialization"],
-            regression_cost_cst=values["regression_cost_cst"],
-            regression_n_steps=values["regression_n_steps"],
-            regression_iterations=values["regression_iterations"],
-            regression_lbfgs_lr=values["regression_lbfgs_lr"],
+    @property
+    def projected_control_times(self) -> tuple[float, ...]:
+        return tuple(
+            node / self.spline.steps for node in self.control_nodes
         )
 
 
@@ -357,158 +238,64 @@ def _scalar_field(
     return field
 
 
+def _validate_target_mesh(
+    times: tuple[float, ...],
+    n_steps: int,
+    name: str,
+) -> None:
+    target_steps = tuple(round(time * n_steps) for time in times)
+    if any(not 1 <= step <= n_steps for step in target_steps):
+        raise ValueError(f"target times must map to nonzero {name} temporal nodes")
+    if any(
+        abs(time * n_steps - step) > 1e-6
+        for time, step in zip(times, target_steps)
+    ):
+        raise ValueError(f"target times must lie on the {name} mesh")
+    if not _strictly_increasing(target_steps):
+        raise ValueError(
+            f"target times must map to distinct {name} temporal nodes"
+        )
+
+
 @dataclass
 class SplineSetup:
-    """Editable source, target, and shooting fields stored on CPU."""
+    """Canonical images, shooting variables, and numerical parameters."""
 
-    source: torch.Tensor
-    target: torch.Tensor
-    initial_momentum: torch.Tensor
-    initial_acceleration: torch.Tensor
-    initial_jerk: torch.Tensor
-    control_jerks: torch.Tensor
+    images: TimedImageBatch
+    variables: SplinesVariables
     parameters: SplineParameters
-    source_path: str = ""
-    target_path: str = ""
-    target_times: tuple[float, ...] = (1.0,)
-    target_paths: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        _require_finite_input(self.source, "source")
-        _require_finite_input(self.target, "target")
-        source = coerce_image(self.source)
-        if (
-            source.ndim != 4
-            or source.shape[:2] != (1, 1)
-            or min(source.shape[-2:]) < 2
-        ):
-            raise ValueError(
-                "source must have shape [1, 1, H, W] with H,W >= 2"
-            )
-        source = source.contiguous().clone()
-        size = tuple(source.shape[-2:])
-        dtype = source.dtype
-
-        target = coerce_image(self.target)
-        if target.ndim != 4 or target.shape[1] != 1 or target.shape[0] < 1:
-            raise ValueError("target must have shape [N, 1, H, W]")
-        if tuple(target.shape[-2:]) != size:
-            target = F.interpolate(
-                target,
-                size=size,
-                mode="bilinear",
-                align_corners=False,
-            )
-
-        times = tuple(float(time) for time in self.target_times)
-        if len(times) != target.shape[0]:
-            raise ValueError("target_times must contain one time per target")
-        if any(not isfinite(time) or not 0 < time <= 1 for time in times):
-            raise ValueError("target times must be finite and lie in (0, 1]")
-        if any(right <= left for left, right in zip(times, times[1:])):
-            raise ValueError("target times must be strictly increasing")
-        def validate_temporal_mesh(n_steps: int, name: str) -> None:
-            target_steps = tuple(round(time * n_steps) for time in times)
-            if any(not 1 <= step <= n_steps for step in target_steps):
-                raise ValueError(
-                    f"target times must map to nonzero {name} temporal nodes"
-                )
-            if any(
-                abs(time * n_steps - step) > 1e-6
-                for time, step in zip(times, target_steps)
-            ):
-                raise ValueError(f"target times must lie on the {name} mesh")
-            if any(
-                right <= left
-                for left, right in zip(target_steps, target_steps[1:])
-            ):
-                raise ValueError(
-                    f"target times must map to distinct {name} temporal nodes"
-                )
-
-        validate_temporal_mesh(self.parameters.n_steps, "spline")
-        if self.parameters.spline_initialization == "warm":
-            assert self.parameters.regression_n_steps is not None
-            validate_temporal_mesh(
-                self.parameters.regression_n_steps, "regression"
-            )
-
-        paths = tuple(str(path) for path in self.target_paths)
-        if not paths:
-            paths = (str(self.target_path),) if len(times) == 1 else ("",) * len(times)
-        if len(paths) != len(times):
-            raise ValueError("target_paths must contain one path per target")
-
-        self.source = source
-        self.target = target.to(dtype=dtype).contiguous().clone()
-        self.target_times = times
-        self.target_paths = paths
-        self.initial_momentum = _scalar_field(
-            self.initial_momentum,
-            size,
-            dtype=dtype,
-            name="initial_momentum",
+        if self.variables.initial_momentum.shape != self.images.source.shape:
+            raise ValueError("shooting fields must match the source image")
+        if self.variables.n_controls != len(self.parameters.control_times):
+            raise ValueError("control fields and control times must have equal length")
+        _validate_target_mesh(
+            self.images.target_times,
+            self.parameters.spline.steps,
+            "spline",
         )
-        self.initial_acceleration = _scalar_field(
-            self.initial_acceleration,
-            size,
-            dtype=dtype,
-            name="initial_acceleration",
-        )
-        self.initial_jerk = _scalar_field(
-            self.initial_jerk,
-            size,
-            dtype=dtype,
-            name="initial_jerk",
-        )
-
-        controls = torch.as_tensor(self.control_jerks).detach().cpu()
-        if controls.dtype != torch.float64:
-            controls = controls.float()
-        expected = (len(self.parameters.control_steps), 1, 1) + size
-        if tuple(controls.shape) != expected:
-            raise ValueError(
-                f"control_jerks must have shape {expected}, got {tuple(controls.shape)}"
+        if self.parameters.initialization == "warm":
+            _validate_target_mesh(
+                self.images.target_times,
+                self.parameters.regression.steps,
+                "regression",
             )
-        self.control_jerks = controls.to(dtype=dtype).contiguous().clone()
-        for name, tensor in (
-            ("source", self.source),
-            ("target", self.target),
-            ("control_jerks", self.control_jerks),
-        ):
-            if not torch.isfinite(tensor).all():
-                raise ValueError(f"{name} must contain only finite values")
-        self.source_path = str(self.source_path)
-        self.target_path = paths[-1]
 
     @property
     def size(self) -> tuple[int, int]:
-        return tuple(self.source.shape[-2:])
+        return tuple(self.images.source.shape[-2:])
 
     @property
     def n_controls(self) -> int:
-        return len(self.parameters.control_steps)
+        return self.variables.n_controls
 
     @property
     def target_steps(self) -> tuple[int, ...]:
-        return tuple(round(time * self.parameters.n_steps) for time in self.target_times)
-
-    def payload(self) -> dict[str, Any]:
-        return {
-            "format_version": FORMAT_VERSION,
-            "kind": SETUP_KIND,
-            "source": self.source.detach().cpu().clone(),
-            "target": self.target.detach().cpu().clone(),
-            "initial_momentum": self.initial_momentum.detach().cpu().clone(),
-            "initial_acceleration": self.initial_acceleration.detach().cpu().clone(),
-            "initial_jerk": self.initial_jerk.detach().cpu().clone(),
-            "control_jerks": self.control_jerks.detach().cpu().clone(),
-            "parameters": self.parameters.as_dict(),
-            "source_path": self.source_path,
-            "target_path": self.target_path,
-            "target_times": self.target_times,
-            "target_paths": self.target_paths,
-        }
+        return tuple(
+            round(time * self.parameters.spline.steps)
+            for time in self.images.target_times
+        )
 
 
 def zero_setup(
@@ -517,32 +304,38 @@ def zero_setup(
     parameters: SplineParameters | None = None,
     *,
     source_path: str | Path | None = None,
-    target_path: str | Path | None = None,
     target_times: tuple[float, ...] = (1.0,),
     target_paths: tuple[str | Path, ...] = (),
 ) -> SplineSetup:
     """Create a zero-field setup matching the source image."""
     parameters = parameters or SplineParameters()
     _require_finite_input(source, "source")
-    source_tensor = coerce_image(source)
+    source_tensor = coerce_image(source).detach().cpu().contiguous()
     if target is None:
         target = torch.zeros_like(source_tensor)
-    zero = torch.zeros_like(source_tensor)
-    controls = source_tensor.new_zeros(
-        (len(parameters.control_steps),) + tuple(source_tensor.shape)
-    )
+    target_tensor = coerce_image(target).detach().cpu()
+    if tuple(target_tensor.shape[-2:]) != tuple(source_tensor.shape[-2:]):
+        target_tensor = F.interpolate(
+            target_tensor,
+            size=source_tensor.shape[-2:],
+            mode="bilinear",
+            align_corners=False,
+        )
+    paths = tuple(str(path) for path in target_paths) or ("",) * len(target_tensor)
     return SplineSetup(
-        source_tensor,
-        target,
-        zero,
-        zero.clone(),
-        zero.clone(),
-        controls,
-        parameters,
-        str(source_path or ""),
-        str(target_path or ""),
-        target_times,
-        tuple(str(path) for path in target_paths),
+        images=TimedImageBatch(
+            source_tensor,
+            target_tensor.to(source_tensor).contiguous(),
+            target_times,
+            str(source_path or ""),
+            paths,
+        ),
+        variables=SplinesVariables.zeros(
+            source_tensor,
+            len(parameters.control_times),
+            requires_grad=False,
+        ),
+        parameters=parameters,
     )
 
 
@@ -551,78 +344,16 @@ def save_setup(setup: SplineSetup, path: str | Path) -> Path:
     if not path.suffix:
         path = path.with_suffix(".pt")
     path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary_name = tempfile.mkstemp(
-        dir=path.parent,
-        prefix=f".{path.name}.",
-        suffix=".tmp",
-    )
-    os.close(descriptor)
-    temporary_path = Path(temporary_name)
-    try:
-        torch.save(setup.payload(), temporary_path)
-        temporary_path.replace(path)
-    finally:
-        temporary_path.unlink(missing_ok=True)
+    torch.save(setup, path)
     return path
 
 
 def load_setup(path: str | Path) -> SplineSetup:
     path = Path(path).expanduser()
-    payload = torch.load(path, map_location="cpu", weights_only=True)
-    if not isinstance(payload, dict) or payload.get("kind") != SETUP_KIND:
+    setup = torch.load(path, map_location="cpu", weights_only=False)
+    if not isinstance(setup, SplineSetup):
         raise ValueError(f"{path} is not a spline playground setup")
-    version = payload.get("format_version")
-    if version != FORMAT_VERSION:
-        raise ValueError(
-            f"unsupported spline setup format {version!r}; "
-            f"expected {FORMAT_VERSION}"
-        )
-    required_parameters = {
-        "alpha",
-        "beta",
-        "gamma",
-        "rho",
-        "cg_eps",
-        "n_steps",
-        "control_steps",
-        "control_times",
-        "kernel",
-        "sigma",
-        "model",
-        "cost_cst",
-        "iterations",
-        "lbfgs_lr",
-        "optimized_fields",
-        "spline_initialization",
-        "regression_cost_cst",
-        "regression_n_steps",
-        "regression_iterations",
-        "regression_lbfgs_lr",
-    }
-    missing = required_parameters.difference(payload.get("parameters", {}))
-    if missing:
-        names = ", ".join(sorted(missing))
-        raise ValueError(f"spline setup is missing parameters: {names}")
-    parameter_values = payload["parameters"]
-    parameters = SplineParameters.from_dict(parameter_values)
-    if (
-        tuple(parameter_values["control_times"]) != parameters.control_times
-        or tuple(parameter_values["control_steps"]) != parameters.control_steps
-    ):
-        raise ValueError("saved control_steps do not match control_times")
-    return SplineSetup(
-        source=payload["source"],
-        target=payload["target"],
-        initial_momentum=payload["initial_momentum"],
-        initial_acceleration=payload["initial_acceleration"],
-        initial_jerk=payload["initial_jerk"],
-        control_jerks=payload["control_jerks"],
-        parameters=parameters,
-        source_path=payload["source_path"],
-        target_path=payload["target_path"],
-        target_times=tuple(payload["target_times"]),
-        target_paths=tuple(payload["target_paths"]),
-    )
+    return setup
 
 
 def load_scalar_field(
@@ -675,7 +406,7 @@ def metric_squared_norm(
             parameters.rho,
             kernel,
             dx_convention="pixel",
-        ).inverse(vector, eps=parameters.cg_eps)
+        ).inverse(vector, eps=parameters.cg_tolerance)
     return float((vector * covector).sum().detach().cpu())
 
 
@@ -720,20 +451,6 @@ class SplineTrajectory:
     def field_energy(self, name: str, index: int) -> float:
         return float(self.field_energies[name][index])
 
-    def payload(self) -> dict[str, Any]:
-        return {
-            name: value.detach().cpu().clone()
-            for name, value in vars(self).items()
-            if torch.is_tensor(value)
-        } | {
-            "field_energies": {
-                name: value.detach().cpu().clone()
-                for name, value in self.field_energies.items()
-            },
-            "elapsed_seconds": self.elapsed_seconds,
-        }
-
-
 def _decompose_image_nodes(
     source: torch.Tensor,
     fields: torch.Tensor,
@@ -769,7 +486,7 @@ def _decompose_image_nodes(
     )
 
 
-def _target_mse(images: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+def target_mse(images: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
     return torch.stack(
         [(images - target).square().mean(dim=(1, 2, 3)) for target in targets]
     )
@@ -827,7 +544,7 @@ def _endpoint_fields(
         parameters.rho,
         kernel,
         dx_convention="pixel",
-    ).inverse(acceleration, eps=parameters.cg_eps)
+    ).inverse(acceleration, eps=parameters.cg_tolerance)
     gradient = tb.spatialGradient(
         image,
         dx_convention="pixel",
@@ -855,7 +572,7 @@ def run_spline(
             "cometric inversion is not defined"
         )
     run_device = resolve_device(device)
-    source = setup.source.to(run_device)
+    source = setup.images.source.to(run_device)
     kernel = SobolevFluidOperator(
         alpha=parameters.alpha,
         beta=parameters.beta,
@@ -874,19 +591,13 @@ def run_spline(
         torch.cuda.synchronize(run_device)
     start = perf_counter()
     with torch.no_grad():
-        initial_acceleration = setup.initial_acceleration.to(run_device)
-        variables = SplinesVariables(
-            initial_momentum=setup.initial_momentum.to(run_device),
-            initial_acceleration=initial_acceleration,
-            initial_jerk=setup.initial_jerk.to(run_device),
-            control_jerks=setup.control_jerks.to(run_device),
-        )
+        variables = setup.variables.clone().to(run_device)
         integrator = MetamorphosisSplineIntegrator(
             parameters.rho,
-            control_times=parameters.mesh_control_times,
+            control_times=parameters.projected_control_times,
             kernelOperator=kernel,
-            n_step=parameters.n_steps,
-            cg_eps=parameters.cg_eps,
+            n_step=parameters.spline.steps,
+            cg_eps=parameters.cg_tolerance,
             dx_convention="pixel",
         )
         integrator(
@@ -895,22 +606,43 @@ def run_spline(
             save=True,
             progress_callback=integrator_progress,
         )
+    return _trajectory_from_final_spline_integration(
+        integrator,
+        parameters,
+        setup.images.target,
+        progress_callback=progress_callback,
+        started_at=start,
+    )
+
+
+def _trajectory_from_final_spline_integration(
+    integrator: MetamorphosisSplineIntegrator,
+    parameters: SplineParameters,
+    targets: torch.Tensor,
+    progress_callback: Callable[[int, int], None] | None = None,
+    *,
+    started_at: float | None = None,
+) -> SplineTrajectory:
+    """Build playground data from an optimizer's retained final integration."""
+    start = perf_counter() if started_at is None else started_at
+    integrator.materialize_diagnostic_stocks()
+    kernel = integrator.kernelOperator
+    device = integrator.source.device
+    with torch.no_grad():
         endpoint_force, endpoint_velocity = _endpoint_fields(
             integrator,
             kernel,
             parameters,
         )
-        deformed_source_device, photometric_only_device = _decompose_image_nodes(
-            source,
-            integrator.field_stock.to(run_device),
-            integrator.residuals_stock.to(run_device),
+        deformed_source, photometric_only = _decompose_image_nodes(
+            integrator.source,
+            integrator.field_stock.to(device),
+            integrator.residuals_stock.to(device),
         )
-    if run_device.type == "cuda":
-        torch.cuda.synchronize(run_device)
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
 
     images = integrator.image_stock.detach().cpu().contiguous()
-    deformed_source = deformed_source_device.detach().cpu().contiguous()
-    photometric_only = photometric_only_device.detach().cpu().contiguous()
     force = torch.cat(
         (integrator.force_stock, endpoint_force.detach().cpu()),
         dim=0,
@@ -935,16 +667,13 @@ def run_spline(
         "velocity": velocity_energy,
         "vector_momentum": velocity_energy,
     }
-    targets = setup.target.to(dtype=images.dtype)
-    target_mse = _target_mse(images, targets)
+    target_errors = target_mse(images, targets.to(dtype=images.dtype))
     if progress_callback is not None:
-        progress_callback(parameters.n_steps, parameters.n_steps)
-    elapsed = perf_counter() - start
-
+        progress_callback(parameters.spline.steps, parameters.spline.steps)
     return SplineTrajectory(
         images=images,
-        deformed_source=deformed_source,
-        photometric_only=photometric_only,
+        deformed_source=deformed_source.detach().cpu().contiguous(),
+        photometric_only=photometric_only.detach().cpu().contiguous(),
         momentum=momentum,
         force=force,
         acceleration=acceleration,
@@ -952,69 +681,7 @@ def run_spline(
         velocity=velocity,
         vector_momentum=vector_momentum,
         field_energies=field_energies,
-        target_mse=target_mse,
-        elapsed_seconds=elapsed,
-    )
-
-
-def _trajectory_from_final_spline_integration(
-    integrator: MetamorphosisSplineIntegrator,
-    parameters: SplineParameters,
-    targets: torch.Tensor,
-    progress_callback: Callable[[int, int], None] | None = None,
-) -> SplineTrajectory:
-    """Build playground data from an optimizer's retained final integration."""
-    start = perf_counter()
-    integrator.materialize_diagnostic_stocks()
-    kernel = integrator.kernelOperator
-    with torch.no_grad():
-        endpoint_force, endpoint_velocity = _endpoint_fields(
-            integrator,
-            kernel,
-            parameters,
-        )
-        deformed_source, photometric_only = _decompose_image_nodes(
-            integrator.source,
-            integrator.field_stock,
-            integrator.residuals_stock,
-        )
-    images = integrator.image_stock.detach().contiguous()
-    force = torch.cat((integrator.force_stock, endpoint_force), dim=0).contiguous()
-    velocity = torch.cat(
-        (integrator.velocity_stock, endpoint_velocity),
-        dim=0,
-    ).contiguous()
-    momentum = integrator.momentum_stock.detach().contiguous()
-    acceleration = integrator.acceleration_stock.detach().contiguous()
-    jerk = integrator.jerk_stock.detach().contiguous()
-    vector_momentum = kernel.apply_operator(velocity).contiguous()
-    velocity_energy = (velocity * vector_momentum).sum(dim=(1, 2, 3))
-    field_energies = _scalar_field_energies(
-        images,
-        momentum,
-        force,
-        acceleration,
-        jerk,
-        parameters,
-    ) | {
-        "velocity": velocity_energy,
-        "vector_momentum": velocity_energy,
-    }
-    target_mse = _target_mse(images, targets.to(dtype=images.dtype))
-    if progress_callback is not None:
-        progress_callback(parameters.n_steps, parameters.n_steps)
-    return SplineTrajectory(
-        images=images,
-        deformed_source=deformed_source,
-        photometric_only=photometric_only,
-        momentum=momentum,
-        force=force,
-        acceleration=acceleration,
-        jerk=jerk,
-        velocity=velocity,
-        vector_momentum=vector_momentum,
-        field_energies=field_energies,
-        target_mse=target_mse,
+        target_mse=target_errors,
         elapsed_seconds=perf_counter() - start,
     )
 
@@ -1031,9 +698,9 @@ def run_classic(
     unsupported = [
         name
         for name, field in (
-            ("initial acceleration", setup.initial_acceleration),
-            ("initial jerk", setup.initial_jerk),
-            ("control jerk", setup.control_jerks),
+            ("initial acceleration", setup.variables.initial_acceleration),
+            ("initial jerk", setup.variables.initial_jerk),
+            ("control jerk", setup.variables.control_jerks),
         )
         if bool(torch.count_nonzero(field))
     ]
@@ -1045,14 +712,14 @@ def run_classic(
 
     parameters = setup.parameters
     run_device = resolve_device(device)
-    source = setup.source.to(run_device)
-    initial_momentum = setup.initial_momentum.to(run_device)
+    source = setup.images.source.to(run_device)
+    initial_momentum = setup.variables.initial_momentum.to(run_device)
     kernel = _kernel_operator(parameters)
     integrator = Metamorphosis_integrator(
         method="semiLagrangian",
         rho=parameters.rho,
         kernelOperator=kernel,
-        n_step=parameters.n_steps,
+        n_step=parameters.spline.steps,
         dx_convention="pixel",
         boundary="periodic",
     )
@@ -1088,7 +755,7 @@ def run_classic(
         )
         if parameters.rho == 0:
             velocity_device = source.new_zeros(
-                (parameters.n_steps + 1, 2) + tuple(source.shape[-2:])
+                (parameters.spline.steps + 1, 2) + tuple(source.shape[-2:])
             )
             vector_momentum_device = torch.zeros_like(velocity_device)
         else:
@@ -1123,8 +790,8 @@ def run_classic(
         "velocity": velocity_energy,
         "vector_momentum": velocity_energy,
     }
-    targets = setup.target.to(dtype=images.dtype)
-    target_mse = _target_mse(images, targets)
+    targets = setup.images.target.to(dtype=images.dtype)
+    target_errors = target_mse(images, targets)
     elapsed = perf_counter() - start
     return SplineTrajectory(
         images=images,
@@ -1137,6 +804,6 @@ def run_classic(
         velocity=velocity,
         vector_momentum=vector_momentum,
         field_energies=field_energies,
-        target_mse=target_mse,
+        target_mse=target_errors,
         elapsed_seconds=elapsed,
     )

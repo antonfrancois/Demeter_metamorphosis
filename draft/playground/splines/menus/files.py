@@ -7,7 +7,12 @@ from typing import Any
 from matplotlib.widgets import Button
 
 from ..styles import INK_COLOR, PANEL_COLOR
-from .common import build_modal_backdrop
+from .common import (
+    build_action_button,
+    build_close_button,
+    build_modal_backdrop,
+    set_widgets_visible,
+)
 
 
 @dataclass
@@ -31,10 +36,7 @@ class FileMenu:
         return [*self.buttons, self.close_button]
 
     def set_visible(self, visible: bool) -> None:
-        for axis in self.axes:
-            axis.set_visible(visible)
-        for widget in self.widgets:
-            widget.active = visible
+        set_widgets_visible(self.axes, self.widgets, visible)
 
 
 def build_file_menu(
@@ -68,24 +70,16 @@ def build_file_menu(
             else 0.33 + 0.18 * column
         )
         position = [left, 0.60 - 0.13 * row, 0.16, 0.075]
-        button = Button(
-            fig.add_axes(position, zorder=102),
-            label,
-            color="#edf3f2",
-            hovercolor="#d7e4e2",
-        )
-        button.label.set_fontsize(9)
+        button = build_action_button(fig, position, label)
         button.on_clicked(
             lambda _event, callback=action: callback()
         )
         buttons.append(button)
-    close = Button(
-        fig.add_axes([0.42, 0.10, 0.16, 0.055], zorder=102),
+    close = build_close_button(
+        fig,
+        [0.42, 0.10, 0.16, 0.055],
         "CLOSE  [L]",
-        color="#168a8a",
-        hovercolor="#20a3a3",
     )
-    close.label.set_color("white")
     menu = FileMenu(backdrop, panel, buttons, close)
     menu.set_visible(False)
     return menu

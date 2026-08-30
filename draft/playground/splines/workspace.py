@@ -17,15 +17,7 @@ class Workspace:
     images: tuple[Any, Any, Any]
     colorbar_axes: tuple[Any, Any, Any]
     footers: tuple[Any, Any, Any]
-    controls_heading: Any
-    parameter_button: Button
-    menu_button: Button
-    image_button: Button
-    file_button: Button
-    run_button: Button
-    register_button: Button
-    clear_button: Button
-    clear_all_button: Button
+    buttons: dict[str, Button]
     time_slider: Slider
     status_text: Any
 
@@ -92,7 +84,7 @@ def build_workspace(
         fontweight="bold",
         color=INK_COLOR,
     )
-    controls_heading = fig.text(
+    fig.text(
         0.89,
         0.86,
         "CONTROLS",
@@ -102,68 +94,61 @@ def build_workspace(
         color=INK_COLOR,
     )
 
-    parameter_button = Button(
-        fig.add_axes([0.805, 0.78, 0.17, 0.05]),
-        "PARAMETER MENU  [P]",
+    def sidebar_button(
+        y,
+        label,
+        *,
+        height=0.05,
         color=PANEL_COLOR,
         hovercolor="#d7e4e2",
-    )
-    menu_button = Button(
-        fig.add_axes([0.805, 0.715, 0.17, 0.05]),
-        "VIEW MENU  [V]",
-        color=PANEL_COLOR,
-        hovercolor="#d7e4e2",
-    )
-    image_button = Button(
-        fig.add_axes([0.805, 0.65, 0.17, 0.05]),
-        "IMAGES  [I]",
-        color=PANEL_COLOR,
-        hovercolor="#d7e4e2",
-    )
-    file_button = Button(
-        fig.add_axes([0.805, 0.585, 0.17, 0.05]),
-        "LOAD / SAVE  [L]",
-        color=PANEL_COLOR,
-        hovercolor="#d7e4e2",
-    )
+        emphasized=False,
+    ):
+        button = Button(
+            fig.add_axes([0.805, y, 0.17, height]),
+            label,
+            color=color,
+            hovercolor=hovercolor,
+        )
+        if emphasized:
+            button.label.set_color("white")
+            button.label.set_fontweight("bold")
+        else:
+            button.label.set_fontsize(9)
+        return button
+
+    parameter_button = sidebar_button(0.78, "PARAMETER MENU  [P]")
+    menu_button = sidebar_button(0.715, "VIEW MENU  [V]")
+    image_button = sidebar_button(0.65, "IMAGES  [I]")
+    file_button = sidebar_button(0.585, "LOAD / SAVE  [L]")
     model_label = "SPLINE" if model == "splines" else model.upper()
-    register_button = Button(
-        fig.add_axes([0.805, 0.48, 0.17, 0.07]),
+    register_button = sidebar_button(
+        0.48,
         f"REGISTER {model_label}",
+        height=0.07,
         color="#4267ac",
         hovercolor="#557bc2",
+        emphasized=True,
     )
-    register_button.label.set_color("white")
-    register_button.label.set_fontweight("bold")
-    run_button = Button(
-        fig.add_axes([0.805, 0.405, 0.17, 0.055]),
+    run_button = sidebar_button(
+        0.405,
         f"RUN {model_label}",
+        height=0.055,
         color="#168a8a",
         hovercolor="#20a3a3",
+        emphasized=True,
     )
-    run_button.label.set_color("white")
-    run_button.label.set_fontweight("bold")
-    clear_button = Button(
-        fig.add_axes([0.805, 0.32, 0.17, 0.055]),
+    clear_button = sidebar_button(
+        0.32,
         "CLEAR DISPLAYED FIELD",
-        color=PANEL_COLOR,
+        height=0.055,
         hovercolor="#f1c4b5",
     )
-    clear_all_button = Button(
-        fig.add_axes([0.805, 0.24, 0.17, 0.055]),
+    clear_all_button = sidebar_button(
+        0.24,
         "CLEAR ALL FIELDS",
-        color=PANEL_COLOR,
+        height=0.055,
         hovercolor="#efad99",
     )
-    for button in (
-        parameter_button,
-        menu_button,
-        image_button,
-        file_button,
-        clear_button,
-        clear_all_button,
-    ):
-        button.label.set_fontsize(9)
 
     time_slider = Slider(
         fig.add_axes([0.11, 0.105, 0.59, 0.028], facecolor=PANEL_COLOR),
@@ -201,15 +186,16 @@ def build_workspace(
         images,
         colorbar_axes,
         footers,
-        controls_heading,
-        parameter_button,
-        menu_button,
-        image_button,
-        file_button,
-        run_button,
-        register_button,
-        clear_button,
-        clear_all_button,
+        {
+            "parameters": parameter_button,
+            "view": menu_button,
+            "images": image_button,
+            "files": file_button,
+            "run": run_button,
+            "register": register_button,
+            "clear": clear_button,
+            "clear_all": clear_all_button,
+        },
         time_slider,
         status_text,
     )

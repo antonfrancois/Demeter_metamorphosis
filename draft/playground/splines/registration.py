@@ -34,31 +34,15 @@ class RegistrationResult:
     trajectory: SplineTrajectory
     loss_stock: Any
     elapsed_seconds: float
-    model: str
-
-    def payload(self) -> dict[str, Any]:
-        losses = self.loss_stock
-        if torch.is_tensor(losses):
-            losses = losses.detach().cpu().clone()
-        elif isinstance(losses, dict):
-            losses = {
-                name: value.detach().cpu().clone()
-                for name, value in losses.items()
-            }
-        return {
-            "model": self.model,
-            "elapsed_seconds": self.elapsed_seconds,
-            "loss_stock": losses,
-        }
 
     def loss_curves(self) -> dict[str, torch.Tensor]:
         """Return comparable displayed components for one optimization run."""
-        cost_cst = self.setup.parameters.cost_cst
-        if self.model == "splines":
+        cost = self.setup.parameters.spline.cost
+        if self.setup.parameters.model == "splines":
             if not isinstance(self.loss_stock, dict):
                 raise ValueError("spline loss history must be a dictionary")
             data = torch.as_tensor(self.loss_stock["data_loss"])
-            regularized = cost_cst * torch.as_tensor(
+            regularized = cost * torch.as_tensor(
                 self.loss_stock["acceleration_energy"]
             )
             full = torch.as_tensor(self.loss_stock["total_cost"])
@@ -74,7 +58,7 @@ class RegistrationResult:
             if losses.ndim != 2 or losses.shape[1] < 2:
                 raise ValueError("classic loss history must have component columns")
             data = losses[:, 0]
-            regularized = cost_cst * losses[:, 1:].sum(dim=1)
+            regularized = cost * losses[:, 1:].sum(dim=1)
             full = data + regularized
         return {
             "full": full.detach().cpu(),
@@ -86,24 +70,31 @@ class RegistrationResult:
     def regularized_loss_label(self) -> str:
         return (
             "Regularized acceleration cost"
-            if self.model == "splines"
+            if self.setup.parameters.model == "splines"
             else "Regularized momentum cost"
         )
 
 
 LBFGS_MAX_ITER = 5
 LBFGS_HISTORY_SIZE = 10
+SHOOTING_OPTIMIZER_OPTIONS = {
+    "safe_mode": False,
+    "integration_method": "semiLagrangian",
+    "optimizer_method": "LBFGS_torch",
+    "dx_convention": "pixel",
+    "lbfgs_max_iter": LBFGS_MAX_ITER,
+    "lbfgs_history_size": LBFGS_HISTORY_SIZE,
+    "boundary": "periodic",
+}
 
 
 def _zeroed_setup(setup: SplineSetup) -> SplineSetup:
-    zero = torch.zeros_like(setup.source)
     return replace(
         setup,
-        initial_momentum=zero,
-        initial_acceleration=zero.clone(),
-        initial_jerk=zero.clone(),
-        control_jerks=setup.source.new_zeros(
-            (setup.n_controls,) + tuple(setup.source.shape)
+        variables=SplinesVariables.zeros(
+            setup.images.source,
+            setup.n_controls,
+            requires_grad=False,
         ),
     )
 
@@ -115,7 +106,7 @@ def register_classic(
     progress_callback: Callable[[int, int], None] | None = None,
 ) -> RegistrationResult:
     """Optimize one classic endpoint registration from zero momentum."""
-    if setup.target.shape[0] != 1 or setup.target_times != (1.0,):
+    if setup.images.target.shape[0] != 1 or setup.images.target_times != (1.0,):
         raise ValueError("classic registration requires one target at time 1")
     run_device = resolve_device(device)
     start = perf_counter()
@@ -130,44 +121,30 @@ def register_classic(
             ),
             torch.empty(0),
             perf_counter() - start,
-            "classic",
         )
+    settings = setup.parameters.spline
     optimizer = metamorphosis(
-        source=setup.source.to(run_device),
-        target=setup.target.to(run_device),
+        source=setup.images.source.to(run_device),
+        target=setup.images.target.to(run_device),
         momentum_ini=0.0,
         rho=setup.parameters.rho,
-        cost_cst=setup.parameters.cost_cst,
-        integration_steps=setup.parameters.n_steps,
-        n_iter=setup.parameters.iterations,
-        grad_coef=setup.parameters.lbfgs_lr,
+        cost_cst=settings.cost,
+        integration_steps=settings.steps,
+        n_iter=settings.iterations,
+        grad_coef=settings.learning_rate,
         kernelOperator=_kernel_operator(setup.parameters),
-        safe_mode=False,
-        integration_method="semiLagrangian",
-        optimizer_method="LBFGS_torch",
-        dx_convention="pixel",
-        lbfgs_max_iter=LBFGS_MAX_ITER,
-        lbfgs_history_size=LBFGS_HISTORY_SIZE,
-        boundary="periodic",
+        **SHOOTING_OPTIMIZER_OPTIONS,
     )
     momenta = optimizer.optimized_momenta
     if not isinstance(momenta, Momenta) or momenta.momentum_I is None:
         raise RuntimeError("classic registration produced no momentum")
-    zero = torch.zeros_like(setup.source)
-    optimized_setup = SplineSetup(
-        source=setup.source,
-        target=setup.target,
-        initial_momentum=momenta.momentum_I.detach().cpu(),
-        initial_acceleration=zero,
-        initial_jerk=zero,
-        control_jerks=setup.source.new_zeros(
-            (setup.n_controls,) + tuple(setup.source.shape)
+    optimized_setup = _zeroed_setup(setup)
+    optimized_setup = replace(
+        optimized_setup,
+        variables=replace(
+            optimized_setup.variables,
+            initial_momentum=momenta.momentum_I.detach().cpu(),
         ),
-        parameters=setup.parameters,
-        source_path=setup.source_path,
-        target_path=setup.target_path,
-        target_times=setup.target_times,
-        target_paths=setup.target_paths,
     )
     trajectory = run_classic(
         optimized_setup,
@@ -179,7 +156,6 @@ def register_classic(
         trajectory,
         optimizer.loss_stock,
         perf_counter() - start,
-        "classic",
     )
 
 
@@ -193,36 +169,27 @@ def register_spline(
     if setup.parameters.kernel != "sobolev":
         raise ValueError("spline registration requires the Sobolev operator")
     run_device = resolve_device(device)
-    source = setup.source.to(run_device)
+    source = setup.images.source.to(run_device)
     start = perf_counter()
     variables_ini = SplinesVariables.zeros(
         source,
         n_controls=setup.n_controls,
         requires_grad=False,
     )
-    if setup.parameters.spline_initialization == "warm":
-        assert setup.parameters.regression_cost_cst is not None
-        assert setup.parameters.regression_n_steps is not None
-        assert setup.parameters.regression_iterations is not None
-        assert setup.parameters.regression_lbfgs_lr is not None
+    if setup.parameters.initialization == "warm":
+        settings = setup.parameters.regression
         regression = metamorphosis_regression(
             source=source,
-            target=setup.target.to(run_device),
-            target_times=setup.target_times,
+            target=setup.images.target.to(run_device),
+            target_times=setup.images.target_times,
             momentum_ini=0.0,
             rho=setup.parameters.rho,
-            cost_cst=setup.parameters.regression_cost_cst,
-            integration_steps=setup.parameters.regression_n_steps,
-            n_iter=setup.parameters.regression_iterations,
-            grad_coef=setup.parameters.regression_lbfgs_lr,
+            cost_cst=settings.cost,
+            integration_steps=settings.steps,
+            n_iter=settings.iterations,
+            grad_coef=settings.learning_rate,
             kernelOperator=_kernel_operator(setup.parameters),
-            safe_mode=False,
-            integration_method="semiLagrangian",
-            optimizer_method="LBFGS_torch",
-            dx_convention="pixel",
-            lbfgs_max_iter=LBFGS_MAX_ITER,
-            lbfgs_history_size=LBFGS_HISTORY_SIZE,
-            boundary="periodic",
+            **SHOOTING_OPTIMIZER_OPTIONS,
         )
         momenta = regression.optimized_momenta
         if not isinstance(momenta, Momenta) or momenta.momentum_I is None:
@@ -236,9 +203,13 @@ def register_spline(
     for name, value in variables_ini:
         value.requires_grad_(name == "control_jerks" or name in selected_fields)
     if not any(value.requires_grad and value.numel() for _, value in variables_ini):
+        optimized_setup = _zeroed_setup(setup)
         optimized_setup = replace(
-            _zeroed_setup(setup),
-            initial_momentum=variables_ini.initial_momentum.detach().cpu(),
+            optimized_setup,
+            variables=replace(
+                optimized_setup.variables,
+                initial_momentum=variables_ini.initial_momentum.detach().cpu(),
+            ),
         )
         return RegistrationResult(
             optimized_setup,
@@ -252,31 +223,30 @@ def register_spline(
                 for name in ("data_loss", "acceleration_energy", "total_cost")
             },
             perf_counter() - start,
-            "splines",
         )
 
     integrator = MetamorphosisSplineIntegrator(
         rho=setup.parameters.rho,
-        control_times=setup.parameters.mesh_control_times,
+        control_times=setup.parameters.projected_control_times,
         kernelOperator=_kernel_operator(setup.parameters),
-        n_step=setup.parameters.n_steps,
-        cg_eps=setup.parameters.cg_eps,
+        n_step=setup.parameters.spline.steps,
+        cg_eps=setup.parameters.cg_tolerance,
         dx_convention="pixel",
     )
     optimizer = MetamorphosisSplineOptimizer(
         source=source,
-        target=setup.target.to(run_device),
-        target_times=setup.target_times,
+        target=setup.images.target.to(run_device),
+        target_times=setup.images.target_times,
         geodesic=integrator,
-        cost_cst=setup.parameters.cost_cst,
+        cost_cst=setup.parameters.spline.cost,
         optimizer_method="LBFGS_torch",
         lbfgs_max_iter=LBFGS_MAX_ITER,
         lbfgs_history_size=LBFGS_HISTORY_SIZE,
     )
     optimizer.forward(
         variables_ini,
-        n_iter=setup.parameters.iterations,
-        grad_coef=setup.parameters.lbfgs_lr,
+        n_iter=setup.parameters.spline.iterations,
+        grad_coef=setup.parameters.spline.learning_rate,
     )
     variables = optimizer.optimized_variables
     if variables is None:
@@ -284,26 +254,16 @@ def register_spline(
     trajectory = _trajectory_from_final_spline_integration(
         optimizer.mp,
         setup.parameters,
-        setup.target,
+        setup.images.target,
         progress_callback=progress_callback,
     )
-    optimized_setup = SplineSetup(
-        source=setup.source,
-        target=setup.target,
-        initial_momentum=variables.initial_momentum,
-        initial_acceleration=variables.initial_acceleration,
-        initial_jerk=variables.initial_jerk,
-        control_jerks=variables.control_jerks,
-        parameters=setup.parameters,
-        source_path=setup.source_path,
-        target_path=setup.target_path,
-        target_times=setup.target_times,
-        target_paths=setup.target_paths,
+    optimized_setup = replace(
+        setup,
+        variables=variables.to("cpu").detach(),
     )
     return RegistrationResult(
         optimized_setup,
         trajectory,
         optimizer.loss_stock,
         perf_counter() - start,
-        "splines",
     )

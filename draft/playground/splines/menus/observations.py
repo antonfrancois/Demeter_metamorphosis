@@ -10,7 +10,12 @@ from typing import Any
 from matplotlib.widgets import Button
 
 from ..styles import INK_COLOR, PANEL_COLOR, TARGET_COLOR
-from .common import build_modal_backdrop
+from .common import (
+    build_action_button,
+    build_close_button,
+    build_modal_backdrop,
+    set_widgets_visible,
+)
 
 
 class ObservationTimeEditor:
@@ -25,7 +30,7 @@ class ObservationTimeEditor:
         self.names: tuple[str, ...] = ()
         self.times: tuple[float | None, ...] = ()
         self.selected = 0
-        self._connection = axis.figure.canvas.mpl_connect(
+        axis.figure.canvas.mpl_connect(
             "button_press_event", self._on_press
         )
 
@@ -156,11 +161,7 @@ class ObservationMenu:
         ]
 
     def set_visible(self, visible: bool) -> None:
-        for axis in self.axes:
-            axis.set_visible(visible)
-        for widget in self.widgets:
-            widget.active = visible
-        self.editor.set_visible(visible)
+        set_widgets_visible(self.axes, self.widgets, visible)
 
 
 def build_observation_menu(
@@ -196,26 +197,20 @@ def build_observation_menu(
         on_unplace=on_unplace,
     )
 
-    def button(position, label):
-        widget = Button(
-            fig.add_axes(position, zorder=102),
-            label,
-            color="#edf3f2",
-            hovercolor="#d7e4e2",
-        )
-        widget.label.set_fontsize(8.5)
-        return widget
-
-    load_directory = button([0.18, 0.20, 0.19, 0.06], "LOAD TIMED DIRECTORY")
-    add_images = button([0.405, 0.20, 0.19, 0.06], "ADD IMAGES")
-    remove = button([0.63, 0.20, 0.19, 0.06], "REMOVE SELECTED IMAGE")
-    close = Button(
-        fig.add_axes([0.42, 0.07, 0.16, 0.055], zorder=102),
-        "CLOSE  [I]",
-        color="#168a8a",
-        hovercolor="#20a3a3",
+    load_directory = build_action_button(
+        fig, [0.18, 0.20, 0.19, 0.06], "LOAD TIMED DIRECTORY", font_size=8.5
     )
-    close.label.set_color("white")
+    add_images = build_action_button(
+        fig, [0.405, 0.20, 0.19, 0.06], "ADD IMAGES", font_size=8.5
+    )
+    remove = build_action_button(
+        fig, [0.63, 0.20, 0.19, 0.06], "REMOVE SELECTED IMAGE", font_size=8.5
+    )
+    close = build_close_button(
+        fig,
+        [0.42, 0.07, 0.16, 0.055],
+        "CLOSE  [I]",
+    )
     menu = ObservationMenu(
         backdrop,
         panel,

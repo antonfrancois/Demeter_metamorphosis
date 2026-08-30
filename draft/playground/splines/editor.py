@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict, deque
+from contextlib import suppress
 from dataclasses import dataclass
 from time import perf_counter
 from typing import Any, Callable
@@ -76,16 +77,17 @@ class ScalarFieldEditor:
                 f"field must have shape {tuple(self.field.shape)}, got {tuple(value.shape)}"
             )
         self.cancel()
-        self.history[self.active_key].append(self.field)
-        self.fields[self.active_key] = value.detach().cpu().to(self.field).contiguous()
+        self._commit(
+            self.active_key,
+            value.detach().cpu().to(self.field).contiguous(),
+        )
         self.on_change("Field replaced. Press Run.")
 
     def clear(self) -> bool:
         self.cancel()
         if torch.count_nonzero(self.field) == 0:
             return False
-        self.history[self.active_key].append(self.field)
-        self.fields[self.active_key] = torch.zeros_like(self.field)
+        self._commit(self.active_key, torch.zeros_like(self.field))
         self.on_change("Field cleared. Press Run.")
         return True
 
@@ -95,8 +97,7 @@ class ScalarFieldEditor:
         for key, field in tuple(self.fields.items()):
             if torch.count_nonzero(field) == 0:
                 continue
-            self.history[key].append(field)
-            self.fields[key] = torch.zeros_like(field)
+            self._commit(key, torch.zeros_like(field))
             changed = True
         if changed:
             self.on_change("All fields cleared. Press Run.")
@@ -113,6 +114,10 @@ class ScalarFieldEditor:
 
     def clear_history(self) -> None:
         self.history.clear()
+
+    def _commit(self, key: str, value: torch.Tensor) -> None:
+        self.history[key].append(self.fields[key])
+        self.fields[key] = value
 
     def _toolbar_is_active(self) -> bool:
         toolbar = getattr(self.figure.canvas, "toolbar", None)
@@ -201,17 +206,14 @@ class ScalarFieldEditor:
                 stroke.sigma,
                 sign * stroke.amplitude,
             )
-        self.history[self.active_key].append(current)
-        self.fields[self.active_key] = updated
+        self._commit(self.active_key, updated)
         self.on_change("Field edited. Press Run.")
 
     def cancel(self) -> bool:
         if self.stroke is None:
             return False
         if self.stroke.artist is not None:
-            try:
+            with suppress(ValueError):
                 self.stroke.artist.remove()
-            except ValueError:
-                pass
         self.stroke = None
         return True

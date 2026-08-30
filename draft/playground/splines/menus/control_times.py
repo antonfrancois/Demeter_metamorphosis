@@ -5,6 +5,10 @@ from collections.abc import Callable
 from ..styles import DUAL_COLOR, INK_COLOR, PANEL_COLOR, TARGET_ACTIVE_COLOR
 
 
+def _ignore(*_args) -> None:
+    pass
+
+
 class ControlTimeEditor:
     """Select control times and optionally edit their mesh-snapped positions."""
 
@@ -26,16 +30,15 @@ class ControlTimeEditor:
         self.control_steps = tuple(control_steps)
         self.image_steps: tuple[int, ...] = ()
         self.selected_index = 0
-        self.on_add = on_add
-        self.on_move = on_move
-        self.on_remove = on_remove
+        self.on_add = on_add or _ignore
+        self.on_move = on_move or _ignore
+        self.on_remove = on_remove or _ignore
         self.on_select = on_select
-        self.on_message = on_message
+        self.on_message = on_message or _ignore
         self.editable = editable
         self.active = False
         self._drag_index: int | None = None
         self._drag_step: int | None = None
-        self._dirty = False
         self._marker_artists = []
         self._annotation = None
         canvas = axis.figure.canvas
@@ -71,18 +74,12 @@ class ControlTimeEditor:
         self.selected_index = selected
         self._drag_index = None
         self._drag_step = None
-        if self.axis.get_visible():
-            self._draw()
-        else:
-            self._dirty = True
+        self._draw()
 
     def set_visible(self, visible: bool) -> None:
         self.axis.set_visible(visible)
         self.active = visible
-        if visible and self._dirty:
-            self._draw()
         if not visible:
-            self._dirty = self._dirty or self._drag_index is not None
             self._drag_index = None
             self._drag_step = None
 
@@ -97,7 +94,6 @@ class ControlTimeEditor:
         visible = self.axis.get_visible()
         self.axis.clear()
         self.axis.set_visible(visible)
-        self._dirty = False
         self._marker_artists = []
         self._annotation = None
         self.axis.set_facecolor(PANEL_COLOR)
@@ -150,29 +146,22 @@ class ControlTimeEditor:
                 zorder=3,
             )
             self._marker_artists.append(artist)
+        annotation = "No control times"
+        color = "#63747a"
         if self.control_steps:
             step = self._display_steps()[self.selected_index]
-            self._annotation = self.axis.text(
-                0.5,
-                0.04,
-                rf"$\tau={step}/{self.n_steps}={step / self.n_steps:.3f}$",
-                transform=self.axis.transAxes,
-                ha="center",
-                va="bottom",
-                fontsize=9,
-                color=INK_COLOR,
-            )
-        else:
-            self._annotation = self.axis.text(
-                0.5,
-                0.04,
-                "No control times",
-                transform=self.axis.transAxes,
-                ha="center",
-                va="bottom",
-                fontsize=9,
-                color="#63747a",
-            )
+            annotation = rf"$\tau={step}/{self.n_steps}={step / self.n_steps:.3f}$"
+            color = INK_COLOR
+        self._annotation = self.axis.text(
+            0.5,
+            0.04,
+            annotation,
+            transform=self.axis.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            color=color,
+        )
         self.axis.figure.canvas.draw_idle()
 
     def _draw_drag_preview(self, index: int, step: int) -> None:
@@ -188,10 +177,10 @@ class ControlTimeEditor:
     def _nearest_index(self, event) -> int | None:
         if not self.control_steps or event.x is None:
             return None
-        distances = []
-        for step in self.control_steps:
-            x, _ = self.axis.transData.transform((step / self.n_steps, 0.55))
-            distances.append(abs(float(event.x) - float(x)))
+        distances = [
+            abs(float(event.x) - self.axis.transData.transform((step / self.n_steps, 0.55))[0])
+            for step in self.control_steps
+        ]
         index = min(range(len(distances)), key=distances.__getitem__)
         return index if distances[index] <= 12 else None
 
@@ -214,7 +203,7 @@ class ControlTimeEditor:
             return
         nearest = self._nearest_index(event)
         if event.button == 3:
-            if self.editable and nearest is not None and self.on_remove is not None:
+            if self.editable and nearest is not None:
                 self.on_remove(nearest)
             return
         if event.button != 1:
@@ -231,11 +220,10 @@ class ControlTimeEditor:
             return
         step = self._snapped_step(event.xdata)
         if step is None:
-            if self.on_message is not None:
-                self.on_message("At least three steps are required for a control time.")
+            self.on_message("At least three steps are required for a control time.")
         elif step in self.control_steps:
             self.on_select(self.control_steps.index(step))
-        elif self.on_add is not None:
+        else:
             self.on_add(step / self.n_steps)
 
     def _on_motion(self, event) -> None:
@@ -264,7 +252,6 @@ class ControlTimeEditor:
         if (
             step is not None
             and step != self.control_steps[index]
-            and self.on_move is not None
         ):
             self.on_move(index, step / self.n_steps)
         else:

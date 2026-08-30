@@ -1,9 +1,38 @@
 """Shared Matplotlib modal helpers."""
 
 from matplotlib.colors import to_rgba
-from matplotlib.widgets import RadioButtons
+from matplotlib.widgets import Button, RadioButtons
 
 from ..styles import INK_COLOR
+
+
+def build_action_button(fig, position, label: str, *, font_size: float = 9) -> Button:
+    button = Button(
+        fig.add_axes(position, zorder=102),
+        label,
+        color="#edf3f2",
+        hovercolor="#d7e4e2",
+    )
+    button.label.set_fontsize(font_size)
+    return button
+
+
+def build_close_button(fig, position, label: str) -> Button:
+    button = Button(
+        fig.add_axes(position, zorder=102),
+        label,
+        color="#168a8a",
+        hovercolor="#20a3a3",
+    )
+    button.label.set_color("white")
+    return button
+
+
+def set_widgets_visible(axes, widgets, visible: bool) -> None:
+    for axis in axes:
+        axis.set_visible(visible)
+    for widget in widgets:
+        widget.active = visible
 
 
 def build_modal_backdrop(fig, title: str, subtitle: str):
@@ -59,24 +88,12 @@ def set_radio_visible(radio: RadioButtons, visible: bool) -> None:
     radio.ax.set_visible(visible)
     for label in radio.labels:
         label.set_visible(visible)
-    buttons = getattr(radio, "_buttons", None)
-    if buttons is not None:
-        buttons.set_visible(visible)
-    else:
-        for circle in getattr(radio, "circles", ()):
-            circle.set_visible(visible)
+    radio._buttons.set_visible(visible)
 
 
 def set_radio_active_color(radio: RadioButtons, index: int, color: str) -> None:
     radio.activecolor = color
-    buttons = getattr(radio, "_buttons", None)
-    if buttons is not None:
-        facecolors = buttons.get_facecolors()
-        facecolors[:, 3] = 0
-        facecolors[index] = to_rgba(color)
-        buttons.set_facecolors(facecolors)
-        return
-    for circle_index, circle in enumerate(getattr(radio, "circles", ())):
-        circle.set_facecolor(
-            color if circle_index == index else radio.ax.get_facecolor()
-        )
+    facecolors = radio._buttons.get_facecolors()
+    facecolors[:, 3] = 0
+    facecolors[index] = to_rgba(color)
+    radio._buttons.set_facecolors(facecolors)

@@ -1,5 +1,6 @@
 """Panel rendering and field-overlay primitives for the spline playground."""
 
+from contextlib import suppress
 from typing import Any
 
 from matplotlib import colormaps
@@ -57,6 +58,44 @@ def field_color(field_class: str) -> str:
     return PRIMAL_COLOR if field_class == "primal" else DUAL_COLOR
 
 
+def _current_title(
+    cache: SplineTrajectory | None,
+    image_mode: str,
+    current_field: str | None,
+    index: int,
+    show_image: bool,
+) -> str:
+    if cache is None:
+        return "Current image (run required)" if show_image else "Current field (run required)"
+    if not show_image:
+        return "No field overlay" if current_field is None else rf"${FIELD_SYMBOL[current_field]}$"
+    title = {
+        "full": rf"Current image $I_{{{index}}}$",
+        "deformation": rf"Deformation only $I_{{D,{index}}}$",
+        "photometric": rf"Photometric only $I_{{\mathrm{{phot}},{index}}}$",
+    }[image_mode]
+    if current_field is not None:
+        title += rf" + ${FIELD_SYMBOL[current_field]}$"
+    return title
+
+
+def _set_current_image(
+    artist,
+    current: torch.Tensor,
+    *,
+    show_image: bool,
+    photometric: bool,
+) -> None:
+    artist.set_data(current[0] if show_image else torch.zeros_like(current[0]))
+    artist.set_cmap("gray")
+    if show_image and photometric:
+        lower = min(0.0, float(torch.quantile(current.flatten(), 0.01)))
+        upper = max(1.0, float(torch.quantile(current.flatten(), 0.99)))
+        artist.set_clim(lower, upper)
+    else:
+        artist.set_clim(0, 1)
+
+
 def latex_number(value: float) -> str:
     if np.isinf(value):
         return r"\infty"
@@ -91,10 +130,8 @@ class SplineRenderer:
     def clear_dynamic(self, axis: Any) -> None:
         self.hide_colorbar(axis)
         for artist in self.dynamic_artists[axis]:
-            try:
+            with suppress(ValueError):
                 artist.remove()
-            except ValueError:
-                pass
         self.dynamic_artists[axis].clear()
 
     def hide_colorbar(self, axis: Any) -> None:
@@ -236,13 +273,14 @@ class SplineRenderer:
         control_index: int,
         parameters: SplineParameters,
     ) -> str:
-        if input_kind == "initial_momentum":
-            return r"Source + initial momentum $p_0$"
-        if input_kind == "initial_acceleration":
-            return r"Source + initial acceleration $a_0$"
-        if input_kind == "initial_jerk":
-            return r"Source + initial jerk $r_0$"
-        time = parameters.mesh_control_times[control_index]
+        title = {
+            "initial_momentum": r"Source + initial momentum $p_0$",
+            "initial_acceleration": r"Source + initial acceleration $a_0$",
+            "initial_jerk": r"Source + initial jerk $r_0$",
+        }.get(input_kind)
+        if title is not None:
+            return title
+        time = parameters.projected_control_times[control_index]
         return rf"Source + $r({time:.3g}^+)$"
 
     def render_source(
@@ -274,27 +312,22 @@ class SplineRenderer:
             fontsize=11,
             pad=9,
         )
-        if input_kind == "initial_momentum":
-            expression = r"\Vert p_0\Vert_{I_0}^2"
-            value = 0.0 if torch.count_nonzero(field) == 0 else metric_squared_norm(
-                source, field, parameters
-            )
-        elif input_kind == "initial_acceleration":
-            expression = r"\Vert a_0\Vert_{I_0}^2"
-            value = 0.0 if torch.count_nonzero(field) == 0 else metric_squared_norm(
-                source, field, parameters
-            )
-        elif input_kind == "initial_jerk":
-            value = 0.0 if torch.count_nonzero(field) == 0 else cometric_squared_norm(
-                source, field, parameters
-            )
-            expression = r"\Vert r_0\Vert_{I_0^*}^2"
-        else:
-            value = 0.0 if torch.count_nonzero(field) == 0 else cometric_squared_norm(
-                source, field, parameters
-            )
-            time = parameters.mesh_control_times[control_index]
+        expression = {
+            "initial_momentum": r"\Vert p_0\Vert_{I_0}^2",
+            "initial_acceleration": r"\Vert a_0\Vert_{I_0}^2",
+            "initial_jerk": r"\Vert r_0\Vert_{I_0^*}^2",
+        }.get(input_kind)
+        if expression is None:
+            time = parameters.projected_control_times[control_index]
             expression = rf"\Vert r({time:.3g}^+)\Vert_{{I_0^*}}^2"
+        norm = (
+            metric_squared_norm
+            if input_kind in ("initial_momentum", "initial_acceleration")
+            else cometric_squared_norm
+        )
+        value = 0.0 if torch.count_nonzero(field) == 0 else norm(
+            source, field, parameters
+        )
         self.source_footer.set_text(rf"${expression} = {latex_number(value)}$")
 
     def render_current(
@@ -309,34 +342,13 @@ class SplineRenderer:
         self.clear_dynamic(self.current_ax)
         self.configure_image_axis(self.current_ax, source)
         current = self.current_image_tensor(source, cache, image_mode, index)
-        self.current_image.set_data(
-            current[0] if show_image else torch.zeros_like(current[0])
+        _set_current_image(
+            self.current_image,
+            current,
+            show_image=show_image,
+            photometric=image_mode == "photometric" and cache is not None,
         )
-        self.current_image.set_cmap("gray")
-        if not show_image:
-            self.current_image.set_clim(0, 1)
-        elif image_mode == "photometric" and cache is not None:
-            lower = min(0.0, float(torch.quantile(current.flatten(), 0.01)))
-            upper = max(1.0, float(torch.quantile(current.flatten(), 0.99)))
-            self.current_image.set_clim(lower, upper)
-        else:
-            self.current_image.set_clim(0, 1)
-
-        if not show_image:
-            if cache is None:
-                title = "Current field (run required)"
-            elif current_field is None:
-                title = "No field overlay"
-            else:
-                title = rf"${FIELD_SYMBOL[current_field]}$"
-        elif cache is None:
-            title = "Current image (run required)"
-        else:
-            title = {
-                "full": rf"Current image $I_{{{index}}}$",
-                "deformation": rf"Deformation only $I_{{D,{index}}}$",
-                "photometric": rf"Photometric only $I_{{\mathrm{{phot}},{index}}}$",
-            }[image_mode]
+        title = _current_title(cache, image_mode, current_field, index, show_image)
         factor = 1.0
         if cache is not None and current_field is not None:
             factor = self.plot_field(
@@ -344,8 +356,6 @@ class SplineRenderer:
                 cache.field(current_field)[index],
                 FIELD_CLASS[current_field],
             )
-            if show_image:
-                title += rf" + ${FIELD_SYMBOL[current_field]}$"
         elif cache is None:
             message = self.current_ax.text(
                 0.5,
@@ -394,6 +404,7 @@ class SplineRenderer:
         target_mode: str,
         index: int,
         target_index: int,
+        target_number: int,
         target_count: int,
         target_time: float | None,
         loss_curves: dict[str, torch.Tensor] | None = None,
@@ -401,7 +412,6 @@ class SplineRenderer:
         regularized_loss_label: str = "Regularized cost",
     ) -> None:
         self.clear_dynamic(self.target_ax)
-        displayed = self.current_image_tensor(source, cache, image_mode, index)
         if target_mode == "Global loss":
             self.target_image.set_visible(False)
             self.target_ax.set_axis_on()
@@ -463,6 +473,7 @@ class SplineRenderer:
             self.target_footer.set_text("")
             return
 
+        displayed = self.current_image_tensor(source, cache, image_mode, index)
         self.target_image.set_visible(True)
         self.configure_image_axis(self.target_ax, source)
         if target_mode == "Target":
@@ -470,7 +481,7 @@ class SplineRenderer:
             self.target_image.set_cmap("gray")
             self.target_image.set_clim(0, 1)
             location = "unplaced" if target_time is None else f"t={target_time:.3g}"
-            title = f"Target {target_index + 1}/{target_count} at {location}"
+            title = f"Target {target_number}/{target_count} at {location}"
         else:
             error = (displayed - target[0]).abs()[0]
             maximum = max(float(torch.quantile(error.flatten(), 0.99)), 1e-8)
@@ -480,7 +491,7 @@ class SplineRenderer:
             self.show_colorbar(self.target_ax, self.target_image)
             symbol = self.displayed_image_symbol(cache, image_mode)
             title = (
-                rf"Absolute error $|{symbol}-I_{{{target_index + 1}}}|$"
+                rf"Absolute error $|{symbol}-I_{{{target_number}}}|$"
             )
         self.target_ax.set_title(title, color=INK_COLOR, fontsize=11, pad=9)
 

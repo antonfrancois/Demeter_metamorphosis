@@ -1,14 +1,5 @@
 """Interactive tools for exploring 2D metamorphosis splines."""
 
-from pathlib import Path
-import sys
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-SOURCE_ROOT = str(PROJECT_ROOT / "src")
-if SOURCE_ROOT not in sys.path:
-    sys.path.insert(0, SOURCE_ROOT)
-
 from .core import (
     SplineParameters,
     SplineSetup,

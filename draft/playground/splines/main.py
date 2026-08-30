@@ -4,19 +4,8 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import replace
-from pathlib import Path
-import sys
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-if __package__ in (None, ""):
-    sys.path.insert(0, str(PROJECT_ROOT))
-SOURCE_ROOT = str(PROJECT_ROOT / "src")
-if SOURCE_ROOT not in sys.path:
-    sys.path.insert(0, SOURCE_ROOT)
-
-from draft.playground.splines.app import SplinePlayground
-from draft.playground.splines.images import (
+from .app import SplinePlayground
+from .images import (
     DEFAULT_SOURCE,
     DEFAULT_TARGET,
     load_image,
@@ -24,7 +13,7 @@ from draft.playground.splines.images import (
 import matplotlib.pyplot as plt
 
 from demeter.utils.spline_data import load_timed_image_directory
-from draft.playground.splines.core import (
+from .core import (
     SplineParameters,
     SplineSetup,
     load_scalar_field,
@@ -58,7 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--kernel", choices=("sobolev", "gaussian"))
     parser.add_argument("--sigma", type=float)
     parser.add_argument("--rho", type=float)
-    parser.add_argument("--cg-eps", type=float)
+    parser.add_argument("--cg-tolerance", type=float)
     parser.add_argument("--model", choices=("classic", "splines"))
     parser.add_argument("--cost-cst", type=float)
     parser.add_argument("--iterations", type=int)
@@ -82,41 +71,52 @@ def _parameter_overrides(
     args: argparse.Namespace,
     parameters: SplineParameters,
 ) -> SplineParameters:
-    values = parameters.as_dict()
-    for argument, name in (
-        (args.alpha, "alpha"),
-        (args.beta, "beta"),
-        (args.gamma, "gamma"),
-        (args.rho, "rho"),
-        (args.cg_eps, "cg_eps"),
-        (getattr(args, "kernel", None), "kernel"),
-        (getattr(args, "sigma", None), "sigma"),
-        (getattr(args, "model", None), "model"),
-        (getattr(args, "cost_cst", None), "cost_cst"),
-        (getattr(args, "iterations", None), "iterations"),
-        (getattr(args, "lbfgs_lr", None), "lbfgs_lr"),
-    ):
-        if argument is not None:
-            values[name] = argument
-    if args.steps is not None:
-        values["n_steps"] = args.steps
-    if args.control_steps is not None:
-        control_steps = tuple(args.control_steps)
-        values["control_steps"] = control_steps
-        values["control_times"] = tuple(
-            step / values["n_steps"] for step in control_steps
+    physical = {
+        name: value
+        for name in (
+            "alpha",
+            "beta",
+            "gamma",
+            "rho",
+            "cg_tolerance",
+            "kernel",
+            "sigma",
+            "model",
         )
-    if values.get("kernel") == "gaussian" and getattr(args, "model", None) is None:
-        values["model"] = "classic"
-    return SplineParameters.from_dict(values)
+        if (value := getattr(args, name)) is not None
+    }
+    solver = replace(
+        parameters.spline,
+        **{
+            name: value
+            for name, value in (
+                ("steps", args.steps),
+                ("cost", args.cost_cst),
+                ("iterations", args.iterations),
+                ("learning_rate", args.lbfgs_lr),
+            )
+            if value is not None
+        },
+    )
+    if physical.get("kernel") == "gaussian" and "model" not in physical:
+        physical["model"] = "classic"
+    control_times = parameters.control_times
+    if args.control_steps is not None:
+        control_times = tuple(step / solver.steps for step in args.control_steps)
+    return replace(
+        parameters,
+        **physical,
+        spline=solver,
+        control_times=control_times,
+    )
 
 
 def _replace_parameters(
     setup: SplineSetup,
     parameters: SplineParameters,
 ) -> SplineSetup:
-    controls = setup.source.new_zeros(
-        (len(parameters.control_steps),) + tuple(setup.source.shape)
+    controls = setup.images.source.new_zeros(
+        (len(parameters.control_times),) + tuple(setup.images.source.shape)
     )
     for index, time in enumerate(parameters.control_times):
         old_index = next(
@@ -128,15 +128,19 @@ def _replace_parameters(
             None,
         )
         if old_index is not None:
-            controls[index] = setup.control_jerks[old_index]
-    return replace(setup, parameters=parameters, control_jerks=controls)
+            controls[index] = setup.variables.control_jerks[old_index]
+    return replace(
+        setup,
+        parameters=parameters,
+        variables=replace(setup.variables, control_jerks=controls),
+    )
 
 
-def main(argv: list[str] | None = None) -> SplinePlayground:
-    parser = build_parser()
-    args = parser.parse_args(argv)
+def _initial_setup(
+    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+) -> SplineSetup:
     size = tuple(args.size) if args.size else None
-
     if args.setup:
         if args.source or args.target or size is not None:
             parser.error("source, target, and --size cannot be combined with --setup")
@@ -154,7 +158,6 @@ def main(argv: list[str] | None = None) -> SplinePlayground:
             batch.target,
             parameters,
             source_path=batch.source_path,
-            target_path=batch.target_paths[-1],
             target_times=batch.target_times,
             target_paths=batch.target_paths,
         )
@@ -164,55 +167,51 @@ def main(argv: list[str] | None = None) -> SplinePlayground:
             args.target or DEFAULT_TARGET,
             tuple(source.shape[-2:]),
         )
-        n_steps = args.steps if args.steps is not None else 16
-        control_steps = tuple(args.control_steps or ())
-        parameters = SplineParameters(
-            alpha=args.alpha if args.alpha is not None else 0.2,
-            beta=args.beta if args.beta is not None else 0.2,
-            gamma=args.gamma if args.gamma is not None else 0.001,
-            kernel=args.kernel if args.kernel is not None else "sobolev",
-            sigma=args.sigma if args.sigma is not None else 3.0,
-            rho=args.rho if args.rho is not None else 0.5,
-            cg_eps=args.cg_eps if args.cg_eps is not None else 1e-5,
-            n_steps=n_steps,
-            control_steps=control_steps,
-            model=(
-                args.model
-                if args.model is not None
-                else ("classic" if args.kernel == "gaussian" else "splines")
-            ),
-            cost_cst=args.cost_cst if args.cost_cst is not None else 0.01,
-            iterations=args.iterations if args.iterations is not None else 10,
-            lbfgs_lr=args.lbfgs_lr,
-        )
+        parameters = _parameter_overrides(args, SplineParameters())
         setup = zero_setup(
             source,
             target,
             parameters,
             source_path=source_path,
-            target_path=target_path,
+            target_paths=(target_path,),
         )
+    return setup
 
-    if args.field:
-        field = load_scalar_field(
-            args.field,
-            setup.size,
-            dtype=setup.source.dtype,
+
+def _apply_initial_field(
+    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+    setup: SplineSetup,
+) -> None:
+    if not args.field:
+        return
+    field = load_scalar_field(
+        args.field,
+        setup.size,
+        dtype=setup.images.source.dtype,
+    )
+    field_attribute = {
+        "momentum": "initial_momentum",
+        "acceleration": "initial_acceleration",
+        "jerk": "initial_jerk",
+    }.get(args.field_kind)
+    if field_attribute is not None:
+        setattr(setup.variables, field_attribute, field)
+        return
+    if setup.n_controls == 0:
+        parser.error("--field-kind control requires at least one control node")
+    if not 0 <= args.control_index < setup.n_controls:
+        parser.error(
+            f"--control-index must be between 0 and {setup.n_controls - 1}"
         )
-        if args.field_kind == "momentum":
-            setup.initial_momentum = field
-        elif args.field_kind == "acceleration":
-            setup.initial_acceleration = field
-        elif args.field_kind == "jerk":
-            setup.initial_jerk = field
-        else:
-            if setup.n_controls == 0:
-                parser.error("--field-kind control requires at least one control node")
-            if not 0 <= args.control_index < setup.n_controls:
-                parser.error(
-                    f"--control-index must be between 0 and {setup.n_controls - 1}"
-                )
-            setup.control_jerks[args.control_index] = field
+    setup.variables.control_jerks[args.control_index] = field
+
+
+def main(argv: list[str] | None = None) -> SplinePlayground:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    setup = _initial_setup(args, parser)
+    _apply_initial_field(args, parser, setup)
 
     app = SplinePlayground(
         setup,
