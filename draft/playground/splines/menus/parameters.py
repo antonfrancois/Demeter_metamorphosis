@@ -101,7 +101,9 @@ class ParameterMenu:
                 )
                 if active
             ),
-            initialization=self.radios["initialization"].value_selected.lower(),
+            initialization={"Cold": "cold", "Geodesic": "warm"}[
+                self.radios["initialization"].value_selected
+            ],
             spline=replace(
                 base.spline,
                 cost=logarithmic("spline_cost"),
@@ -137,9 +139,8 @@ class ParameterMenu:
         for name, value in values.items():
             slider = self.sliders[name]
             displayed = np.log10(value) if name in LOG_SLIDERS else value
-            padding = 1 if name in LOG_SLIDERS else max(1, abs(displayed) * 0.5)
-            slider.valmin = min(slider.valmin, displayed - padding)
-            slider.valmax = max(slider.valmax, displayed + padding)
+            slider.valmin = min(slider.valmin, displayed)
+            slider.valmax = max(slider.valmax, displayed)
             slider.ax.set_xlim(slider.valmin, slider.valmax)
             slider.set_val(displayed)
             self._format(name)
@@ -229,9 +230,16 @@ def _radio(fig, position, labels, active=0) -> RadioButtons:
         active=active,
         activecolor="#168a8a",
         layout=(1, len(labels)),
+        label_props={"fontsize": [9]},
     )
+    offsets = radio._buttons.get_offsets()
+    renderer = fig.canvas.get_renderer()
+    to_axes = radio.ax.transAxes.inverted()
+    right = max(to_axes.transform(label.get_window_extent(renderer))[1, 0] for label in radio.labels)
+    shift = 0.5 - (offsets[0, 0] + right) / 2
+    radio._buttons.set_offsets(offsets + (shift, 0))
     for label in radio.labels:
-        label.set_fontsize(9)
+        label.set_x(label.get_position()[0] + shift)
     return radio
 
 
@@ -251,11 +259,12 @@ def _annotate_panels(panels: dict[str, Any]) -> None:
     _panel_text(model, 0.5, 0.01, "Left-click add/select, drag move, right-click remove")
 
     solver = panels["solver"]
-    for x, label in ((0.36, "SPLINE"), (0.80, "WARM START")):
+    for x, label in ((0.36, "SPLINE"), (0.80, "GEODESIC INITIALIZATION")):
         _panel_text(solver, x, 0.78, label, fontweight="bold")
     for y, label in zip((0.69, 0.56, 0.43, 0.30), ("cost", "steps", "iterations", "learning rate")):
         _panel_text(solver, 0.03, y, label, ha="left", fontsize=8)
-    _panel_text(solver, 0.5, 0.17, "COMPUTE DEVICE", fontsize=9, fontweight="bold")
+    for x, label in ((0.265, "INITIALIZATION"), (0.735, "COMPUTE DEVICE")):
+        _panel_text(solver, x, 0.17, label, fontsize=9, fontweight="bold")
 
 
 def _build_radios(fig, parameters: SplineParameters, device: str) -> dict[str, RadioButtons]:
@@ -263,8 +272,8 @@ def _build_radios(fig, parameters: SplineParameters, device: str) -> dict[str, R
     specs = {
         "model": ([0.12, 0.755, 0.40, 0.05], ("Classic", "Spline"), int(parameters.model != "classic")),
         "kernel": ([0.12, 0.565, 0.40, 0.045], ("Sobolev", "Gaussian"), int(parameters.kernel != "sobolev")),
-        "initialization": ([0.63, 0.405, 0.135, 0.052], ("Cold", "Warm"), int(parameters.initialization != "cold")),
-        "device": ([0.70, 0.08, 0.17, 0.055], device_names, device_names.index("CUDA" if device.startswith("cuda") else "CPU")),
+        "initialization": ([0.62, 0.08, 0.14, 0.055], ("Cold", "Geodesic"), int(parameters.initialization != "cold")),
+        "device": ([0.78, 0.08, 0.14, 0.055], device_names, device_names.index("CUDA" if device.startswith("cuda") else "CPU")),
     }
     return {name: _radio(fig, *spec) for name, spec in specs.items()}
 

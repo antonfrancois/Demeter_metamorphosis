@@ -651,7 +651,7 @@ class SplinePlayground:
     def _on_spline_initialization_change(self, label: str) -> None:
         if self._syncing_widgets:
             return
-        if label == "Warm":
+        if label == "Geodesic":
             try:
                 self._use_minimum_regression_mesh()
             except ValueError as error:
@@ -1183,7 +1183,7 @@ class SplinePlayground:
     def _run_registration(self, model: str, runner) -> None:
         model_label = model
         if model == "splines":
-            initialization = self._current_parameters().initialization
+            initialization = {"cold": "cold", "warm": "geodesic"}[self._current_parameters().initialization]
             model_label = f"{initialization} spline"
         if not self._begin_operation(f"Optimizing {model_label} from the images..."):
             return

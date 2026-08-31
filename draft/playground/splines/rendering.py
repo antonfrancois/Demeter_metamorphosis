@@ -125,6 +125,7 @@ class SplineRenderer:
         self.colorbars: dict[Any, Any] = {}
         self.colorbar_visibility = dict.fromkeys(axes, False)
         self.source_footer, self.current_footer, self.target_footer = footers
+        self.footers = dict(zip(axes, footers, strict=True))
         self.dynamic_artists = dynamic_artists
         self.vector_spacing = DEFAULT_VECTOR_DISPLAY_SPACING
 
@@ -138,6 +139,7 @@ class SplineRenderer:
     def hide_colorbar(self, axis: Any) -> None:
         self.colorbar_visibility[axis] = False
         self.colorbar_axes[axis].set_visible(False)
+        self.footers[axis].set_y(-0.08)
 
     def show_colorbar(self, axis: Any, mappable: Any) -> None:
         colorbar = self.colorbars.get(axis)
@@ -162,6 +164,7 @@ class SplineRenderer:
         colorbar.outline.set_edgecolor(INK_COLOR)
         self.colorbar_visibility[axis] = True
         self.colorbar_axes[axis].set_visible(True)
+        self.footers[axis].set_y(-0.14)
 
     def set_colorbars_visible(self, visible: bool) -> None:
         for axis, colorbar_axis in self.colorbar_axes.items():

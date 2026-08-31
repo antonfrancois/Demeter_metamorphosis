@@ -737,6 +737,7 @@ def test_scalar_and_error_colorbars_precede_panel_footers():
 
     source_colorbar = app.renderer.colorbars[app.source_ax]
     assert app.source_colorbar_ax.get_visible()
+    assert app.source_footer.get_position()[1] == pytest.approx(-0.14)
     assert source_colorbar.orientation == "horizontal"
     assert source_colorbar.mappable.get_cmap().name == DUAL_CMAP.name
 
@@ -748,6 +749,7 @@ def test_scalar_and_error_colorbars_precede_panel_footers():
     app.overlay_radios["target_mode"].set_active(1)
     target_colorbar = app.renderer.colorbars[app.target_ax]
     assert app.target_colorbar_ax.get_visible()
+    assert app.target_footer.get_position()[1] == pytest.approx(-0.14)
     assert target_colorbar.orientation == "horizontal"
     assert target_colorbar.mappable.get_cmap().name == "magma"
     assert target_colorbar.mappable.get_clim()[0] == 0
@@ -773,8 +775,10 @@ def test_scalar_and_error_colorbars_precede_panel_footers():
 
     app.overlay_radios["target_mode"].set_active(0)
     assert not app.target_colorbar_ax.get_visible()
+    assert app.target_footer.get_position()[1] == pytest.approx(-0.08)
     app.overlay_radios["target_mode"].set_active(2)
     assert not app.target_colorbar_ax.get_visible()
+    assert app.target_footer.get_position()[1] == pytest.approx(-0.08)
     plt.close(app.fig)
 
 
@@ -793,7 +797,7 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.radios["initialization"].value_selected == "Cold"
     assert [label.get_text() for label in app.radios["initialization"].labels] == [
         "Cold",
-        "Warm",
+        "Geodesic",
     ]
     assert all(not slider.ax.get_visible() for slider in app.sliders.values())
     assert [
@@ -885,6 +889,12 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.parameters.kernel == "sobolev"
     assert app.radios["device"].active
     assert app.radios["device"].value_selected == "CPU"
+    assert (
+        app.radios["initialization"].ax.get_position().x1
+        < app.radios["device"].ax.get_position().x0
+    )
+    solver_labels = {text.get_text() for text in app.parameter_menu.panels["solver"].texts}
+    assert {"GEODESIC INITIALIZATION", "INITIALIZATION", "COMPUTE DEVICE"} <= solver_labels
     assert not any(button.active for button in app.file_menu.buttons)
     assert not app.source_ax.get_visible()
     app.fig.canvas.grab_mouse(app.sliders["rho"].ax)
@@ -944,8 +954,11 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert app.sliders["spline_learning_rate"].val == pytest.approx(np.log10(0.04))
     assert app.sliders["spline_learning_rate"].valtext.get_text() == "4e-2"
     assert app.parameter_menu.optimized_fields.get_status() == [False, True, False]
-    assert app.radios["initialization"].value_selected == "Warm"
+    assert app.radios["initialization"].value_selected == "Geodesic"
     assert app.parameters.initialization == "warm"
+    assert app.sliders["alpha"].valmin == 0
+    assert app.sliders["beta"].valmin == 0
+    assert app.sliders["rho"].valmin == 0
     assert app.sliders["regression_cost"].val == pytest.approx(np.log10(0.02))
     assert app.sliders["regression_steps"].val == 6
     assert app.sliders["regression_iterations"].val == 5
@@ -1067,7 +1080,7 @@ def test_warm_initialization_uses_minimum_mesh_for_controls_and_observations():
     app.radios["initialization"].set_active(1)
 
     assert app.parameters.initialization == "warm"
-    assert app.radios["initialization"].value_selected == "Warm"
+    assert app.radios["initialization"].value_selected == "Geodesic"
     assert app.parameters.regression.steps == 8
     assert app.sliders["regression_steps"].val == 8
     assert all(
