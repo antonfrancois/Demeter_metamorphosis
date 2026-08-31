@@ -1595,7 +1595,8 @@ class SplinePlayground:
             chooser = lambda: self.output_path
         else:
             chooser = lambda: self._choose_file(purpose, initial_name=initial_name)
-        self.set_modal(None)
+        if purpose != "add_images":
+            self.set_modal(None)
         self._choose_and_apply(
             chooser,
             actions[purpose],

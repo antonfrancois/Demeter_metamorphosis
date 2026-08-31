@@ -1577,7 +1577,9 @@ def test_selected_field_and_setup_only_project_round_trip(tmp_path):
     plt.close(app.fig)
 
 
-def test_model_actions_timed_target_selection_and_manual_placement(tmp_path):
+def test_model_actions_timed_target_selection_and_manual_placement(
+    tmp_path, monkeypatch
+):
     source = torch.zeros(1, 1, 6, 7)
     targets = torch.cat((torch.full_like(source, 0.25), torch.ones_like(source)))
     setup = zero_setup(
@@ -1613,7 +1615,14 @@ def test_model_actions_timed_target_selection_and_manual_placement(tmp_path):
     extra_path = tmp_path / "early.png"
     plt.imsave(extra_path, np.full((6, 7), 0.5), cmap="gray", vmin=0, vmax=1)
     app.set_time_index(4)
-    app.add_images((extra_path,))
+    app.set_modal("observations")
+    monkeypatch.setattr(
+        "draft.playground.splines.app.choose_files", lambda: (extra_path,)
+    )
+    app.open_dialog("add_images")
+    assert app.active_modal == "observations"
+    assert app.observation_menu.panel_ax.get_visible()
+    app.set_modal(None)
     assert app.series.times[-1] is None
     assert app.series.selected == 3
     assert app.observation_menu.editor.selected == 3
