@@ -1,6 +1,7 @@
 """Panel rendering and field-overlay primitives for the spline playground."""
 
 from contextlib import suppress
+from itertools import compress
 from typing import Any
 
 from matplotlib import colormaps
@@ -444,11 +445,7 @@ class SplineRenderer:
                 )
                 self.dynamic_artists[self.target_ax].append(message)
             else:
-                for (name, values), shown in zip(
-                    loss_curves.items(), shown_loss_curves
-                ):
-                    if not shown:
-                        continue
+                for name, values in compress(loss_curves.items(), shown_loss_curves):
                     values = torch.as_tensor(values).detach().cpu()
                     line, = self.target_ax.plot(
                         np.arange(len(values)),

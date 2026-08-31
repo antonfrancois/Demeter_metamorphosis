@@ -38,10 +38,10 @@ from draft.playground.field_playground_core import (
 )
 from draft.playground.splines.app import DUAL_COLOR, SplinePlayground
 from draft.playground.splines.core import (
+    SolverSettings,
     SplineParameters,
-    SplineSetup,
     load_setup,
-    minimum_compatible_mesh_steps,
+    minimum_mesh_steps,
     resolve_device,
     run_classic,
     run_spline,
@@ -54,7 +54,7 @@ from draft.playground.splines.main import (
     _replace_parameters,
     main as launch_playground,
 )
-from draft.playground.splines.menus import format_lbfgs_learning_rate
+from draft.playground.splines.menus.parameters import format_learning_rate
 from draft.playground.splines.menus.observations import ObservationTimeEditor
 from draft.playground.splines.project_io import load_project
 from draft.playground.splines.registration import RegistrationResult, register_spline
@@ -62,90 +62,87 @@ from draft.playground.splines.rendering import DUAL_CMAP, PRIMAL_CMAP
 from draft.playground.splines.styles import FIELD_CLASS, INK_COLOR
 
 
+def make_parameters(
+    *,
+    steps: int = 16,
+    cost: float = 0.01,
+    iterations: int = 10,
+    learning_rate: float = 1.0,
+    **model,
+) -> SplineParameters:
+    return SplineParameters(
+        spline=SolverSettings(cost, steps, iterations, learning_rate),
+        **model,
+    )
+
+
 def test_parameters_require_ordered_interior_control_nodes():
-    parameters = SplineParameters(n_steps=8, control_steps=(2, 5))
-    assert parameters.control_times == (0.25, 0.625)
-    assert parameters.mesh_control_times == (0.25, 0.625)
-    assert parameters.lbfgs_lr == pytest.approx(1.0)
-    assert parameters.optimized_fields == (
+    configured = make_parameters(steps=8, control_times=(0.25, 0.625))
+    assert configured.control_nodes == (2, 5)
+    assert configured.projected_control_times == (0.25, 0.625)
+    assert configured.spline.learning_rate == pytest.approx(1.0)
+    assert configured.optimized_fields == (
         "initial_momentum",
         "initial_acceleration",
         "initial_jerk",
     )
-    assert parameters.spline_initialization == "cold"
-    assert parameters.regression_cost_cst == parameters.cost_cst
-    assert parameters.regression_n_steps == parameters.n_steps
-    assert parameters.regression_iterations == parameters.iterations
-    assert parameters.regression_lbfgs_lr == parameters.lbfgs_lr
-    assert (
-        SplineParameters(spline_initialization="WARM").spline_initialization
-        == "warm"
-    )
-    assert SplineParameters.from_dict(parameters.as_dict()) == parameters
+    assert configured.initialization == "cold"
+    assert SplineParameters(initialization="WARM").initialization == "warm"
     independent_regression = SplineParameters(
-        regression_cost_cst=0.2,
-        regression_n_steps=8,
-        regression_iterations=3,
-        regression_lbfgs_lr=0.4,
+        regression=SolverSettings(0.2, 8, 3, 0.4),
     )
-    assert independent_regression.regression_cost_cst == pytest.approx(0.2)
-    assert independent_regression.regression_n_steps == 8
-    assert independent_regression.regression_iterations == 3
-    assert independent_regression.regression_lbfgs_lr == pytest.approx(0.4)
-    assert SplineParameters(model="classic").lbfgs_lr == pytest.approx(1.0)
-    assert minimum_compatible_mesh_steps(
-        (0.25, 0.375, 1.0), max_steps=60
-    ) == 8
+    assert independent_regression.regression.cost == pytest.approx(0.2)
+    assert independent_regression.regression.steps == 8
+    assert independent_regression.regression.iterations == 3
+    assert independent_regression.regression.learning_rate == pytest.approx(0.4)
+    assert SplineParameters(model="classic").spline.learning_rate == pytest.approx(1.0)
+    assert minimum_mesh_steps((0.25, 0.375, 1.0), max_steps=60) == 8
 
-    midpoint = SplineParameters(n_steps=16, control_steps=(8,))
-    refined = replace(midpoint, n_steps=40)
+    midpoint = make_parameters(steps=16, control_times=(0.5,))
+    refined = replace(midpoint, spline=replace(midpoint.spline, steps=40))
     assert refined.control_times == (0.5,)
-    assert refined.control_steps == (20,)
-    assert replace(refined, n_steps=16).control_steps == (8,)
+    assert refined.control_nodes == (20,)
+    restored = replace(refined, spline=replace(refined.spline, steps=16))
+    assert restored.control_nodes == (8,)
 
-    with pytest.raises(ValueError, match="interior"):
-        SplineParameters(n_steps=8, control_steps=(0,))
-
-
+    with pytest.raises(ValueError, match="strictly in"):
+        make_parameters(steps=8, control_times=(0,))
     with pytest.raises(ValueError, match="final interior"):
-        SplineParameters(n_steps=8, control_steps=(7,))
+        make_parameters(steps=8, control_times=(7 / 8,))
     with pytest.raises(ValueError, match="strictly increasing"):
-        SplineParameters(n_steps=8, control_steps=(5, 2))
+        make_parameters(steps=8, control_times=(5 / 8, 2 / 8))
     with pytest.raises(ValueError, match="Sobolev"):
         SplineParameters(kernel="gaussian", model="splines")
     assert SplineParameters(rho=1, model="classic").rho == 1
     with pytest.raises(ValueError, match="rho"):
         SplineParameters(rho=1, model="splines")
-    with pytest.raises(ValueError, match="lbfgs_lr"):
-        SplineParameters(lbfgs_lr=0)
-    with pytest.raises(ValueError, match="spline_initialization"):
-        SplineParameters(spline_initialization="previous")
-    with pytest.raises(ValueError, match="regression_cost_cst"):
-        SplineParameters(regression_cost_cst=0)
-    with pytest.raises(ValueError, match="regression_n_steps"):
-        SplineParameters(regression_n_steps=0)
-    with pytest.raises(ValueError, match="regression_iterations"):
-        SplineParameters(regression_iterations=0)
-    with pytest.raises(ValueError, match="regression_lbfgs_lr"):
-        SplineParameters(regression_lbfgs_lr=0)
-    with pytest.raises(ValueError, match="unsupported optimized fields"):
+    with pytest.raises(ValueError, match="learning_rate"):
+        make_parameters(learning_rate=0)
+    with pytest.raises(ValueError, match="initialization"):
+        SplineParameters(initialization="previous")
+    for values in (
+        {"cost": 0},
+        {"steps": 0},
+        {"iterations": 0},
+        {"learning_rate": 0},
+    ):
+        with pytest.raises((TypeError, ValueError)):
+            SplineParameters(regression=SolverSettings(**values))
+    with pytest.raises(ValueError, match="unknown field"):
         SplineParameters(optimized_fields=("control_jerks",))
-    with pytest.raises(ValueError, match="duplicates"):
-        SplineParameters(
-            optimized_fields=("initial_momentum", "initial_momentum")
-        )
-    with pytest.raises(TypeError, match="integers"):
-        SplineParameters(n_steps=8, control_steps=(2.0,))  # type: ignore[arg-type]
+    assert SplineParameters(
+        optimized_fields=("initial_momentum", "initial_momentum")
+    ).optimized_fields == ("initial_momentum",)
     with pytest.raises(ValueError, match="distinct"):
-        SplineParameters(
-            n_steps=4,
+        make_parameters(
+            steps=4,
             control_times=(0.5 - 1e-10, 0.5 + 1e-10),
         )
     expected_device = "cuda" if torch.cuda.is_available() else "cpu"
     assert resolve_device("auto").type == expected_device
     with pytest.raises(TypeError, match="progress_callback must be callable"):
         run_spline(
-            zero_setup(torch.zeros(1, 1, 3, 4), parameters=SplineParameters(n_steps=1)),
+            zero_setup(torch.zeros(1, 1, 3, 4), parameters=make_parameters(steps=1)),
             device="cpu",
             progress_callback=object(),  # type: ignore[arg-type]
         )
@@ -158,7 +155,7 @@ def test_parameters_require_ordered_interior_control_nodes():
 def test_learning_rate_display_uses_scientific_notation_below_point_one(
     value, expected
 ):
-    assert format_lbfgs_learning_rate(value) == expected
+    assert format_learning_rate(value) == expected
 
 
 def test_new_playground_defaults_to_no_control_times(tmp_path):
@@ -167,13 +164,11 @@ def test_new_playground_defaults_to_no_control_times(tmp_path):
     plt.imsave(source, np.zeros((4, 5)), cmap="gray", vmin=0, vmax=1)
     plt.imsave(target, np.ones((4, 5)), cmap="gray", vmin=0, vmax=1)
 
-    app = launch_playground(
-        [str(source), str(target), "--device", "cpu", "--no-show"]
-    )
+    app = launch_playground([str(source), str(target), "--device", "cpu", "--no-show"])
 
     assert app.parameters.control_times == ()
-    assert app.parameters.control_steps == ()
-    assert app.make_setup().control_jerks.shape[0] == 0
+    assert app.parameters.control_nodes == ()
+    assert app.make_setup().variables.n_controls == 0
     plt.close(app.fig)
 
 
@@ -227,36 +222,34 @@ def test_raster_io_preserves_visual_orientation_with_lower_origin_tensors(tmp_pa
 def test_run_uses_initial_acceleration_and_aligns_interval_fields_to_nodes():
     torch.manual_seed(12)
     source = torch.rand(1, 1, 8, 9)
-    parameters = SplineParameters(
+    parameters = make_parameters(
         alpha=0.4,
         beta=0.2,
         gamma=0.3,
         rho=0.25,
-        cg_eps=1e-7,
-        n_steps=2,
+        cg_tolerance=1e-7,
+        steps=2,
     )
     setup = zero_setup(source, source, parameters)
-    setup.initial_acceleration.normal_(std=1e-3)
-    setup.initial_momentum.normal_(std=1e-3)
-    setup.initial_jerk.normal_(std=1e-3)
+    setup.variables.initial_acceleration.normal_(std=1e-3)
+    setup.variables.initial_momentum.normal_(std=1e-3)
+    setup.variables.initial_jerk.normal_(std=1e-3)
 
     progress = []
     trajectory = run_spline(
         setup,
         device="cpu",
-        progress_callback=lambda completed, total: progress.append(
-            (completed, total)
-        ),
+        progress_callback=lambda completed, total: progress.append((completed, total)),
     )
     kernel = SobolevFluidOperator(alpha=0.4, beta=0.2, gamma=0.3)
     expected_force = CometricOperator(source, 0.25, kernel).inverse(
-        setup.initial_acceleration,
-        eps=parameters.cg_eps,
+        setup.variables.initial_acceleration,
+        eps=parameters.cg_tolerance,
     )
 
     torch.testing.assert_close(
         trajectory.acceleration[0],
-        setup.initial_acceleration[0],
+        setup.variables.initial_acceleration[0],
     )
     torch.testing.assert_close(
         trajectory.force[0],
@@ -293,7 +286,7 @@ def test_run_uses_initial_acceleration_and_aligns_interval_fields_to_nodes():
     torch.testing.assert_close(trajectory.photometric_only[0], source[0])
     torch.testing.assert_close(
         trajectory.photometric_only[1],
-        source[0] + 0.5 * (1 - parameters.rho) * setup.initial_momentum[0],
+        source[0] + 0.5 * (1 - parameters.rho) * setup.variables.initial_momentum[0],
     )
     assert set(trajectory.field_energies) == {
         "momentum",
@@ -313,9 +306,9 @@ def test_run_uses_initial_acceleration_and_aligns_interval_fields_to_nodes():
         trajectory.vector_momentum,
         expected_vector_momentum,
     )
-    expected_vector_energy = (
-        trajectory.velocity * trajectory.vector_momentum
-    ).sum(dim=(1, 2, 3))
+    expected_vector_energy = (trajectory.velocity * trajectory.vector_momentum).sum(
+        dim=(1, 2, 3)
+    )
     torch.testing.assert_close(
         trajectory.field_energies["vector_momentum"],
         expected_vector_energy,
@@ -340,7 +333,7 @@ def test_run_uses_initial_acceleration_and_aligns_interval_fields_to_nodes():
             "acceleration",
             trajectory.acceleration[0:1],
             initial_cometric.inverse(
-                trajectory.acceleration[0:1], eps=parameters.cg_eps
+                trajectory.acceleration[0:1], eps=parameters.cg_tolerance
             ),
         ),
         (
@@ -359,7 +352,7 @@ def test_run_uses_initial_acceleration_and_aligns_interval_fields_to_nodes():
         boundary="periodic",
     )[:, 0]
     initial_transport = -0.25 * kernel(
-        setup.initial_momentum * initial_gradient
+        setup.variables.initial_momentum * initial_gradient
     )
     identity = tb.make_regular_grid(
         source.shape[-2:],
@@ -408,22 +401,20 @@ def test_classic_run_matches_geodesic_spline_and_zeroes_spline_fields():
     setup = zero_setup(
         source,
         target,
-        SplineParameters(
+        make_parameters(
             rho=0.25,
             gamma=0.3,
-            n_steps=3,
-            control_steps=(),
+            steps=3,
+            control_times=(),
         ),
     )
-    setup.initial_momentum.normal_(std=0.1)
+    setup.variables.initial_momentum.normal_(std=0.1)
     progress = []
 
     classic = run_classic(
         setup,
         device="cpu",
-        progress_callback=lambda completed, total: progress.append(
-            (completed, total)
-        ),
+        progress_callback=lambda completed, total: progress.append((completed, total)),
     )
     spline = run_spline(setup, device="cpu")
 
@@ -451,12 +442,12 @@ def test_classic_run_matches_geodesic_spline_and_zeroes_spline_fields():
 def test_classic_run_rejects_drawn_non_momentum_fields():
     setup = zero_setup(
         torch.zeros(1, 1, 5, 6),
-        parameters=SplineParameters(n_steps=3, control_steps=(1,)),
+        parameters=make_parameters(steps=3, control_times=(1 / 3,)),
     )
     for field, message in (
-        (setup.initial_acceleration, "initial acceleration"),
-        (setup.initial_jerk, "initial jerk"),
-        (setup.control_jerks, "control jerk"),
+        (setup.variables.initial_acceleration, "initial acceleration"),
+        (setup.variables.initial_jerk, "initial jerk"),
+        (setup.variables.control_jerks, "control jerk"),
     ):
         field.fill_(1)
         with pytest.raises(ValueError, match=message):
@@ -467,15 +458,15 @@ def test_classic_run_rejects_drawn_non_momentum_fields():
 def test_gaussian_operator_runs_classic_and_is_rejected_for_splines(tmp_path):
     torch.manual_seed(14)
     source = torch.rand(1, 1, 7, 8)
-    parameters = SplineParameters(
+    parameters = make_parameters(
         rho=0.25,
-        n_steps=2,
+        steps=2,
         kernel="gaussian",
         sigma=1.5,
         model="classic",
     )
     setup = zero_setup(source, source, parameters)
-    setup.initial_momentum.normal_(std=0.05)
+    setup.variables.initial_momentum.normal_(std=0.05)
 
     trajectory = run_classic(setup, device="cpu")
     gradient = tb.spatialGradient(
@@ -483,9 +474,7 @@ def test_gaussian_operator_runs_classic_and_is_rejected_for_splines(tmp_path):
         dx_convention="pixel",
         boundary="periodic",
     )[:, 0]
-    expected_momentum = -(parameters.rho**0.5) * (
-        trajectory.momentum * gradient
-    )
+    expected_momentum = -(parameters.rho**0.5) * (trajectory.momentum * gradient)
     expected_velocity = GaussianRKHS(
         (1.5, 1.5),
         border_type="circular",
@@ -509,9 +498,9 @@ def test_classic_button_uses_shared_workspace_and_reports_invalid_fields():
     setup = zero_setup(
         source,
         torch.roll(source, shifts=1, dims=-1),
-        SplineParameters(rho=0.25, gamma=0.3, n_steps=2),
+        make_parameters(rho=0.25, gamma=0.3, steps=2),
     )
-    setup.initial_momentum.fill_(0.05)
+    setup.variables.initial_momentum.fill_(0.05)
     app = SplinePlayground(setup, device="cpu")
 
     app.run_classic()
@@ -533,29 +522,20 @@ def test_classic_button_uses_shared_workspace_and_reports_invalid_fields():
     plt.close(app.fig)
 
 
-def test_setup_canonicalization_rejects_invalid_data_and_breaks_aliases():
+def test_setup_owns_canonical_finite_tensors():
     source = torch.zeros(1, 1, 5, 6)
-    shared = torch.zeros_like(source)
-    setup = SplineSetup(
-        source=source,
-        target=source,
-        initial_momentum=shared,
-        initial_acceleration=shared,
-        initial_jerk=shared,
-        control_jerks=source.new_zeros((0,) + tuple(source.shape)),
-        parameters=SplineParameters(n_steps=2),
-    )
+    setup = zero_setup(source, source, make_parameters(steps=2))
     source.fill_(1)
-    setup.initial_momentum.fill_(2)
-    assert torch.count_nonzero(setup.source) == 0
-    assert torch.count_nonzero(setup.initial_acceleration) == 0
-    assert torch.count_nonzero(setup.initial_jerk) == 0
+    setup.variables.initial_momentum.fill_(2)
+    assert torch.count_nonzero(setup.images.source) == 0
+    assert torch.count_nonzero(setup.variables.initial_acceleration) == 0
+    assert torch.count_nonzero(setup.variables.initial_jerk) == 0
 
     with pytest.raises(ValueError, match="source must have shape"):
         zero_setup(torch.zeros(1, 1, 2, 3, 4))
     invalid_target = torch.zeros(1, 1, 5, 6)
     invalid_target[..., 2, 3] = torch.nan
-    with pytest.raises(ValueError, match="target must contain only finite"):
+    with pytest.raises(ValueError, match="images must contain only finite"):
         zero_setup(torch.zeros(1, 1, 5, 6), invalid_target)
     with pytest.raises(ValueError, match="source must contain only finite"):
         zero_setup(torch.full((1, 1, 5, 6), torch.inf))
@@ -563,22 +543,19 @@ def test_setup_canonicalization_rejects_invalid_data_and_breaks_aliases():
 
 def test_control_right_limit_and_setup_round_trip(tmp_path):
     source = torch.zeros(1, 1, 6, 7)
-    parameters = SplineParameters(
+    parameters = make_parameters(
         rho=0,
-        n_steps=4,
-        control_steps=(2,),
-        lbfgs_lr=0.03,
+        steps=4,
+        control_times=(0.5,),
+        learning_rate=0.03,
         optimized_fields=("initial_momentum", "initial_jerk"),
-        spline_initialization="warm",
-        regression_cost_cst=0.04,
-        regression_n_steps=8,
-        regression_iterations=7,
-        regression_lbfgs_lr=0.5,
+        initialization="warm",
+        regression=SolverSettings(0.04, 8, 7, 0.5),
     )
     setup = zero_setup(source, source, parameters)
-    setup.initial_jerk.fill_(1)
-    setup.control_jerks.fill_(3)
-    setup.initial_acceleration.fill_(0.5)
+    setup.variables.initial_jerk.fill_(1)
+    setup.variables.control_jerks.fill_(3)
+    setup.variables.initial_acceleration.fill_(0.5)
 
     path = save_setup(setup, tmp_path / "spline")
     restored = load_setup(path)
@@ -586,8 +563,10 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
 
     assert path.suffix == ".pt"
     assert restored.parameters == parameters
-    assert torch.equal(restored.initial_acceleration, setup.initial_acceleration)
-    assert torch.equal(restored.control_jerks, setup.control_jerks)
+    assert torch.equal(
+        restored.variables.initial_acceleration, setup.variables.initial_acceleration
+    )
+    assert torch.equal(restored.variables.control_jerks, setup.variables.control_jerks)
     assert trajectory.jerk[:, 0].mean(dim=(1, 2)).tolist() == [
         1.0,
         1.0,
@@ -595,7 +574,9 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
         3.0,
         3.0,
     ]
-    torch.testing.assert_close(trajectory.force[0], setup.initial_acceleration[0])
+    torch.testing.assert_close(
+        trajectory.force[0], setup.variables.initial_acceleration[0]
+    )
     torch.testing.assert_close(
         trajectory.deformed_source,
         source[0].expand_as(trajectory.deformed_source),
@@ -605,22 +586,6 @@ def test_control_right_limit_and_setup_round_trip(tmp_path):
         trajectory.images,
     )
 
-    assert setup.payload()["parameters"]["control_times"] == (0.5,)
-
-    mismatched = setup.payload()
-    mismatched["parameters"]["control_steps"] = (1,)
-    mismatched_path = tmp_path / "mismatched.pt"
-    torch.save(mismatched, mismatched_path)
-    with pytest.raises(ValueError, match="do not match"):
-        load_setup(mismatched_path)
-
-    malformed = setup.payload()
-    del malformed["parameters"]["rho"]
-    malformed_path = tmp_path / "malformed.pt"
-    torch.save(malformed, malformed_path)
-    with pytest.raises(ValueError, match="missing parameters: rho"):
-        load_setup(malformed_path)
-
 
 def test_headless_editor_run_timeline_and_control_markers(tmp_path):
     source = torch.zeros(1, 1, 18, 20)
@@ -629,7 +594,7 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
     setup = zero_setup(
         source,
         target,
-        SplineParameters(rho=0, n_steps=4, control_steps=(2,)),
+        make_parameters(rho=0, steps=4, control_times=(0.5,)),
     )
     app = SplinePlayground(setup, device="cpu")
 
@@ -642,9 +607,7 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
             key=None,
         )
     )
-    app.editor.on_motion(
-        SimpleNamespace(inaxes=app.source_ax, xdata=13.0, ydata=9.0)
-    )
+    app.editor.on_motion(SimpleNamespace(inaxes=app.source_ax, xdata=13.0, ydata=9.0))
     app.editor.on_release(
         SimpleNamespace(
             inaxes=app.source_ax,
@@ -666,7 +629,7 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
     app.undo()
     assert torch.count_nonzero(app.fields["initial_momentum"]) > 0
 
-    app.input_radio.set_active(3)
+    app.overlay_radios["input"].set_active(3)
     assert app.editor.active_key == "control_jerk:0"
     assert r"\Vert r(0.5^+)\Vert_{I_0^*}^2" in app.source_footer.get_text()
     assert int(app.time_slider.val) == 2
@@ -685,7 +648,7 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
     app.run()
     assert app.cache is not None
     assert app.cache.images.shape == (5, 1, 18, 20)
-    app.current_radio.set_active(1)
+    app.overlay_radios["current_field"].set_active(1)
     app.set_time_index(4)
     assert app.current_ax.get_title().endswith("$p$")
     assert app.current_colorbar_ax.get_visible()
@@ -715,7 +678,7 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
     assert app.cache.images is cached_images
     assert not torch.equal(app.cache.target_mse, old_mse)
 
-    app.target_radio.set_active(1)
+    app.overlay_radios["target_mode"].set_active(1)
     assert app.target_image.get_cmap().name == "magma"
     assert "Absolute error" in app.target_ax.get_title()
 
@@ -725,8 +688,8 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
 
     figure_size = tuple(app.fig.get_size_inches())
     app.load_source(PROJECT_ROOT / "examples/im2Dbank/simplex_tri_s_b.png")
-    assert app.source.shape[-2:] == (100, 100)
-    assert app._targets.shape[-2:] == (100, 100)
+    assert app.series.source.shape[-2:] == (100, 100)
+    assert app.series.targets.shape[-2:] == (100, 100)
     assert all(field.shape[-2:] == (100, 100) for field in app.fields.values())
     assert tuple(app.fig.get_size_inches()) == figure_size
     assert app.source_ax.get_xlim() == pytest.approx((-0.5, 99.5))
@@ -734,7 +697,7 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
     plt.close(app.fig)
 
     spline_app = SplinePlayground(
-        zero_setup(torch.zeros(1, 1, 18, 20), parameters=SplineParameters()),
+        zero_setup(torch.zeros(1, 1, 18, 20), parameters=make_parameters()),
         device="cpu",
     )
     spline_app.add_images(
@@ -744,8 +707,8 @@ def test_headless_editor_run_timeline_and_control_markers(tmp_path):
         )
     )
     spline_app._place_image(2, 0.0)
-    assert spline_app.source.shape[-2:] == (64, 64)
-    assert spline_app._targets.shape[-2:] == (64, 64)
+    assert spline_app.series.source.shape[-2:] == (64, 64)
+    assert spline_app.series.targets.shape[-2:] == (64, 64)
     assert "size: 64x64" in spline_app.status_text.get_text()
     plt.close(spline_app.fig)
 
@@ -756,12 +719,12 @@ def test_scalar_and_error_colorbars_precede_panel_footers():
     setup = zero_setup(
         source,
         target,
-        SplineParameters(rho=0, n_steps=2),
+        make_parameters(rho=0, steps=2),
     )
-    setup.initial_momentum.copy_(
+    setup.variables.initial_momentum.copy_(
         torch.linspace(-0.1, 0.1, source.numel()).reshape_as(source)
     )
-    setup.initial_acceleration.fill_(0.1)
+    setup.variables.initial_acceleration.fill_(0.1)
     app = SplinePlayground(setup, device="cpu")
 
     for cmap in (DUAL_CMAP, PRIMAL_CMAP):
@@ -769,24 +732,20 @@ def test_scalar_and_error_colorbars_precede_panel_footers():
         assert cmap(0)[3] > 0.9
         assert cmap(1.0)[3] > 0.9
         assert cmap(0)[:3] != pytest.approx(cmap(1.0)[:3])
-        assert cmap(0)[:3] == pytest.approx(
-            matplotlib.colormaps["cool"](0.25)[:3]
-        )
-        assert cmap(1.0)[:3] == pytest.approx(
-            matplotlib.colormaps["cool"](0.75)[:3]
-        )
+        assert cmap(0)[:3] == pytest.approx(matplotlib.colormaps["cool"](0.25)[:3])
+        assert cmap(1.0)[:3] == pytest.approx(matplotlib.colormaps["cool"](0.75)[:3])
 
     source_colorbar = app.renderer.colorbars[app.source_ax]
     assert app.source_colorbar_ax.get_visible()
     assert source_colorbar.orientation == "horizontal"
     assert source_colorbar.mappable.get_cmap().name == DUAL_CMAP.name
 
-    app.input_radio.set_active(1)
+    app.overlay_radios["input"].set_active(1)
     source_colorbar = app.renderer.colorbars[app.source_ax]
     assert app.source_colorbar_ax.get_visible()
     assert source_colorbar.mappable.get_cmap().name == PRIMAL_CMAP.name
 
-    app.target_radio.set_active(1)
+    app.overlay_radios["target_mode"].set_active(1)
     target_colorbar = app.renderer.colorbars[app.target_ax]
     assert app.target_colorbar_ax.get_visible()
     assert target_colorbar.orientation == "horizontal"
@@ -805,16 +764,16 @@ def test_scalar_and_error_colorbars_precede_panel_footers():
         assert colorbar_bounds.y1 < panel_bounds.y0
         assert footer_bounds.y1 < colorbar_bounds.y0
 
-    app.set_menu_visible(True)
+    app.set_modal("view")
     assert not app.source_colorbar_ax.get_visible()
     assert not app.target_colorbar_ax.get_visible()
-    app.set_menu_visible(False)
+    app.set_modal(None)
     assert app.source_colorbar_ax.get_visible()
     assert app.target_colorbar_ax.get_visible()
 
-    app.target_radio.set_active(0)
+    app.overlay_radios["target_mode"].set_active(0)
     assert not app.target_colorbar_ax.get_visible()
-    app.target_radio.set_active(2)
+    app.overlay_radios["target_mode"].set_active(2)
     assert not app.target_colorbar_ax.get_visible()
     plt.close(app.fig)
 
@@ -822,44 +781,52 @@ def test_scalar_and_error_colorbars_precede_panel_footers():
 def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     setup = zero_setup(
         torch.zeros(1, 1, 10, 12),
-        parameters=SplineParameters(rho=0.99, n_steps=2),
+        parameters=make_parameters(rho=0.99, steps=2),
     )
     app = SplinePlayground(setup, device="cpu")
-    assert app.rho_slider.val == pytest.approx(0.99)
-    assert app.steps_slider.val == 2
-    assert app.iterations_slider.val == 10
-    assert app.lbfgs_lr_slider.val == pytest.approx(0)
-    assert app.lbfgs_lr_slider.valtext.get_text() == "1"
-    assert app.optimized_fields_check.get_status() == [True, True, True]
-    assert app.spline_initialization_radio.value_selected == "Cold"
+    assert app.sliders["rho"].val == pytest.approx(0.99)
+    assert app.sliders["spline_steps"].val == 2
+    assert app.sliders["spline_iterations"].val == 10
+    assert app.sliders["spline_learning_rate"].val == pytest.approx(0)
+    assert app.sliders["spline_learning_rate"].valtext.get_text() == "1"
+    assert app.parameter_menu.optimized_fields.get_status() == [True, True, True]
+    assert app.radios["initialization"].value_selected == "Cold"
+    assert [label.get_text() for label in app.radios["initialization"].labels] == [
+        "Cold",
+        "Warm",
+    ]
+    assert all(not slider.ax.get_visible() for slider in app.sliders.values())
     assert [
-        label.get_text() for label in app.spline_initialization_radio.labels
-    ] == ["Cold", "Warm"]
-    assert all(
-        not slider.ax.get_visible()
-        for slider in app.parameter_menu.regression_numerical_sliders
-    )
-    cold_cost_position = app.cost_slider.ax.get_position()
-    assert [label.get_text() for label in app.optimized_fields_check.labels] == [
+        label.get_text() for label in app.parameter_menu.optimized_fields.labels
+    ] == [
         "Momentum",
         "Acceleration",
         "Jerk",
     ]
-    assert app.steps_slider.valmin == 1
-    assert app.steps_slider.valmax == 60
+    assert app.sliders["spline_steps"].valmin == 1
+    assert app.sliders["spline_steps"].valmax == 60
     assert app.make_setup().parameters.rho == pytest.approx(0.99)
-    assert app.menu_button.ax.get_position().y0 > app.image_button.ax.get_position().y0
-    assert app.image_button.ax.get_position().y0 > app.file_button.ax.get_position().y0
-    assert app.file_button.ax.get_position().y0 > app.register_button.ax.get_position().y0
     assert (
-        app.register_button.ax.get_position().y0
-        > app.run_button.ax.get_position().y0
-        > app.clear_button.ax.get_position().y0
+        app.buttons["view"].ax.get_position().y0
+        > app.buttons["images"].ax.get_position().y0
+    )
+    assert (
+        app.buttons["images"].ax.get_position().y0
+        > app.buttons["files"].ax.get_position().y0
+    )
+    assert (
+        app.buttons["files"].ax.get_position().y0
+        > app.buttons["register"].ax.get_position().y0
+    )
+    assert (
+        app.buttons["register"].ax.get_position().y0
+        > app.buttons["run"].ax.get_position().y0
+        > app.buttons["clear"].ax.get_position().y0
     )
     shortcuts = next(
         text for text in app.fig.texts if text.get_text().startswith("P  parameters")
     )
-    assert app.menu_button.label.get_text() == "VIEW MENU  [V]"
+    assert app.buttons["view"].label.get_text() == "VIEW MENU  [V]"
     assert "V  view menu" in shortcuts.get_text()
     assert shortcuts.get_position() == pytest.approx((0.012, 0.975))
     assert shortcuts.get_ha() == "left"
@@ -868,112 +835,102 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     assert not any("A_I^{-1}" in text.get_text() for text in app.fig.texts)
 
     app._on_key_press(SimpleNamespace(key="p"))
-    assert app.parameter_menu_open
+    assert app.active_modal == "parameters"
     assert app.parameter_menu.backdrop_ax.get_visible()
+    assert all(slider.active for slider in app.sliders.values())
+    assert app.radios["initialization"].active
+    app.radios["initialization"].set_active(1)
+    assert app.parameters.initialization == "warm"
     assert all(
-        slider.active
-        for slider in app.parameter_menu.sliders
-        if slider not in app.parameter_menu.regression_numerical_sliders
+        app.sliders[name].ax.get_visible() and app.sliders[name].active
+        for name in (
+            "regression_cost",
+            "regression_steps",
+            "regression_iterations",
+            "regression_learning_rate",
+        )
     )
-    assert app.spline_initialization_radio.active
-    app.spline_initialization_radio.set_active(1)
-    assert app.parameters.spline_initialization == "warm"
-    assert all(
-        slider.ax.get_visible() and slider.active
-        for slider in app.parameter_menu.regression_numerical_sliders
-    )
-    assert app.cost_slider.ax.get_position().width < cold_cost_position.width
-    app.regression_cost_slider.set_val(np.log10(0.03))
-    app.regression_steps_slider.set_val(5)
-    app.regression_iterations_slider.set_val(4)
-    app.regression_lbfgs_lr_slider.set_val(np.log10(0.09))
-    assert app.parameters.regression_cost_cst == pytest.approx(0.03)
-    assert app.parameters.regression_n_steps == 5
-    assert app.parameters.regression_iterations == 4
-    assert app.parameters.regression_lbfgs_lr == pytest.approx(0.09)
-    assert app.regression_lbfgs_lr_slider.valtext.get_text() == "9e-2"
-    app.spline_initialization_radio.set_active(0)
-    assert app.parameters.spline_initialization == "cold"
-    assert all(
-        not slider.ax.get_visible() and not slider.active
-        for slider in app.parameter_menu.regression_numerical_sliders
-    )
-    assert app.cost_slider.ax.get_position().width == pytest.approx(
-        cold_cost_position.width
-    )
-    app.iterations_slider.set_val(3)
-    assert app.parameters.iterations == 3
-    app.lbfgs_lr_slider.set_val(np.log10(0.025))
-    assert app.parameters.lbfgs_lr == pytest.approx(0.025)
-    assert app.lbfgs_lr_slider.valtext.get_text() == "2.5e-2"
-    app.optimized_fields_check.set_active(1)
+    app.sliders["regression_cost"].set_val(np.log10(0.03))
+    app.sliders["regression_steps"].set_val(5)
+    app.sliders["regression_iterations"].set_val(4)
+    app.sliders["regression_learning_rate"].set_val(np.log10(0.09))
+    assert app.parameters.regression.cost == pytest.approx(0.03)
+    assert app.parameters.regression.steps == 5
+    assert app.parameters.regression.iterations == 4
+    assert app.parameters.regression.learning_rate == pytest.approx(0.09)
+    assert app.sliders["regression_learning_rate"].valtext.get_text() == "9e-2"
+    app.radios["initialization"].set_active(0)
+    assert app.parameters.initialization == "cold"
+    assert all(slider.active for slider in app.sliders.values())
+    app.sliders["spline_iterations"].set_val(3)
+    assert app.parameters.spline.iterations == 3
+    app.sliders["spline_learning_rate"].set_val(np.log10(0.025))
+    assert app.parameters.spline.learning_rate == pytest.approx(0.025)
+    assert app.sliders["spline_learning_rate"].valtext.get_text() == "2.5e-2"
+    app.parameter_menu.optimized_fields.set_active(1)
     assert app.parameters.optimized_fields == (
         "initial_momentum",
         "initial_jerk",
     )
-    assert [label.get_text() for label in app.operator_radio.labels] == [
+    assert [label.get_text() for label in app.radios["kernel"].labels] == [
         "Sobolev",
         "Gaussian",
     ]
-    app.operator_radio.set_active(1)
+    app.radios["kernel"].set_active(1)
     assert app.parameters.kernel == "gaussian"
-    assert all(
-        slider.active
-        for slider in app.parameter_menu.sliders
-        if slider not in app.parameter_menu.regression_numerical_sliders
-    )
-    app.sigma_slider.set_val(2.5)
+    assert all(slider.active for slider in app.sliders.values())
+    app.sliders["sigma"].set_val(2.5)
     assert app.parameters.sigma == pytest.approx(2.5)
-    app.operator_radio.set_active(0)
+    app.radios["kernel"].set_active(0)
     assert app.parameters.kernel == "sobolev"
-    assert app.device_radio.active
-    assert app.device_radio.value_selected == "CPU"
+    assert app.radios["device"].active
+    assert app.radios["device"].value_selected == "CPU"
     assert not any(button.active for button in app.file_menu.buttons)
     assert not app.source_ax.get_visible()
-    app.fig.canvas.grab_mouse(app.rho_slider.ax)
-    app.rho_slider.set_val(0.5)
+    app.fig.canvas.grab_mouse(app.sliders["rho"].ax)
+    app.sliders["rho"].set_val(0.5)
     assert app.parameters.rho == pytest.approx(0.99)
-    app.fig.canvas.release_mouse(app.rho_slider.ax)
+    app.fig.canvas.release_mouse(app.sliders["rho"].ax)
     app._on_button_release(None)
     assert app.parameters.rho == pytest.approx(0.5)
     assert app._workspace_dirty
-    app.steps_slider.set_val(4)
-    assert app.parameters.n_steps == 4
+    app.sliders["spline_steps"].set_val(4)
+    assert app.parameters.spline.steps == 4
     assert app.time_slider.valmax == 4
     app._on_key_press(SimpleNamespace(key="p"))
-    assert not app.parameter_menu_open
-    assert not app.device_radio.active
-    assert not app.spline_initialization_radio.active
+    assert not app.active_modal == "parameters"
+    assert not app.radios["device"].active
+    assert not app.radios["initialization"].active
     assert app.source_ax.get_visible()
     assert not app._workspace_dirty
 
-    app.input_radio.set_active(1)
+    app.overlay_radios["input"].set_active(1)
     assert app.editor.active_key == "initial_acceleration"
-    assert app.input_radio.value_selected == r"Acceleration  $a_0$"
+    assert app.overlay_radios["input"].value_selected == r"Acceleration  $a_0$"
     assert "initial acceleration" in app.source_ax.get_title()
     assert r"\Vert a_0\Vert_{I_0}^2" in app.source_footer.get_text()
     assert FIELD_CLASS["momentum"] == "dual"
     assert FIELD_CLASS["acceleration"] == "primal"
-    app.input_radio.set_active(3)
+    app.overlay_radios["input"].set_active(3)
     assert app.input_kind == "initial_jerk"
     assert app.editor.active_key == "initial_jerk"
-    assert app.input_radio.value_selected == app.input_radio.labels[2].get_text()
-    app.set_menu_visible(True)
+    assert (
+        app.overlay_radios["input"].value_selected
+        == app.overlay_radios["input"].labels[2].get_text()
+    )
+    app.set_modal("view")
     assert not app.overlay_control_selector.axis.get_visible()
-    app.set_menu_visible(False)
+    app.set_modal(None)
 
     replacement = zero_setup(
         torch.zeros(1, 1, 6, 9),
-        parameters=SplineParameters(
-            n_steps=4,
-            control_steps=(1, 2),
-            lbfgs_lr=0.04,
+        parameters=make_parameters(
+            steps=4,
+            control_times=(0.25, 0.5),
+            learning_rate=0.04,
             optimized_fields=("initial_acceleration",),
-            spline_initialization="warm",
-            regression_cost_cst=0.02,
-            regression_n_steps=6,
-            regression_iterations=5,
-            regression_lbfgs_lr=0.3,
+            initialization="warm",
+            regression=SolverSettings(0.02, 6, 5, 0.3),
         ),
     )
     app.apply_setup(replacement)
@@ -981,25 +938,25 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
     for image in (app.source_image, app.current_image, app.target_image):
         assert list(image.get_extent()) == expected_extent
     assert app.time_slider.valmax == 4
-    assert app.steps_slider.val == 4
-    assert app.steps_slider.valmin == 1
-    assert app.steps_slider.valmax == 60
-    assert app.lbfgs_lr_slider.val == pytest.approx(np.log10(0.04))
-    assert app.lbfgs_lr_slider.valtext.get_text() == "4e-2"
-    assert app.optimized_fields_check.get_status() == [False, True, False]
-    assert app.spline_initialization_radio.value_selected == "Warm"
-    assert app.parameters.spline_initialization == "warm"
-    assert app.regression_cost_slider.val == pytest.approx(np.log10(0.02))
-    assert app.regression_steps_slider.val == 6
-    assert app.regression_iterations_slider.val == 5
-    assert app.regression_lbfgs_lr_slider.val == pytest.approx(np.log10(0.3))
+    assert app.sliders["spline_steps"].val == 4
+    assert app.sliders["spline_steps"].valmin == 1
+    assert app.sliders["spline_steps"].valmax == 60
+    assert app.sliders["spline_learning_rate"].val == pytest.approx(np.log10(0.04))
+    assert app.sliders["spline_learning_rate"].valtext.get_text() == "4e-2"
+    assert app.parameter_menu.optimized_fields.get_status() == [False, True, False]
+    assert app.radios["initialization"].value_selected == "Warm"
+    assert app.parameters.initialization == "warm"
+    assert app.sliders["regression_cost"].val == pytest.approx(np.log10(0.02))
+    assert app.sliders["regression_steps"].val == 6
+    assert app.sliders["regression_iterations"].val == 5
+    assert app.sliders["regression_learning_rate"].val == pytest.approx(np.log10(0.3))
     assert len(app._control_markers) == 4
     controls_heading = next(
         text for text in app.fig.texts if text.get_text() == "CONTROLS"
     )
     assert controls_heading.get_ha() == "center"
     operator_texts = [
-        text.get_text() for text in app.parameter_menu.panel_axes["model"].texts
+        text.get_text() for text in app.parameter_menu.panels["model"].texts
     ]
     assert any("L v=" in text and "K=L" in text for text in operator_texts)
     assert any("Classic only" in text for text in operator_texts)
@@ -1011,8 +968,8 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
         "SAVE VIDEO",
     ]
 
-    app.input_radio.set_active(3)
-    app.set_menu_visible(True)
+    app.overlay_radios["input"].set_active(3)
+    app.set_modal("view")
     assert type(app.overlay_control_selector) is type(app.control_time_editor)
     assert not app.overlay_control_selector.editable
     assert app.overlay_control_selector.axis.get_visible()
@@ -1033,12 +990,12 @@ def test_zero_control_selection_rho_and_new_setup_extent_are_consistent():
 def test_only_operator_choice_changes_the_operator():
     setup = zero_setup(
         torch.zeros(1, 1, 10, 12),
-        parameters=SplineParameters(n_steps=2),
+        parameters=make_parameters(steps=2),
     )
     app = SplinePlayground(setup, device="cpu")
-    app.set_parameter_menu_visible(True)
+    app.set_modal("parameters")
     app.fig.canvas.draw()
-    for slider in (app.alpha_slider, app.beta_slider):
+    for slider in (app.sliders["alpha"], app.sliders["beta"]):
         assert slider.valmin == 0
         assert slider.ax.get_xlim()[0] == 0
 
@@ -1048,43 +1005,31 @@ def test_only_operator_choice_changes_the_operator():
             event = MouseEvent(event_name, app.fig.canvas, x, y, button=1)
             app.fig.canvas.callbacks.process(event_name, event)
 
-    original_sigma = app.sigma_slider.val
-    click(app.sigma_slider.ax)
-    assert app.operator_radio.value_selected == "Sobolev"
+    original_sigma = app.sliders["sigma"].val
+    click(app.sliders["sigma"].ax)
+    assert app.radios["kernel"].value_selected == "Sobolev"
     assert app.parameters.kernel == "sobolev"
-    assert app.sigma_slider.val != original_sigma
-    assert all(
-        slider.active
-        for slider in app.parameter_menu.sliders
-        if slider not in app.parameter_menu.regression_numerical_sliders
-    )
+    assert app.sliders["sigma"].val != original_sigma
+    assert all(slider.active for slider in app.sliders.values())
 
-    click(app.operator_radio.ax, (0.70, 0.5))
+    app.radios["kernel"].set_active(1)
     assert app.parameters.kernel == "gaussian"
-    assert all(
-        slider.active
-        for slider in app.parameter_menu.sliders
-        if slider not in app.parameter_menu.regression_numerical_sliders
-    )
+    assert all(slider.active for slider in app.sliders.values())
 
-    original_alpha = app.alpha_slider.val
-    click(app.alpha_slider.ax)
-    assert app.operator_radio.value_selected == "Gaussian"
+    original_alpha = app.sliders["alpha"].val
+    click(app.sliders["alpha"].ax)
+    assert app.radios["kernel"].value_selected == "Gaussian"
     assert app.parameters.kernel == "gaussian"
-    assert app.alpha_slider.val != original_alpha
+    assert app.sliders["alpha"].val != original_alpha
 
-    click(app.operator_radio.ax, (0.08, 0.5))
+    app.radios["kernel"].set_active(0)
     assert app.parameters.kernel == "sobolev"
-    assert all(
-        slider.active
-        for slider in app.parameter_menu.sliders
-        if slider not in app.parameter_menu.regression_numerical_sliders
-    )
+    assert all(slider.active for slider in app.sliders.values())
     for slider in (
-        app.alpha_slider,
-        app.beta_slider,
-        app.gamma_slider,
-        app.sigma_slider,
+        app.sliders["alpha"],
+        app.sliders["beta"],
+        app.sliders["gamma"],
+        app.sliders["sigma"],
     ):
         assert slider.track.get_alpha() in (None, 1)
     plt.close(app.fig)
@@ -1096,10 +1041,10 @@ def test_warm_initialization_uses_minimum_mesh_for_controls_and_observations():
         zero_setup(
             source,
             torch.ones_like(source),
-            SplineParameters(
-                n_steps=4,
-                regression_n_steps=3,
-                spline_initialization="warm",
+            make_parameters(
+                steps=4,
+                regression=SolverSettings(steps=3),
+                initialization="warm",
             ),
             target_times=(0.5,),
         )
@@ -1107,35 +1052,40 @@ def test_warm_initialization_uses_minimum_mesh_for_controls_and_observations():
         zero_setup(
             source,
             torch.cat((torch.ones_like(source), 2 * torch.ones_like(source))),
-            SplineParameters(
-                n_steps=16,
-                control_steps=(4,),
-                regression_n_steps=3,
-                spline_initialization="cold",
+            make_parameters(
+                steps=16,
+                control_times=(0.25,),
+                regression=SolverSettings(steps=3),
+                initialization="cold",
             ),
             target_times=(0.375, 1.0),
         ),
         device="cpu",
     )
-    app.set_parameter_menu_visible(True)
+    app.set_modal("parameters")
 
-    app.spline_initialization_radio.set_active(1)
+    app.radios["initialization"].set_active(1)
 
-    assert app.parameters.spline_initialization == "warm"
-    assert app.spline_initialization_radio.value_selected == "Warm"
-    assert app.parameters.regression_n_steps == 8
-    assert app.regression_steps_slider.val == 8
+    assert app.parameters.initialization == "warm"
+    assert app.radios["initialization"].value_selected == "Warm"
+    assert app.parameters.regression.steps == 8
+    assert app.sliders["regression_steps"].val == 8
     assert all(
-        slider.ax.get_visible() and slider.active
-        for slider in app.parameter_menu.regression_numerical_sliders
+        app.sliders[name].ax.get_visible() and app.sliders[name].active
+        for name in (
+            "regression_cost",
+            "regression_steps",
+            "regression_iterations",
+            "regression_learning_rate",
+        )
     )
 
     app._move_control_time(0, 0.5)
-    assert app.parameters.regression_n_steps == 8
+    assert app.parameters.regression.steps == 8
     app._place_target(0, 0.25)
-    assert app.target_times == [0.25, 1.0]
-    assert app.parameters.regression_n_steps == 4
-    assert app.regression_steps_slider.val == 4
+    assert app.series.times == [0.25, 1.0]
+    assert app.parameters.regression.steps == 4
+    assert app.sliders["regression_steps"].val == 4
     plt.close(app.fig)
 
 
@@ -1143,22 +1093,22 @@ def test_control_times_rescale_and_can_be_edited_on_the_parameter_timeline():
     source = torch.zeros(1, 1, 10, 12)
     setup = zero_setup(
         source,
-        parameters=SplineParameters(n_steps=16, control_steps=(8,)),
+        parameters=make_parameters(steps=16, control_times=(0.5,)),
     )
-    setup.control_jerks[0].fill_(3)
+    setup.variables.control_jerks[0].fill_(3)
     app = SplinePlayground(setup, device="cpu")
 
-    app.steps_slider.set_val(60)
+    app.sliders["spline_steps"].set_val(60)
     assert app.parameters.control_times == (0.5,)
-    assert app.parameters.control_steps == (30,)
+    assert app.parameters.control_nodes == (30,)
     assert torch.all(app.fields["control_jerk:0"] == 3)
     assert 30 in app._control_markers.values()
-    app.steps_slider.set_val(16)
-    assert app.parameters.control_steps == (8,)
+    app.sliders["spline_steps"].set_val(16)
+    assert app.parameters.control_nodes == (8,)
 
     app._remove_control_time(0)
     assert app.parameters.control_times == ()
-    app.set_parameter_menu_visible(True)
+    app.set_modal("parameters")
     app.fig.canvas.draw()
     axis = app.control_time_editor.axis
     assert not axis.get_xticks().size
@@ -1177,14 +1127,14 @@ def test_control_times_rescale_and_can_be_edited_on_the_parameter_timeline():
     dispatch("button_press_event", 0.5)
     dispatch("button_release_event", 0.5)
     assert app.parameters.control_times == (0.5,)
-    assert app.parameters.control_steps == (8,)
+    assert app.parameters.control_nodes == (8,)
     app.fields["control_jerk:0"].fill_(7)
 
     dispatch("button_press_event", 0.5)
     dispatch("motion_notify_event", 0.75)
     dispatch("button_release_event", 0.75)
     assert app.parameters.control_times == (0.75,)
-    assert app.parameters.control_steps == (12,)
+    assert app.parameters.control_nodes == (12,)
     assert torch.all(app.fields["control_jerk:0"] == 7)
 
     dispatch("button_press_event", 0.75, button=3)
@@ -1197,17 +1147,20 @@ def test_parameter_device_selector_defaults_to_cuda_and_can_choose_cpu(monkeypat
     monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
     setup = zero_setup(
         torch.zeros(1, 1, 6, 8),
-        parameters=SplineParameters(n_steps=2),
+        parameters=make_parameters(steps=2),
     )
     app = SplinePlayground(setup)
 
     assert app.device == "cuda"
-    assert [label.get_text() for label in app.device_radio.labels] == ["CUDA", "CPU"]
-    assert app.device_radio.value_selected == "CUDA"
-    app.set_parameter_menu_visible(True)
-    app.device_radio.set_active(1)
+    assert [label.get_text() for label in app.radios["device"].labels] == [
+        "CUDA",
+        "CPU",
+    ]
+    assert app.radios["device"].value_selected == "CUDA"
+    app.set_modal("parameters")
+    app.radios["device"].set_active(1)
     assert app.device == "cpu"
-    assert app.device_radio.value_selected == "CPU"
+    assert app.radios["device"].value_selected == "CPU"
     assert "device: cpu" in app.status_text.get_text()
     plt.close(app.fig)
 
@@ -1215,29 +1168,34 @@ def test_parameter_device_selector_defaults_to_cuda_and_can_choose_cpu(monkeypat
 def test_cli_step_override_preserves_control_time_and_field():
     setup = zero_setup(
         torch.zeros(1, 1, 5, 6),
-        parameters=SplineParameters(n_steps=16, control_steps=(8,)),
+        parameters=make_parameters(steps=16, control_times=(0.5,)),
     )
-    setup.control_jerks[0].fill_(4)
+    setup.variables.control_jerks[0].fill_(4)
     args = SimpleNamespace(
         alpha=None,
         beta=None,
         gamma=None,
         rho=None,
-        cg_eps=None,
-        lbfgs_lr=0.025,
+        cg_tolerance=None,
         kernel="gaussian",
         sigma=2.5,
+        model=None,
         steps=40,
+        cost_cst=None,
+        iterations=None,
+        lbfgs_lr=0.025,
         control_steps=None,
     )
     parameters = _parameter_overrides(args, setup.parameters)
     replaced = _replace_parameters(setup, parameters)
     assert parameters.control_times == (0.5,)
-    assert parameters.control_steps == (20,)
+    assert parameters.control_nodes == (20,)
     assert parameters.kernel == "gaussian"
     assert parameters.sigma == pytest.approx(2.5)
-    assert parameters.lbfgs_lr == pytest.approx(0.025)
-    torch.testing.assert_close(replaced.control_jerks, setup.control_jerks)
+    assert parameters.spline.learning_rate == pytest.approx(0.025)
+    torch.testing.assert_close(
+        replaced.variables.control_jerks, setup.variables.control_jerks
+    )
 
 
 def test_overlay_menu_and_current_image_modes():
@@ -1246,61 +1204,61 @@ def test_overlay_menu_and_current_image_modes():
     setup = zero_setup(
         source,
         source,
-        SplineParameters(rho=0.25, n_steps=3, control_steps=(1,)),
+        make_parameters(rho=0.25, steps=3, control_times=(1 / 3,)),
     )
-    setup.initial_momentum.fill_(0.1)
+    setup.variables.initial_momentum.fill_(0.1)
     app = SplinePlayground(setup, device="cpu")
 
-    assert app.input_radio.labels[3].get_text().startswith("Control jerk")
-    image_labels = [label.get_text() for label in app.current_image_radio.labels]
+    assert app.overlay_radios["input"].labels[3].get_text().startswith("Control jerk")
+    image_labels = [
+        label.get_text() for label in app.overlay_radios["image_mode"].labels
+    ]
     assert image_labels[1] == r"Deformation only  $I_D$"
-    field_labels = [label.get_text() for label in app.current_radio.labels]
+    field_labels = [
+        label.get_text() for label in app.overlay_radios["current_field"].labels
+    ]
     assert r"$u=A_I^{-1}a$" in field_labels[2]
     assert r"$a=A_Iu$" in field_labels[3]
     assert r"$v=Km$" in field_labels[5]
-    assert not app.menu_open
+    assert not app.active_modal == "view"
     assert not app.overlay_menu.backdrop_ax.get_visible()
     assert not app.overlay_control_selector.axis.get_visible()
-    for radio in (app.input_radio, app.current_radio):
-        buttons = getattr(radio, "_buttons", None)
-        if buttons is not None:
-            assert not buttons.get_visible()
-        else:
-            assert all(not circle.get_visible() for circle in radio.circles)
+    for radio in (app.overlay_radios["input"], app.overlay_radios["current_field"]):
+        assert not radio._buttons.get_visible()
     app._show_run_progress(1, 2)
     assert "1/2 (50%)" in app.status_text.get_text()
     app._show_run_progress(199, 200)
     assert "199/200 (99%)" in app.status_text.get_text()
-    app.fig.canvas.grab_mouse(app.rho_slider.ax)
+    app.fig.canvas.grab_mouse(app.sliders["rho"].ax)
     app.run()
     assert app.cache is None
-    app.fig.canvas.release_mouse(app.rho_slider.ax)
+    app.fig.canvas.release_mouse(app.sliders["rho"].ax)
     app.run()
     assert app.cache is not None
     assert app.time_slider.active
     assert app.editor.enabled
 
-    app.fig.canvas.grab_mouse(app.rho_slider.ax)
-    app.set_menu_visible(True)
-    assert not app.menu_open
-    app.fig.canvas.release_mouse(app.rho_slider.ax)
+    app.fig.canvas.grab_mouse(app.sliders["rho"].ax)
+    app.set_modal("view")
+    assert not app.active_modal == "view"
+    app.fig.canvas.release_mouse(app.sliders["rho"].ax)
 
     app._on_key_press(SimpleNamespace(key="v"))
-    assert app.menu_open
+    assert app.active_modal == "view"
     assert app.overlay_menu.backdrop_ax.get_visible()
-    assert all(axis.get_visible() for axis in app.overlay_menu.column_axes.values())
+    assert all(axis.get_visible() for axis in app.overlay_menu.panels.values())
     assert not app.overlay_control_selector.axis.get_visible()
-    assert not app.overlay_menu.control_time_label.get_visible()
+    assert not app.overlay_menu.labels["control_time"].get_visible()
     assert not app.source_ax.get_visible()
-    app.input_radio.set_active(3)
+    app.overlay_radios["input"].set_active(3)
     assert app.overlay_control_selector.axis.get_visible()
-    assert app.overlay_menu.control_time_label.get_visible()
-    app.input_radio.set_active(0)
+    assert app.overlay_menu.labels["control_time"].get_visible()
+    app.overlay_radios["input"].set_active(0)
     assert not app.overlay_control_selector.axis.get_visible()
-    assert not app.overlay_menu.control_time_label.get_visible()
+    assert not app.overlay_menu.labels["control_time"].get_visible()
     assert not app.time_slider.active
     assert not any(button.active for button in app.file_menu.buttons)
-    assert not any(slider.active for slider in app.parameter_menu.sliders)
+    assert not any(slider.active for slider in app.sliders.values())
     old_time = app.time_slider.val
     app._running = True
     marker = next(iter(app._control_markers))
@@ -1311,23 +1269,19 @@ def test_overlay_menu_and_current_image_modes():
     assert app.time_slider.val == old_time
 
     file_actions = []
-    app._run_file_action = lambda action: file_actions.append(action)
-    buttons = getattr(app.current_image_radio, "_buttons", None)
-    if buttons is not None:
-        point = buttons.get_offsets()[1]
-    else:
-        point = app.current_image_radio.circles[1].center
-    x, y = app.current_image_radio.ax.transAxes.transform(point)
+    app._run_modal_action = lambda action: file_actions.append(action)
+    point = app.overlay_radios["image_mode"]._buttons.get_offsets()[1]
+    x, y = app.overlay_radios["image_mode"].ax.transAxes.transform(point)
     for event_name in ("button_press_event", "button_release_event"):
         event = MouseEvent(event_name, app.fig.canvas, x, y, button=1)
         app.fig.canvas.callbacks.process(event_name, event)
     assert app.current_image_mode == "deformation"
     assert file_actions == []
 
-    app.current_radio.set_active(0)
-    app.target_radio.set_active(1)
+    app.overlay_radios["current_field"].set_active(0)
+    app.overlay_radios["target_mode"].set_active(1)
     app._on_key_press(SimpleNamespace(key="escape"))
-    assert not app.menu_open
+    assert not app.active_modal == "view"
     assert app.time_slider.active
     assert app.source_ax.get_visible()
     assert app.current_image_mode == "deformation"
@@ -1339,12 +1293,12 @@ def test_overlay_menu_and_current_image_modes():
     assert app.source_ax.title.get_color() == INK_COLOR
     assert app.current_ax.title.get_color() == INK_COLOR
 
-    app.current_image_radio.set_active(2)
+    app.overlay_radios["image_mode"].set_active(2)
     assert app.current_image_mode == "photometric"
     assert app.current_image.get_cmap().name == "gray"
     torch.testing.assert_close(
         app.renderer.current_image_tensor(
-            app.source,
+            app.series.source,
             app.cache,
             app.current_image_mode,
             app._time_index(),
@@ -1352,15 +1306,13 @@ def test_overlay_menu_and_current_image_modes():
         app.cache.photometric_only[app._time_index()],
     )
     assert "Photometric only" in app.current_ax.get_title()
-    assert r"|I_{\mathrm{phot}}(t)-I_{1}|" in (
-        app.target_ax.get_title()
-    )
+    assert r"|I_{\mathrm{phot}}(t)-I_{1}|" in (app.target_ax.get_title())
     assert r"I_{\mathrm{phot}}(t)" in app.target_footer.get_text()
 
-    app.current_radio.set_active(6)
+    app.overlay_radios["current_field"].set_active(6)
     assert app.current_field == "vector_momentum"
     assert r"\Vert m(t)\Vert_{V^*}^2" in app.current_footer.get_text()
-    app.spacing_slider.set_val(9)
+    app.sliders["spacing"].set_val(9)
     assert app.renderer.vector_spacing == 9
     quivers = [
         artist
@@ -1391,10 +1343,10 @@ def test_overlay_menu_and_current_image_modes():
     assert app.current_ax.get_title() == scaled_field_title(title, factor)
 
     app._on_key_press(SimpleNamespace(key="l"))
-    assert app.file_menu_open
+    assert app.active_modal == "files"
     assert app.file_menu.backdrop_ax.get_visible()
     app._on_key_press(SimpleNamespace(key="l"))
-    assert not app.file_menu_open
+    assert not app.active_modal == "files"
     plt.close(app.fig)
 
 
@@ -1411,7 +1363,7 @@ def test_overlay_menu_and_current_image_modes():
 def test_menu_shortcuts_preserve_image_panel_geometry(key, model, modal):
     source = torch.zeros(1, 1, 64, 96)
     app = SplinePlayground(
-        zero_setup(source, parameters=SplineParameters(n_steps=2, model=model)),
+        zero_setup(source, parameters=make_parameters(steps=2, model=model)),
         device="cpu",
     )
     app.fig.canvas.draw()
@@ -1459,20 +1411,20 @@ def test_input_and_current_image_switches_are_independent():
     setup = zero_setup(
         source,
         torch.roll(source, shifts=1, dims=-1),
-        SplineParameters(rho=0.5, n_steps=2),
+        make_parameters(rho=0.5, steps=2),
     )
-    setup.initial_momentum.fill_(0.05)
+    setup.variables.initial_momentum.fill_(0.05)
     app = SplinePlayground(setup, device="cpu")
     app.run_classic()
     assert app.cache is not None
 
     choices = (app.current_image_mode, app.current_field, app.target_mode)
-    app.set_menu_visible(True)
-    app.input_image_toggle.set_active(0)
-    app.current_image_toggle.set_active(0)
+    app.set_modal("view")
+    app.overlay_checks["input_image"].set_active(0)
+    app.overlay_checks["current_image"].set_active(0)
     assert not app.show_input_image
     assert not app.show_current_image
-    app.set_menu_visible(False)
+    app.set_modal(None)
 
     assert not np.asarray(app.source_image.get_array()).any()
     assert not np.asarray(app.current_image.get_array()).any()
@@ -1483,17 +1435,17 @@ def test_input_and_current_image_switches_are_independent():
     assert app._dynamic_artists[app.source_ax]
     assert app._dynamic_artists[app.current_ax]
 
-    app.set_menu_visible(True)
-    app.input_image_toggle.set_active(0)
-    app.set_menu_visible(False)
+    app.set_modal("view")
+    app.overlay_checks["input_image"].set_active(0)
+    app.set_modal(None)
     assert app.show_input_image
     assert not app.show_current_image
     assert np.asarray(app.source_image.get_array()).any()
     assert not np.asarray(app.current_image.get_array()).any()
 
-    app.set_menu_visible(True)
-    app.current_image_toggle.set_active(0)
-    app.set_menu_visible(False)
+    app.set_modal("view")
+    app.overlay_checks["current_image"].set_active(0)
+    app.set_modal(None)
     assert app.show_current_image
     assert np.asarray(app.current_image.get_array()).any()
     assert (app.current_image_mode, app.current_field, app.target_mode) == choices
@@ -1503,19 +1455,19 @@ def test_input_and_current_image_switches_are_independent():
 def test_drawing_amplitude_is_remembered_per_editable_field():
     setup = zero_setup(
         torch.zeros(1, 1, 10, 12),
-        parameters=SplineParameters(n_steps=5, control_steps=(1, 3)),
+        parameters=make_parameters(steps=5, control_times=(0.2, 0.6)),
     )
     app = SplinePlayground(setup, device="cpu")
 
-    assert app.amplitude_slider.val == pytest.approx(0.5)
+    assert app.sliders["amplitude"].val == pytest.approx(0.5)
     assert "[x0.5]" in app.source_ax.get_title()
-    app.amplitude_slider.set_val(0.75)
+    app.sliders["amplitude"].set_val(0.75)
     assert "[x0.75]" in app.source_ax.get_title()
 
-    app.input_radio.set_active(2)
+    app.overlay_radios["input"].set_active(2)
     assert app.editor.active_key == "initial_jerk"
-    assert app.amplitude_slider.val == pytest.approx(0.5)
-    app.amplitude_slider.set_val(3.0)
+    assert app.sliders["amplitude"].val == pytest.approx(0.5)
+    app.sliders["amplitude"].set_val(3.0)
     app.editor.on_press(
         SimpleNamespace(
             inaxes=app.source_ax,
@@ -1530,49 +1482,42 @@ def test_drawing_amplitude_is_remembered_per_editable_field():
     app.editor.cancel()
     assert "[x3]" in app.source_ax.get_title()
 
-    app.input_radio.set_active(0)
-    assert app.amplitude_slider.val == pytest.approx(0.75)
+    app.overlay_radios["input"].set_active(0)
+    assert app.sliders["amplitude"].val == pytest.approx(0.75)
     assert "[x0.75]" in app.source_ax.get_title()
 
-    app.input_radio.set_active(3)
-    app.amplitude_slider.set_val(2.0)
+    app.overlay_radios["input"].set_active(3)
+    app.sliders["amplitude"].set_val(2.0)
     app._select_control_time(1)
-    assert app.amplitude_slider.val == pytest.approx(0.5)
-    app.amplitude_slider.set_val(3.0)
+    assert app.sliders["amplitude"].val == pytest.approx(0.5)
+    app.sliders["amplitude"].set_val(3.0)
     app._select_control_time(0)
-    assert app.amplitude_slider.val == pytest.approx(2.0)
+    assert app.sliders["amplitude"].val == pytest.approx(2.0)
 
     app._add_control_time(0.5)
-    assert app.amplitude_slider.val == pytest.approx(0.5)
+    assert app.sliders["amplitude"].val == pytest.approx(0.5)
     app._select_control_time(2)
-    assert app.amplitude_slider.val == pytest.approx(3.0)
+    assert app.sliders["amplitude"].val == pytest.approx(3.0)
     app._select_control_time(0)
-    assert app.amplitude_slider.val == pytest.approx(2.0)
+    assert app.sliders["amplitude"].val == pytest.approx(2.0)
     plt.close(app.fig)
 
 
-def test_timed_targets_setup_round_trip_and_rejects_old_versions(tmp_path):
+def test_timed_targets_setup_round_trip(tmp_path):
     source = torch.zeros(1, 1, 5, 6)
     targets = torch.cat((torch.full_like(source, 0.25), torch.ones_like(source)))
     setup = zero_setup(
         source,
         targets,
-        SplineParameters(n_steps=4),
+        make_parameters(steps=4),
         target_times=(0.5, 1.0),
         target_paths=("half.png", "final.png"),
     )
     restored = load_setup(save_setup(setup, tmp_path / "timed_setup.pt"))
-    assert restored.target.shape == (2, 1, 5, 6)
-    assert restored.target_times == (0.5, 1.0)
+    assert restored.images.target.shape == (2, 1, 5, 6)
+    assert restored.images.target_times == (0.5, 1.0)
     assert restored.target_steps == (2, 4)
-    assert restored.target_paths == ("half.png", "final.png")
-
-    old = setup.payload()
-    old["format_version"] = 2
-    old_path = tmp_path / "version_two.pt"
-    torch.save(old, old_path)
-    with pytest.raises(ValueError, match="expected 3"):
-        load_setup(old_path)
+    assert restored.images.target_paths == ("half.png", "final.png")
 
 
 def test_selected_field_and_setup_only_project_round_trip(tmp_path):
@@ -1580,10 +1525,10 @@ def test_selected_field_and_setup_only_project_round_trip(tmp_path):
     setup = zero_setup(
         source,
         torch.ones_like(source),
-        SplineParameters(n_steps=2),
+        make_parameters(steps=2),
     )
     app = SplinePlayground(setup, device="cpu")
-    app.input_radio.set_active(1)
+    app.overlay_radios["input"].set_active(1)
     app.fields["initial_acceleration"].fill_(0.75)
 
     field_path = app.save_field(tmp_path / "acceleration")
@@ -1613,59 +1558,9 @@ def test_selected_field_and_setup_only_project_round_trip(tmp_path):
     )
     assert "(setup)" in app.status_text.get_text()
 
-    container = tmp_path / "project_container"
-    container.mkdir()
-    nested = container / destination.name
-    destination.rename(nested)
-    resolved = load_project(container)
-    torch.testing.assert_close(resolved.setup.source, source)
-    destination = nested
-
     torch.save({}, destination / "optimization.pt")
-    with pytest.raises(ValueError, match="requires trajectory"):
+    with pytest.raises(ValueError, match="RegistrationResult"):
         load_project(destination)
-    plt.close(app.fig)
-
-
-def test_project_without_setup_loads_with_zero_fields(tmp_path):
-    source = torch.zeros(1, 1, 5, 6)
-    targets = torch.cat((torch.full_like(source, 0.25), torch.ones_like(source)))
-    destination = tmp_path / "unregistered_project"
-    save_timed_image_directory(
-        TimedImageBatch(
-            source,
-            targets,
-            (0.5, 1.0),
-            "source.png",
-            ("half.png", "final.png"),
-        ),
-        destination,
-    )
-    parameters = SplineParameters(
-        n_steps=4,
-        control_steps=(1, 2),
-        alpha=0.5,
-        rho=0.25,
-    )
-    app = SplinePlayground(zero_setup(source, parameters=parameters), device="cpu")
-    for field in app.fields.values():
-        field.fill_(1)
-
-    app.load_project(destination)
-
-    assert app.last_error is None
-    assert app.cache is None
-    assert app.last_registration is None
-    assert app.parameters == parameters
-    assert app.target_times == [0.5, 1.0]
-    restored = load_timed_image_directory(destination)
-    torch.testing.assert_close(app._targets, restored.target)
-    for field in app.fields.values():
-        assert torch.count_nonzero(field) == 0
-    assert tuple(key for key in app.fields if key.startswith("control_jerk:")) == (
-        "control_jerk:0",
-        "control_jerk:1",
-    )
     plt.close(app.fig)
 
 
@@ -1675,13 +1570,13 @@ def test_model_actions_timed_target_selection_and_manual_placement(tmp_path):
     setup = zero_setup(
         source,
         targets,
-        SplineParameters(rho=0, n_steps=4, model="splines"),
+        make_parameters(rho=0, steps=4, model="splines"),
         target_times=(0.5, 1.0),
         target_paths=("half.png", "final.png"),
     )
     app = SplinePlayground(setup, device="cpu")
-    assert app.run_button.label.get_text() == "RUN SPLINE"
-    assert app.register_button.label.get_text() == "REGISTER SPLINE"
+    assert app.buttons["run"].label.get_text() == "RUN SPLINE"
+    assert app.buttons["register"].label.get_text() == "REGISTER SPLINE"
     assert len(app._target_markers) == 4
     assert app.control_time_editor.image_steps == (2, 4)
 
@@ -1692,27 +1587,37 @@ def test_model_actions_timed_target_selection_and_manual_placement(tmp_path):
     assert "Target 2/2" in app.target_ax.get_title()
 
     app.run_classic()
-    assert len(app._targets) == 2
-    assert app.target_times == [0.5, 1.0]
+    assert len(app.series.targets) == 2
+    assert app.series.times == [0.5, 1.0]
 
-    app.model_radio.set_active(0)
-    assert app.run_button.label.get_text() == "RUN CLASSIC"
-    assert app.register_button.label.get_text() == "REGISTER CLASSIC"
+    app.radios["model"].set_active(0)
+    assert app.buttons["run"].label.get_text() == "RUN CLASSIC"
+    assert app.buttons["register"].label.get_text() == "REGISTER CLASSIC"
     saved_setup = load_setup(app.save(tmp_path / "classic_timed.pt"))
-    assert saved_setup.target_times == (0.5, 1.0)
-    app.model_radio.set_active(1)
+    assert saved_setup.images.target_times == (0.5, 1.0)
+    app.radios["model"].set_active(1)
 
     extra_path = tmp_path / "early.png"
     plt.imsave(extra_path, np.full((6, 7), 0.5), cmap="gray", vmin=0, vmax=1)
+    app.set_time_index(4)
     app.add_images((extra_path,))
-    assert app.target_times[-1] is None
+    assert app.series.times[-1] is None
+    assert app.series.selected == 3
+    assert app.observation_menu.editor.selected == 3
+    assert app.target_index == 1
+    torch.testing.assert_close(app.target, targets[1:2])
+    np.testing.assert_allclose(app.target_image.get_array(), targets[1, 0])
+    assert "Target 2/3" in app.target_ax.get_title()
     app._place_image(3, 0.0)
-    assert float(app.source.mean()) == pytest.approx(0.5, abs=3e-3)
-    assert app.target_times[-1] is None
+    assert float(app.series.source.mean()) == pytest.approx(0.5, abs=3e-3)
+    assert app.series.times[-1] is None
     app._place_image(3, 0.25)
-    assert app.target_times[-1] == pytest.approx(0.25)
+    assert app.series.times[-1] == pytest.approx(0.25)
+    assert "Placed target 1" in app.status_text.get_text()
+    app.set_time_index(1)
+    assert "Target 1/3" in app.target_ax.get_title()
     ordered = app.make_setup("splines")
-    assert ordered.target_times == (0.25, 0.5, 1.0)
+    assert ordered.images.target_times == (0.25, 0.5, 1.0)
 
     app.run_spline()
     assert app.cache is not None
@@ -1728,7 +1633,7 @@ def test_model_actions_timed_target_selection_and_manual_placement(tmp_path):
     assert loaded.cache is not None
     assert loaded.last_registration is None
     assert loaded.parameters.model == "splines"
-    assert loaded.target_times == [0.25, 0.5, 1.0]
+    assert loaded.series.times == [0.25, 0.5, 1.0]
     torch.testing.assert_close(loaded.cache.images, app.cache.images)
     assert "trajectory" in loaded.status_text.get_text()
     plt.close(loaded.fig)
@@ -1743,7 +1648,7 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
         zero_setup(
             source,
             target,
-            SplineParameters(rho=0, n_steps=2, model="classic", iterations=2),
+            make_parameters(rho=0, steps=2, model="classic", iterations=2),
         ),
         device="cpu",
     )
@@ -1758,13 +1663,13 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
     torch.testing.assert_close(classic_curves["data"], classic_losses[:, 0])
     torch.testing.assert_close(
         classic_curves["regularized"],
-        classic.parameters.cost_cst * classic_losses[:, 1:].sum(dim=1),
+        classic.parameters.spline.cost * classic_losses[:, 1:].sum(dim=1),
     )
     torch.testing.assert_close(
         classic_curves["full"],
         classic_curves["data"] + classic_curves["regularized"],
     )
-    classic.target_radio.set_active(2)
+    classic.overlay_radios["target_mode"].set_active(2)
     assert classic.target_mode == "Global loss"
     assert not classic.target_image.get_visible()
     assert not classic.target_ax.xaxis._major_tick_kw["gridOn"]
@@ -1778,8 +1683,8 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
         "Data loss",
         "Regularized momentum cost",
     ]
-    assert classic.target_loss_check.get_status() == [True, True, True]
-    classic.target_loss_check.set_active(1)
+    assert classic.overlay_checks["target_loss"].get_status() == [True, True, True]
+    classic.overlay_checks["target_loss"].set_active(1)
     assert [line.get_label() for line in classic.target_ax.lines] == [
         "Full loss",
         "Regularized momentum cost",
@@ -1793,7 +1698,7 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
     assert loaded_classic.cache is not None
     assert loaded_classic.last_registration is not None
     assert loaded_classic.last_registration.trajectory is loaded_classic.cache
-    assert loaded_classic.last_registration.model == "classic"
+    assert loaded_classic.last_registration.setup.parameters.model == "classic"
     plt.close(loaded_classic.fig)
     plt.close(classic.fig)
 
@@ -1801,7 +1706,7 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
         zero_setup(
             source,
             target,
-            SplineParameters(rho=0, n_steps=3, model="splines", iterations=2),
+            make_parameters(rho=0, steps=3, model="splines", iterations=2),
         ),
         device="cpu",
     )
@@ -1816,10 +1721,10 @@ def test_register_actions_load_optimized_fields_and_trajectory(tmp_path):
     torch.testing.assert_close(spline_curves["data"], spline_losses["data_loss"])
     torch.testing.assert_close(
         spline_curves["regularized"],
-        splines.parameters.cost_cst * spline_losses["acceleration_energy"],
+        splines.parameters.spline.cost * spline_losses["acceleration_energy"],
     )
     torch.testing.assert_close(spline_curves["full"], spline_losses["total_cost"])
-    splines.target_radio.set_active(2)
+    splines.overlay_radios["target_mode"].set_active(2)
     assert splines.target_ax.get_box_aspect() == pytest.approx(1.0)
     assert splines.target_ax.get_xlim()[1] < len(spline_losses["data_loss"]) + 1
     assert [line.get_label() for line in splines.target_ax.lines] == [
@@ -1861,10 +1766,9 @@ def test_loss_plot_limits_ignore_large_image_extent():
             "total_cost": torch.tensor([300.0, 200.2, 180.1]),
         },
         elapsed_seconds=0.0,
-        model="splines",
     )
 
-    app.target_radio.set_active(2)
+    app.overlay_radios["target_mode"].set_active(2)
 
     assert app.target_ax.get_xlim()[1] < 3
     assert app.target_ax.get_ylim()[1] < 350
@@ -1874,16 +1778,12 @@ def test_loss_plot_limits_ignore_large_image_extent():
     assert {
         line.get_label(): line.get_color() for line in app.target_ax.lines
     } == colors
-    app.target_loss_check.set_active(1)
-    assert {
-        line.get_label(): line.get_color() for line in app.target_ax.lines
-    } == {
+    app.overlay_checks["target_loss"].set_active(1)
+    assert {line.get_label(): line.get_color() for line in app.target_ax.lines} == {
         "Full loss": colors["Full loss"],
-        "Regularized acceleration cost": colors[
-            "Regularized acceleration cost"
-        ],
+        "Regularized acceleration cost": colors["Regularized acceleration cost"],
     }
-    app.target_radio.set_active(0)
+    app.overlay_radios["target_mode"].set_active(0)
     assert app.target_image.get_visible()
     assert app.target_ax.get_xlim() == pytest.approx((-0.5, 511.5))
     assert app.target_ax.get_ylim() == pytest.approx((-0.5, 511.5))
@@ -1911,7 +1811,7 @@ def test_register_spline_materializes_final_diagnostics_without_replay(monkeypat
         zero_setup(
             source,
             torch.ones_like(source),
-            SplineParameters(rho=0, n_steps=3, iterations=1),
+            make_parameters(rho=0, steps=3, iterations=1),
         ),
         device="cpu",
     )
@@ -1929,11 +1829,11 @@ def test_registration_forwards_setup_lbfgs_learning_rate(monkeypatch):
     setup = zero_setup(
         source,
         torch.ones_like(source),
-        SplineParameters(
+        make_parameters(
             rho=0,
-            n_steps=3,
+            steps=3,
             iterations=1,
-            lbfgs_lr=0.025,
+            learning_rate=0.025,
         ),
     )
     captured = {}
@@ -1968,11 +1868,11 @@ def test_registration_forwards_setup_lbfgs_learning_rate(monkeypatch):
     classic_setup = zero_setup(
         source,
         torch.ones_like(source),
-        SplineParameters(
+        make_parameters(
             model="classic",
-            n_steps=3,
+            steps=3,
             iterations=1,
-            lbfgs_lr=0.4,
+            learning_rate=0.4,
         ),
     )
     classic_captured = {}
@@ -2007,21 +1907,18 @@ def test_register_spline_uses_geodesic_regression_for_warm_start(monkeypatch):
     setup = zero_setup(
         source,
         target,
-        SplineParameters(
+        make_parameters(
             alpha=0.4,
             beta=0.3,
             gamma=0.2,
             rho=0,
-            n_steps=4,
+            steps=4,
             iterations=1,
-            cost_cst=0.05,
-            lbfgs_lr=0.025,
+            cost=0.05,
+            learning_rate=0.025,
             optimized_fields=("initial_acceleration",),
-            spline_initialization="warm",
-            regression_cost_cst=0.07,
-            regression_n_steps=8,
-            regression_iterations=3,
-            regression_lbfgs_lr=0.4,
+            initialization="warm",
+            regression=SolverSettings(0.07, 8, 3, 0.4),
         ),
         target_times=(0.5, 1.0),
     )
@@ -2030,9 +1927,7 @@ def test_register_spline_uses_geodesic_regression_for_warm_start(monkeypatch):
 
     def fake_regression(**kwargs):
         captured["regression"] = kwargs
-        return SimpleNamespace(
-            optimized_momenta=Momenta(momentum_I=seed.clone())
-        )
+        return SimpleNamespace(optimized_momenta=Momenta(momentum_I=seed.clone()))
 
     class FakeOptimizer:
         def __init__(self, **kwargs):
@@ -2062,17 +1957,14 @@ def test_register_spline_uses_geodesic_regression_for_warm_start(monkeypatch):
 
     regression = captured["regression"]
     assert regression["target_times"] == (0.5, 1.0)
-    torch.testing.assert_close(regression["target"], setup.target)
+    torch.testing.assert_close(regression["target"], setup.images.target)
     assert regression["rho"] == 0
     assert regression["integration_steps"] == 8
     assert regression["n_iter"] == 3
     assert regression["cost_cst"] == pytest.approx(0.07)
     assert regression["grad_coef"] == pytest.approx(0.4)
     assert regression["lbfgs_max_iter"] == registration_module.LBFGS_MAX_ITER
-    assert (
-        regression["lbfgs_history_size"]
-        == registration_module.LBFGS_HISTORY_SIZE
-    )
+    assert regression["lbfgs_history_size"] == registration_module.LBFGS_HISTORY_SIZE
     assert regression["boundary"] == "periodic"
     assert regression["kernelOperator"].alpha == pytest.approx(0.4)
     assert regression["kernelOperator"].beta == pytest.approx(0.3)
@@ -2084,7 +1976,7 @@ def test_register_spline_uses_geodesic_regression_for_warm_start(monkeypatch):
     assert not variables.initial_jerk.requires_grad
     assert torch.count_nonzero(variables.initial_acceleration) == 0
     assert torch.count_nonzero(variables.initial_jerk) == 0
-    torch.testing.assert_close(result.setup.initial_momentum, seed)
+    torch.testing.assert_close(result.setup.variables.initial_momentum, seed)
     assert result.trajectory is trajectory
 
     no_fields = replace(
@@ -2095,17 +1987,17 @@ def test_register_spline_uses_geodesic_regression_for_warm_start(monkeypatch):
     monkeypatch.setattr(
         registration_module,
         "run_spline",
-        lambda replay_setup, **_kwargs: captured.update(
-            replay_setup=replay_setup
-        ) or trajectory,
+        lambda replay_setup, **_kwargs: (
+            captured.update(replay_setup=replay_setup) or trajectory
+        ),
     )
 
     result = registration_module.register_spline(no_fields, device="cpu")
 
     assert captured["optimizer_calls"] == 1
-    torch.testing.assert_close(result.setup.initial_momentum, seed)
+    torch.testing.assert_close(result.setup.variables.initial_momentum, seed)
     torch.testing.assert_close(
-        captured["replay_setup"].initial_momentum,
+        captured["replay_setup"].variables.initial_momentum,
         seed,
     )
 
@@ -2116,9 +2008,9 @@ def test_register_spline_optimizes_only_selected_fields_and_always_controls():
     acceleration_only = zero_setup(
         source,
         target,
-        SplineParameters(
+        make_parameters(
             rho=0,
-            n_steps=3,
+            steps=3,
             iterations=2,
             optimized_fields=("initial_acceleration",),
         ),
@@ -2126,17 +2018,17 @@ def test_register_spline_optimizes_only_selected_fields_and_always_controls():
 
     result = register_spline(acceleration_only, device="cpu")
 
-    assert torch.count_nonzero(result.setup.initial_momentum) == 0
-    assert torch.count_nonzero(result.setup.initial_acceleration) > 0
-    assert torch.count_nonzero(result.setup.initial_jerk) == 0
+    assert torch.count_nonzero(result.setup.variables.initial_momentum) == 0
+    assert torch.count_nonzero(result.setup.variables.initial_acceleration) > 0
+    assert torch.count_nonzero(result.setup.variables.initial_jerk) == 0
 
     control_only = zero_setup(
         source,
         target,
-        SplineParameters(
+        make_parameters(
             rho=0,
-            n_steps=4,
-            control_steps=(1,),
+            steps=4,
+            control_times=(0.25,),
             iterations=2,
             optimized_fields=(),
         ),
@@ -2144,17 +2036,17 @@ def test_register_spline_optimizes_only_selected_fields_and_always_controls():
 
     result = register_spline(control_only, device="cpu")
 
-    assert torch.count_nonzero(result.setup.initial_momentum) == 0
-    assert torch.count_nonzero(result.setup.initial_acceleration) == 0
-    assert torch.count_nonzero(result.setup.initial_jerk) == 0
-    assert torch.count_nonzero(result.setup.control_jerks) > 0
+    assert torch.count_nonzero(result.setup.variables.initial_momentum) == 0
+    assert torch.count_nonzero(result.setup.variables.initial_acceleration) == 0
+    assert torch.count_nonzero(result.setup.variables.initial_jerk) == 0
+    assert torch.count_nonzero(result.setup.variables.control_jerks) > 0
 
     no_fields = zero_setup(
         source,
         target,
-        SplineParameters(
+        make_parameters(
             rho=0,
-            n_steps=3,
+            steps=3,
             iterations=2,
             optimized_fields=(),
         ),
@@ -2162,6 +2054,6 @@ def test_register_spline_optimizes_only_selected_fields_and_always_controls():
 
     result = register_spline(no_fields, device="cpu")
 
-    assert torch.count_nonzero(result.setup.initial_momentum) == 0
-    assert torch.count_nonzero(result.setup.initial_acceleration) == 0
-    assert torch.count_nonzero(result.setup.initial_jerk) == 0
+    assert torch.count_nonzero(result.setup.variables.initial_momentum) == 0
+    assert torch.count_nonzero(result.setup.variables.initial_acceleration) == 0
+    assert torch.count_nonzero(result.setup.variables.initial_jerk) == 0

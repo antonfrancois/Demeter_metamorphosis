@@ -20,7 +20,7 @@ import torch
 
 from draft.playground.splines import video_export
 from draft.playground.splines.app import SplinePlayground
-from draft.playground.splines.core import SplineParameters, zero_setup
+from draft.playground.splines.core import SolverSettings, SplineParameters, zero_setup
 
 
 def test_trajectory_video_schedule_is_always_four_seconds():
@@ -56,9 +56,9 @@ def test_save_video_uses_image_canvas_and_restores_current_panel(tmp_path, monke
     setup = zero_setup(
         source,
         torch.roll(source, shifts=1, dims=-1),
-        SplineParameters(rho=0.5, n_steps=2),
+        SplineParameters(rho=0.5, spline=SolverSettings(steps=2)),
     )
-    setup.initial_momentum[..., 2:5, 2:6] = 0.02
+    setup.variables.initial_momentum[..., 2:5, 2:6] = 0.02
     app = SplinePlayground(setup, device="cpu")
     with pytest.raises(ValueError, match="run or load"):
         app.save_video(tmp_path / "missing.mp4")
@@ -70,7 +70,7 @@ def test_save_video_uses_image_canvas_and_restores_current_panel(tmp_path, monke
         lambda purpose, **options: dialog_request.append((purpose, options)),
     )
     app.current_field = "velocity"
-    app.save_video_dialog()
+    app.open_dialog("save_video")
     assert dialog_request == [
         ("save_video", {"initial_name": "trajectory_images_velocity.mp4"})
     ]
@@ -91,7 +91,7 @@ def test_save_video_uses_image_canvas_and_restores_current_panel(tmp_path, monke
             tmp_path / "unavailable.mp4",
             figure=app.fig,
             renderer=app.renderer,
-            source=app.source,
+            source=app.series.source,
             trajectory=app.cache,
             image_mode=app.current_image_mode,
             current_field=app.current_field,
@@ -135,8 +135,12 @@ def test_save_video_uses_image_canvas_and_restores_current_panel(tmp_path, monke
         frames = sorted(frame_directory.glob("frame_*.png"))
         assert len(frames) == frame_count
         assert plt.imread(frames[fps]).shape[:2] == (720, 720)
-        assert all(frame.read_bytes() == frames[0].read_bytes() for frame in frames[:fps])
-        assert all(frame.read_bytes() == frames[-1].read_bytes() for frame in frames[-fps:])
+        assert all(
+            frame.read_bytes() == frames[0].read_bytes() for frame in frames[:fps]
+        )
+        assert all(
+            frame.read_bytes() == frames[-1].read_bytes() for frame in frames[-fps:]
+        )
         Path(command[-1]).write_bytes(b"mock mp4")
 
     monkeypatch.setattr(video_export.subprocess, "run", fake_ffmpeg)

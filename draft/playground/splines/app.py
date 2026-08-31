@@ -84,10 +84,13 @@ class SplinePlayground:
         device: str = "auto",
         output_path: str | Path | None = None,
     ) -> None:
-        if max(
-            setup.parameters.spline.steps,
-            setup.parameters.regression.steps,
-        ) > MAX_STEPS:
+        if (
+            max(
+                setup.parameters.spline.steps,
+                setup.parameters.regression.steps,
+            )
+            > MAX_STEPS
+        ):
             raise ValueError(
                 f"the interactive playground supports at most {MAX_STEPS} steps"
             )
@@ -151,9 +154,7 @@ class SplinePlayground:
         self.parameters = setup.parameters
         self.series = ImageSeries.from_batch(setup.images)
         self._set_fields_from_setup(setup)
-        self._drawing_amplitudes = dict.fromkeys(
-            self.fields, DEFAULT_DRAWING_AMPLITUDE
-        )
+        self._drawing_amplitudes = dict.fromkeys(self.fields, DEFAULT_DRAWING_AMPLITUDE)
 
     def _set_fields_from_setup(self, setup: SplineSetup) -> None:
         self.fields.clear()
@@ -183,9 +184,7 @@ class SplinePlayground:
             self.current_colorbar_ax,
             self.target_colorbar_ax,
         ) = self.colorbar_axes
-        self.source_footer, self.current_footer, self.target_footer = (
-            workspace.footers
-        )
+        self.source_footer, self.current_footer, self.target_footer = workspace.footers
         self.buttons = workspace.buttons
         self.time_slider = workspace.time_slider
         self.status_text = workspace.status_text
@@ -206,26 +205,12 @@ class SplinePlayground:
         self._bind_buttons(
             (self.buttons["run"], self.run),
             (self.buttons["register"], self.register),
-            (
-                self.buttons["parameters"],
-                lambda: self.set_parameter_menu_visible(not self.parameter_menu_open),
-            ),
-            (
-                self.parameter_menu.close_button,
-                lambda: self.set_parameter_menu_visible(False),
-            ),
-            (self.buttons["view"], lambda: self.set_menu_visible(not self.menu_open)),
-            (self.overlay_menu.close_button, lambda: self.set_menu_visible(False)),
-            (
-                self.buttons["files"],
-                lambda: self.set_file_menu_visible(not self.file_menu_open),
-            ),
-            (
-                self.buttons["images"],
-                lambda: self.set_image_menu_visible(
-                    self.active_modal not in ("images", "observations")
-                ),
-            ),
+            (self.buttons["parameters"], lambda: self.toggle_modal("parameters")),
+            (self.parameter_menu.close_button, lambda: self.set_modal(None)),
+            (self.buttons["view"], lambda: self.toggle_modal("view")),
+            (self.overlay_menu.close_button, lambda: self.set_modal(None)),
+            (self.buttons["files"], lambda: self.toggle_modal("files")),
+            (self.buttons["images"], lambda: self.toggle_modal("images")),
             (self.buttons["clear"], self.clear),
             (self.buttons["clear_all"], self.clear_all),
         )
@@ -240,7 +225,7 @@ class SplinePlayground:
         )
 
         self._workspace_widgets = [*self.buttons.values(), self.time_slider]
-        self._set_modal(None)
+        self.set_modal(None)
 
     def _build_parameter_menu(self) -> None:
         self.parameter_menu = build_parameter_menu(
@@ -279,29 +264,30 @@ class SplinePlayground:
 
     def _build_file_menu(self) -> None:
         actions = (
-            ("LOAD FIELD", lambda: self._run_modal_action(self.load_field_dialog)),
-            ("LOAD PROJECT", lambda: self._run_modal_action(self.load_project_dialog)),
-            ("SAVE FIELD", lambda: self._run_modal_action(self.save_field_dialog)),
-            ("SAVE PROJECT", lambda: self._run_modal_action(self.save_project_dialog)),
-            ("SAVE VIDEO", lambda: self._run_modal_action(self.save_video_dialog)),
+            (label, lambda purpose=purpose: self.open_dialog(purpose))
+            for label, purpose in (
+                ("LOAD FIELD", "load_field"),
+                ("LOAD PROJECT", "load_project"),
+                ("SAVE FIELD", "save_field"),
+                ("SAVE PROJECT", "save_project"),
+                ("SAVE VIDEO", "save_video"),
+            )
         )
-        self.file_menu = build_file_menu(self.fig, actions)
-        self._bind_buttons(
-            (self.file_menu.close_button, lambda: self.set_file_menu_visible(False))
-        )
+        self.file_menu = build_file_menu(self.fig, tuple(actions))
+        self._bind_buttons((self.file_menu.close_button, lambda: self.set_modal(None)))
 
     def _build_image_menu(self) -> None:
         self.image_menu = build_image_menu(self.fig)
         self._bind_buttons(
             (
                 self.image_menu.load_source_button,
-                lambda: self._run_modal_action(self.load_source_dialog),
+                lambda: self.open_dialog("source"),
             ),
             (
                 self.image_menu.load_target_button,
-                lambda: self._run_modal_action(self.load_target_dialog),
+                lambda: self.open_dialog("target"),
             ),
-            (self.image_menu.close_button, lambda: self.set_image_menu_visible(False)),
+            (self.image_menu.close_button, lambda: self.set_modal(None)),
         )
 
     def _build_observation_menu(self) -> None:
@@ -314,13 +300,16 @@ class SplinePlayground:
         self._bind_buttons(
             (
                 self.observation_menu.load_directory_button,
-                self.load_timed_directory_dialog,
+                lambda: self.open_dialog("load_timed_images"),
             ),
-            (self.observation_menu.add_images_button, self.add_images_dialog),
+            (
+                self.observation_menu.add_images_button,
+                lambda: self.open_dialog("add_images"),
+            ),
             (self.observation_menu.remove_button, self.remove_selected_image),
             (
                 self.observation_menu.close_button,
-                lambda: self.set_image_menu_visible(False),
+                lambda: self.set_modal(None),
             ),
         )
 
@@ -328,10 +317,6 @@ class SplinePlayground:
     def _bind_buttons(*actions) -> None:
         for button, action in actions:
             button.on_clicked(lambda _event, callback=action: callback())
-
-    def _run_modal_action(self, action) -> None:
-        self._set_modal(None)
-        action()
 
     def _connect_events(self) -> None:
         canvas = self.fig.canvas
@@ -343,40 +328,12 @@ class SplinePlayground:
         canvas.mpl_connect("button_release_event", self._on_button_release)
         canvas.mpl_connect("resize_event", lambda _event: self.editor.cancel())
 
-    def set_menu_visible(self, visible: bool) -> None:
-        self._set_modal("view" if visible else None)
+    def toggle_modal(self, modal: str) -> None:
+        if modal == "images" and self.parameters.model == "splines":
+            modal = "observations"
+        self.set_modal(None if self.active_modal == modal else modal)
 
-    @property
-    def menu_open(self) -> bool:
-        return self.active_modal == "view"
-
-    def set_file_menu_visible(self, visible: bool) -> None:
-        self._set_modal("files" if visible else None)
-
-    @property
-    def file_menu_open(self) -> bool:
-        return self.active_modal == "files"
-
-    def set_image_menu_visible(self, visible: bool) -> None:
-        if not visible:
-            self._set_modal(None)
-        elif self.parameters.model == "splines":
-            self._set_modal("observations")
-        else:
-            self._set_modal("images")
-
-    @property
-    def image_menu_open(self) -> bool:
-        return self.active_modal == "images"
-
-    def set_parameter_menu_visible(self, visible: bool) -> None:
-        self._set_modal("parameters" if visible else None)
-
-    @property
-    def parameter_menu_open(self) -> bool:
-        return self.active_modal == "parameters"
-
-    def _set_modal(self, modal: str | None) -> None:
+    def set_modal(self, modal: str | None) -> None:
         if self._running:
             return
         if (
@@ -388,17 +345,17 @@ class SplinePlayground:
         if modal is not None and hasattr(self, "editor"):
             self.editor.cancel()
         self.overlay_menu.set_visible(
-            self.menu_open,
+            modal == "view",
             show_control_selector=(
                 self.input_kind == "control_jerk"
                 and bool(self.parameters.control_times)
             ),
             target_mode=self.target_mode,
         )
-        self.file_menu.set_visible(self.file_menu_open)
-        self.image_menu.set_visible(self.image_menu_open)
+        self.file_menu.set_visible(modal == "files")
+        self.image_menu.set_visible(modal == "images")
         self.observation_menu.set_visible(modal == "observations")
-        self.parameter_menu.set_visible(self.parameter_menu_open)
+        self.parameter_menu.set_visible(modal == "parameters")
         self._set_workspace_active(modal is None)
         self._set_workspace_visible(modal is None)
         if modal is None and self._workspace_dirty:
@@ -608,7 +565,9 @@ class SplinePlayground:
         if self._syncing_widgets:
             return
         self.target_mode = label
-        self.overlay_menu.set_target_controls_visible(self.menu_open, label)
+        self.overlay_menu.set_target_controls_visible(
+            self.active_modal == "view", label
+        )
         self._render_panels(self._render_target)
         self.fig.canvas.draw_idle()
 
@@ -648,13 +607,12 @@ class SplinePlayground:
     def _apply_parameter_change(self) -> None:
         previous = self.parameters
         previous_steps = previous.spline.steps
+
         def restore_mesh_widgets() -> None:
             self._syncing_widgets = True
             try:
                 self.sliders["spline_steps"].set_val(previous.spline.steps)
-                self.sliders["regression_steps"].set_val(
-                    previous.regression.steps
-                )
+                self.sliders["regression_steps"].set_val(previous.regression.steps)
                 self.radios["initialization"].set_active(
                     0 if previous.initialization == "cold" else 1
                 )
@@ -783,7 +741,9 @@ class SplinePlayground:
     def _place_image(self, index: int, time: float) -> None:
         if index == 0:
             if time != 0:
-                self._show_message("Replace the source by placing another image at node 0.")
+                self._show_message(
+                    "Replace the source by placing another image at node 0."
+                )
             return
         if time == 0:
             self._promote_target_to_source(index - 1)
@@ -819,9 +779,7 @@ class SplinePlayground:
             self._use_minimum_regression_mesh()
         self.last_registration = None
         self._refresh_observation_widgets()
-        self._set_status(
-            f"Placed target {self.series.number(index)} at t={time:.3g}."
-        )
+        self._set_status(f"Placed target {self.series.number(index)} at t={time:.3g}.")
         self._render_panels(self._render_target)
         self.fig.canvas.draw_idle()
 
@@ -998,7 +956,7 @@ class SplinePlayground:
             "i": "observations" if self.parameters.model == "splines" else "images",
         }.get(key)
         if modal is not None:
-            self._set_modal(None if self.active_modal == modal else modal)
+            self.toggle_modal(modal)
             return
         if key == "escape":
             self._cancel_active_interaction()
@@ -1009,26 +967,26 @@ class SplinePlayground:
             "r": self.run,
             "g": self.register,
             "ctrl+z": self.undo,
-            "ctrl+s": lambda: self.save_setup_dialog(quick=True),
-            "ctrl+o": self.load_setup_dialog,
+            "ctrl+s": lambda: self.open_dialog("save_setup", quick=True),
+            "ctrl+o": lambda: self.open_dialog("load_setup"),
             "c": self.clear,
+            "left": lambda: self.set_time_index(int(self.time_slider.val) - 1),
+            "right": lambda: self.set_time_index(int(self.time_slider.val) + 1),
+            "[": lambda: self._jump_relative_control(-1),
+            "]": lambda: self._jump_relative_control(1),
+            **{
+                str(index + 1): lambda index=index: self.overlay_radios[
+                    "input"
+                ].set_active(index)
+                for index in range(4)
+            },
         }.get(key)
         if action is not None:
             action()
-            return
-        time_offset = {"left": -1, "right": 1}.get(key)
-        if time_offset is not None:
-            self.set_time_index(int(self.time_slider.val) + time_offset)
-        elif key in ("[", "]"):
-            self._jump_relative_control(-1 if key == "[" else 1)
-        else:
-            input_index = {"1": 0, "2": 1, "3": 2, "4": 3}.get(key)
-            if input_index is not None:
-                self.overlay_radios["input"].set_active(input_index)
 
     def _cancel_active_interaction(self) -> None:
         if self.active_modal is not None:
-            self._set_modal(None)
+            self.set_modal(None)
         elif self.editor.cancel():
             self.fig.canvas.draw_idle()
 
@@ -1082,7 +1040,7 @@ class SplinePlayground:
 
     def _update_overlay_control_selector_visibility(self) -> None:
         self.overlay_menu.set_control_selector_visible(
-            self.menu_open
+            self.active_modal == "view"
             and self.input_kind == "control_jerk"
             and bool(self.parameters.control_times)
         )
@@ -1227,9 +1185,7 @@ class SplinePlayground:
         if model == "splines":
             initialization = self._current_parameters().initialization
             model_label = f"{initialization} spline"
-        if not self._begin_operation(
-            f"Optimizing {model_label} from the images..."
-        ):
+        if not self._begin_operation(f"Optimizing {model_label} from the images..."):
             return
         try:
             setup = self.make_setup(model)
@@ -1280,9 +1236,7 @@ class SplinePlayground:
             self._set_targets_from_setup(result.setup)
         else:
             self._update_target_mse_cache()
-        self._drawing_amplitudes = dict.fromkeys(
-            self.fields, DEFAULT_DRAWING_AMPLITUDE
-        )
+        self._drawing_amplitudes = dict.fromkeys(self.fields, DEFAULT_DRAWING_AMPLITUDE)
         self._sync_amplitude_slider()
 
     def _show_run_progress(self, completed: int, total: int) -> None:
@@ -1343,9 +1297,7 @@ class SplinePlayground:
         regularized_loss_label = "Regularized cost"
         if self.last_registration is not None:
             loss_curves = self.last_registration.loss_curves()
-            regularized_loss_label = (
-                self.last_registration.regularized_loss_label
-            )
+            regularized_loss_label = self.last_registration.regularized_loss_label
         self.renderer.render_target(
             self.series.source,
             self.target,
@@ -1491,9 +1443,7 @@ class SplinePlayground:
         if trajectory is not None:
             trajectory = replace(
                 trajectory,
-                target_mse=trajectory.target_mse[
-                    list(self.series.order())
-                ],
+                target_mse=trajectory.target_mse[list(self.series.order())],
             )
         destination = save_project_directory(
             setup,
@@ -1557,7 +1507,6 @@ class SplinePlayground:
         role = self._active_field_key()
         torch.save(
             {
-                "format_version": 1,
                 "field": self.editor.field.detach().cpu().clone(),
                 "field_kind": "a" if role == "initial_acceleration" else "u",
                 "field_role": role,
@@ -1569,10 +1518,13 @@ class SplinePlayground:
         return path
 
     def apply_setup(self, setup: SplineSetup) -> None:
-        if max(
-            setup.parameters.spline.steps,
-            setup.parameters.regression.steps,
-        ) > MAX_STEPS:
+        if (
+            max(
+                setup.parameters.spline.steps,
+                setup.parameters.regression.steps,
+            )
+            > MAX_STEPS
+        ):
             raise ValueError(
                 f"the interactive playground supports at most {MAX_STEPS} steps"
             )
@@ -1616,78 +1568,38 @@ class SplinePlayground:
         self.apply_setup(load_setup(path))
         self.output_path = Path(path).expanduser()
 
-    def load_source_dialog(self) -> None:
-        self._file_dialog("source", self.load_source, "SOURCE LOAD")
-
-    def load_target_dialog(self) -> None:
-        self._file_dialog("target", self.load_target, "TARGET LOAD")
-
-    def add_images_dialog(self) -> None:
-        self._choose_and_apply(choose_files, self.add_images, "IMAGE LOAD")
-
-    def load_timed_directory_dialog(self) -> None:
-        self._directory_dialog(
-            "load_timed_images",
-            self.load_timed_directory,
-            "DIRECTORY LOAD",
+    def open_dialog(self, purpose: str, *, quick: bool = False) -> None:
+        actions = {
+            "source": self.load_source,
+            "target": self.load_target,
+            "add_images": self.add_images,
+            "load_timed_images": self.load_timed_directory,
+            "load_project": self.load_project,
+            "load_field": self.load_field,
+            "save_project": self.save_project,
+            "save_field": self.save_field,
+            "save_video": self.save_video,
+            "load_setup": self.load_setup_path,
+            "save_setup": self.save,
+        }
+        initial_name = (
+            trajectory_video_filename(self.current_field, self.show_current_image)
+            if purpose == "save_video"
+            else None
         )
-
-    def load_project_dialog(self) -> None:
-        self._directory_dialog("load_project", self.load_project, "PROJECT LOAD")
-
-    def load_field_dialog(self) -> None:
-        self._file_dialog("load_field", self.load_field, "FIELD LOAD")
-
-    def save_project_dialog(self) -> None:
-        self._directory_dialog("save_project", self.save_project, "PROJECT SAVE")
-
-    def save_field_dialog(self) -> None:
-        self._file_dialog("save_field", self.save_field, "FIELD SAVE")
-
-    def save_video_dialog(self) -> None:
-        self._file_dialog(
-            "save_video",
-            self.save_video,
-            "VIDEO SAVE",
-            initial_name=trajectory_video_filename(
-                self.current_field,
-                self.show_current_image,
-            ),
-        )
-
-    def load_setup_dialog(self) -> None:
-        self._file_dialog("load_setup", self.load_setup_path, "SETUP LOAD")
-
-    def save_setup_dialog(self, quick: bool = False) -> None:
+        if purpose == "add_images":
+            chooser = choose_files
+        elif purpose in ("load_timed_images", "load_project", "save_project"):
+            chooser = lambda: choose_directory(purpose)
+        elif purpose == "save_setup" and quick and self.output_path:
+            chooser = lambda: self.output_path
+        else:
+            chooser = lambda: self._choose_file(purpose, initial_name=initial_name)
+        self.set_modal(None)
         self._choose_and_apply(
-            lambda: (
-                self.output_path
-                if quick and self.output_path
-                else self._choose_file("save_setup")
-            ),
-            self.save,
-            "SAVE",
-        )
-
-    def _file_dialog(
-        self,
-        purpose: str,
-        action,
-        label: str,
-        *,
-        initial_name: str | None = None,
-    ) -> None:
-        self._choose_and_apply(
-            lambda: self._choose_file(purpose, initial_name=initial_name),
-            action,
-            label,
-        )
-
-    def _directory_dialog(self, purpose: str, action, label: str) -> None:
-        self._choose_and_apply(
-            lambda: choose_directory(purpose),
-            action,
-            label,
+            chooser,
+            actions[purpose],
+            purpose.replace("_", " ").upper(),
         )
 
     def _choose_and_apply(self, chooser, action, label: str) -> None:

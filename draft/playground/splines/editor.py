@@ -123,19 +123,22 @@ class ScalarFieldEditor:
         toolbar = getattr(self.figure.canvas, "toolbar", None)
         return bool(toolbar is not None and getattr(toolbar, "mode", ""))
 
+    def _point(self, event) -> tuple[float, float] | None:
+        if event.inaxes is not self.axis or event.xdata is None or event.ydata is None:
+            return None
+        return float(event.xdata), float(event.ydata)
+
     def on_press(self, event) -> None:
+        point = self._point(event)
         if (
             not self.enabled
-            or event.inaxes is not self.axis
-            or event.xdata is None
-            or event.ydata is None
+            or point is None
             or event.button not in (1, 3)
             or self._toolbar_is_active()
         ):
             return
         self.cancel()
         self._last_preview_draw = 0.0
-        point = (float(event.xdata), float(event.ydata))
         erase = "shift" in (event.key or "").lower()
         self.stroke = _Stroke(
             points=[point],
@@ -147,14 +150,9 @@ class ScalarFieldEditor:
 
     def on_motion(self, event) -> None:
         stroke = self.stroke
-        if (
-            stroke is None
-            or event.inaxes is not self.axis
-            or event.xdata is None
-            or event.ydata is None
-        ):
+        point = self._point(event)
+        if stroke is None or point is None:
             return
-        point = (float(event.xdata), float(event.ydata))
         previous = stroke.points[-1]
         if np.hypot(point[0] - previous[0], point[1] - previous[1]) < 0.5:
             return
@@ -183,14 +181,9 @@ class ScalarFieldEditor:
         release_button = getattr(event, "button", stroke.button)
         if release_button not in (None, stroke.button):
             return
-        if (
-            event.inaxes is self.axis
-            and event.xdata is not None
-            and event.ydata is not None
-        ):
-            point = (float(event.xdata), float(event.ydata))
-            if point != stroke.points[-1]:
-                stroke.points.append(point)
+        point = self._point(event)
+        if point is not None and point != stroke.points[-1]:
+            stroke.points.append(point)
         if stroke.artist is not None:
             stroke.artist.remove()
         self.stroke = None

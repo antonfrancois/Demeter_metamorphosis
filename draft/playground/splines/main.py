@@ -24,10 +24,15 @@ from .core import (
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("source", nargs="?", help="Source image path or im2Dbank shorthand")
-    parser.add_argument("target", nargs="?", help="Target image path or im2Dbank shorthand")
-    parser.add_argument("--setup", help="Saved spline playground setup")
-    parser.add_argument("--timed-images", help="Directory containing images.csv")
+    parser.add_argument(
+        "source", nargs="?", help="Source image path or im2Dbank shorthand"
+    )
+    parser.add_argument(
+        "target", nargs="?", help="Target image path or im2Dbank shorthand"
+    )
+    inputs = parser.add_mutually_exclusive_group()
+    inputs.add_argument("--setup", help="Saved spline playground setup")
+    inputs.add_argument("--timed-images", help="Directory containing images.csv")
     parser.add_argument("--size", nargs=2, type=int, metavar=("H", "W"))
     parser.add_argument(
         "--device",
@@ -141,19 +146,16 @@ def _initial_setup(
     parser: argparse.ArgumentParser,
 ) -> SplineSetup:
     size = tuple(args.size) if args.size else None
+    if (args.setup or args.timed_images) and any((args.source, args.target, size)):
+        parser.error("source, target, and --size cannot accompany a saved input")
     if args.setup:
-        if args.source or args.target or size is not None:
-            parser.error("source, target, and --size cannot be combined with --setup")
         setup = load_setup(args.setup)
         parameters = _parameter_overrides(args, setup.parameters)
-        if parameters != setup.parameters:
-            setup = _replace_parameters(setup, parameters)
-    elif args.timed_images:
-        if args.source or args.target or size is not None:
-            parser.error("source, target, and --size cannot be combined with --timed-images")
+        return _replace_parameters(setup, parameters)
+    if args.timed_images:
         batch = load_timed_image_directory(args.timed_images)
         parameters = _parameter_overrides(args, SplineParameters(model="splines"))
-        setup = zero_setup(
+        return zero_setup(
             batch.source,
             batch.target,
             parameters,
@@ -161,21 +163,18 @@ def _initial_setup(
             target_times=batch.target_times,
             target_paths=batch.target_paths,
         )
-    else:
-        source, source_path = load_image(args.source or DEFAULT_SOURCE, size)
-        target, target_path = load_image(
-            args.target or DEFAULT_TARGET,
-            tuple(source.shape[-2:]),
-        )
-        parameters = _parameter_overrides(args, SplineParameters())
-        setup = zero_setup(
-            source,
-            target,
-            parameters,
-            source_path=source_path,
-            target_paths=(target_path,),
-        )
-    return setup
+    source, source_path = load_image(args.source or DEFAULT_SOURCE, size)
+    target, target_path = load_image(
+        args.target or DEFAULT_TARGET,
+        tuple(source.shape[-2:]),
+    )
+    return zero_setup(
+        source,
+        target,
+        _parameter_overrides(args, SplineParameters()),
+        source_path=source_path,
+        target_paths=(target_path,),
+    )
 
 
 def _apply_initial_field(
@@ -201,9 +200,7 @@ def _apply_initial_field(
     if setup.n_controls == 0:
         parser.error("--field-kind control requires at least one control node")
     if not 0 <= args.control_index < setup.n_controls:
-        parser.error(
-            f"--control-index must be between 0 and {setup.n_controls - 1}"
-        )
+        parser.error(f"--control-index must be between 0 and {setup.n_controls - 1}")
     setup.variables.control_jerks[args.control_index] = field
 
 

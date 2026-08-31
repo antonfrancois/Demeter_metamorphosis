@@ -8,6 +8,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field as dataclass_field
 from math import isfinite, sqrt
+from operator import le, lt
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -46,6 +47,8 @@ OPTIMIZABLE_INITIAL_FIELDS = (
     "initial_acceleration",
     "initial_jerk",
 )
+
+
 def minimum_mesh_steps(
     times: tuple[float, ...],
     *,
@@ -53,10 +56,7 @@ def minimum_mesh_steps(
 ) -> int:
     """Return the smallest temporal mesh containing every normalized time."""
     for n_steps in range(1, max_steps + 1):
-        if all(
-            abs(time * n_steps - round(time * n_steps)) <= 1e-6
-            for time in times
-        ):
+        if all(abs(time * n_steps - round(time * n_steps)) <= 1e-6 for time in times):
             return n_steps
     raise ValueError(
         f"no temporal mesh with at most {max_steps} steps contains all times"
@@ -70,11 +70,21 @@ def resolve_device(device: str | torch.device | None = "auto") -> torch.device:
     return torch.device(device)
 
 
+def _validate_progress_callback(callback: Callable[[int, int], None] | None) -> None:
+    if callback is not None and not callable(callback):
+        raise TypeError("progress_callback must be callable")
+
+
+def _synchronize_cuda(device: torch.device) -> None:
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
+
+
 def _require_finite_input(value: Any, name: str) -> None:
     tensor = torch.as_tensor(value)
-    if (torch.is_floating_point(tensor) or torch.is_complex(tensor)) and not torch.isfinite(
-        tensor
-    ).all():
+    if (
+        torch.is_floating_point(tensor) or torch.is_complex(tensor)
+    ) and not torch.isfinite(tensor).all():
         raise ValueError(f"{name} must contain only finite values")
 
 
@@ -136,15 +146,15 @@ def _optimized_fields(values: tuple[str, ...]) -> tuple[str, ...]:
 
 
 def _validate_model(parameters: "SplineParameters") -> None:
-    if parameters.alpha < 0 or parameters.beta < 0 or parameters.gamma <= 0:
+    if min(parameters.alpha, parameters.beta) < 0 or parameters.gamma <= 0:
         raise ValueError(
             "alpha and beta must be non-negative, and gamma must be positive"
         )
-    upper_bound = parameters.rho <= 1 if parameters.model == "classic" else parameters.rho < 1
-    if parameters.rho < 0 or not upper_bound:
-        bound = "0 <= rho <= 1" if parameters.model == "classic" else "0 <= rho < 1"
-        raise ValueError(f"rho must satisfy {bound}")
-    if parameters.model == "splines" and parameters.kernel != "sobolev":
+    compare, symbol = {"classic": (le, "<="), "splines": (lt, "<")}[parameters.model]
+    if parameters.rho < 0 or not compare(parameters.rho, 1):
+        raise ValueError(f"rho must satisfy 0 <= rho {symbol} 1")
+    kernels = {"classic": ("sobolev", "gaussian"), "splines": ("sobolev",)}
+    if parameters.kernel not in kernels[parameters.model]:
         raise ValueError("spline runs require the Sobolev operator")
 
 
@@ -212,9 +222,7 @@ class SplineParameters:
 
     @property
     def projected_control_times(self) -> tuple[float, ...]:
-        return tuple(
-            node / self.spline.steps for node in self.control_nodes
-        )
+        return tuple(node / self.spline.steps for node in self.control_nodes)
 
 
 def _scalar_field(
@@ -247,14 +255,11 @@ def _validate_target_mesh(
     if any(not 1 <= step <= n_steps for step in target_steps):
         raise ValueError(f"target times must map to nonzero {name} temporal nodes")
     if any(
-        abs(time * n_steps - step) > 1e-6
-        for time, step in zip(times, target_steps)
+        abs(time * n_steps - step) > 1e-6 for time, step in zip(times, target_steps)
     ):
         raise ValueError(f"target times must lie on the {name} mesh")
     if not _strictly_increasing(target_steps):
-        raise ValueError(
-            f"target times must map to distinct {name} temporal nodes"
-        )
+        raise ValueError(f"target times must map to distinct {name} temporal nodes")
 
 
 @dataclass
@@ -310,10 +315,10 @@ def zero_setup(
     """Create a zero-field setup matching the source image."""
     parameters = parameters or SplineParameters()
     _require_finite_input(source, "source")
-    source_tensor = coerce_image(source).detach().cpu().contiguous()
+    source_tensor = coerce_image(source).detach().cpu().contiguous().clone()
     if target is None:
         target = torch.zeros_like(source_tensor)
-    target_tensor = coerce_image(target).detach().cpu()
+    target_tensor = coerce_image(target).detach().cpu().clone()
     if tuple(target_tensor.shape[-2:]) != tuple(source_tensor.shape[-2:]):
         target_tensor = F.interpolate(
             target_tensor,
@@ -451,6 +456,7 @@ class SplineTrajectory:
     def field_energy(self, name: str, index: int) -> float:
         return float(self.field_energies[name][index])
 
+
 def _decompose_image_nodes(
     source: torch.Tensor,
     fields: torch.Tensor,
@@ -550,9 +556,7 @@ def _endpoint_fields(
         dx_convention="pixel",
         boundary="periodic",
     )[:, 0]
-    velocity = -sqrt(parameters.rho) * kernel(
-        integrator.momentum * gradient
-    )
+    velocity = -sqrt(parameters.rho) * kernel(integrator.momentum * gradient)
     return force, velocity
 
 
@@ -563,8 +567,7 @@ def run_spline(
     progress_callback: Callable[[int, int], None] | None = None,
 ) -> SplineTrajectory:
     """Run the forward spline and return only detached node-aligned data."""
-    if progress_callback is not None and not callable(progress_callback):
-        raise TypeError("progress_callback must be callable")
+    _validate_progress_callback(progress_callback)
     parameters = setup.parameters
     if parameters.kernel != "sobolev":
         raise ValueError(
@@ -581,14 +584,14 @@ def run_spline(
     )
     integrator_progress: Callable[[int, int], None] | None = None
     if progress_callback is not None:
+
         def report_integration_progress(completed: int, total: int) -> None:
             if completed < total:
                 progress_callback(completed, total)
 
         integrator_progress = report_integration_progress
 
-    if run_device.type == "cuda":
-        torch.cuda.synchronize(run_device)
+    _synchronize_cuda(run_device)
     start = perf_counter()
     with torch.no_grad():
         variables = setup.variables.clone().to(run_device)
@@ -639,8 +642,7 @@ def _trajectory_from_final_spline_integration(
             integrator.field_stock.to(device),
             integrator.residuals_stock.to(device),
         )
-    if device.type == "cuda":
-        torch.cuda.synchronize(device)
+    _synchronize_cuda(device)
 
     images = integrator.image_stock.detach().cpu().contiguous()
     force = torch.cat(
@@ -693,8 +695,7 @@ def run_classic(
     progress_callback: Callable[[int, int], None] | None = None,
 ) -> SplineTrajectory:
     """Run classic shooting from a setup containing only initial momentum."""
-    if progress_callback is not None and not callable(progress_callback):
-        raise TypeError("progress_callback must be callable")
+    _validate_progress_callback(progress_callback)
     unsupported = [
         name
         for name, field in (
@@ -724,8 +725,7 @@ def run_classic(
         boundary="periodic",
     )
 
-    if run_device.type == "cuda":
-        torch.cuda.synchronize(run_device)
+    _synchronize_cuda(run_device)
     start = perf_counter()
     with torch.no_grad():
         integrator(
@@ -766,12 +766,9 @@ def run_classic(
                 dx_convention="pixel",
                 boundary="periodic",
             )[:, 0]
-            vector_momentum_device = -sqrt(parameters.rho) * (
-                momentum_nodes * gradient
-            )
+            vector_momentum_device = -sqrt(parameters.rho) * (momentum_nodes * gradient)
             velocity_device = kernel(vector_momentum_device)
-    if run_device.type == "cuda":
-        torch.cuda.synchronize(run_device)
+    _synchronize_cuda(run_device)
 
     deformed_source = deformed_source_device.detach().cpu().contiguous()
     photometric_only = photometric_only_device.detach().cpu().contiguous()

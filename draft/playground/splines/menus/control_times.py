@@ -90,6 +90,24 @@ class ControlTimeEditor:
         steps[self._drag_index] = self._drag_step
         return tuple(steps)
 
+    def _label(self, step: int) -> str:
+        return rf"$\tau={step}/{self.n_steps}={step / self.n_steps:.3f}$"
+
+    def _draw_controls(self) -> None:
+        for index, step in enumerate(self._display_steps()):
+            selected = index == self.selected_index
+            (artist,) = self.axis.plot(
+                step / self.n_steps,
+                0.55,
+                marker="v",
+                markersize=10 if selected else 8,
+                markerfacecolor=DUAL_COLOR,
+                markeredgecolor="white" if selected else INK_COLOR,
+                markeredgewidth=1.5 if selected else 0.8,
+                zorder=3,
+            )
+            self._marker_artists.append(artist)
+
     def _draw(self) -> None:
         visible = self.axis.get_visible()
         self.axis.clear()
@@ -133,24 +151,12 @@ class ControlTimeEditor:
                 markeredgecolor=TARGET_ACTIVE_COLOR,
                 zorder=2,
             )
-        for index, step in enumerate(self._display_steps()):
-            selected = index == self.selected_index
-            (artist,) = self.axis.plot(
-                step / self.n_steps,
-                0.55,
-                marker="v",
-                markersize=10 if selected else 8,
-                markerfacecolor=DUAL_COLOR,
-                markeredgecolor="white" if selected else INK_COLOR,
-                markeredgewidth=1.5 if selected else 0.8,
-                zorder=3,
-            )
-            self._marker_artists.append(artist)
+        self._draw_controls()
         annotation = "No control times"
         color = "#63747a"
         if self.control_steps:
             step = self._display_steps()[self.selected_index]
-            annotation = rf"$\tau={step}/{self.n_steps}={step / self.n_steps:.3f}$"
+            annotation = self._label(step)
             color = INK_COLOR
         self._annotation = self.axis.text(
             0.5,
@@ -169,16 +175,17 @@ class ControlTimeEditor:
             self._draw()
             return
         self._marker_artists[index].set_xdata([step / self.n_steps])
-        self._annotation.set_text(
-            rf"$\tau={step}/{self.n_steps}={step / self.n_steps:.3f}$"
-        )
+        self._annotation.set_text(self._label(step))
         self.axis.figure.canvas.draw_idle()
 
     def _nearest_index(self, event) -> int | None:
         if not self.control_steps or event.x is None:
             return None
         distances = [
-            abs(float(event.x) - self.axis.transData.transform((step / self.n_steps, 0.55))[0])
+            abs(
+                float(event.x)
+                - self.axis.transData.transform((step / self.n_steps, 0.55))[0]
+            )
             for step in self.control_steps
         ]
         index = min(range(len(distances)), key=distances.__getitem__)
@@ -202,12 +209,15 @@ class ControlTimeEditor:
         if not self.active or event.inaxes is not self.axis:
             return
         nearest = self._nearest_index(event)
-        if event.button == 3:
-            if self.editable and nearest is not None:
-                self.on_remove(nearest)
-            return
-        if event.button != 1:
-            return
+        action = {1: self._select_or_add, 3: self._remove}.get(event.button)
+        if action is not None:
+            action(nearest, event)
+
+    def _remove(self, nearest: int | None, _event) -> None:
+        if self.editable and nearest is not None:
+            self.on_remove(nearest)
+
+    def _select_or_add(self, nearest: int | None, event) -> None:
         if nearest is not None:
             self.selected_index = nearest
             self.on_select(nearest)
@@ -249,10 +259,7 @@ class ControlTimeEditor:
         step = self._drag_step
         self._drag_index = None
         self._drag_step = None
-        if (
-            step is not None
-            and step != self.control_steps[index]
-        ):
+        if step is not None and step != self.control_steps[index]:
             self.on_move(index, step / self.n_steps)
         else:
             self._draw()

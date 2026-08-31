@@ -42,9 +42,7 @@ class RegistrationResult:
             if not isinstance(self.loss_stock, dict):
                 raise ValueError("spline loss history must be a dictionary")
             data = torch.as_tensor(self.loss_stock["data_loss"])
-            regularized = cost * torch.as_tensor(
-                self.loss_stock["acceleration_energy"]
-            )
+            regularized = cost * torch.as_tensor(self.loss_stock["acceleration_energy"])
             full = torch.as_tensor(self.loss_stock["total_cost"])
         else:
             losses = torch.as_tensor(self.loss_stock)
@@ -88,15 +86,59 @@ SHOOTING_OPTIMIZER_OPTIONS = {
 }
 
 
-def _zeroed_setup(setup: SplineSetup) -> SplineSetup:
+def _zeroed_setup(
+    setup: SplineSetup,
+    initial_momentum: torch.Tensor | None = None,
+) -> SplineSetup:
+    variables = SplinesVariables.zeros(
+        setup.images.source,
+        setup.n_controls,
+        requires_grad=False,
+    )
+    if initial_momentum is not None:
+        variables.initial_momentum.copy_(
+            initial_momentum.detach().to(variables.initial_momentum)
+        )
     return replace(
         setup,
-        variables=SplinesVariables.zeros(
-            setup.images.source,
-            setup.n_controls,
-            requires_grad=False,
-        ),
+        variables=variables,
     )
+
+
+def _initial_spline_variables(
+    setup: SplineSetup,
+    source: torch.Tensor,
+) -> SplinesVariables:
+    variables = SplinesVariables.zeros(
+        source,
+        n_controls=setup.n_controls,
+        requires_grad=False,
+    )
+    if setup.parameters.initialization == "warm":
+        settings = setup.parameters.regression
+        regression = metamorphosis_regression(
+            source=source,
+            target=setup.images.target.to(source),
+            target_times=setup.images.target_times,
+            momentum_ini=0.0,
+            rho=setup.parameters.rho,
+            cost_cst=settings.cost,
+            integration_steps=settings.steps,
+            n_iter=settings.iterations,
+            grad_coef=settings.learning_rate,
+            kernelOperator=_kernel_operator(setup.parameters),
+            **SHOOTING_OPTIMIZER_OPTIONS,
+        )
+        momenta = regression.optimized_momenta
+        if not isinstance(momenta, Momenta) or momenta.momentum_I is None:
+            raise RuntimeError(
+                "geodesic regression initialization produced no momentum"
+            )
+        variables.initial_momentum.copy_(momenta.momentum_I.detach().to(source))
+    selected = set(setup.parameters.optimized_fields)
+    for name, value in variables:
+        value.requires_grad_(name == "control_jerks" or name in selected)
+    return variables
 
 
 def register_classic(
@@ -138,14 +180,7 @@ def register_classic(
     momenta = optimizer.optimized_momenta
     if not isinstance(momenta, Momenta) or momenta.momentum_I is None:
         raise RuntimeError("classic registration produced no momentum")
-    optimized_setup = _zeroed_setup(setup)
-    optimized_setup = replace(
-        optimized_setup,
-        variables=replace(
-            optimized_setup.variables,
-            initial_momentum=momenta.momentum_I.detach().cpu(),
-        ),
-    )
+    optimized_setup = _zeroed_setup(setup, momenta.momentum_I)
     trajectory = run_classic(
         optimized_setup,
         device=run_device,
@@ -171,46 +206,9 @@ def register_spline(
     run_device = resolve_device(device)
     source = setup.images.source.to(run_device)
     start = perf_counter()
-    variables_ini = SplinesVariables.zeros(
-        source,
-        n_controls=setup.n_controls,
-        requires_grad=False,
-    )
-    if setup.parameters.initialization == "warm":
-        settings = setup.parameters.regression
-        regression = metamorphosis_regression(
-            source=source,
-            target=setup.images.target.to(run_device),
-            target_times=setup.images.target_times,
-            momentum_ini=0.0,
-            rho=setup.parameters.rho,
-            cost_cst=settings.cost,
-            integration_steps=settings.steps,
-            n_iter=settings.iterations,
-            grad_coef=settings.learning_rate,
-            kernelOperator=_kernel_operator(setup.parameters),
-            **SHOOTING_OPTIMIZER_OPTIONS,
-        )
-        momenta = regression.optimized_momenta
-        if not isinstance(momenta, Momenta) or momenta.momentum_I is None:
-            raise RuntimeError(
-                "geodesic regression initialization produced no momentum"
-            )
-        variables_ini.initial_momentum.copy_(
-            momenta.momentum_I.detach().to(source)
-        )
-    selected_fields = set(setup.parameters.optimized_fields)
-    for name, value in variables_ini:
-        value.requires_grad_(name == "control_jerks" or name in selected_fields)
+    variables_ini = _initial_spline_variables(setup, source)
     if not any(value.requires_grad and value.numel() for _, value in variables_ini):
-        optimized_setup = _zeroed_setup(setup)
-        optimized_setup = replace(
-            optimized_setup,
-            variables=replace(
-                optimized_setup.variables,
-                initial_momentum=variables_ini.initial_momentum.detach().cpu(),
-            ),
-        )
+        optimized_setup = _zeroed_setup(setup, variables_ini.initial_momentum)
         return RegistrationResult(
             optimized_setup,
             run_spline(

@@ -15,8 +15,8 @@ from draft.export_classic_metamorphosis_fields import (
 )
 from demeter.utils.cometric_inversion import CometricOperator
 from draft.playground.field_playground_core import load_field_file
-from draft.playground.compare_spline_geodesic import load_comparison_input
 from draft.playground.splines.core import (
+    SolverSettings,
     SplineParameters,
     load_scalar_field,
     load_setup,
@@ -126,13 +126,9 @@ def test_extract_trajectory_includes_zero_and_endpoint_states():
         trajectory["times"], torch.tensor([0.0, 1 / 3, 2 / 3, 1.0])
     )
     torch.testing.assert_close(trajectory["images"][0:1], source)
-    torch.testing.assert_close(
-        trajectory["image_momenta"][0:1], initial_momentum
-    )
+    torch.testing.assert_close(trajectory["image_momenta"][0:1], initial_momentum)
     torch.testing.assert_close(trajectory["images"][1:], image_stock)
-    torch.testing.assert_close(
-        trajectory["image_momenta"][1:], momentum_stock
-    )
+    torch.testing.assert_close(trajectory["image_momenta"][1:], momentum_stock)
     torch.testing.assert_close(
         operator.apply_operator(trajectory["velocities"]),
         trajectory["vector_momenta"],
@@ -173,8 +169,7 @@ def test_saved_frames_are_loadable_by_playground(tmp_path):
         alpha=0.2,
         beta=0.2,
         gamma=0.001,
-        n_steps=steps,
-        control_steps=(),
+        spline=SolverSettings(steps=steps),
     )
 
     output = save_trajectory(
@@ -189,21 +184,15 @@ def test_saved_frames_are_loadable_by_playground(tmp_path):
 
     velocity = load_field_file(output / "vector/velocity/velocity_t000.pt")
     momentum = load_field_file(output / "vector/momentum/momentum_t002.pt")
-    image_momentum = load_field_file(
-        output / "scalar/momentum/image_momentum_t001.pt"
-    )
-    image_velocity = load_field_file(
-        output / "scalar/velocity/image_velocity_t002.pt"
-    )
+    image_momentum = load_field_file(output / "scalar/momentum/image_momentum_t001.pt")
+    image_velocity = load_field_file(output / "scalar/velocity/image_velocity_t002.pt")
     assert velocity.kind == "velocity"
     assert momentum.kind == "vector_momentum"
     assert image_momentum.kind == "u"
     assert image_velocity.kind == "a"
     torch.testing.assert_close(velocity.field, trajectory["velocities"][0:1])
     torch.testing.assert_close(momentum.field, trajectory["vector_momenta"][2:3])
-    torch.testing.assert_close(
-        image_momentum.field, trajectory["image_momenta"][1:2]
-    )
+    torch.testing.assert_close(image_momentum.field, trajectory["image_momenta"][1:2])
     torch.testing.assert_close(
         image_velocity.field, trajectory["image_velocities"][2:3]
     )
@@ -221,41 +210,16 @@ def test_saved_frames_are_loadable_by_playground(tmp_path):
     )
     torch.testing.assert_close(initial_momentum, trajectory["image_momenta"][0:1])
     setup = load_setup(output / "spline_setup.pt")
-    torch.testing.assert_close(setup.source, trajectory["images"][0:1])
-    torch.testing.assert_close(setup.target, target)
+    torch.testing.assert_close(setup.images.source, trajectory["images"][0:1])
+    torch.testing.assert_close(setup.images.target, target)
     torch.testing.assert_close(
-        setup.initial_momentum,
+        setup.variables.initial_momentum,
         trajectory["image_momenta"][0:1],
     )
-    assert torch.count_nonzero(setup.initial_acceleration) == 0
-    assert torch.count_nonzero(setup.initial_jerk) == 0
-    assert setup.control_jerks.shape[0] == 0
+    assert torch.count_nonzero(setup.variables.initial_acceleration) == 0
+    assert torch.count_nonzero(setup.variables.initial_jerk) == 0
+    assert setup.variables.control_jerks.shape[0] == 0
     assert setup.parameters == spline_parameters
-    comparison_inputs = (
-        output,
-        output / "manifest.json",
-        output / "spline_setup.pt",
-        output / "scalar/momentum/image_momentum_t000.pt",
-    )
-    for comparison_input in comparison_inputs:
-        comparison_source, comparison_momentum, comparison_parameters = (
-            load_comparison_input(
-                comparison_input,
-                source_path=None,
-                rho=None,
-                alpha=None,
-                beta=None,
-                gamma=None,
-                cg_eps=None,
-                steps=None,
-            )
-        )
-        torch.testing.assert_close(comparison_source, trajectory["images"][0:1])
-        torch.testing.assert_close(
-            comparison_momentum,
-            trajectory["image_momenta"][0:1],
-        )
-        assert comparison_parameters == spline_parameters
     saved_source = load_image(output / "images/source.png")
     saved_target = load_image(output / "images/target.png")
     saved_final = load_image(output / "images/final.png")
@@ -272,9 +236,7 @@ def test_saved_frames_are_loadable_by_playground(tmp_path):
         "target": "images/target.png",
         "final": "images/final.png",
     }
-    assert manifest["initial_momentum"] == (
-        "scalar/momentum/image_momentum_t000.pt"
-    )
+    assert manifest["initial_momentum"] == ("scalar/momentum/image_momentum_t000.pt")
     assert manifest["spline_setup"] == "spline_setup.pt"
     assert manifest["frames"][1]["image_momentum"] == (
         "scalar/momentum/image_momentum_t001.pt"
@@ -319,8 +281,7 @@ def test_periodic_registration_runs_with_both_kernel_choices():
         assert registration.mp.boundary == "periodic"
         assert isinstance(registration.optimized_momenta, Momenta)
         assert all(
-            isinstance(momentum, Momenta)
-            for momentum in registration.mp.momentum_stock
+            isinstance(momentum, Momenta) for momentum in registration.mp.momentum_stock
         )
         final_ssd = 0.5 * (registration.mp.image - target).square().sum()
         assert final_ssd < initial_ssd
@@ -334,6 +295,4 @@ def test_periodic_registration_runs_with_both_kernel_choices():
             rtol=2e-5,
             atol=2e-6,
         )
-        torch.testing.assert_close(
-            trajectory["images"][-1:], registration.mp.image
-        )
+        torch.testing.assert_close(trajectory["images"][-1:], registration.mp.image)

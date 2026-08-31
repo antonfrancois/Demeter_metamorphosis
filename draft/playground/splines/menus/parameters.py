@@ -42,7 +42,7 @@ def format_learning_rate(value: float) -> str:
 @dataclass
 class ParameterMenu:
     backdrop_ax: Any
-    panel_axes: dict[str, Any]
+    panels: dict[str, Any]
     sliders: dict[str, Slider]
     radios: dict[str, RadioButtons]
     optimized_fields: CheckButtons
@@ -53,7 +53,7 @@ class ParameterMenu:
     def axes(self) -> tuple[Any, ...]:
         return (
             self.backdrop_ax,
-            *self.panel_axes.values(),
+            *self.panels.values(),
             *(slider.ax for slider in self.sliders.values()),
             *(radio.ax for radio in self.radios.values()),
             self.optimized_fields.ax,
@@ -74,6 +74,7 @@ class ParameterMenu:
         set_widgets_visible(self.axes, self.widgets, visible)
         for radio in self.radios.values():
             set_radio_visible(radio, visible)
+        self.control_times.set_visible(visible)
 
     def read(self, base: SplineParameters) -> SplineParameters:
         value = lambda name: float(self.sliders[name].val)
@@ -186,7 +187,11 @@ class ParameterMenu:
         if name not in LOG_SLIDERS:
             return
         value = 10 ** float(self.sliders[name].val)
-        formatter = format_learning_rate if name.endswith("learning_rate") else lambda x: f"{x:.3g}"
+        formatter = (
+            format_learning_rate
+            if name.endswith("learning_rate")
+            else lambda x: f"{x:.3g}"
+        )
         self.sliders[name].valtext.set_text(formatter(value))
 
 
@@ -230,6 +235,66 @@ def _radio(fig, position, labels, active=0) -> RadioButtons:
     return radio
 
 
+def _panel_text(axis, x: float, y: float, text: str, **style) -> None:
+    style.setdefault("ha", "center")
+    style.setdefault("va", "center")
+    style.setdefault("fontsize", 8.5)
+    axis.text(x, y, text, transform=axis.transAxes, color=INK_COLOR, **style)
+
+
+def _annotate_panels(panels: dict[str, Any]) -> None:
+    model = panels["model"]
+    _panel_text(model, 0.25, 0.58, r"$L v=-\alpha\Delta v-\beta\nabla(\nabla\!\cdot v)+\gamma v$\n$K=L^{-1}$")
+    _panel_text(model, 0.75, 0.58, r"$K=G_\sigma$" "\nClassic only", fontsize=9)
+    _panel_text(model, 0.5, 0.305, "OPTIMIZED INITIAL FIELDS", fontweight="bold")
+    _panel_text(model, 0.5, 0.14, r"CONTROL TIMES  $\tau_c$", fontsize=9.5, fontweight="bold")
+    _panel_text(model, 0.5, 0.01, "Left-click add/select, drag move, right-click remove")
+
+    solver = panels["solver"]
+    for x, label in ((0.36, "SPLINE"), (0.80, "WARM START")):
+        _panel_text(solver, x, 0.78, label, fontweight="bold")
+    for y, label in zip((0.69, 0.56, 0.43, 0.30), ("cost", "steps", "iterations", "learning rate")):
+        _panel_text(solver, 0.03, y, label, ha="left", fontsize=8)
+    _panel_text(solver, 0.5, 0.17, "COMPUTE DEVICE", fontsize=9, fontweight="bold")
+
+
+def _build_radios(fig, parameters: SplineParameters, device: str) -> dict[str, RadioButtons]:
+    device_names = ("CUDA", "CPU") if torch.cuda.is_available() or device.startswith("cuda") else ("CPU",)
+    specs = {
+        "model": ([0.12, 0.755, 0.40, 0.05], ("Classic", "Spline"), int(parameters.model != "classic")),
+        "kernel": ([0.12, 0.565, 0.40, 0.045], ("Sobolev", "Gaussian"), int(parameters.kernel != "sobolev")),
+        "initialization": ([0.63, 0.405, 0.135, 0.052], ("Cold", "Warm"), int(parameters.initialization != "cold")),
+        "device": ([0.70, 0.08, 0.17, 0.055], device_names, device_names.index("CUDA" if device.startswith("cuda") else "CPU")),
+    }
+    return {name: _radio(fig, *spec) for name, spec in specs.items()}
+
+
+def _build_sliders(fig, parameters: SplineParameters) -> dict[str, Slider]:
+    specs = {
+        "rho": (_slider, [0.17, 0.69, 0.32, 0.028], r"$\rho$", 0, max(0.95, parameters.rho), parameters.rho),
+        "alpha": (_slider, [0.13, 0.49, 0.14, 0.025], r"$\alpha$", 0, max(2, 1.5 * parameters.alpha), parameters.alpha),
+        "beta": (_slider, [0.13, 0.43, 0.14, 0.025], r"$\beta$", 0, max(2, 1.5 * parameters.beta), parameters.beta),
+        "gamma": (_log_slider, [0.13, 0.37, 0.14, 0.025], r"$\gamma$", parameters.gamma, -5, 1),
+        "sigma": (_slider, [0.38, 0.49, 0.14, 0.025], r"$\sigma$", 0.1, max(10, 1.5 * parameters.sigma), parameters.sigma),
+        "brush": (_slider, [0.70, 0.72, 0.17, 0.025], "Brush", 1, 40, 3),
+        "amplitude": (_slider, [0.70, 0.64, 0.17, 0.025], "Amplitude", 0.01, 4, 0.5),
+    }
+    sliders = {name: factory(fig, *args) for name, (factory, *args) in specs.items()}
+    integer = {"valstep": 1, "valfmt": "%0.0f"}
+    sliders["spacing"] = _slider(fig, [0.70, 0.56, 0.17, 0.025], "Spacing", 1, 24, DEFAULT_VECTOR_DISPLAY_SPACING, **integer)
+    rows = {"cost": 0.37, "steps": 0.31, "iterations": 0.25, "learning_rate": 0.19}
+    for x, prefix, settings in (
+        (0.69, "spline", parameters.spline),
+        (0.84, "regression", parameters.regression),
+    ):
+        position = lambda name: [x, rows[name], 0.08, 0.025]
+        sliders[f"{prefix}_cost"] = _log_slider(fig, position("cost"), "", settings.cost)
+        sliders[f"{prefix}_steps"] = _slider(fig, position("steps"), "", 1, MAX_STEPS, settings.steps, **integer)
+        sliders[f"{prefix}_iterations"] = _slider(fig, position("iterations"), "", 1, max(MAX_ITERATIONS, settings.iterations), settings.iterations, **integer)
+        sliders[f"{prefix}_learning_rate"] = _log_slider(fig, position("learning_rate"), "", settings.learning_rate, -5, 1)
+    return sliders
+
+
 def build_parameter_menu(
     fig,
     parameters: SplineParameters,
@@ -251,112 +316,15 @@ def build_parameter_menu(
         "draw": build_panel(fig, [0.60, 0.52, 0.34, 0.32], "DRAW"),
         "solver": build_panel(fig, [0.60, 0.07, 0.34, 0.43], "SOLVERS"),
     }
-    model = panels["model"]
-    model.text(
-        0.25,
-        0.58,
-        r"$L v=-\alpha\Delta v-\beta\nabla(\nabla\!\cdot v)+\gamma v$\n$K=L^{-1}$",
-        transform=model.transAxes,
-        ha="center",
-        va="center",
-        fontsize=8.5,
-        color=INK_COLOR,
-    )
-    model.text(
-        0.75,
-        0.58,
-        r"$K=G_\sigma$" "\nClassic only",
-        transform=model.transAxes,
-        ha="center",
-        va="center",
-        fontsize=9,
-        color=INK_COLOR,
-    )
-    model.text(
-        0.5,
-        0.14,
-        r"CONTROL TIMES  $\tau_c$",
-        transform=model.transAxes,
-        ha="center",
-        fontsize=9.5,
-        fontweight="bold",
-        color=INK_COLOR,
-    )
-    model.text(
-        0.5,
-        0.01,
-        "Left-click add/select, drag move, right-click remove",
-        transform=model.transAxes,
-        ha="center",
-        fontsize=8.5,
-        color="#63747a",
-    )
-
-    radios = {
-        "model": _radio(
-            fig,
-            [0.12, 0.755, 0.40, 0.05],
-            ("Classic", "Spline"),
-            0 if parameters.model == "classic" else 1,
-        ),
-        "kernel": _radio(
-            fig,
-            [0.12, 0.565, 0.40, 0.045],
-            ("Sobolev", "Gaussian"),
-            0 if parameters.kernel == "sobolev" else 1,
-        ),
-        "initialization": _radio(
-            fig,
-            [0.63, 0.405, 0.135, 0.052],
-            ("Cold", "Warm"),
-            0 if parameters.initialization == "cold" else 1,
-        ),
-    }
-    device_names = (["CUDA"] if torch.cuda.is_available() or device.startswith("cuda") else []) + ["CPU"]
-    radios["device"] = _radio(
-        fig,
-        [0.70, 0.08, 0.17, 0.055],
-        device_names,
-        0 if device.startswith("cuda") else len(device_names) - 1,
-    )
-
-    sliders = {
-        "rho": _slider(fig, [0.17, 0.69, 0.32, 0.028], r"$\rho$", 0, max(0.95, parameters.rho), parameters.rho),
-        "alpha": _slider(fig, [0.13, 0.49, 0.14, 0.025], r"$\alpha$", 0, max(2, 1.5 * parameters.alpha), parameters.alpha),
-        "beta": _slider(fig, [0.13, 0.43, 0.14, 0.025], r"$\beta$", 0, max(2, 1.5 * parameters.beta), parameters.beta),
-        "gamma": _log_slider(fig, [0.13, 0.37, 0.14, 0.025], r"$\gamma$", parameters.gamma, -5, 1),
-        "sigma": _slider(fig, [0.38, 0.49, 0.14, 0.025], r"$\sigma$", 0.1, max(10, 1.5 * parameters.sigma), parameters.sigma),
-        "brush": _slider(fig, [0.70, 0.72, 0.17, 0.025], "Brush", 1, 40, 3),
-        "amplitude": _slider(fig, [0.70, 0.64, 0.17, 0.025], "Amplitude", 0.01, 4, 0.5),
-        "spacing": _slider(fig, [0.70, 0.56, 0.17, 0.025], "Spacing", 1, 24, DEFAULT_VECTOR_DISPLAY_SPACING, valstep=1, valfmt="%0.0f"),
-    }
-    rows = {
-        "cost": 0.37,
-        "steps": 0.31,
-        "iterations": 0.25,
-        "learning_rate": 0.19,
-    }
-    for x, prefix, settings in (
-        (0.69, "spline", parameters.spline),
-        (0.84, "regression", parameters.regression),
-    ):
-        sliders[f"{prefix}_cost"] = _log_slider(fig, [x, rows["cost"], 0.08, 0.025], "", settings.cost)
-        sliders[f"{prefix}_steps"] = _slider(fig, [x, rows["steps"], 0.08, 0.025], "", 1, MAX_STEPS, settings.steps, valstep=1, valfmt="%0.0f")
-        sliders[f"{prefix}_iterations"] = _slider(fig, [x, rows["iterations"], 0.08, 0.025], "", 1, max(MAX_ITERATIONS, settings.iterations), settings.iterations, valstep=1, valfmt="%0.0f")
-        sliders[f"{prefix}_learning_rate"] = _log_slider(fig, [x, rows["learning_rate"], 0.08, 0.025], "", settings.learning_rate, -5, 1)
-
-    solver = panels["solver"]
-    for x, label in ((0.36, "SPLINE"), (0.80, "WARM START")):
-        solver.text(x, 0.78, label, transform=solver.transAxes, ha="center", fontsize=8.5, fontweight="bold", color=INK_COLOR)
-    for y, label in zip((0.69, 0.56, 0.43, 0.30), ("cost", "steps", "iterations", "learning rate")):
-        solver.text(0.03, y, label, transform=solver.transAxes, va="center", fontsize=8, color=INK_COLOR)
-    solver.text(0.5, 0.17, "COMPUTE DEVICE", transform=solver.transAxes, ha="center", fontsize=9, fontweight="bold", color=INK_COLOR)
-
-    model.text(0.5, 0.305, "OPTIMIZED INITIAL FIELDS", transform=model.transAxes, ha="center", fontsize=8.5, fontweight="bold", color=INK_COLOR)
+    _annotate_panels(panels)
+    radios = _build_radios(fig, parameters, device)
+    sliders = _build_sliders(fig, parameters)
     optimized = CheckButtons(
         fig.add_axes([0.21, 0.285, 0.20, 0.04], facecolor=PANEL_COLOR, zorder=102),
         ("Momentum", "Acceleration", "Jerk"),
-        tuple(name in parameters.optimized_fields for name in OPTIMIZABLE_INITIAL_FIELDS),
+        tuple(
+            name in parameters.optimized_fields for name in OPTIMIZABLE_INITIAL_FIELDS
+        ),
         layout=(1, 3),
     )
     for label in optimized.labels:

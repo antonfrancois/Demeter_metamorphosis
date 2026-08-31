@@ -32,6 +32,7 @@ import demeter.metamorphosis as mt
 from demeter.utils.cometric_inversion import CometricOperator
 from demeter.utils.reproducing_kernels import GaussianRKHS, SobolevFluidOperator
 from draft.playground.splines.core import (
+    SolverSettings,
     SplineParameters,
     save_setup,
     zero_setup,
@@ -83,9 +84,7 @@ def load_image(path: str | Path, size: tuple[int, int] | None = None) -> torch.T
     return image.contiguous()
 
 
-def resize_target_to_source(
-    source: torch.Tensor, target: torch.Tensor
-) -> torch.Tensor:
+def resize_target_to_source(source: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
     """Resize only the target's spatial dimensions to match the source."""
     if source.shape[:2] != target.shape[:2]:
         raise ValueError(
@@ -201,7 +200,10 @@ def extract_trajectory(
         optimized = registration.to_analyse[0]
     initial_momentum = _image_momentum(optimized).detach().cpu()
     images = torch.cat(
-        (registration.source.detach().cpu(), registration.mp.image_stock.detach().cpu()),
+        (
+            registration.source.detach().cpu(),
+            registration.mp.image_stock.detach().cpu(),
+        ),
         dim=0,
     )
     momentum_stock = registration.mp.momentum_stock
@@ -324,12 +326,8 @@ def save_trajectory(
         image_velocity_name = f"image_velocity_{suffix}.pt"
         velocity_path = field_directories["velocity"] / velocity_name
         momentum_path = field_directories["vector_momentum"] / momentum_name
-        image_momentum_path = (
-            field_directories["image_momentum"] / image_momentum_name
-        )
-        image_velocity_path = (
-            field_directories["image_velocity"] / image_velocity_name
-        )
+        image_momentum_path = field_directories["image_momentum"] / image_momentum_name
+        image_velocity_path = field_directories["image_velocity"] / image_velocity_name
         image = trajectory["images"][index : index + 1]
 
         torch.save(
@@ -425,9 +423,9 @@ def save_trajectory(
             target_image,
             spline_parameters,
             source_path=str(source_path),
-            target_path=str(target_path),
+            target_paths=(str(target_path),),
         )
-        setup.initial_momentum.copy_(trajectory["image_momenta"][0:1])
+        setup.variables.initial_momentum.copy_(trajectory["image_momenta"][0:1])
         setup_path = save_setup(setup, output_dir / "spline_setup.pt")
         manifest["spline_setup"] = setup_path.name
     else:
@@ -450,9 +448,15 @@ def _default_run_name(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("source", help="Source image path, im2Dbank filename, or shorthand")
-    parser.add_argument("target", help="Target image path, im2Dbank filename, or shorthand")
-    parser.add_argument("--rho", type=float, default=0.5, help="Metamorphosis balance in [0, 1]")
+    parser.add_argument(
+        "source", help="Source image path, im2Dbank filename, or shorthand"
+    )
+    parser.add_argument(
+        "target", help="Target image path, im2Dbank filename, or shorthand"
+    )
+    parser.add_argument(
+        "--rho", type=float, default=0.5, help="Metamorphosis balance in [0, 1]"
+    )
     parser.add_argument(
         "--size",
         nargs=2,
@@ -472,9 +476,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--sigma", nargs=2, type=float, default=(3.0, 3.0))
     parser.add_argument("--kernel-reach", type=int, default=3)
-    parser.add_argument("--alpha", type=float, default=0.2, help="Sobolev L coefficient")
+    parser.add_argument(
+        "--alpha", type=float, default=0.2, help="Sobolev L coefficient"
+    )
     parser.add_argument("--beta", type=float, default=0.2, help="Sobolev L coefficient")
-    parser.add_argument("--gamma", type=float, default=0.001, help="Sobolev L coefficient")
+    parser.add_argument(
+        "--gamma", type=float, default=0.001, help="Sobolev L coefficient"
+    )
     parser.add_argument("--cg-eps", type=float, default=1e-5)
     parser.add_argument("--device", default="auto", help="Torch device, or 'auto'")
     parser.add_argument(
@@ -554,12 +562,13 @@ def main(argv: list[str] | None = None) -> Path:
                 beta=args.beta,
                 gamma=args.gamma,
                 rho=args.rho,
-                cg_eps=args.cg_eps,
-                n_steps=args.integration_steps,
-                control_steps=(),
+                cg_tolerance=args.cg_eps,
                 model="classic",
-                cost_cst=args.cost_cst,
-                iterations=args.iterations,
+                spline=SolverSettings(
+                    cost=args.cost_cst,
+                    steps=args.integration_steps,
+                    iterations=args.iterations,
+                ),
             )
             if args.rho < 1
             else None
@@ -576,14 +585,15 @@ def main(argv: list[str] | None = None) -> Path:
                 beta=args.beta,
                 gamma=args.gamma,
                 rho=args.rho,
-                cg_eps=args.cg_eps,
-                n_steps=args.integration_steps,
-                control_steps=(),
+                cg_tolerance=args.cg_eps,
                 kernel="gaussian",
                 sigma=args.sigma[0],
                 model="classic",
-                cost_cst=args.cost_cst,
-                iterations=args.iterations,
+                spline=SolverSettings(
+                    cost=args.cost_cst,
+                    steps=args.integration_steps,
+                    iterations=args.iterations,
+                ),
             )
         else:
             spline_parameters = None

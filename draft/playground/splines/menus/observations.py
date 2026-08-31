@@ -30,9 +30,7 @@ class ObservationTimeEditor:
         self.names: tuple[str, ...] = ()
         self.times: tuple[float | None, ...] = ()
         self.selected = 0
-        axis.figure.canvas.mpl_connect(
-            "button_press_event", self._on_press
-        )
+        axis.figure.canvas.mpl_connect("button_press_event", self._on_press)
 
     def set_state(
         self,
@@ -49,6 +47,55 @@ class ObservationTimeEditor:
 
     def set_visible(self, visible: bool) -> None:
         self.axis.set_visible(visible)
+
+    @staticmethod
+    def _name(path: Path, duplicate: bool) -> str:
+        if duplicate and path.parent.name:
+            return f"{path.name} ({path.parent.name})"
+        return path.name[:28]
+
+    def _draw_row(
+        self,
+        index: int,
+        name: str,
+        time: float | None,
+        label_width: float,
+    ) -> None:
+        axis = self.axis
+        selected = index == self.selected
+        if selected:
+            axis.axhspan(index - 0.42, index + 0.42, color="#dcebea", zorder=0)
+        status = "[S]" if time == 0 else "[x]" if time is not None else "[ ]"
+        axis.text(
+            -label_width + 0.1,
+            index,
+            f"{status} {name}",
+            va="center",
+            ha="left",
+            fontsize=8.5,
+            color=INK_COLOR,
+            fontweight="bold" if selected else "normal",
+        )
+        if time is None:
+            return
+        step = round(time * self.n_steps)
+        axis.plot(
+            step,
+            index,
+            marker="D",
+            markersize=7,
+            color=TARGET_COLOR,
+            zorder=4,
+        )
+        axis.text(
+            step,
+            index - 0.27,
+            f"t={time:.3g}",
+            ha="center",
+            va="bottom",
+            fontsize=7,
+            color=TARGET_COLOR,
+        )
 
     def draw(self) -> None:
         axis = self.axis
@@ -78,43 +125,12 @@ class ObservationTimeEditor:
         paths = tuple(Path(name) for name in self.names)
         basename_counts = Counter(path.name for path in paths)
         for index, (path, time) in enumerate(zip(paths, self.times)):
-            if index == self.selected:
-                axis.axhspan(index - 0.42, index + 0.42, color="#dcebea", zorder=0)
-            status = "[S]" if time == 0 else "[x]" if time is not None else "[ ]"
-            name = path.name
-            if basename_counts[name] > 1 and path.parent.name:
-                name = f"{name} ({path.parent.name})"
-            else:
-                name = name[:28]
-            axis.text(
-                -label_width + 0.1,
+            self._draw_row(
                 index,
-                f"{status} {name}",
-                va="center",
-                ha="left",
-                fontsize=8.5,
-                color=INK_COLOR,
-                fontweight="bold" if index == self.selected else "normal",
+                self._name(path, basename_counts[path.name] > 1),
+                time,
+                label_width,
             )
-            if time is not None:
-                step = round(time * self.n_steps)
-                axis.plot(
-                    step,
-                    index,
-                    marker="D",
-                    markersize=7,
-                    color=TARGET_COLOR,
-                    zorder=4,
-                )
-                axis.text(
-                    step,
-                    index - 0.27,
-                    f"t={time:.3g}",
-                    ha="center",
-                    va="bottom",
-                    fontsize=7,
-                    color=TARGET_COLOR,
-                )
 
     def _on_press(self, event) -> None:
         if event.inaxes is not self.axis or event.xdata is None or event.ydata is None:
