@@ -2,6 +2,7 @@ from math import isfinite
 from time import perf_counter
 
 import torch
+from torch.autograd.function import once_differentiable
 
 from . import torchbox as tb
 from .conjugate_gradient import conjugate_gradient, jacobi_preconditioner
@@ -75,7 +76,7 @@ def _solve(
 
 
 class _CometricInverse(torch.autograd.Function):
-    """Implicit backward with extrapolated adjacent warm starts around CG."""
+    """First-order implicit backward with adjacent warm starts around CG."""
 
     @staticmethod
     def forward(
@@ -109,6 +110,7 @@ class _CometricInverse(torch.autograd.Function):
         return solution
 
     @staticmethod
+    @once_differentiable
     def backward(ctx, grad_output):
         image_gradient, solution = ctx.saved_tensors
         adjoint_x_0 = None
@@ -141,17 +143,15 @@ class _CometricInverse(torch.autograd.Function):
 
         grad_image_gradient = None
         if ctx.needs_input_grad[0]:
-            with torch.enable_grad():
-                image_gradient_var = image_gradient.detach().requires_grad_(True)
-                applied = _apply_cometric(
-                    image_gradient_var,
-                    solution,
-                    ctx.rho,
-                    ctx.kernel_operator,
-                )
-                grad_image_gradient = -torch.autograd.grad(
-                    applied, image_gradient_var, adjoint
-                )[0]
+            # For g = grad I, dA = rho * (dg^T K g + g^T K dg).
+            # Self-adjoint K gives the VJP directly; batch its two applications.
+            gradient = image_gradient[:, 0]
+            kernel_solution, kernel_adjoint = ctx.kernel_operator(
+                torch.cat((solution * gradient, adjoint * gradient), dim=0)
+            ).chunk(2, dim=0)
+            grad_image_gradient = (
+                -ctx.rho * (adjoint * kernel_solution + solution * kernel_adjoint)
+            ).unsqueeze(1)
 
         grad_acceleration = adjoint if ctx.needs_input_grad[1] else None
         return (
@@ -210,6 +210,8 @@ class CometricOperator:
 
         The optional residual is ``||a - A_I u|| / ||a||`` for nonzero ``a``.
         ``x_0`` is a non-differentiable initial guess in physical force units.
+        Differentiation through a nontrivial inverse supports first derivatives
+        only; higher derivatives raise rather than returning an incomplete VJP.
         """
         if self.rho == 0:
             if return_info:
