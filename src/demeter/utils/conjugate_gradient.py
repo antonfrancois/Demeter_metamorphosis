@@ -52,22 +52,23 @@ def conjugate_gradient(
         "convergence_check_interval",
     )
 
-    rhs_norm = torch.linalg.vector_norm(rhs)
-    if rhs_norm == 0:
+    magnitude = rhs.abs().amax() if rhs.numel() else rhs.new_zeros(())
+    if magnitude == 0:
         return torch.zeros_like(rhs), 0, _optional_residual(0.0, return_residual)
-    normalization = rhs_norm
-    scaled_rhs = rhs / normalization
+    scaled_rhs = rhs / magnitude
+    normalization = torch.linalg.vector_norm(scaled_rhs)
+    scaled_rhs = scaled_rhs / normalization
     if x_0 is None:
         solution = torch.zeros_like(rhs)
         residual = scaled_rhs.clone()
     else:
-        solution = x_0 / normalization
+        solution = (x_0 / magnitude) / normalization
         residual = scaled_rhs - linear_operator(solution)
     residual_norm_sq = _dot(residual, residual)
     threshold = tolerance**2
     if residual_norm_sq <= threshold:
         return (
-            solution * normalization,
+            (solution * normalization) * magnitude,
             0,
             _optional_residual(residual_norm_sq.sqrt(), return_residual),
         )
@@ -108,10 +109,10 @@ def conjugate_gradient(
         if check_convergence:
             assert next_residual_norm_sq is not None
             if next_residual_norm_sq <= threshold:
-                candidate_solution = solution * normalization
+                candidate_solution = (solution * normalization) * magnitude
                 true_residual = (
                     rhs - linear_operator(candidate_solution)
-                ) / normalization
+                ) / magnitude / normalization
                 true_residual_norm_sq = _dot(true_residual, true_residual)
                 if true_residual_norm_sq <= threshold:
                     return (
@@ -152,8 +153,8 @@ def conjugate_gradient(
         residual_product = next_residual_product
 
     true_residual = (
-        rhs - linear_operator(solution * normalization)
-    ) / normalization
+        rhs - linear_operator((solution * normalization) * magnitude)
+    ) / magnitude / normalization
     relative_residual = torch.linalg.vector_norm(true_residual)
     raise RuntimeError(
         "conjugate gradient did not converge within "
