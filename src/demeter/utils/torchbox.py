@@ -8,6 +8,7 @@ helpers built on top of torch and Kornia.
 
 
 from collections.abc import Iterable
+from functools import lru_cache
 
 import torch
 import torch.nn.functional as F
@@ -613,6 +614,62 @@ def spatialGradient(image, dx_convention='pixel', boundary='replicate'):
         return grad_image
 
 
+@lru_cache(maxsize=8)
+def _periodic_sobel_kernels(device, dtype):
+    # A cache first populated during inference must also be usable in autograd.
+    with torch.inference_mode(False):
+        sobel_x = get_sobel_kernel_2d().to(dtype=dtype) / 8
+        # Finish the device copy before publishing a stencil to other streams.
+        return torch.stack((sobel_x, sobel_x.T))[:, None].to(device=device)
+
+
+class _PeriodicSobelGradient(torch.autograd.Function):
+    """Periodic Sobel gradient with its exact negative-divergence transpose."""
+
+    @staticmethod
+    def forward(ctx, image, kernels):
+        ctx.save_for_backward(kernels)
+        batch, channels, height, width = image.shape
+        padded = F.pad(
+            image.reshape(batch * channels, 1, height, width),
+            (1, 1, 1, 1),
+            "circular",
+        )
+        return F.conv2d(padded, kernels).reshape(batch, channels, 2, height, width)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        (kernels,) = ctx.saved_tensors
+        batch, channels, _, height, width = grad_output.shape
+        gradient = -_PeriodicSobelDivergence.apply(
+            grad_output.reshape(batch * channels, 2, height, width), kernels
+        )
+        return gradient.reshape(batch, channels, height, width), None
+
+
+class _PeriodicSobelDivergence(torch.autograd.Function):
+    """Contract the two matching derivatives without forming a full Jacobian."""
+
+    @staticmethod
+    def forward(ctx, field, kernels):
+        ctx.save_for_backward(kernels)
+        padded = F.pad(field, (1, 1, 1, 1), "circular")
+        return F.conv2d(padded, kernels.transpose(0, 1))
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        (kernels,) = ctx.saved_tensors
+        return -_PeriodicSobelGradient.apply(grad_output, kernels)[:, 0], None
+
+
+def periodic_divergence_2d(field):
+    """Pixel-coordinate Sobel divergence of a periodic ``[B, 2, H, W]`` field."""
+    if field.ndim != 4 or field.shape[1] != 2:
+        raise ValueError("periodic divergence requires a [B, 2, H, W] field")
+    kernels = _periodic_sobel_kernels(field.device, field.dtype)
+    return _PeriodicSobelDivergence.apply(field, kernels)
+
+
 def spatialGradient_2d(image, dx_convention='pixel', boundary='replicate'):
     """
     Compute the spatial gradient on 2d images by applying
@@ -623,11 +680,8 @@ def spatialGradient_2d(image, dx_convention='pixel', boundary='replicate'):
     :return: [B,C,2,H,W]
     """
     if boundary == 'periodic':
-        B, C, H, W = image.shape
-        sobel_x = get_sobel_kernel_2d().to(image) / 8
-        kernels = torch.stack((sobel_x, sobel_x.T))[:, None]
-        padded = F.pad(image.reshape(B * C, 1, H, W), (1, 1, 1, 1), 'circular')
-        grad_image = F.conv2d(padded, kernels).reshape(B, C, 2, H, W)
+        kernels = _periodic_sobel_kernels(image.device, image.dtype)
+        grad_image = _PeriodicSobelGradient.apply(image, kernels)
     else:
         normalized = True  # if dx_convention == "square" else False
         grad_image = SpatialGradient(mode='sobel', normalized=normalized)(image)
@@ -1583,6 +1637,24 @@ def field2diffeo(in_vectField, N=None, save=False, forward=True):
     return vff.FieldIntegrator(method='fast_exp')(in_vectField.clone(), forward=forward)
 
 
+class _PeriodicImageExtension(torch.autograd.Function):
+    """Append the periodic seam and fold its gradient directly onto the image."""
+
+    @staticmethod
+    def forward(ctx, image):
+        return F.pad(image, (0, 1, 0, 1), mode="circular")
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        # Each copied seam pixel contributes to its original pixel, including
+        # the corner copied in both directions. No image needs to be saved.
+        gradient = grad_output[..., :-1, :-1].clone()
+        gradient[..., 0, :] += grad_output[..., -1, :-1]
+        gradient[..., :, 0] += grad_output[..., :-1, -1]
+        gradient[..., 0, 0] += grad_output[..., -1, -1]
+        return gradient
+
+
 def imgDeform(img, deform_grid, dx_convention='2square', clamp=False, mode = 'bilinear', gridsample_kwargs= None, boundary='zeros'):
     """
     Apply a deformation grid to an image
@@ -1626,9 +1698,7 @@ def imgDeform(img, deform_grid, dx_convention='2square', clamp=False, mode = 'bi
             ),
             dim=-1,
         )
-        periodic_image = F.pad(
-            img.to(deform_grid.dtype), (0, 1, 0, 1), mode='circular'
-        )
+        periodic_image = _PeriodicImageExtension.apply(img.to(deform_grid.dtype))
         deformed = F.grid_sample(
             periodic_image,
             periodic_grid,

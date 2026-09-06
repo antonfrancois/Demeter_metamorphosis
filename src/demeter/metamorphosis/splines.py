@@ -1,7 +1,7 @@
 """Shooting integration for balanced metamorphosis splines in 2D.
 
-The evolving state is ``(I, p, a, r)`` from system (43) of
-``metamorphosis_splines_optimal_control.pdf``. The force ``u`` is algebraic:
+The evolving state is ``(I, p, a, r)`` from ``eq-rho-shooting-system`` in
+``Papers/MetamorphosisSplines_Theory.typ``. The force ``u`` is algebraic:
 ``u = A_I^-1 a``. Control values are absolute right limits of the jerk, not
 increments.
 
@@ -126,7 +126,7 @@ register_pytree_node(
 
 
 class MetamorphosisSplineIntegrator(Geodesic_integrator):
-    r"""Integrate system (43) on the pixel torus.
+    r"""Integrate the spline shooting system on the pixel torus.
 
     The physical deformation velocity is
 
@@ -216,12 +216,7 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
         )[:, 0]
 
     def _divergence(self, vector: Tensor) -> Tensor:
-        gradient = tb.spatialGradient(
-            vector,
-            dx_convention=self.dx_convention,
-            boundary="periodic",
-        )
-        return gradient[:, 0, 0, None] + gradient[:, 1, 1, None]
+        return tb.periodic_divergence_2d(vector)
 
     def _advect(self, value: Tensor, source: Tensor, departure: Tensor) -> Tensor:
         return tb.imgDeform(
@@ -330,20 +325,6 @@ class MetamorphosisSplineIntegrator(Geodesic_integrator):
     ):
         """Integrate the interior equations over one control-free interval."""
         momentum, acceleration, jerk = momentum
-        if self.rho == 0:
-            velocity = image.new_zeros((1, 2) + image.shape[-2:])
-            field = tb.im2grid(velocity)
-            zero_source = torch.zeros_like(image)
-            next_momentum, next_acceleration, next_jerk, next_image = self._advect(
-                torch.cat((momentum, acceleration, jerk, image), dim=1),
-                torch.cat((acceleration, jerk, zero_source, momentum), dim=1),
-                self.id_grid,
-            ).split(1, dim=1)
-            return (
-                (next_momentum, next_acceleration, next_jerk), next_image, field,
-                momentum, acceleration, velocity,
-            )
-
         cometric = self._cometric(image)
         force = cometric.inverse(
             acceleration,
